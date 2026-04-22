@@ -6153,6 +6153,8 @@ struct ContentView: View {
             return .newWindow
         case "palette.openFolder":
             return .openFolder
+        case "palette.reopenPreviousSession":
+            return .reopenPreviousSession
         case "palette.newTerminalTab":
             return .newSurface
         case "palette.newBrowserTab":
@@ -6409,6 +6411,14 @@ struct ContentView: View {
                 ),
                 keywords: ["open", "folder", "directory", "project", "vs", "code", "inline", "editor", "browser"],
                 when: { _ in TerminalDirectoryOpenTarget.vscodeInline.isAvailable() }
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.reopenPreviousSession",
+                title: constant(String(localized: "command.reopenPreviousSession.title", defaultValue: "Reopen Previous Session")),
+                subtitle: constant(String(localized: "command.reopenPreviousSession.subtitle", defaultValue: "Session")),
+                keywords: ["reopen", "restore", "previous", "session", "resume"]
             )
         )
         contributions.append(
@@ -7130,6 +7140,11 @@ struct ContentView: View {
         registry.register(commandId: "palette.openFolderInVSCodeInline") {
             DispatchQueue.main.async {
                 AppDelegate.shared?.showOpenFolderInInlineVSCodePanel(tabManager: tabManager)
+            }
+        }
+        registry.register(commandId: "palette.reopenPreviousSession") {
+            if AppDelegate.shared?.reopenPreviousSession() != true {
+                NSSound.beep()
             }
         }
         registry.register(commandId: "palette.newWindow") {
