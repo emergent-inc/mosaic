@@ -5238,6 +5238,11 @@ class TabManager: ObservableObject {
         selectedWorkspace?.newTerminalSurfaceInFocusedPane(focus: true)
     }
 
+    func newSurface(initialInput: String) {
+        selectedWorkspace?.clearSplitZoom()
+        selectedWorkspace?.newTerminalSurfaceInFocusedPane(focus: true, initialInput: initialInput)
+    }
+
     // MARK: - Split Creation
 
     /// Create a new split in the current tab
@@ -5279,6 +5284,24 @@ class TabManager: ObservableObject {
     func refreshSplitButtonTooltips() {
         for workspace in tabs {
             workspace.refreshSplitButtonTooltips()
+        }
+    }
+
+    func applySurfaceTabBarButtons(
+        _ buttons: [CmuxSurfaceTabBarButton],
+        sourcePath: String?,
+        globalConfigPath: String,
+        terminalCommandSourcePaths: [String: String],
+        workspaceCommands: [String: CmuxResolvedCommand]
+    ) {
+        for workspace in tabs {
+            workspace.applySurfaceTabBarButtons(
+                buttons,
+                sourcePath: sourcePath,
+                globalConfigPath: globalConfigPath,
+                terminalCommandSourcePaths: terminalCommandSourcePaths,
+                workspaceCommands: workspaceCommands
+            )
         }
     }
 

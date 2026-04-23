@@ -564,6 +564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let tabManager: TabManager
         let sidebarState: SidebarState
         let sidebarSelectionState: SidebarSelectionState
+        var cmuxConfigStore: CmuxConfigStore?
         weak var window: NSWindow?
 
         init(
@@ -571,12 +572,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager: TabManager,
             sidebarState: SidebarState,
             sidebarSelectionState: SidebarSelectionState,
+            cmuxConfigStore: CmuxConfigStore?,
             window: NSWindow?
         ) {
             self.windowId = windowId
             self.tabManager = tabManager
             self.sidebarState = sidebarState
             self.sidebarSelectionState = sidebarSelectionState
+            self.cmuxConfigStore = cmuxConfigStore
             self.window = window
         }
     }
@@ -3281,7 +3284,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         windowId: UUID,
         tabManager: TabManager,
         sidebarState: SidebarState,
-        sidebarSelectionState: SidebarSelectionState
+        sidebarSelectionState: SidebarSelectionState,
+        cmuxConfigStore: CmuxConfigStore? = nil
     ) {
         tabManager.window = window
 
@@ -3291,8 +3295,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         #endif
         if let existing = mainWindowContexts[key] {
             existing.window = window
+            if let cmuxConfigStore {
+                existing.cmuxConfigStore = cmuxConfigStore
+            }
         } else if let existing = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
             existing.window = window
+            if let cmuxConfigStore {
+                existing.cmuxConfigStore = cmuxConfigStore
+            }
             reindexMainWindowContextIfNeeded(existing, for: window)
         } else {
             mainWindowContexts[key] = MainWindowContext(
@@ -3300,6 +3310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 tabManager: tabManager,
                 sidebarState: sidebarState,
                 sidebarSelectionState: sidebarSelectionState,
+                cmuxConfigStore: cmuxConfigStore,
                 window: window
             )
             NotificationCenter.default.addObserver(
@@ -5039,6 +5050,129 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         _ = createMainWindow()
     }
 
+    @discardableResult
+    func performNewWorkspaceAction(
+        tabManager preferredTabManager: TabManager? = nil,
+        event: NSEvent? = nil,
+        debugSource: String = "newWorkspace"
+    ) -> Bool {
+        let preferredContext = preferredTabManager.flatMap { mainWindowContext(for: $0) }
+        let livePreferredContext: MainWindowContext? = {
+            guard let preferredContext else { return nil }
+            guard resolvedWindow(for: preferredContext) != nil else {
+                discardOrphanedMainWindowContext(preferredContext)
+                return nil
+            }
+            return preferredContext
+        }()
+
+        if mainWindowContexts.isEmpty && livePreferredContext == nil {
+#if DEBUG
+            logWorkspaceCreationRouting(
+                phase: "fallback_new_window",
+                source: debugSource,
+                reason: "no_main_windows",
+                event: event,
+                chosenContext: nil
+            )
+#endif
+            let windowId = createMainWindow()
+            if let context = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
+                let initialWorkspace = context.tabManager.selectedWorkspace
+                _ = executeConfiguredNewWorkspaceCommandIfAvailable(
+                    in: context,
+                    debugSource: debugSource,
+                    replacingInitialWorkspace: initialWorkspace
+                )
+            }
+            return true
+        }
+
+        let context = livePreferredContext
+            ?? preferredMainWindowContextForWorkspaceCreation(event: event, debugSource: debugSource)
+
+        if let context,
+           executeConfiguredNewWorkspaceCommandIfAvailable(in: context, debugSource: debugSource) {
+            return true
+        }
+
+        if let preferredTabManager,
+           preferredContext == nil || livePreferredContext != nil {
+            preferredTabManager.addWorkspace()
+            return true
+        }
+
+        if addWorkspaceInPreferredMainWindow(event: event, debugSource: debugSource) == nil {
+#if DEBUG
+            logWorkspaceCreationRouting(
+                phase: "fallback_new_window",
+                source: debugSource,
+                reason: "workspace_creation_returned_nil",
+                event: event,
+                chosenContext: nil
+            )
+#endif
+            openNewMainWindow(nil)
+        }
+        return true
+    }
+
+    private func mainWindowContext(for tabManager: TabManager) -> MainWindowContext? {
+        mainWindowContexts.values.first(where: { $0.tabManager === tabManager })
+    }
+
+    private func executeConfiguredNewWorkspaceCommandIfAvailable(
+        in context: MainWindowContext,
+        debugSource: String,
+        replacingInitialWorkspace initialWorkspace: Workspace? = nil
+    ) -> Bool {
+        guard let cmuxConfigStore = context.cmuxConfigStore,
+              let configured = cmuxConfigStore.resolvedNewWorkspaceCommand() else {
+            return false
+        }
+        guard resolvedWindow(for: context) != nil else {
+            discardOrphanedMainWindowContext(context)
+            return false
+        }
+        let rawCwd = context.tabManager.selectedWorkspace?.currentDirectory
+        let baseCwd = (rawCwd?.isEmpty == false) ? rawCwd!
+            : FileManager.default.homeDirectoryForCurrentUser.path
+#if DEBUG
+        dlog(
+            "newWorkspace.configCommand source=\(debugSource) " +
+            "command=\(configured.command.name) windowId=\(String(context.windowId.uuidString.prefix(8)))"
+        )
+#endif
+        let initialWorkspaceId = initialWorkspace?.id
+        let didExecute = CmuxConfigExecutor.execute(
+            command: configured.command,
+            tabManager: context.tabManager,
+            baseCwd: baseCwd,
+            configSourcePath: configured.sourcePath,
+            globalConfigPath: cmuxConfigStore.globalConfigPath
+        ) { [weak self, weak context] in
+            self?.closeInitialWorkspaceIfNeeded(
+                initialWorkspaceId: initialWorkspaceId,
+                in: context
+            )
+        }
+        return didExecute
+    }
+
+    private func closeInitialWorkspaceIfNeeded(
+        initialWorkspaceId: UUID?,
+        in context: MainWindowContext?
+    ) {
+        guard let initialWorkspaceId,
+              let context,
+              context.tabManager.tabs.count > 1,
+              let initialWorkspace = context.tabManager.tabs.first(where: { $0.id == initialWorkspaceId }),
+              context.tabManager.selectedWorkspace?.id != initialWorkspaceId else {
+            return
+        }
+        context.tabManager.closeWorkspace(initialWorkspace)
+    }
+
     /// Shows the "Open Folder" panel and creates a workspace for the selected directory.
     /// Called from both the SwiftUI menu and `handleCustomShortcut`.
     func showOpenFolderPanel() {
@@ -5696,7 +5830,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             windowId: windowId,
             tabManager: tabManager,
             sidebarState: sidebarState,
-            sidebarSelectionState: sidebarSelectionState
+            sidebarSelectionState: sidebarSelectionState,
+            cmuxConfigStore: cmuxConfigStore
         )
         installFileDropOverlay(on: window, tabManager: tabManager)
         if !shouldActivate || TerminalController.shouldSuppressSocketCommandActivation() {
@@ -9496,8 +9631,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return false
         }
 
+        let configuredCmuxShortcutContext = preferredMainWindowContextForShortcutRouting(event: event)
+        let configuredCmuxShortcutActions = configuredCmuxShortcutActions(for: configuredCmuxShortcutContext)
+
         if activeConfiguredShortcutChordPrefixForCurrentEvent == nil,
-           armConfiguredShortcutChordIfNeeded(event: event) {
+           armConfiguredShortcutChordIfNeeded(
+               event: event,
+               shortcuts: configuredCmuxShortcutActions.compactMap(\.shortcut)
+           ) {
             return true
         }
 
@@ -9534,6 +9675,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return true
         }
 
+        if handleConfiguredCmuxShortcut(
+            event: event,
+            actions: configuredCmuxShortcutActions,
+            context: configuredCmuxShortcutContext
+        ) {
+            return true
+        }
+
         // Primary UI shortcuts
         if matchConfiguredShortcut(event: event, action: .toggleSidebar) {
             _ = toggleSidebarInActiveMainWindow()
@@ -9544,32 +9693,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #if DEBUG
             dlog("shortcut.action name=newWorkspace \(debugShortcutRouteSnapshot(event: event))")
 #endif
-            // Cmd+N semantics:
-            // - If there are no main windows, create a new window.
-            // - Otherwise, create a new workspace in the active window.
-            if mainWindowContexts.isEmpty {
-                #if DEBUG
-                logWorkspaceCreationRouting(
-                    phase: "fallback_new_window",
-                    source: "shortcut.cmdN",
-                    reason: "no_main_windows",
-                    event: event,
-                    chosenContext: nil
-                )
-                #endif
-                openNewMainWindow(nil)
-            } else if addWorkspaceInPreferredMainWindow(event: event, debugSource: "shortcut.cmdN") == nil {
-                #if DEBUG
-                logWorkspaceCreationRouting(
-                    phase: "fallback_new_window",
-                    source: "shortcut.cmdN",
-                    reason: "workspace_creation_returned_nil",
-                    event: event,
-                    chosenContext: nil
-                )
-                #endif
-                openNewMainWindow(nil)
-            }
+            performNewWorkspaceAction(event: event, debugSource: "shortcut.cmdN")
             return true
         }
 
@@ -10848,8 +10972,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return false
     }
 
-    private func matchConfiguredShortcut(event: NSEvent, action: KeyboardShortcutSettings.Action) -> Bool {
-        let shortcut = KeyboardShortcutSettings.shortcut(for: action)
+    private func matchConfiguredShortcut(event: NSEvent, shortcut: StoredShortcut) -> Bool {
         if let prefix = activeConfiguredShortcutChordPrefixForCurrentEvent {
             guard let secondStroke = shortcut.secondStroke,
                   shortcut.firstStroke == prefix else {
@@ -10859,6 +10982,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         guard !shortcut.hasChord else { return false }
         return matchShortcutStroke(event: event, stroke: shortcut.firstStroke)
+    }
+
+    private func matchConfiguredShortcut(event: NSEvent, action: KeyboardShortcutSettings.Action) -> Bool {
+        matchConfiguredShortcut(event: event, shortcut: KeyboardShortcutSettings.shortcut(for: action))
     }
 
     private func numberedConfiguredShortcutDigit(
@@ -10917,10 +11044,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func armConfiguredShortcutChordIfNeeded(
         event: NSEvent,
-        actions: [KeyboardShortcutSettings.Action]? = nil
+        actions: [KeyboardShortcutSettings.Action]? = nil,
+        shortcuts: [StoredShortcut] = []
     ) -> Bool {
-        for action in actions ?? configuredShortcutChordActions {
-            let shortcut = KeyboardShortcutSettings.shortcut(for: action)
+        var seen = Set<StoredShortcut>()
+        let configuredShortcuts = (actions ?? configuredShortcutChordActions).map {
+            KeyboardShortcutSettings.shortcut(for: $0)
+        } + shortcuts
+        for shortcut in configuredShortcuts {
+            guard seen.insert(shortcut).inserted else { continue }
             guard shortcut.hasChord else { continue }
             if matchShortcutStroke(event: event, stroke: shortcut.firstStroke) {
                 pendingConfiguredShortcutChord = PendingConfiguredShortcutChord(
@@ -10931,6 +11063,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
         }
         return false
+    }
+
+    private func configuredCmuxShortcutActions(
+        for context: MainWindowContext?
+    ) -> [CmuxResolvedConfigAction] {
+        context?.cmuxConfigStore?.shortcutActions() ?? []
+    }
+
+    private func handleConfiguredCmuxShortcut(
+        event: NSEvent,
+        actions: [CmuxResolvedConfigAction],
+        context: MainWindowContext?
+    ) -> Bool {
+        for action in actions {
+            guard let shortcut = action.shortcut,
+                  matchConfiguredShortcut(event: event, shortcut: shortcut) else {
+                continue
+            }
+            return executeConfiguredCmuxActionShortcut(
+                action,
+                event: event,
+                context: context
+            )
+        }
+        return false
+    }
+
+    private func executeConfiguredCmuxActionShortcut(
+        _ action: CmuxResolvedConfigAction,
+        event: NSEvent,
+        context: MainWindowContext?
+    ) -> Bool {
+        switch action.action {
+        case .builtIn(let builtIn):
+            switch builtIn {
+            case .newTerminal:
+                tabManager?.newSurface()
+                return true
+            case .newBrowser:
+                _ = openBrowserAndFocusAddressBar(insertAtEnd: true)
+                return true
+            case .splitRight:
+                if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .right) {
+                    return true
+                }
+                _ = performSplitShortcut(
+                    direction: .right,
+                    preferredWindow: event.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+                )
+                return true
+            case .splitDown:
+                if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .down) {
+                    return true
+                }
+                _ = performSplitShortcut(
+                    direction: .down,
+                    preferredWindow: event.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+                )
+                return true
+            }
+        case .command, .agent, .workspaceCommand:
+            guard let context,
+                  let cmuxConfigStore = context.cmuxConfigStore else {
+                return false
+            }
+            let rawCwd = context.tabManager.selectedWorkspace?.currentDirectory
+            let baseCwd = (rawCwd?.isEmpty == false) ? rawCwd!
+                : FileManager.default.homeDirectoryForCurrentUser.path
+            return CmuxConfigExecutor.execute(
+                action: action,
+                commands: cmuxConfigStore.loadedCommands,
+                commandSourcePaths: cmuxConfigStore.commandSourcePaths,
+                tabManager: context.tabManager,
+                baseCwd: baseCwd,
+                globalConfigPath: cmuxConfigStore.globalConfigPath
+            )
+        case .actionReference:
+            return false
+        }
     }
 
     /// Match a shortcut stroke against an event, handling normal keys.
