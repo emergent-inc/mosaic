@@ -1044,6 +1044,22 @@ final class CmuxConfigDecodingTests: XCTestCase {
         XCTAssertEqual(ws?.color, "#FF5733")
     }
 
+    func testDecodeWorkspaceCommandAcceptsNamedColor() throws {
+        let json = """
+        {
+          "commands": [{
+            "name": "Dev env",
+            "workspace": {
+              "name": "Development",
+              "color": "Indigo"
+            }
+          }]
+        }
+        """
+        let config = try decode(json)
+        XCTAssertEqual(config.commands[0].workspace?.color, "#283593")
+    }
+
     func testDecodeRestartBehaviors() throws {
         for behavior in ["recreate", "ignore", "confirm"] {
             let json = """
