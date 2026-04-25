@@ -4332,9 +4332,23 @@ class TabManager: ObservableObject {
             cancelButton.keyEquivalent = "\u{1b}"
         }
 
+        #if DEBUG
+        UITestRecorder.record([
+            "closeConfirmationTitle": title,
+            "closeConfirmationMessage": message,
+        ])
+        #endif
+
         if NSApp.activationPolicy() == .regular {
             NSApp.activate(ignoringOtherApps: true)
         }
+
+        #if DEBUG
+        UITestRecorder.record([
+            "closeConfirmationPresentation": "appModal",
+            "closeConfirmationAttachedSheet": "0",
+        ])
+        #endif
 
         return alert.runModal() == .alertFirstButtonReturn
     }
