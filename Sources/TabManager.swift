@@ -4347,12 +4347,13 @@ class TabManager: ObservableObject {
             NSApp.activate(ignoringOtherApps: true)
         }
 
-        guard let presentingWindow = closeConfirmationPresentingWindow(),
-              presentingWindow.attachedSheet == nil else {
+        let presentingWindow = closeConfirmationPresentingWindow()
+        let hasAttachedSheet = presentingWindow?.attachedSheet != nil
+        guard let presentingWindow, !hasAttachedSheet else {
             #if DEBUG
             UITestRecorder.record([
                 "closeConfirmationPresentation": "appModal",
-                "closeConfirmationAttachedSheet": "0",
+                "closeConfirmationAttachedSheet": hasAttachedSheet ? "1" : "0",
             ])
             #endif
 
@@ -4374,18 +4375,23 @@ class TabManager: ObservableObject {
     }
 
     private func closeConfirmationPresentingWindow() -> NSWindow? {
-        if let window, window.isVisible {
+        if let window, window.isVisible, isCloseConfirmationMainWindow(window) {
             return window
         }
-        if let keyWindow = NSApp.keyWindow, keyWindow.isVisible {
+        if let keyWindow = NSApp.keyWindow, keyWindow.isVisible, isCloseConfirmationMainWindow(keyWindow) {
             return keyWindow
         }
-        if let mainWindow = NSApp.mainWindow, mainWindow.isVisible {
+        if let mainWindow = NSApp.mainWindow, mainWindow.isVisible, isCloseConfirmationMainWindow(mainWindow) {
             return mainWindow
         }
         return NSApp.windows.first { candidate in
-            candidate.isVisible && candidate.identifier?.rawValue.hasPrefix("cmux.main.") == true
+            candidate.isVisible && isCloseConfirmationMainWindow(candidate)
         }
+    }
+
+    private func isCloseConfirmationMainWindow(_ candidate: NSWindow) -> Bool {
+        guard let raw = candidate.identifier?.rawValue else { return false }
+        return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
     }
 
     private struct CloseOtherTabsInFocusedPanePlan {

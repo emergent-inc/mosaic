@@ -316,9 +316,6 @@ final class CloseWorkspacesConfirmDialogUITests: XCTestCase {
 
         let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
         guard let outStr = String(data: outData, encoding: .utf8) else { return nil }
-        if let first = outStr.split(separator: "\n", maxSplits: 1).first {
-            return String(first).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
         let trimmed = outStr.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
@@ -456,6 +453,7 @@ final class CloseWorkspacesConfirmDialogUITests: XCTestCase {
                 return true
             }
             guard wrote else { return nil }
+            _ = shutdown(fd, SHUT_WR)
 
             var buf = [UInt8](repeating: 0, count: 4096)
             var accum = ""
@@ -471,12 +469,10 @@ final class CloseWorkspacesConfirmDialogUITests: XCTestCase {
                 if n <= 0 { break }
                 if let chunk = String(bytes: buf[0..<n], encoding: .utf8) {
                     accum.append(chunk)
-                    if let idx = accum.firstIndex(of: "\n") {
-                        return String(accum[..<idx])
-                    }
                 }
             }
-            return accum.isEmpty ? nil : accum.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = accum.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
         }
     }
 }
