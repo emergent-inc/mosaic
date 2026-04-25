@@ -4339,18 +4339,53 @@ class TabManager: ObservableObject {
         ])
         #endif
 
+        return runCloseConfirmationAlert(alert) == .alertFirstButtonReturn
+    }
+
+    private func runCloseConfirmationAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
         if NSApp.activationPolicy() == .regular {
             NSApp.activate(ignoringOtherApps: true)
         }
 
-        #if DEBUG
-        UITestRecorder.record([
-            "closeConfirmationPresentation": "appModal",
-            "closeConfirmationAttachedSheet": "0",
-        ])
-        #endif
+        guard let presentingWindow = closeConfirmationPresentingWindow(),
+              presentingWindow.attachedSheet == nil else {
+            #if DEBUG
+            UITestRecorder.record([
+                "closeConfirmationPresentation": "appModal",
+                "closeConfirmationAttachedSheet": "0",
+            ])
+            #endif
 
-        return alert.runModal() == .alertFirstButtonReturn
+            return alert.runModal()
+        }
+
+        alert.beginSheetModal(for: presentingWindow) { result in
+            NSApp.stopModal(withCode: result)
+        }
+        #if DEBUG
+        DispatchQueue.main.async {
+            UITestRecorder.record([
+                "closeConfirmationPresentation": "sheet",
+                "closeConfirmationAttachedSheet": presentingWindow.attachedSheet == nil ? "0" : "1",
+            ])
+        }
+        #endif
+        return NSApp.runModal(for: alert.window)
+    }
+
+    private func closeConfirmationPresentingWindow() -> NSWindow? {
+        if let window, window.isVisible {
+            return window
+        }
+        if let keyWindow = NSApp.keyWindow, keyWindow.isVisible {
+            return keyWindow
+        }
+        if let mainWindow = NSApp.mainWindow, mainWindow.isVisible {
+            return mainWindow
+        }
+        return NSApp.windows.first { candidate in
+            candidate.isVisible && candidate.identifier?.rawValue.hasPrefix("cmux.main.") == true
+        }
     }
 
     private struct CloseOtherTabsInFocusedPanePlan {
