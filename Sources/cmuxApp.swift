@@ -1018,7 +1018,7 @@ private struct MainWindowBootstrapView: View {
         Color.clear
             .frame(width: 1, height: 1)
             .background(WindowAccessor { window in
-                window.identifier = NSUserInterfaceItemIdentifier("cmux.main.bootstrap")
+                window.identifier = NSUserInterfaceItemIdentifier("cmux.bootstrap")
                 window.isRestorable = false
                 window.orderOut(nil)
                 Task { @MainActor [weak window] in

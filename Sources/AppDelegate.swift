@@ -3315,7 +3315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } else if let existing = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
             if let existingWindow = existing.window,
                existingWindow !== window,
-               existingWindow.isVisible {
+               existingWindow.isVisible || existingWindow.isMiniaturized {
 #if DEBUG
                 cmuxDebugLog(
                     "mainWindow.register.duplicateIgnored windowId=\(String(windowId.uuidString.prefix(8))) " +
