@@ -1417,23 +1417,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         setupMultiWindowNotificationsUITestIfNeeded()
         setupDisplayResolutionUITestDiagnosticsIfNeeded()
 
-        // UI tests sometimes don't run SwiftUI `.onAppear` soon enough (or at all) on the VM.
-        // The automation socket is a core testing primitive, so ensure it's started here when
-        // we detect XCTest, even if the main view lifecycle is flaky.
         let env = ProcessInfo.processInfo.environment
-        if isRunningUnderXCTest(env) {
-            let raw = UserDefaults.standard.string(forKey: SocketControlSettings.appStorageKey)
-                ?? SocketControlSettings.defaultMode.rawValue
-            let userMode = SocketControlSettings.migrateMode(raw)
-            let mode = SocketControlSettings.effectiveMode(userMode: userMode)
-            if mode != .off {
-                TerminalController.shared.start(
-                    tabManager: tabManager,
-                    socketPath: SocketControlSettings.socketPath(),
-                    accessMode: mode
-                )
-                scheduleUITestSocketSanityCheckIfNeeded()
-            }
+        if isRunningUnderXCTest(env) || env["CMUX_UI_TEST_MODE"] == "1" {
+            scheduleUITestSocketSanityCheckIfNeeded()
         }
 #endif
     }
@@ -2843,6 +2829,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let mode = SocketControlSettings.effectiveMode(userMode: userMode)
         guard mode != .off else { return nil }
         return (mode: mode, path: SocketControlSettings.socketPath())
+    }
+
+    private func startSocketListenerIfEnabled(tabManager: TabManager, source: String) {
+        guard let config = socketListenerConfigurationIfEnabled() else {
+            TerminalController.shared.stop()
+            return
+        }
+        let path = TerminalController.shared.activeSocketPath(preferredPath: config.path)
+        sentryBreadcrumb("socket.listener.start", category: "socket", data: [
+            "mode": config.mode.rawValue,
+            "path": path,
+            "source": source
+        ])
+        TerminalController.shared.start(tabManager: tabManager, socketPath: path, accessMode: config.mode)
     }
 
     private func restartSocketListenerIfEnabled(source: String) {
@@ -5090,6 +5090,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @discardableResult
     func bootstrapInitialMainWindowIfNeeded(debugSource: String, shouldActivate: Bool = true) -> UUID {
         let windowId = ensureInitialMainWindowIfNeeded(shouldActivate: shouldActivate)
+        if let manager = tabManagerFor(windowId: windowId) {
+            startSocketListenerIfEnabled(
+                tabManager: manager,
+                source: "bootstrapInitialMainWindow.\(debugSource)"
+            )
+        }
         guard !didBootstrapInitialMainWindow else { return windowId }
 
         didBootstrapInitialMainWindow = true
