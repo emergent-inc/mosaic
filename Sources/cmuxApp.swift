@@ -9,11 +9,7 @@ struct cmuxApp: App {
     @StateObject private var tabManager: TabManager
     @StateObject private var notificationStore = TerminalNotificationStore.shared
     @StateObject private var sidebarState = SidebarState()
-    @StateObject private var sidebarSelectionState = SidebarSelectionState()
-    @StateObject private var fileExplorerState = FileExplorerState()
-    @StateObject private var cmuxConfigStore = CmuxConfigStore()
     @StateObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
-    private let primaryWindowId = UUID()
     @AppStorage(AppearanceSettings.appearanceModeKey) private var appearanceMode = AppearanceSettings.defaultMode.rawValue
     @AppStorage("titlebarControlsStyle") private var titlebarControlsStyle = TitlebarControlsStyle.classic.rawValue
     @AppStorage(ShortcutHintDebugSettings.alwaysShowHintsKey) private var alwaysShowShortcutHints = ShortcutHintDebugSettings.defaultAlwaysShowHints
@@ -190,31 +186,14 @@ struct cmuxApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(updateViewModel: appDelegate.updateViewModel, windowId: primaryWindowId)
-                .environmentObject(tabManager)
-                .environmentObject(notificationStore)
-                .environmentObject(sidebarState)
-                .environmentObject(sidebarSelectionState)
-                .environmentObject(fileExplorerState)
-                .environmentObject(cmuxConfigStore)
+            MainWindowBootstrapView()
                 .onAppear {
 #if DEBUG
                     if ProcessInfo.processInfo.environment["CMUX_UI_TEST_MODE"] == "1" {
                         UpdateLogStore.shared.append("ui test: cmuxApp onAppear")
                     }
 #endif
-                    // Start the Unix socket controller for programmatic access
-                    updateSocketController()
-                    appDelegate.configure(tabManager: tabManager, notificationStore: notificationStore, sidebarState: sidebarState)
-                    appDelegate.fileExplorerState = fileExplorerState
-                    cmuxConfigStore.wireDirectoryTracking(tabManager: tabManager)
-                    cmuxConfigStore.loadAll()
-                    applyAppearance()
-                    if ProcessInfo.processInfo.environment["CMUX_UI_TEST_SHOW_SETTINGS"] == "1" {
-                        DispatchQueue.main.async {
-                            appDelegate.openPreferencesWindow(debugSource: "uiTestShowSettings")
-                        }
-                    }
+                    bootstrapMainWindowScene()
                 }
                 .onChange(of: appearanceMode) { _ in
                     applyAppearance()
@@ -737,12 +716,23 @@ struct cmuxApp: App {
         let mode = SocketControlSettings.effectiveMode(userMode: currentSocketMode)
         if mode != .off {
             TerminalController.shared.start(
-                tabManager: tabManager,
+                tabManager: activeTabManager,
                 socketPath: SocketControlSettings.socketPath(),
                 accessMode: mode
             )
         } else {
             TerminalController.shared.stop()
+        }
+    }
+
+    private func bootstrapMainWindowScene() {
+        appDelegate.ensureInitialMainWindowIfNeeded()
+        updateSocketController()
+        applyAppearance()
+        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_SHOW_SETTINGS"] == "1" {
+            Task { @MainActor in
+                appDelegate.openPreferencesWindow(debugSource: "uiTestShowSettings")
+            }
         }
     }
 
@@ -1025,6 +1015,22 @@ struct cmuxApp: App {
         BackgroundDebugWindowController.shared.show()
         StartupAppearanceDebugWindowController.shared.show()
         MenuBarExtraDebugWindowController.shared.show()
+    }
+}
+
+private struct MainWindowBootstrapView: View {
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .background(WindowAccessor { window in
+                window.identifier = NSUserInterfaceItemIdentifier("cmux.main.bootstrap")
+                window.isRestorable = false
+                window.orderOut(nil)
+                Task { @MainActor [weak window] in
+                    window?.orderOut(nil)
+                    window?.close()
+                }
+            })
     }
 }
 

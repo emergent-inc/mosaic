@@ -564,6 +564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let tabManager: TabManager
         let sidebarState: SidebarState
         let sidebarSelectionState: SidebarSelectionState
+        var fileExplorerState: FileExplorerState?
         var cmuxConfigStore: CmuxConfigStore?
         weak var window: NSWindow?
 
@@ -572,6 +573,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager: TabManager,
             sidebarState: SidebarState,
             sidebarSelectionState: SidebarSelectionState,
+            fileExplorerState: FileExplorerState?,
             cmuxConfigStore: CmuxConfigStore?,
             window: NSWindow?
         ) {
@@ -579,6 +581,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.tabManager = tabManager
             self.sidebarState = sidebarState
             self.sidebarSelectionState = sidebarSelectionState
+            self.fileExplorerState = fileExplorerState
             self.cmuxConfigStore = cmuxConfigStore
             self.window = window
         }
@@ -896,6 +899,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 debugSource: "application.openURLs"
             )
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        ensureInitialMainWindowIfNeeded()
+        return true
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -3285,6 +3293,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         tabManager: TabManager,
         sidebarState: SidebarState,
         sidebarSelectionState: SidebarSelectionState,
+        fileExplorerState: FileExplorerState? = nil,
         cmuxConfigStore: CmuxConfigStore? = nil
     ) {
         tabManager.window = window
@@ -3295,6 +3304,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         #endif
         if let existing = mainWindowContexts[key] {
             existing.window = window
+            if let fileExplorerState {
+                existing.fileExplorerState = fileExplorerState
+            }
             if let cmuxConfigStore {
                 existing.cmuxConfigStore = cmuxConfigStore
             }
@@ -3313,6 +3325,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 return
             }
             existing.window = window
+            if let fileExplorerState {
+                existing.fileExplorerState = fileExplorerState
+            }
             if let cmuxConfigStore {
                 existing.cmuxConfigStore = cmuxConfigStore
             }
@@ -3323,6 +3338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 tabManager: tabManager,
                 sidebarState: sidebarState,
                 sidebarSelectionState: sidebarSelectionState,
+                fileExplorerState: fileExplorerState,
                 cmuxConfigStore: cmuxConfigStore,
                 window: window
             )
@@ -4923,6 +4939,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager = context.tabManager
             sidebarState = context.sidebarState
             sidebarSelectionState = context.sidebarSelectionState
+            fileExplorerState = context.fileExplorerState
             TerminalController.shared.setActiveTabManager(context.tabManager)
         }
 #if DEBUG
@@ -5061,6 +5078,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc func openNewMainWindow(_ sender: Any?) {
         _ = createMainWindow()
+    }
+
+    @discardableResult
+    func ensureInitialMainWindowIfNeeded(shouldActivate: Bool = true) -> UUID {
+        for context in sortedMainWindowContextsForSessionSnapshot() {
+            guard let window = resolvedWindow(for: context) else { continue }
+            if shouldActivate {
+                window.makeKeyAndOrderFront(nil)
+                setActiveMainWindow(window)
+            }
+            return context.windowId
+        }
+
+        return createMainWindow(shouldActivate: shouldActivate)
     }
 
     @discardableResult
@@ -5702,6 +5733,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager = context.tabManager
             sidebarState = context.sidebarState
             sidebarSelectionState = context.sidebarSelectionState
+            fileExplorerState = context.fileExplorerState
             TerminalController.shared.setActiveTabManager(context.tabManager)
         }
 
@@ -5847,6 +5879,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager: tabManager,
             sidebarState: sidebarState,
             sidebarSelectionState: sidebarSelectionState,
+            fileExplorerState: fileExplorerState,
             cmuxConfigStore: cmuxConfigStore
         )
         installFileDropOverlay(on: window, tabManager: tabManager)
@@ -11683,6 +11716,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         tabManager = context.tabManager
         sidebarState = context.sidebarState
         sidebarSelectionState = context.sidebarSelectionState
+        fileExplorerState = context.fileExplorerState
         TerminalController.shared.setActiveTabManager(context.tabManager)
 #if DEBUG
         cmuxDebugLog(
