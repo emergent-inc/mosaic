@@ -566,8 +566,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let tabManager: TabManager
         let sidebarState: SidebarState
         let sidebarSelectionState: SidebarSelectionState
+        var fileExplorerState: FileExplorerState?
         let keyboardFocusCoordinator: MainWindowFocusController
-        weak var fileExplorerState: FileExplorerState?
         var cmuxConfigStore: CmuxConfigStore?
         weak var window: NSWindow?
 
@@ -813,6 +813,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var lastSessionAutosavePersistedAt: Date = .distantPast
     private var lastTypingActivityAt: TimeInterval = 0
     private var didHandleExplicitOpenIntentAtStartup = false
+    private var didScheduleInitialMainWindowBootstrap = false
+    private var didBootstrapInitialMainWindow = false
     private var isTerminatingApp = false
     // Set to true when the user has already confirmed quit via the warning dialog,
     // so applicationShouldTerminate does not show a second alert.
@@ -908,6 +910,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 debugSource: "application.openURLs"
             )
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if hasVisibleMainTerminalWindow() {
+            _ = synchronizeActiveMainWindowContext(preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow)
+            return true
+        }
+        ensureInitialMainWindowIfNeeded()
+        return true
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -1054,6 +1065,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         installShortcutDefaultsObserver()
         SystemWideHotkeyController.shared.start()
         NSApp.servicesProvider = self
+
+        scheduleInitialMainWindowBootstrap(debugSource: "didFinishLaunching")
 #if DEBUG
         UpdateTestSupport.applyIfNeeded(to: updateController.viewModel)
         if env["CMUX_UI_TEST_MODE"] == "1" {
@@ -1444,23 +1457,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         setupMultiWindowNotificationsUITestIfNeeded()
         setupDisplayResolutionUITestDiagnosticsIfNeeded()
 
-        // UI tests sometimes don't run SwiftUI `.onAppear` soon enough (or at all) on the VM.
-        // The automation socket is a core testing primitive, so ensure it's started here when
-        // we detect XCTest, even if the main view lifecycle is flaky.
         let env = ProcessInfo.processInfo.environment
-        if isRunningUnderXCTest(env) {
-            let raw = UserDefaults.standard.string(forKey: SocketControlSettings.appStorageKey)
-                ?? SocketControlSettings.defaultMode.rawValue
-            let userMode = SocketControlSettings.migrateMode(raw)
-            let mode = SocketControlSettings.effectiveMode(userMode: userMode)
-            if mode != .off {
-                TerminalController.shared.start(
-                    tabManager: tabManager,
-                    socketPath: SocketControlSettings.socketPath(),
-                    accessMode: mode
-                )
-                scheduleUITestSocketSanityCheckIfNeeded()
-            }
+        if isRunningUnderXCTest(env) || env["CMUX_UI_TEST_MODE"] == "1" {
+            scheduleUITestSocketSanityCheckIfNeeded()
         }
 #endif
     }
@@ -2872,6 +2871,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return (mode: mode, path: SocketControlSettings.socketPath())
     }
 
+    private func startSocketListenerIfEnabled(tabManager: TabManager, source: String) {
+        guard let config = socketListenerConfigurationIfEnabled() else {
+            TerminalController.shared.stop()
+            return
+        }
+        let path = TerminalController.shared.activeSocketPath(preferredPath: config.path)
+        sentryBreadcrumb("socket.listener.start", category: "socket", data: [
+            "mode": config.mode.rawValue,
+            "path": path,
+            "source": source
+        ])
+        TerminalController.shared.start(tabManager: tabManager, socketPath: path, accessMode: config.mode)
+    }
+
     private func restartSocketListenerIfEnabled(source: String) {
         guard let tabManager,
               let config = socketListenerConfigurationIfEnabled() else { return }
@@ -3323,39 +3336,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         tabManager: TabManager,
         sidebarState: SidebarState,
         sidebarSelectionState: SidebarSelectionState,
-        fileExplorerState: FileExplorerState,
+        fileExplorerState: FileExplorerState? = nil,
         cmuxConfigStore: CmuxConfigStore? = nil
     ) {
-        tabManager.window = window
-
         let key = ObjectIdentifier(window)
         #if DEBUG
         let priorManagerToken = debugManagerToken(self.tabManager)
         #endif
         if let existing = mainWindowContexts[key] {
+            tabManager.window = window
             existing.window = window
-            existing.fileExplorerState = fileExplorerState
+            let resolvedFileExplorerState = fileExplorerState ?? existing.fileExplorerState
+            if let fileExplorerState {
+                existing.fileExplorerState = fileExplorerState
+            }
             existing.keyboardFocusCoordinator.update(
                 window: window,
                 tabManager: tabManager,
-                fileExplorerState: fileExplorerState
+                fileExplorerState: resolvedFileExplorerState
             )
             if let cmuxConfigStore {
                 existing.cmuxConfigStore = cmuxConfigStore
             }
         } else if let existing = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
+            if let existingWindow = existing.window,
+               existingWindow !== window,
+               existingWindow.isVisible || existingWindow.isMiniaturized {
+#if DEBUG
+                cmuxDebugLog(
+                    "mainWindow.register.duplicateIgnored windowId=\(String(windowId.uuidString.prefix(8))) " +
+                        "existing={\(debugWindowToken(existingWindow))} duplicate={\(debugWindowToken(window))}"
+                )
+#endif
+                existing.tabManager.window = existingWindow
+                existing.keyboardFocusCoordinator.update(
+                    window: existingWindow,
+                    tabManager: existing.tabManager,
+                    fileExplorerState: existing.fileExplorerState
+                )
+                window.orderOut(nil)
+                window.close()
+                return
+            }
+            tabManager.window = window
             existing.window = window
-            existing.fileExplorerState = fileExplorerState
+            let resolvedFileExplorerState = fileExplorerState ?? existing.fileExplorerState
+            if let fileExplorerState {
+                existing.fileExplorerState = fileExplorerState
+            }
             existing.keyboardFocusCoordinator.update(
                 window: window,
                 tabManager: tabManager,
-                fileExplorerState: fileExplorerState
+                fileExplorerState: resolvedFileExplorerState
             )
             if let cmuxConfigStore {
                 existing.cmuxConfigStore = cmuxConfigStore
             }
             reindexMainWindowContextIfNeeded(existing, for: window)
         } else {
+            tabManager.window = window
             mainWindowContexts[key] = MainWindowContext(
                 windowId: windowId,
                 tabManager: tabManager,
@@ -4722,11 +4761,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 tabManager = nextContext.tabManager
                 sidebarState = nextContext.sidebarState
                 sidebarSelectionState = nextContext.sidebarSelectionState
+                fileExplorerState = nextContext.fileExplorerState
                 TerminalController.shared.setActiveTabManager(nextContext.tabManager)
             } else {
                 tabManager = nil
                 sidebarState = nil
                 sidebarSelectionState = nil
+                fileExplorerState = nil
                 TerminalController.shared.setActiveTabManager(nil)
             }
         }
@@ -4964,6 +5005,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager = context.tabManager
             sidebarState = context.sidebarState
             sidebarSelectionState = context.sidebarSelectionState
+            fileExplorerState = context.fileExplorerState
             TerminalController.shared.setActiveTabManager(context.tabManager)
         }
 #if DEBUG
@@ -5431,6 +5473,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc func openNewMainWindow(_ sender: Any?) {
         _ = createMainWindow()
+    }
+
+    func scheduleInitialMainWindowBootstrap(debugSource: String) {
+        guard !didScheduleInitialMainWindowBootstrap else { return }
+        didScheduleInitialMainWindowBootstrap = true
+        DispatchQueue.main.async { [weak self] in
+            self?.bootstrapInitialMainWindowIfNeeded(debugSource: debugSource)
+        }
+    }
+
+    @discardableResult
+    func bootstrapInitialMainWindowIfNeeded(debugSource: String, shouldActivate: Bool = true) -> UUID {
+        let windowId = ensureInitialMainWindowIfNeeded(shouldActivate: shouldActivate)
+        if let manager = tabManagerFor(windowId: windowId) {
+            startSocketListenerIfEnabled(
+                tabManager: manager,
+                source: "bootstrapInitialMainWindow.\(debugSource)"
+            )
+        }
+        guard !didBootstrapInitialMainWindow else { return windowId }
+
+        didBootstrapInitialMainWindow = true
+        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_SHOW_SETTINGS"] == "1" {
+            openPreferencesWindow(debugSource: "uiTestShowSettings.\(debugSource)")
+        }
+        return windowId
+    }
+
+    @discardableResult
+    func ensureInitialMainWindowIfNeeded(shouldActivate: Bool = true) -> UUID {
+        for context in sortedMainWindowContextsForSessionSnapshot() {
+            guard let window = resolvedWindow(for: context) else { continue }
+            if shouldActivate {
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                window.makeKeyAndOrderFront(nil)
+                setActiveMainWindow(window)
+            }
+            return context.windowId
+        }
+
+        return createMainWindow(shouldActivate: shouldActivate)
+    }
+
+    private func hasVisibleMainTerminalWindow() -> Bool {
+        mainWindowContexts.values.contains { context in
+            guard let window = resolvedWindow(for: context) else { return false }
+            return window.isVisible && !window.isMiniaturized
+        }
     }
 
     @discardableResult
@@ -6072,6 +6164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             tabManager = context.tabManager
             sidebarState = context.sidebarState
             sidebarSelectionState = context.sidebarSelectionState
+            fileExplorerState = context.fileExplorerState
             TerminalController.shared.setActiveTabManager(context.tabManager)
         }
 
@@ -6177,6 +6270,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         window.title = ""
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        // cmux persists and restores main windows itself. Disable AppKit window
+        // restoration so the OS cannot resurrect stale duplicate main windows.
+        window.isRestorable = false
         window.isMovableByWindowBackground = false
         window.isMovable = false
         let restoredFrame = resolvedWindowFrame(from: sessionWindowSnapshot)
@@ -12307,11 +12403,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 tabManager = nextContext.tabManager
                 sidebarState = nextContext.sidebarState
                 sidebarSelectionState = nextContext.sidebarSelectionState
+                fileExplorerState = nextContext.fileExplorerState
                 TerminalController.shared.setActiveTabManager(nextContext.tabManager)
             } else {
                 tabManager = nil
                 sidebarState = nil
                 sidebarSelectionState = nil
+                fileExplorerState = nil
                 TerminalController.shared.setActiveTabManager(nil)
             }
         }
