@@ -726,14 +726,9 @@ struct cmuxApp: App {
     }
 
     private func bootstrapMainWindowScene() {
-        appDelegate.ensureInitialMainWindowIfNeeded()
+        appDelegate.bootstrapInitialMainWindowIfNeeded(debugSource: "swiftUIBootstrap")
         updateSocketController()
         applyAppearance()
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_SHOW_SETTINGS"] == "1" {
-            Task { @MainActor in
-                appDelegate.openPreferencesWindow(debugSource: "uiTestShowSettings")
-            }
-        }
     }
 
     private var currentSocketMode: SocketControlMode {

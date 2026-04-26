@@ -804,6 +804,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var lastSessionAutosavePersistedAt: Date = .distantPast
     private var lastTypingActivityAt: TimeInterval = 0
     private var didHandleExplicitOpenIntentAtStartup = false
+    private var didBootstrapInitialMainWindow = false
     private var isTerminatingApp = false
     // Set to true when the user has already confirmed quit via the warning dialog,
     // so applicationShouldTerminate does not show a second alert.
@@ -1024,6 +1025,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         installShortcutDefaultsObserver()
         SystemWideHotkeyController.shared.start()
         NSApp.servicesProvider = self
+
+        bootstrapInitialMainWindowIfNeeded(debugSource: "didFinishLaunching")
 #if DEBUG
         UpdateTestSupport.applyIfNeeded(to: updateController.viewModel)
         if env["CMUX_UI_TEST_MODE"] == "1" {
@@ -5082,6 +5085,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc func openNewMainWindow(_ sender: Any?) {
         _ = createMainWindow()
+    }
+
+    @discardableResult
+    func bootstrapInitialMainWindowIfNeeded(debugSource: String, shouldActivate: Bool = true) -> UUID {
+        let windowId = ensureInitialMainWindowIfNeeded(shouldActivate: shouldActivate)
+        guard !didBootstrapInitialMainWindow else { return windowId }
+
+        didBootstrapInitialMainWindow = true
+        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_SHOW_SETTINGS"] == "1" {
+            openPreferencesWindow(debugSource: "uiTestShowSettings.\(debugSource)")
+        }
+        return windowId
     }
 
     @discardableResult
