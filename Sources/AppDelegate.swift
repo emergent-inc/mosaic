@@ -3296,13 +3296,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         fileExplorerState: FileExplorerState? = nil,
         cmuxConfigStore: CmuxConfigStore? = nil
     ) {
-        tabManager.window = window
-
         let key = ObjectIdentifier(window)
         #if DEBUG
         let priorManagerToken = debugManagerToken(self.tabManager)
         #endif
         if let existing = mainWindowContexts[key] {
+            tabManager.window = window
             existing.window = window
             if let fileExplorerState {
                 existing.fileExplorerState = fileExplorerState
@@ -3320,10 +3319,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                         "existing={\(debugWindowToken(existingWindow))} duplicate={\(debugWindowToken(window))}"
                 )
 #endif
+                existing.tabManager.window = existingWindow
                 window.orderOut(nil)
                 window.close()
                 return
             }
+            tabManager.window = window
             existing.window = window
             if let fileExplorerState {
                 existing.fileExplorerState = fileExplorerState
@@ -3333,6 +3334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
             reindexMainWindowContextIfNeeded(existing, for: window)
         } else {
+            tabManager.window = window
             mainWindowContexts[key] = MainWindowContext(
                 windowId: windowId,
                 tabManager: tabManager,
