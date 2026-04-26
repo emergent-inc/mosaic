@@ -804,6 +804,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var lastSessionAutosavePersistedAt: Date = .distantPast
     private var lastTypingActivityAt: TimeInterval = 0
     private var didHandleExplicitOpenIntentAtStartup = false
+    private var didScheduleInitialMainWindowBootstrap = false
     private var didBootstrapInitialMainWindow = false
     private var isTerminatingApp = false
     // Set to true when the user has already confirmed quit via the warning dialog,
@@ -1030,7 +1031,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         SystemWideHotkeyController.shared.start()
         NSApp.servicesProvider = self
 
-        bootstrapInitialMainWindowIfNeeded(debugSource: "didFinishLaunching")
+        scheduleInitialMainWindowBootstrap(debugSource: "didFinishLaunching")
 #if DEBUG
         UpdateTestSupport.applyIfNeeded(to: updateController.viewModel)
         if env["CMUX_UI_TEST_MODE"] == "1" {
@@ -5089,6 +5090,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc func openNewMainWindow(_ sender: Any?) {
         _ = createMainWindow()
+    }
+
+    func scheduleInitialMainWindowBootstrap(debugSource: String) {
+        guard !didScheduleInitialMainWindowBootstrap else { return }
+        didScheduleInitialMainWindowBootstrap = true
+        DispatchQueue.main.async { [weak self] in
+            self?.bootstrapInitialMainWindowIfNeeded(debugSource: debugSource)
+        }
     }
 
     @discardableResult

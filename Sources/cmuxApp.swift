@@ -726,8 +726,7 @@ struct cmuxApp: App {
     }
 
     private func bootstrapMainWindowScene() {
-        appDelegate.bootstrapInitialMainWindowIfNeeded(debugSource: "swiftUIBootstrap")
-        updateSocketController()
+        appDelegate.scheduleInitialMainWindowBootstrap(debugSource: "swiftUIBootstrap")
         applyAppearance()
     }
 
