@@ -3299,6 +3299,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 existing.cmuxConfigStore = cmuxConfigStore
             }
         } else if let existing = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
+            if let existingWindow = existing.window,
+               existingWindow !== window,
+               existingWindow.isVisible {
+#if DEBUG
+                cmuxDebugLog(
+                    "mainWindow.register.duplicateIgnored windowId=\(String(windowId.uuidString.prefix(8))) " +
+                        "existing={\(debugWindowToken(existingWindow))} duplicate={\(debugWindowToken(window))}"
+                )
+#endif
+                window.orderOut(nil)
+                window.close()
+                return
+            }
             existing.window = window
             if let cmuxConfigStore {
                 existing.cmuxConfigStore = cmuxConfigStore
@@ -5794,6 +5807,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         window.title = ""
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        // cmux persists and restores main windows itself. Disable AppKit window
+        // restoration so the OS cannot resurrect stale duplicate main windows.
+        window.isRestorable = false
         window.isMovableByWindowBackground = false
         window.isMovable = false
         let restoredFrame = resolvedWindowFrame(from: sessionWindowSnapshot)
