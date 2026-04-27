@@ -332,6 +332,13 @@ reload_finalize() {
     echo
     echo "CLI path:"
     echo "  $CLI_PATH"
+    echo "CLI helpers:"
+    echo "  /tmp/cmux-cli ..."
+    echo "  $HOME/.local/bin/cmux-dev ..."
+    if [[ -n "${CMUX_SHIM_TARGET:-}" ]]; then
+      echo "  $CMUX_SHIM_TARGET ..."
+    fi
+    echo "If your shell still resolves the old cmux, run: rehash"
   fi
   if [[ "$LAUNCH" -eq 0 ]]; then
     echo
@@ -402,7 +409,16 @@ except OSError as exc:
 try:
     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 except BlockingIOError:
-    print(f"==> Another xcodebuild is running; waiting for {lock_path}...", file=sys.stderr, flush=True)
+    msg = f"==> Another xcodebuild is running; waiting for {lock_path}...\n"
+    # reload.sh saves the original stderr on fd 4 before redirecting to the
+    # log file. Surface the wait notice to the terminal so the user knows
+    # they are queued, not hung. Fall back to stderr (the log) if fd 4 is
+    # unavailable (e.g. when this script is run standalone).
+    try:
+        os.write(4, msg.encode())
+    except OSError:
+        sys.stderr.write(msg)
+        sys.stderr.flush()
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
     except OSError as exc:
@@ -644,26 +660,10 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   fi
 fi
 
-# The user-facing summary (success line, App path, CLI path, "pass --launch")
-# is printed by the reload_finalize EXIT trap. The tag-cleanup reminder still
-# runs here, but its output goes to $RELOAD_LOG (visible by tail -f or by
-# inspecting the log path printed in the summary).
+# The user-facing summary (success line, App path, CLI path/helpers, rehash
+# hint, "pass --launch") is printed by the reload_finalize EXIT trap. The
+# tag-cleanup reminder still runs here, but its output goes to $RELOAD_LOG
+# (visible by tail -f or by inspecting the log path printed in the summary).
 if [[ -n "${TAG_SLUG:-}" ]]; then
   print_tag_cleanup_reminder "$TAG_SLUG"
-fi
-
-echo
-echo "App path:"
-echo "  $APP_PATH"
-if [[ -x "${CLI_PATH:-}" ]]; then
-  echo
-  echo "CLI path:"
-  echo "  $CLI_PATH"
-  echo "CLI helpers:"
-  echo "  /tmp/cmux-cli ..."
-  echo "  $HOME/.local/bin/cmux-dev ..."
-  if [[ -n "${CMUX_SHIM_TARGET:-}" ]]; then
-    echo "  $CMUX_SHIM_TARGET ..."
-  fi
-  echo "If your shell still resolves the old cmux, run: rehash"
 fi
