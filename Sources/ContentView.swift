@@ -1526,6 +1526,7 @@ struct ContentView: View {
     @EnvironmentObject var sidebarSelectionState: SidebarSelectionState
     @EnvironmentObject var cmuxConfigStore: CmuxConfigStore
     @EnvironmentObject var fileExplorerState: FileExplorerState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var sidebarWidth: CGFloat = 200
     @State private var hoveredResizerHandles: Set<SidebarResizerHandle> = []
     @State private var isResizerDragging = false
@@ -2479,7 +2480,7 @@ struct ContentView: View {
         return -max(0, min(titlebarPadding, hostingSafeAreaTop))
     }
 
-    private var terminalContent: some View {
+    private func terminalContent(appearance: WindowAppearanceSnapshot) -> some View {
         let mountedWorkspaceIdSet = Set(mountedWorkspaceIds)
         let mountedWorkspaces = tabManager.tabs.filter { mountedWorkspaceIdSet.contains($0.id) }
         let selectedWorkspaceId = tabManager.selectedTabId
@@ -2540,13 +2541,13 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             if !isMinimalMode {
                 // Titlebar overlay is only over terminal content, not the sidebar.
-                customTitlebar
+                customTitlebar(appearance: appearance)
             }
         }
     }
 
-    private var terminalContentWithSidebarDropOverlay: some View {
-        terminalContent
+    private func terminalContentWithSidebarDropOverlay(appearance: WindowAppearanceSnapshot) -> some View {
+        terminalContent(appearance: appearance)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .layoutPriority(1)
             .overlay {
@@ -2554,16 +2555,13 @@ struct ContentView: View {
             }
     }
 
-    private var terminalContentWithRightSidebarPanel: some View {
+    private func terminalContentWithRightSidebarPanel(appearance: WindowAppearanceSnapshot) -> some View {
         // File explorer is always in the view tree. Visibility is controlled by
         // frame width (0 when hidden), avoiding SwiftUI view insertion/removal
         // and all associated transition animations.
         return HStack(spacing: 0) {
-            terminalContentWithSidebarDropOverlay
-            if rightSidebarVisible {
-                Divider()
-            }
-            rightSidebarPanelWithBackdrop
+            terminalContentWithSidebarDropOverlay(appearance: appearance)
+            rightSidebarPanelWithBackdrop(appearance: appearance)
         }
     }
 
@@ -2575,10 +2573,15 @@ struct ContentView: View {
         rightSidebarVisible ? fileExplorerWidth : 0
     }
 
-    private func sidebarBackdropLayer(width: CGFloat) -> some View {
-        SidebarBackdrop()
+    private func sidebarBackdropLayer(
+        width: CGFloat,
+        role: WindowBackdropRole,
+        appearance: WindowAppearanceSnapshot
+    ) -> some View {
+        WindowBackdropLayer(role: role, snapshot: appearance)
             .ignoresSafeArea()
             .frame(width: width)
+            .clipShape(RoundedRectangle(cornerRadius: appearance.sidebarSettings.materialPolicy.cornerRadius, style: .continuous))
             .clipped()
             .allowsHitTesting(false)
     }
@@ -2586,24 +2589,31 @@ struct ContentView: View {
     private func sidebarPanelContainer<Content: View>(
         width: CGFloat,
         alignment: Alignment,
+        role: WindowBackdropRole,
+        appearance: WindowAppearanceSnapshot,
         @ViewBuilder content: () -> Content
     ) -> some View {
         ZStack(alignment: alignment) {
-            sidebarBackdropLayer(width: width)
+            sidebarBackdropLayer(width: width, role: role, appearance: appearance)
             content()
         }
         .frame(width: width)
     }
 
-    private var sidebarPanelWithBackdrop: some View {
-        sidebarPanelContainer(width: sidebarWidth, alignment: .leading) {
+    private func sidebarPanelWithBackdrop(appearance: WindowAppearanceSnapshot) -> some View {
+        sidebarPanelContainer(width: sidebarWidth, alignment: .leading, role: .leftSidebar, appearance: appearance) {
             sidebarView
         }
     }
 
-    private var rightSidebarPanelWithBackdrop: some View {
-        sidebarPanelContainer(width: rightSidebarWidth, alignment: .trailing) {
+    private func rightSidebarPanelWithBackdrop(appearance: WindowAppearanceSnapshot) -> some View {
+        sidebarPanelContainer(width: rightSidebarWidth, alignment: .trailing, role: .rightSidebar, appearance: appearance) {
             rightSidebarPanel
+        }
+        .overlay(alignment: .leading) {
+            if rightSidebarVisible {
+                WindowChromeBorder(orientation: .vertical)
+            }
         }
     }
 
@@ -2646,6 +2656,14 @@ struct ContentView: View {
 
     @AppStorage("sidebarBlendMode") private var sidebarBlendMode = SidebarBlendModeOption.withinWindow.rawValue
     @AppStorage("sidebarMatchTerminalBackground") private var sidebarMatchTerminalBackground = false
+    @AppStorage("sidebarTintOpacity") private var sidebarTintOpacity = SidebarTintDefaults.opacity
+    @AppStorage("sidebarTintHex") private var sidebarTintHex = SidebarTintDefaults.hex
+    @AppStorage("sidebarTintHexLight") private var sidebarTintHexLight: String?
+    @AppStorage("sidebarTintHexDark") private var sidebarTintHexDark: String?
+    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.sidebar.rawValue
+    @AppStorage("sidebarState") private var sidebarStateSetting = SidebarStateOption.followWindow.rawValue
+    @AppStorage("sidebarCornerRadius") private var sidebarCornerRadius = 0.0
+    @AppStorage("sidebarBlurOpacity") private var sidebarBlurOpacity = 1.0
 
     // Background glass settings
     @AppStorage("bgGlassTintHex") private var bgGlassTintHex = "#000000"
@@ -2655,9 +2673,28 @@ struct ContentView: View {
 
     @State private var titlebarLeadingInset: CGFloat = 12
     private var windowIdentifier: String { "cmux.main.\(windowId.uuidString)" }
-    private var fakeTitlebarTextColor: Color {
+    private var windowAppearanceSnapshot: WindowAppearanceSnapshot {
         _ = titlebarThemeGeneration
-        let ghosttyBackground = GhosttyApp.shared.defaultBackgroundColor
+        return WindowAppearanceSnapshot.current(
+            unifySurfaceBackdrops: sidebarMatchTerminalBackground,
+            colorScheme: colorScheme,
+            sidebarMaterial: sidebarMaterial,
+            sidebarBlendMode: sidebarBlendMode,
+            sidebarState: sidebarStateSetting,
+            sidebarTintHex: sidebarTintHex,
+            sidebarTintHexLight: sidebarTintHexLight,
+            sidebarTintHexDark: sidebarTintHexDark,
+            sidebarTintOpacity: sidebarTintOpacity,
+            sidebarCornerRadius: sidebarCornerRadius,
+            sidebarBlurOpacity: sidebarBlurOpacity,
+            bgGlassEnabled: bgGlassEnabled,
+            bgGlassTintHex: bgGlassTintHex,
+            bgGlassTintOpacity: bgGlassTintOpacity
+        )
+    }
+
+    private func fakeTitlebarTextColor(appearance: WindowAppearanceSnapshot) -> Color {
+        let ghosttyBackground = appearance.terminalBackgroundColor
         return ghosttyBackground.isLightColor
             ? Color.black.opacity(0.78)
             : Color.white.opacity(0.82)
@@ -2683,7 +2720,7 @@ struct ContentView: View {
         )
     }
 
-    private var customTitlebar: some View {
+    private func customTitlebar(appearance: WindowAppearanceSnapshot) -> some View {
         ZStack {
             // Enable window dragging from the titlebar strip without making the entire content
             // view draggable (which breaks drag gestures like tab reordering).
@@ -2705,7 +2742,7 @@ struct ContentView: View {
 
                 Text(titlebarText)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(fakeTitlebarTextColor)
+                    .foregroundColor(fakeTitlebarTextColor(appearance: appearance))
                     .lineLimit(1)
                     .allowsHitTesting(false)
 
@@ -2721,20 +2758,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .background(TitlebarDoubleClickMonitorView())
-        .background({
-            // The terminal background is provided by a single CALayer
-            // (backgroundView in GhosttySurfaceScrollView), so the titlebar
-            // opacity matches the configured value directly.
-            let alpha = CGFloat(GhosttyApp.shared.defaultBackgroundOpacity)
-            return TitlebarLayerBackground(
-                backgroundColor: GhosttyApp.shared.defaultBackgroundColor,
-                opacity: alpha
-            )
-        }())
+        .background(WindowBackdropLayer(role: .titlebar, snapshot: appearance))
         .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color(nsColor: .separatorColor))
-                .frame(height: 1)
+            WindowChromeBorder(orientation: .horizontal)
         }
     }
 
@@ -2935,7 +2961,7 @@ struct ContentView: View {
         return dir.isEmpty ? nil : dir
     }
 
-    private var contentAndSidebarLayout: AnyView {
+    private func contentAndSidebarLayout(appearance: WindowAppearanceSnapshot) -> AnyView {
         let layout: AnyView
         // When matching terminal background, use HStack so both sidebar and terminal
         // sit directly on the window background with no intermediate layers.
@@ -2948,17 +2974,14 @@ struct ContentView: View {
             layout = AnyView(
                 ZStack(alignment: .leading) {
                     HStack(spacing: 0) {
-                        terminalContentWithSidebarDropOverlay
+                        terminalContentWithSidebarDropOverlay(appearance: appearance)
                             .padding(.leading, sidebarState.isVisible ? sidebarWidth : 0)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
-                        if rightSidebarVisible {
-                            Divider()
-                        }
-                        rightSidebarPanelWithBackdrop
+                        rightSidebarPanelWithBackdrop(appearance: appearance)
                     }
                     if sidebarState.isVisible {
-                        sidebarPanelWithBackdrop
+                        sidebarPanelWithBackdrop(appearance: appearance)
                     }
                 }
             )
@@ -2967,9 +2990,9 @@ struct ContentView: View {
             layout = AnyView(
                 HStack(spacing: 0) {
                     if sidebarState.isVisible {
-                        sidebarPanelWithBackdrop
+                        sidebarPanelWithBackdrop(appearance: appearance)
                     }
-                    terminalContentWithRightSidebarPanel
+                    terminalContentWithRightSidebarPanel(appearance: appearance)
                 }
             )
         }
@@ -2992,8 +3015,9 @@ struct ContentView: View {
     }
 
     var body: some View {
+        let appearance = windowAppearanceSnapshot
         var view = AnyView(
-            contentAndSidebarLayout
+            contentAndSidebarLayout(appearance: appearance)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
                     if isFullScreen && sidebarState.isVisible && !isMinimalMode {
@@ -3138,6 +3162,18 @@ struct ContentView: View {
             guard let tabId = notification.userInfo?[GhosttyNotificationKey.tabId] as? UUID,
                   tabId == tabManager.selectedTabId else { return }
             scheduleTitlebarTextRefresh()
+        })
+
+        view = AnyView(view.onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { notification in
+            let payloadHex = (notification.userInfo?[GhosttyNotificationKey.backgroundColor] as? NSColor)?.hexString()
+            let eventId = (notification.userInfo?[GhosttyNotificationKey.backgroundEventId] as? NSNumber)?.uint64Value
+            let source = notification.userInfo?[GhosttyNotificationKey.backgroundSource] as? String
+            scheduleTitlebarThemeRefresh(
+                reason: "ghosttyDefaultBackgroundDidChange",
+                backgroundEventId: eventId,
+                backgroundSource: source,
+                notificationPayloadHex: payloadHex
+            )
         })
 
         view = AnyView(view.onReceive(NotificationCenter.default.publisher(for: .ghosttyDidFocusTab)) { _ in
@@ -3513,6 +3549,7 @@ struct ContentView: View {
         })
 
         view = AnyView(view.onChange(of: sidebarMatchTerminalBackground) { _ in
+            tabManager.applyWindowBackdropModeForAllTabs(reason: "sidebarMatchTerminalBackgroundChanged")
             guard sidebarState.isVisible,
                   sidebarBlendMode == SidebarBlendModeOption.withinWindow.rawValue else { return }
             if let observedWindow {
@@ -3556,7 +3593,7 @@ struct ContentView: View {
             removeSidebarResizerPointerMonitor()
         })
 
-        view = AnyView(view.background(WindowAccessor { [sidebarBlendMode, bgGlassEnabled, bgGlassTintHex, bgGlassTintOpacity] window in
+        view = AnyView(view.background(WindowAccessor { [appearance] window in
             window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
             window.isRestorable = false
             window.titlebarAppearsTransparent = true
@@ -3605,14 +3642,9 @@ struct ContentView: View {
             // User settings decide whether window glass is active. The native Tahoe
             // NSGlassEffectView path vs the older NSVisualEffectView fallback is chosen
             // inside WindowGlassEffect.apply.
-            let currentThemeBackground = GhosttyBackgroundTheme.currentColor()
-            let shouldApplyWindowGlass = cmuxShouldApplyWindowGlass(
-                sidebarBlendMode: sidebarBlendMode,
-                bgGlassEnabled: bgGlassEnabled,
-                glassEffectAvailable: WindowGlassEffect.isAvailable
-            )
-            let shouldForceTransparentHosting =
-                shouldApplyWindowGlass || currentThemeBackground.alphaComponent < 0.999
+            let currentThemeBackground = appearance.compositedTerminalBackgroundColor
+            let shouldApplyWindowGlass = appearance.windowGlassSettings.shouldApply()
+            let shouldForceTransparentHosting = appearance.shouldUseTransparentHosting()
 
             if shouldForceTransparentHosting {
                 window.isOpaque = false
@@ -3632,8 +3664,7 @@ struct ContentView: View {
 
             if shouldApplyWindowGlass {
                 // Apply liquid glass effect to the window with tint from settings
-                let tintColor = (NSColor(hex: bgGlassTintHex) ?? .black).withAlphaComponent(bgGlassTintOpacity)
-                WindowGlassEffect.apply(to: window, tintColor: tintColor)
+                WindowGlassEffect.apply(to: window, tintColor: appearance.windowGlassSettings.tintColor)
             } else {
                 WindowGlassEffect.remove(from: window)
             }
@@ -9275,6 +9306,8 @@ struct VerticalTabsSidebar: View {
     @State private var pendingSelectedWorkspaceScrollId: UUID?
     @AppStorage(WorkspacePresentationModeSettings.modeKey)
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
+    @AppStorage("sidebarMatchTerminalBackground")
+    private var sidebarMatchTerminalBackground = false
 
     /// Space at top of sidebar for traffic light buttons
     private let trafficLightPadding: CGFloat = 28
@@ -9489,7 +9522,10 @@ struct VerticalTabsSidebar: View {
                         .allowsHitTesting(false)
                 }
                 .overlay(alignment: .top) {
-                    SidebarTopScrim(height: trafficLightPadding + 20)
+                    SidebarTopScrim(
+                        height: trafficLightPadding + 20,
+                        isSharingTerminalBackground: sidebarMatchTerminalBackground
+                    )
                         .allowsHitTesting(false)
                 }
                 .overlay(alignment: .top) {
@@ -11751,22 +11787,28 @@ private struct SidebarDevFooter: View {
 
 private struct SidebarTopScrim: View {
     let height: CGFloat
+    let isSharingTerminalBackground: Bool
 
     var body: some View {
-        SidebarTopBlurEffect()
-            .frame(height: height)
-            .mask(
-                LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.95),
-                        Color.black.opacity(0.75),
-                        Color.black.opacity(0.35),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+        if isSharingTerminalBackground {
+            Color.clear
+                .frame(height: height)
+        } else {
+            SidebarTopBlurEffect()
+                .frame(height: height)
+                .mask(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.95),
+                            Color.black.opacity(0.75),
+                            Color.black.opacity(0.35),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
-            )
+        }
     }
 }
 
@@ -15033,31 +15075,8 @@ private struct TitlebarLeadingInsetReader: NSViewRepresentable {
     }
 }
 
-/// 1px trailing border on the sidebar, derived from the terminal chrome background
-/// using the same logic as bonsplit's TabBarColors.nsColorSeparator:
-/// dark bg → lighten RGB by 0.16 at 0.36 alpha; light bg → darken by 0.12 at 0.26 alpha.
-private struct SidebarTrailingBorder: View {
-    @AppStorage("sidebarMatchTerminalBackground") private var matchTerminalBackground = false
-    @State private var separatorColor: NSColor = chromeSeparatorColor()
-
-    var body: some View {
-        if matchTerminalBackground {
-            Rectangle()
-                .fill(Color(nsColor: separatorColor))
-                .frame(width: 1)
-                .ignoresSafeArea()
-                .onAppear {
-                    separatorColor = Self.chromeSeparatorColor()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
-                    separatorColor = Self.chromeSeparatorColor()
-                }
-        }
-    }
-
-    /// Replicates bonsplit TabBarColors.nsColorSeparator derivation from chrome background.
-    private static func chromeSeparatorColor() -> NSColor {
-        let chrome = GhosttyBackgroundTheme.currentColor()
+enum WindowChromeSeparatorColor {
+    static func color(forChromeBackground chrome: NSColor) -> NSColor {
         let srgb = chrome.usingColorSpace(.sRGB) ?? chrome
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         srgb.getRed(&r, green: &g, blue: &b, alpha: &a)
@@ -15072,113 +15091,98 @@ private struct SidebarTrailingBorder: View {
             alpha: alpha
         )
     }
-}
 
-/// Sidebar background that uses the same technique as TitlebarLayerBackground:
-/// fully opaque layer color + layer-level opacity. This matches how the terminal's
-/// Metal surface composites its background.
-private struct SidebarTerminalBackgroundView: NSViewRepresentable {
-    let backgroundColor: NSColor
-    let opacity: CGFloat
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        view.wantsLayer = true
-        view.layer?.backgroundColor = backgroundColor.withAlphaComponent(1.0).cgColor
-        view.layer?.opacity = Float(opacity)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        nsView.layer?.backgroundColor = backgroundColor.withAlphaComponent(1.0).cgColor
-        nsView.layer?.opacity = Float(opacity)
+    static func current() -> NSColor {
+        color(forChromeBackground: GhosttyBackgroundTheme.currentColor())
     }
 }
 
-struct SidebarBackdrop: View {
-    @AppStorage("sidebarMatchTerminalBackground") private var matchTerminalBackground = false
-    @AppStorage("sidebarTintOpacity") private var sidebarTintOpacity = SidebarTintDefaults.opacity
-    @AppStorage("sidebarTintHex") private var sidebarTintHex = SidebarTintDefaults.hex
-    @AppStorage("sidebarTintHexLight") private var sidebarTintHexLight: String?
-    @AppStorage("sidebarTintHexDark") private var sidebarTintHexDark: String?
-    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.sidebar.rawValue
-    @AppStorage("sidebarBlendMode") private var sidebarBlendMode = SidebarBlendModeOption.withinWindow.rawValue
-    @AppStorage("sidebarState") private var sidebarState = SidebarStateOption.followWindow.rawValue
-    @AppStorage("sidebarCornerRadius") private var sidebarCornerRadius = 0.0
-    @AppStorage("sidebarBlurOpacity") private var sidebarBlurOpacity = 1.0
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var terminalBackgroundColor: NSColor = GhosttyApp.shared.defaultBackgroundColor
-    @State private var terminalBackgroundOpacity: Double = GhosttyApp.shared.defaultBackgroundOpacity
+struct WindowChromeBorder: View {
+    enum Orientation {
+        case vertical
+        case horizontal
+    }
+
+    let orientation: Orientation
+    var ignoresSafeArea = true
+    @State private var separatorColor = WindowChromeSeparatorColor.current()
 
     var body: some View {
-        let cornerRadius = CGFloat(max(0, sidebarCornerRadius))
-        let terminalBackground = SidebarTerminalBackgroundView(
-            backgroundColor: terminalBackgroundColor,
-            opacity: CGFloat(terminalBackgroundOpacity)
-        )
-
-        if matchTerminalBackground {
-            // The terminal background is provided by a single CALayer, so
-            // the sidebar uses the configured opacity directly.
-            return AnyView(
-                terminalBackground
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .onAppear(perform: refreshTerminalBackground)
-                .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
-                    refreshTerminalBackground()
-                }
-            )
+        if ignoresSafeArea {
+            border.ignoresSafeArea()
+        } else {
+            border
         }
-
-        let materialOption = SidebarMaterialOption(rawValue: sidebarMaterial)
-        let blendingMode = SidebarBlendModeOption(rawValue: sidebarBlendMode)?.mode ?? .behindWindow
-        let state = SidebarStateOption(rawValue: sidebarState)?.state ?? .active
-        let resolvedHex: String = {
-            if colorScheme == .dark, let dark = sidebarTintHexDark {
-                return dark
-            } else if colorScheme == .light, let light = sidebarTintHexLight {
-                return light
-            }
-            return sidebarTintHex
-        }()
-        let tintColor = (NSColor(hex: resolvedHex) ?? NSColor(hex: sidebarTintHex) ?? .black).withAlphaComponent(sidebarTintOpacity)
-        let useLiquidGlass = materialOption?.usesLiquidGlass ?? false
-        let useWindowLevelGlass = useLiquidGlass && blendingMode == .behindWindow
-
-        return AnyView(
-            ZStack {
-                if let material = materialOption?.material {
-                    // When using liquidGlass + behindWindow, window handles glass + tint
-                    // Sidebar is fully transparent
-                    if !useWindowLevelGlass {
-                        SidebarVisualEffectBackground(
-                            material: material,
-                            blendingMode: blendingMode,
-                            state: state,
-                            opacity: sidebarBlurOpacity,
-                            tintColor: tintColor,
-                            cornerRadius: cornerRadius,
-                            preferLiquidGlass: useLiquidGlass
-                        )
-                        // Tint overlay for NSVisualEffectView fallback
-                        if !useLiquidGlass {
-                            Color(nsColor: tintColor)
-                        }
-                    }
-                }
-                // When material is none or useWindowLevelGlass, render nothing
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .onAppear(perform: refreshTerminalBackground)
-            .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
-                refreshTerminalBackground()
-            }
-        )
     }
 
-    private func refreshTerminalBackground() {
-        terminalBackgroundColor = GhosttyApp.shared.defaultBackgroundColor
-        terminalBackgroundOpacity = GhosttyApp.shared.defaultBackgroundOpacity
+    private var border: some View {
+        Rectangle()
+            .fill(Color(nsColor: separatorColor))
+            .frame(
+                maxWidth: orientation == .horizontal ? .infinity : nil,
+                maxHeight: orientation == .vertical ? .infinity : nil
+            )
+            .frame(
+                width: orientation == .vertical ? 1 : nil,
+                height: orientation == .horizontal ? 1 : nil
+            )
+            .onAppear {
+                separatorColor = WindowChromeSeparatorColor.current()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
+                separatorColor = WindowChromeSeparatorColor.current()
+            }
+    }
+}
+
+/// 1px trailing border on the sidebar, derived from the terminal chrome background.
+private struct SidebarTrailingBorder: View {
+    var body: some View {
+        WindowChromeBorder(orientation: .vertical)
+    }
+}
+
+private struct WindowBackdropLayer: View {
+    let role: WindowBackdropRole
+    let snapshot: WindowAppearanceSnapshot
+
+    var body: some View {
+        backdrop(for: snapshot.policy(for: role))
+    }
+
+    @ViewBuilder
+    private func backdrop(for policy: WindowBackdropPolicy) -> some View {
+        switch policy {
+        case let .ghosttyTerminalBackdrop(color, opacity, _):
+            // Renderer-owned background images currently cannot be shared outside
+            // the terminal Metal pass, so non-terminal roles use Ghostty's fallback
+            // color/opacity until cmux grows a host image backdrop renderer.
+            Color(nsColor: color.withAlphaComponent(opacity))
+        case let .sidebarMaterial(materialPolicy):
+            ZStack {
+                let usingNativeLiquidGlass = materialPolicy.preferLiquidGlass &&
+                    SidebarVisualEffectBackground.liquidGlassAvailable
+                if let material = materialPolicy.material,
+                   !materialPolicy.usesWindowLevelGlass {
+                    SidebarVisualEffectBackground(
+                        material: material,
+                        blendingMode: materialPolicy.blendingMode,
+                        state: materialPolicy.state,
+                        opacity: materialPolicy.opacity,
+                        tintColor: materialPolicy.tintColor,
+                        cornerRadius: materialPolicy.cornerRadius,
+                        preferLiquidGlass: materialPolicy.preferLiquidGlass
+                    )
+                }
+                // Tint overlay for tint-only materials and NSVisualEffectView
+                // fallback. Native liquid glass receives its tint in AppKit.
+                if !materialPolicy.usesWindowLevelGlass && !usingNativeLiquidGlass {
+                    Color(nsColor: materialPolicy.tintColor)
+                }
+            }
+        case .clear:
+            Color.clear
+        }
     }
 }
 
