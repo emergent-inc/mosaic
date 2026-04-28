@@ -19244,6 +19244,57 @@
         }
       }
     },
+    "agent.codex.completion.body.sessionCompleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ session completed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ セッションが完了しました"
+          }
+        }
+      }
+    },
+    "agent.codex.completion.subtitle.completed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "agent.codex.completion.subtitle.completedInProject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed in %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ で完了"
+          }
+        }
+      }
+    },
     "agent.codex.error.status.auth": {
       "extractionState": "manual",
       "localizations": {
@@ -19308,6 +19359,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex レート制限"
+          }
+        }
+      }
+    },
+    "agent.codex.status.idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機中"
           }
         }
       }

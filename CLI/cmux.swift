@@ -14654,10 +14654,7 @@ struct CMUXCLI {
             "additionalDetails",
             "description",
         ] {
-            if let value = compactClaudeHookStringValue(
-                object[key],
-                maxLength: claudeHookCompactFieldLimit(for: key)
-            ) {
+            if let value = compactClaudeHookValue(object[key], key: key) {
                 compact[key] = value
             }
         }
@@ -14728,10 +14725,7 @@ struct CMUXCLI {
                 "additionalDetails",
                 "description",
             ] {
-                if let value = compactClaudeHookStringValue(
-                    nested[nestedKey],
-                    maxLength: claudeHookCompactFieldLimit(for: nestedKey)
-                ) {
+                if let value = compactClaudeHookValue(nested[nestedKey], key: nestedKey) {
                     compactNested[nestedKey] = value
                 }
             }
@@ -14752,6 +14746,29 @@ struct CMUXCLI {
         default:
             return 160
         }
+    }
+
+    private func compactClaudeHookValue(_ rawValue: Any?, key: String) -> String? {
+        switch key {
+        case "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails":
+            return compactClaudeHookCodexFailureValue(rawValue, key: key)
+        default:
+            return compactClaudeHookStringValue(rawValue, maxLength: claudeHookCompactFieldLimit(for: key))
+        }
+    }
+
+    private func compactClaudeHookCodexFailureValue(_ rawValue: Any?, key: String) -> String? {
+        let maxLength = claudeHookCompactFieldLimit(for: key)
+        if let string = compactClaudeHookStringValue(rawValue, maxLength: maxLength) {
+            return string
+        }
+        guard let rawValue,
+              JSONSerialization.isValidJSONObject(rawValue),
+              let data = try? JSONSerialization.data(withJSONObject: rawValue, options: [.sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return compactClaudeHookStringValue(string, maxLength: maxLength)
     }
 
     private func compactClaudeHookToolInputValue(_ rawValue: Any?, key: String) -> String? {
@@ -14923,16 +14940,32 @@ struct CMUXCLI {
         let isStreamError: Bool
     }
 
+    private enum CodexTranscriptFailureReadResult {
+        case unavailable
+        case healthy
+        case failure(CodexHookFailureCandidate)
+    }
+
     private func summarizeCodexHookFailure(
         parsedInput: ClaudeHookParsedInput,
         sessionId: String,
         env: [String: String]
     ) -> CodexHookFailureSummary? {
+        if codexHookStopPayloadHasAssistantMessage(parsedInput.object) {
+            return nil
+        }
+
         let transcriptPath = normalizedHookValue(parsedInput.transcriptPath)
             ?? findCodexTranscriptPath(sessionId: sessionId, env: env)
-        if let transcriptPath,
-           let failure = readCodexTranscriptFailure(path: transcriptPath) {
-            return summarizeCodexHookFailureCandidate(failure)
+        if let transcriptPath {
+            switch readCodexTranscriptFailure(path: transcriptPath) {
+            case .failure(let failure):
+                return summarizeCodexHookFailureCandidate(failure)
+            case .healthy:
+                return nil
+            case .unavailable:
+                break
+            }
         }
 
         if let candidate = codexHookFailureCandidate(from: parsedInput.object) {
@@ -14951,9 +14984,9 @@ struct CMUXCLI {
         return nil
     }
 
-    private func readCodexTranscriptFailure(path: String) -> CodexHookFailureCandidate? {
+    private func readCodexTranscriptFailure(path: String) -> CodexTranscriptFailureReadResult {
         guard let content = readTextFileTail(path: path, maxBytes: 512 * 1024) else {
-            return nil
+            return .unavailable
         }
 
         var candidate: CodexHookFailureCandidate?
@@ -14998,7 +15031,18 @@ struct CMUXCLI {
             }
         }
 
-        return candidate
+        if let candidate {
+            return .failure(candidate)
+        }
+        return .healthy
+    }
+
+    private func codexHookStopPayloadHasAssistantMessage(_ object: [String: Any]?) -> Bool {
+        guard let object,
+              let message = firstString(in: object, keys: ["last_assistant_message", "lastAssistantMessage"]) else {
+            return false
+        }
+        return !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func codexTranscriptLineHasAssistantMessage(_ object: [String: Any]) -> Bool {
@@ -15022,7 +15066,7 @@ struct CMUXCLI {
     ) -> CodexHookFailureCandidate? {
         guard let object else { return nil }
         let message = firstString(in: object, keys: ["message", "error", "body", "text", "description"])
-        let additionalDetails = firstString(in: object, keys: ["additional_details", "additionalDetails"])
+        let additionalDetails = codexHookStringValue(object["additional_details"] ?? object["additionalDetails"])
         let codexErrorInfo = codexHookStringValue(object["codex_error_info"] ?? object["codexErrorInfo"])
         let eventType = firstString(in: object, keys: ["type", "kind"])?.lowercased()
         let typedFailure = eventType == "error" || eventType == "stream_error"
@@ -17004,11 +17048,28 @@ export default CMUXSessionRestore;
                     guard let cwd, !cwd.isEmpty else { return nil }
                     return URL(fileURLWithPath: NSString(string: cwd).expandingTildeInPath).lastPathComponent
                 }()
-                var subtitle = codexFailure?.subtitle ?? "Completed"
-                if codexFailure == nil, let projectName, !projectName.isEmpty { subtitle = "Completed in \(projectName)" }
+                var subtitle = codexFailure?.subtitle ?? String(
+                    localized: "agent.codex.completion.subtitle.completed",
+                    defaultValue: "Completed"
+                )
+                if codexFailure == nil, let projectName, !projectName.isEmpty {
+                    subtitle = String.localizedStringWithFormat(
+                        String(
+                            localized: "agent.codex.completion.subtitle.completedInProject",
+                            defaultValue: "Completed in %@"
+                        ),
+                        projectName
+                    )
+                }
                 let body = codexFailure?.body
                     ?? lastMsg.map { truncate(normalizedSingleLine($0), maxLength: 200) }
-                    ?? "\(def.displayName) session completed"
+                    ?? String.localizedStringWithFormat(
+                        String(
+                            localized: "agent.codex.completion.body.sessionCompleted",
+                            defaultValue: "%@ session completed"
+                        ),
+                        def.displayName
+                    )
 
                 if !sessionId.isEmpty {
                     let launchCommand = agentLaunchCommandFromEnvironment(
@@ -17031,7 +17092,8 @@ export default CMUXSessionRestore;
                 if let codexFailure {
                     _ = try? sendV1Command("set_status \(def.statusKey) \(codexFailure.statusValue) --icon=exclamationmark.triangle.fill --color=#FF453A --priority=100 --tab=\(workspaceId)", client: client)
                 } else {
-                    _ = try? sendV1Command("set_status \(def.statusKey) Idle --icon=pause.circle.fill --color=#8E8E93 --tab=\(workspaceId)", client: client)
+                    let idleStatus = String(localized: "agent.codex.status.idle", defaultValue: "Idle")
+                    _ = try? sendV1Command("set_status \(def.statusKey) \(idleStatus) --icon=pause.circle.fill --color=#8E8E93 --tab=\(workspaceId)", client: client)
                 }
             } catch {
                 if shouldIgnoreClaudeHookTeardownError(error) {
