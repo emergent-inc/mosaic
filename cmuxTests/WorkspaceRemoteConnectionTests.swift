@@ -2632,6 +2632,121 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         )
     }
 
+    func testCodexHookMonitorIgnoresUnscopedTerminalForTurnScopedMonitor() throws {
+        let cliPath = try bundledCLIPath()
+        let socketPath = makeSocketPath("codex")
+        let listenerFD = try bindUnixSocket(at: socketPath)
+        let state = MockSocketServerState()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-codex-monitor-\(UUID().uuidString)", isDirectory: true)
+        let workspaceId = "11111111-1111-1111-1111-111111111111"
+        let surfaceId = "22222222-2222-2222-2222-222222222222"
+        let sessionId = "codex-session-monitor-turn-scoped"
+
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            Darwin.close(listenerFD)
+            unlink(socketPath)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let transcriptURL = root.appendingPathComponent("rollout-\(sessionId).jsonl")
+        try """
+        {"timestamp":"2026-04-25T07:55:29.462Z","type":"session_meta","payload":{"id":"\(sessionId)","cwd":"\(root.path)"}}
+        {"timestamp":"2026-04-25T07:55:29.804Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Old unscoped turn completed."}}
+        """.write(to: transcriptURL, atomically: true, encoding: .utf8)
+
+        let serverHandled = startMockServerSignal(listenerFD: listenerFD, state: state) { line in
+            if let data = line.data(using: .utf8),
+               let payload = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let id = payload["id"] as? String {
+                return self.v2Response(id: id, ok: true, result: [:])
+            }
+            return "OK"
+        }
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_AGENT_HOOK_STATE_DIR"] = root.path
+        environment["CMUX_CLI_SENTRY_DISABLED"] = "1"
+
+        let process = Process()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: cliPath)
+        process.arguments = [
+            "codex-hook",
+            "monitor",
+            "--workspace",
+            workspaceId,
+            "--surface",
+            surfaceId,
+            "--session",
+            sessionId,
+            "--turn",
+            "turn-monitor-scoped",
+            "--transcript",
+            transcriptURL.path,
+        ]
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        try process.run()
+        defer {
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+
+        let exitSignal = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            process.waitUntilExit()
+            exitSignal.signal()
+        }
+
+        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertTrue(process.isRunning, "Monitor exited on an unscoped terminal event before the scoped turn wrote an error")
+
+        let appendHandle = try FileHandle(forWritingTo: transcriptURL)
+        try appendHandle.seekToEnd()
+        appendHandle.write(Data("\n".utf8))
+        appendHandle.write(Data("""
+        {"timestamp":"2026-04-25T07:55:30.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-monitor-scoped","started_at":1777107530}}
+        {"timestamp":"2026-04-25T07:55:30.100Z","type":"event_msg","payload":{"type":"error","message":"Stream disconnected before completion.","codex_error_info":"response_stream_disconnected"}}
+        """.utf8))
+        try appendHandle.close()
+
+        let serverTimedOut = serverHandled.wait(timeout: .now() + 5) == .timedOut
+        let timedOut = exitSignal.wait(timeout: .now() + 5) == .timedOut
+        if timedOut {
+            process.terminate()
+            _ = exitSignal.wait(timeout: .now() + 1)
+        }
+        let stdout = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let stderr = String(data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        XCTAssertFalse(serverTimedOut, "Timed out waiting for mock socket command. stderr: \(stderr)")
+        XCTAssertFalse(timedOut, stderr)
+        XCTAssertEqual(process.terminationStatus, 0, stderr)
+        XCTAssertEqual(stdout, "")
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("notify_target \(workspaceId) \(surfaceId) Codex|Network error|Stream disconnected before completion.")
+            },
+            "Expected monitor to ignore old unscoped terminal event and report scoped stream error, saw \(state.commands)"
+        )
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("set_status codex Codex network error") &&
+                    command.contains("--icon=exclamationmark.triangle.fill") &&
+                    command.contains("--color=#FF453A") &&
+                    command.contains("--priority=100") &&
+                    command.contains("--tab=\(workspaceId)")
+            },
+            "Expected monitor to publish scoped Codex network error status, saw \(state.commands)"
+        )
+    }
+
     private func codexSessionDirectory(in codexHome: URL, date: Date = Date()) throws -> URL {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
@@ -2713,6 +2828,30 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         handler: @escaping @Sendable (String) -> String
     ) -> XCTestExpectation {
         let handled = expectation(description: "cli mock socket handled")
+        runMockServer(listenerFD: listenerFD, state: state, onHandled: {
+            handled.fulfill()
+        }, handler: handler)
+        return handled
+    }
+
+    private func startMockServerSignal(
+        listenerFD: Int32,
+        state: MockSocketServerState,
+        handler: @escaping @Sendable (String) -> String
+    ) -> DispatchSemaphore {
+        let handled = DispatchSemaphore(value: 0)
+        runMockServer(listenerFD: listenerFD, state: state, onHandled: {
+            handled.signal()
+        }, handler: handler)
+        return handled
+    }
+
+    private func runMockServer(
+        listenerFD: Int32,
+        state: MockSocketServerState,
+        onHandled: @escaping @Sendable () -> Void,
+        handler: @escaping @Sendable (String) -> String
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             var clientAddr = sockaddr_un()
             var clientAddrLen = socklen_t(MemoryLayout<sockaddr_un>.size)
@@ -2722,12 +2861,12 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
                 }
             }
             guard clientFD >= 0 else {
-                handled.fulfill()
+                onHandled()
                 return
             }
             defer {
                 Darwin.close(clientFD)
-                handled.fulfill()
+                onHandled()
             }
 
             var pending = Data()
@@ -2754,7 +2893,6 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
                 }
             }
         }
-        return handled
     }
 
     private func v2Response(

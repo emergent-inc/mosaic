@@ -15068,10 +15068,11 @@ struct CMUXCLI {
                     candidateCanPublishBeforeTerminal = turnId == nil || payloadTurnId == turnId || sawRelevantTurn
                 }
             case "task_complete", "turn_complete":
-                if let turnId,
-                   let payloadTurnId = payload["turn_id"] as? String,
-                   payloadTurnId != turnId {
-                    continue
+                if let turnId {
+                    guard let payloadTurnId = payload["turn_id"] as? String,
+                          payloadTurnId == turnId else {
+                        continue
+                    }
                 }
                 sawRelevantTurn = true
                 sawTerminalTurn = true
