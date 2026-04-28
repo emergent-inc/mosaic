@@ -1781,7 +1781,9 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
             try? FileManager.default.removeItem(at: root)
         }
 
-        let transcriptURL = root.appendingPathComponent("rollout-\(sessionId).jsonl")
+        let codexHome = root.appendingPathComponent("codex-home", isDirectory: true)
+        let transcriptDirectory = try codexSessionDirectory(in: codexHome)
+        let transcriptURL = transcriptDirectory.appendingPathComponent("rollout-\(sessionId).jsonl")
         try """
         {"timestamp":"2026-04-25T07:55:29.462Z","type":"session_meta","payload":{"id":"\(sessionId)","cwd":"\(root.path)"}}
         {"timestamp":"2026-04-25T07:55:29.799Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"credits":{"has_credits":false,"unlimited":false,"balance":"0"}}}}
@@ -1804,9 +1806,10 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         environment["CMUX_SURFACE_ID"] = surfaceId
         environment["CMUX_AGENT_HOOK_STATE_DIR"] = root.path
         environment["CMUX_CLI_SENTRY_DISABLED"] = "1"
+        environment["CODEX_HOME"] = codexHome.path
 
         let hookInput = """
-        {"session_id":"\(sessionId)","turn_id":"turn-1","transcript_path":"\(transcriptURL.path)","cwd":"\(root.path)","hook_event_name":"Stop","model":"gpt-5.5","permission_mode":"default","stop_hook_active":false,"last_assistant_message":null}
+        {"session_id":"\(sessionId)","turn_id":"turn-1","cwd":"\(root.path)","hook_event_name":"Stop","model":"gpt-5.5","permission_mode":"default","stop_hook_active":false,"last_assistant_message":null}
         """
         let result = runProcess(
             executablePath: cliPath,
@@ -1973,6 +1976,128 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         )
     }
 
+    func testCodexHookStopTreatsCamelCaseCodexErrorInfoPayloadAsFailure() throws {
+        let cliPath = try bundledCLIPath()
+        let socketPath = makeSocketPath("codex")
+        let listenerFD = try bindUnixSocket(at: socketPath)
+        let state = MockSocketServerState()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-codex-hook-\(UUID().uuidString)", isDirectory: true)
+        let workspaceId = "11111111-1111-1111-1111-111111111111"
+        let surfaceId = "22222222-2222-2222-2222-222222222222"
+        let sessionId = "codex-session-camel-error"
+
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            Darwin.close(listenerFD)
+            unlink(socketPath)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let serverHandled = startMockServer(listenerFD: listenerFD, state: state) { line in
+            if let data = line.data(using: .utf8),
+               let payload = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let id = payload["id"] as? String {
+                return self.v2Response(id: id, ok: true, result: [:])
+            }
+            return "OK"
+        }
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_WORKSPACE_ID"] = workspaceId
+        environment["CMUX_SURFACE_ID"] = surfaceId
+        environment["CMUX_AGENT_HOOK_STATE_DIR"] = root.path
+        environment["CMUX_CLI_SENTRY_DISABLED"] = "1"
+
+        let hookInput = """
+        {"session_id":"\(sessionId)","turn_id":"turn-5","cwd":"\(root.path)","hook_event_name":"Stop","model":"gpt-5.5","permission_mode":"default","stop_hook_active":false,"last_assistant_message":null,"message":"Try again later.","codexErrorInfo":"server_overloaded"}
+        """
+        let result = runProcess(
+            executablePath: cliPath,
+            arguments: ["codex-hook", "stop"],
+            environment: environment,
+            standardInput: hookInput,
+            timeout: 5
+        )
+
+        wait(for: [serverHandled], timeout: 5)
+        XCTAssertFalse(result.timedOut, result.stderr)
+        XCTAssertEqual(result.status, 0, result.stderr)
+        XCTAssertEqual(result.stdout, "{}\n")
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("set_status codex Codex error") &&
+                    command.contains("--icon=exclamationmark.triangle.fill") &&
+                    command.contains("--color=#FF453A") &&
+                    command.contains("--priority=100") &&
+                    command.contains("--tab=\(workspaceId)")
+            },
+            "Expected high-priority Codex error status from camelCase codexErrorInfo, saw \(state.commands)"
+        )
+    }
+
+    func testCodexHookStopTreatsTypedHookPayloadAsFailure() throws {
+        let cliPath = try bundledCLIPath()
+        let socketPath = makeSocketPath("codex")
+        let listenerFD = try bindUnixSocket(at: socketPath)
+        let state = MockSocketServerState()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-codex-hook-\(UUID().uuidString)", isDirectory: true)
+        let workspaceId = "11111111-1111-1111-1111-111111111111"
+        let surfaceId = "22222222-2222-2222-2222-222222222222"
+        let sessionId = "codex-session-hook-type-error"
+
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            Darwin.close(listenerFD)
+            unlink(socketPath)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let serverHandled = startMockServer(listenerFD: listenerFD, state: state) { line in
+            if let data = line.data(using: .utf8),
+               let payload = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let id = payload["id"] as? String {
+                return self.v2Response(id: id, ok: true, result: [:])
+            }
+            return "OK"
+        }
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_WORKSPACE_ID"] = workspaceId
+        environment["CMUX_SURFACE_ID"] = surfaceId
+        environment["CMUX_AGENT_HOOK_STATE_DIR"] = root.path
+        environment["CMUX_CLI_SENTRY_DISABLED"] = "1"
+
+        let hookInput = """
+        {"session_id":"\(sessionId)","turn_id":"turn-6","cwd":"\(root.path)","hook_event_name":"Stop","model":"gpt-5.5","permission_mode":"default","stop_hook_active":false,"last_assistant_message":null,"type":"error","message":"Try again later."}
+        """
+        let result = runProcess(
+            executablePath: cliPath,
+            arguments: ["codex-hook", "stop"],
+            environment: environment,
+            standardInput: hookInput,
+            timeout: 5
+        )
+
+        wait(for: [serverHandled], timeout: 5)
+        XCTAssertFalse(result.timedOut, result.stderr)
+        XCTAssertEqual(result.status, 0, result.stderr)
+        XCTAssertEqual(result.stdout, "{}\n")
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("set_status codex Codex error") &&
+                    command.contains("--icon=exclamationmark.triangle.fill") &&
+                    command.contains("--color=#FF453A") &&
+                    command.contains("--priority=100") &&
+                    command.contains("--tab=\(workspaceId)")
+            },
+            "Expected typed hook payload to publish high-priority Codex error status, saw \(state.commands)"
+        )
+    }
+
     func testCodexHookStopDoesNotKeepOldTranscriptErrorAfterSuccessfulTurn() throws {
         let cliPath = try bundledCLIPath()
         let socketPath = makeSocketPath("codex")
@@ -2042,6 +2167,29 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
             state.commands.contains { $0.contains("set_status codex Codex rate limit") || $0.contains("#FF453A") },
             "Did not expect stale transcript error status, saw \(state.commands)"
         )
+        XCTAssertFalse(
+            state.commands.contains { command in
+                command.contains("notify_target") &&
+                    (command.contains("Rate limit") || command.contains("Error") || command.contains("#FF453A"))
+            },
+            "Did not expect stale failure notification, saw \(state.commands)"
+        )
+    }
+
+    private func codexSessionDirectory(in codexHome: URL, date: Date = Date()) throws -> URL {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let year = try XCTUnwrap(components.year)
+        let month = try XCTUnwrap(components.month)
+        let day = try XCTUnwrap(components.day)
+        let directory = codexHome
+            .appendingPathComponent("sessions", isDirectory: true)
+            .appendingPathComponent(String(format: "%04d", year), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", month), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", day), isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func base64NULSeparated(_ values: [String]) -> String {
