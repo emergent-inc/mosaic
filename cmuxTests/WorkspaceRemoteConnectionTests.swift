@@ -2466,6 +2466,87 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         )
     }
 
+    func testCodexHookMonitorReportsExplicitErrorBeforeTerminalCompletion() throws {
+        let cliPath = try bundledCLIPath()
+        let socketPath = makeSocketPath("codex")
+        let listenerFD = try bindUnixSocket(at: socketPath)
+        let state = MockSocketServerState()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-codex-monitor-\(UUID().uuidString)", isDirectory: true)
+        let workspaceId = "11111111-1111-1111-1111-111111111111"
+        let surfaceId = "22222222-2222-2222-2222-222222222222"
+        let sessionId = "codex-session-monitor-stream-error"
+
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            Darwin.close(listenerFD)
+            unlink(socketPath)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let transcriptURL = root.appendingPathComponent("rollout-\(sessionId).jsonl")
+        try """
+        {"timestamp":"2026-04-25T07:55:29.462Z","type":"session_meta","payload":{"id":"\(sessionId)","cwd":"\(root.path)"}}
+        {"timestamp":"2026-04-25T07:55:29.500Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-monitor-stream-error","started_at":1777107522}}
+        {"timestamp":"2026-04-25T07:55:29.803Z","type":"event_msg","payload":{"type":"error","message":"Stream disconnected before completion.","codex_error_info":"response_stream_disconnected"}}
+        """.write(to: transcriptURL, atomically: true, encoding: .utf8)
+
+        let serverHandled = startMockServer(listenerFD: listenerFD, state: state) { line in
+            if let data = line.data(using: .utf8),
+               let payload = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let id = payload["id"] as? String {
+                return self.v2Response(id: id, ok: true, result: [:])
+            }
+            return "OK"
+        }
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_AGENT_HOOK_STATE_DIR"] = root.path
+        environment["CMUX_CLI_SENTRY_DISABLED"] = "1"
+
+        let result = runProcess(
+            executablePath: cliPath,
+            arguments: [
+                "codex-hook",
+                "monitor",
+                "--workspace",
+                workspaceId,
+                "--surface",
+                surfaceId,
+                "--session",
+                sessionId,
+                "--turn",
+                "turn-monitor-stream-error",
+                "--transcript",
+                transcriptURL.path,
+            ],
+            environment: environment,
+            timeout: 5
+        )
+
+        wait(for: [serverHandled], timeout: 5)
+        XCTAssertFalse(result.timedOut, result.stderr)
+        XCTAssertEqual(result.status, 0, result.stderr)
+        XCTAssertEqual(result.stdout, "")
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("notify_target \(workspaceId) \(surfaceId) Codex|Network error|Stream disconnected before completion.")
+            },
+            "Expected monitor to send stream error notification before terminal completion, saw \(state.commands)"
+        )
+        XCTAssertTrue(
+            state.commands.contains { command in
+                command.contains("set_status codex Codex network error") &&
+                    command.contains("--icon=exclamationmark.triangle.fill") &&
+                    command.contains("--color=#FF453A") &&
+                    command.contains("--priority=100") &&
+                    command.contains("--tab=\(workspaceId)")
+            },
+            "Expected monitor to publish high-priority Codex network error status, saw \(state.commands)"
+        )
+    }
+
     private func codexSessionDirectory(in codexHome: URL, date: Date = Date()) throws -> URL {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current

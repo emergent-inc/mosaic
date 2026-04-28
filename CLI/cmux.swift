@@ -15006,8 +15006,10 @@ struct CMUXCLI {
         }
 
         var candidate: CodexHookFailureCandidate?
+        var candidateCanPublishBeforeTerminal = false
         var sawAssistantMessage = false
         var sawTerminalTurn = false
+        var sawRelevantTurn = turnId == nil
         for line in content.split(separator: "\n", omittingEmptySubsequences: true) {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty,
@@ -15019,6 +15021,7 @@ struct CMUXCLI {
             if codexTranscriptLineHasAssistantMessage(object) {
                 sawAssistantMessage = true
                 candidate = nil
+                candidateCanPublishBeforeTerminal = false
             }
 
             guard (object["type"] as? String) == "event_msg",
@@ -15028,29 +15031,55 @@ struct CMUXCLI {
             }
 
             switch eventType {
+            case "task_started":
+                if let turnId {
+                    guard let payloadTurnId = payload["turn_id"] as? String,
+                          payloadTurnId == turnId else {
+                        continue
+                    }
+                }
+                sawRelevantTurn = true
+                candidate = nil
+                candidateCanPublishBeforeTerminal = false
             case "error":
-                candidate = codexHookFailureCandidate(
+                let payloadTurnId = payload["turn_id"] as? String
+                guard turnId == nil || payloadTurnId == nil || payloadTurnId == turnId else {
+                    continue
+                }
+                if let failure = codexHookFailureCandidate(
                     from: payload,
                     isStreamError: false,
                     requireFailureSignal: false
-                )
+                ) {
+                    candidate = failure
+                    candidateCanPublishBeforeTerminal = turnId == nil || payloadTurnId == turnId || sawRelevantTurn
+                }
             case "stream_error":
-                candidate = codexHookFailureCandidate(
+                let payloadTurnId = payload["turn_id"] as? String
+                guard turnId == nil || payloadTurnId == nil || payloadTurnId == turnId else {
+                    continue
+                }
+                if let failure = codexHookFailureCandidate(
                     from: payload,
                     isStreamError: true,
                     requireFailureSignal: false
-                )
+                ) {
+                    candidate = failure
+                    candidateCanPublishBeforeTerminal = turnId == nil || payloadTurnId == turnId || sawRelevantTurn
+                }
             case "task_complete", "turn_complete":
                 if let turnId,
                    let payloadTurnId = payload["turn_id"] as? String,
                    payloadTurnId != turnId {
                     continue
                 }
+                sawRelevantTurn = true
                 sawTerminalTurn = true
                 if let lastMessage = payload["last_agent_message"] as? String,
                    !lastMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     sawAssistantMessage = true
                     candidate = nil
+                    candidateCanPublishBeforeTerminal = false
                 } else if candidate == nil {
                     candidate = CodexHookFailureCandidate(
                         message: String(
@@ -15061,12 +15090,16 @@ struct CMUXCLI {
                         additionalDetails: nil,
                         isStreamError: false
                     )
+                    candidateCanPublishBeforeTerminal = false
                 }
             default:
                 break
             }
         }
 
+        if let candidate, candidateCanPublishBeforeTerminal {
+            return .failure(candidate)
+        }
         if requireTerminalCompletion, !sawTerminalTurn {
             return .pending
         }
