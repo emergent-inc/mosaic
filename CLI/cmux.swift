@@ -15401,9 +15401,9 @@ struct CMUXCLI {
                 transcriptPath = findCodexTranscriptPath(sessionId: sessionId, env: env)
             }
 
-            if let transcriptPath {
+            if let currentTranscriptPath = transcriptPath {
                 switch readCodexTranscriptFailure(
-                    path: transcriptPath,
+                    path: currentTranscriptPath,
                     turnId: turnId,
                     requireTerminalCompletion: true
                 ) {
@@ -15417,8 +15417,11 @@ struct CMUXCLI {
                     return
                 case .healthy:
                     return
-                case .pending, .unavailable:
+                case .pending:
                     break
+                case .unavailable:
+                    transcriptPath = nil
+                    continue
                 }
             }
 
