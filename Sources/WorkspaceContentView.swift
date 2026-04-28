@@ -150,6 +150,7 @@ struct TmuxWorkspacePaneOverlayView: View {
     let flashRect: CGRect?
     let flashStartedAt: Date?
     let flashReason: WorkspaceAttentionFlashReason?
+    @State private var completedFlashStartedAt: Date?
 
     var body: some View {
         overlayContent
@@ -162,6 +163,11 @@ struct TmuxWorkspacePaneOverlayView: View {
         if shouldAnimateFlash, let flashStartedAt {
             TimelineView(TmuxWorkspacePaneFlashTimelineSchedule(startDate: flashStartedAt)) { timeline in
                 overlayCanvas(timelineDate: timeline.date)
+                    .onChange(of: timeline.date) { _, date in
+                        if date.timeIntervalSince(flashStartedAt) >= FocusFlashPattern.duration {
+                            completedFlashStartedAt = flashStartedAt
+                        }
+                    }
             }
         } else if !unreadRects.isEmpty {
             overlayCanvas(timelineDate: nil)
@@ -172,9 +178,9 @@ struct TmuxWorkspacePaneOverlayView: View {
 
     private var shouldAnimateFlash: Bool {
         guard let flashRect,
-              flashRect.width > 0,
-              flashRect.height > 0,
               let flashStartedAt else { return false }
+        guard completedFlashStartedAt != flashStartedAt,
+              ringPath(for: flashRect) != nil else { return false }
         return Date() <= flashStartedAt.addingTimeInterval(FocusFlashPattern.duration)
     }
 
@@ -249,10 +255,11 @@ private struct TmuxWorkspacePaneFlashTimelineSchedule: TimelineSchedule {
 
     func entries(from requestedStartDate: Date, mode: Mode) -> Entries {
         let firstDate = requestedStartDate > startDate ? requestedStartDate : startDate
+        let interval = mode == .lowFrequency ? 1.0 / 10.0 : 1.0 / 60.0
         return Entries(
             nextDate: firstDate,
             endDate: startDate.addingTimeInterval(FocusFlashPattern.duration),
-            interval: 1.0 / 60.0
+            interval: interval
         )
     }
 
