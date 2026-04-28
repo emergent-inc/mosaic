@@ -314,6 +314,7 @@ private struct ClaudeHookParsedInput {
     let object: [String: Any]?
     let rawFallback: String?
     let sessionId: String?
+    let turnId: String?
     let cwd: String?
     let transcriptPath: String?
 }
@@ -14614,10 +14615,11 @@ struct CMUXCLI {
                 normalizedSingleLine(redactClaudeSensitiveSpans(trimmed)),
                 maxLength: 180
             )
-            return ClaudeHookParsedInput(object: nil, rawFallback: fallback, sessionId: nil, cwd: nil, transcriptPath: nil)
+            return ClaudeHookParsedInput(object: nil, rawFallback: fallback, sessionId: nil, turnId: nil, cwd: nil, transcriptPath: nil)
         }
 
         let sessionId = extractClaudeHookSessionId(from: object)
+        let turnId = firstString(in: object, keys: ["turn_id", "turnId"])
         let cwd = extractClaudeHookCWD(from: object)
         let transcriptPath = firstString(in: object, keys: ["transcript_path", "transcriptPath"])
         let compactObject = compactClaudeHookObject(object)
@@ -14625,6 +14627,7 @@ struct CMUXCLI {
             object: compactObject,
             rawFallback: nil,
             sessionId: sessionId,
+            turnId: turnId,
             cwd: cwd,
             transcriptPath: transcriptPath
         )
@@ -14635,6 +14638,8 @@ struct CMUXCLI {
 
         for key in [
             "tool_name",
+            "turn_id",
+            "turnId",
             "last_assistant_message",
             "lastAssistantMessage",
             "event",
@@ -14741,7 +14746,7 @@ struct CMUXCLI {
 
     private func claudeHookCompactFieldLimit(for key: String) -> Int {
         switch key {
-        case "tool_name", "event", "event_name", "hook_event_name", "type", "kind", "notification_type", "matcher", "reason":
+        case "tool_name", "turn_id", "turnId", "event", "event_name", "hook_event_name", "type", "kind", "notification_type", "matcher", "reason":
             return 80
         case "last_assistant_message", "lastAssistantMessage", "message", "body", "text", "prompt", "error", "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails", "description":
             return 240
@@ -14966,7 +14971,7 @@ struct CMUXCLI {
         if let transcriptPath {
             switch readCodexTranscriptFailure(
                 path: transcriptPath,
-                turnId: parsedInput.object.flatMap { firstString(in: $0, keys: ["turn_id", "turnId"]) },
+                turnId: parsedInput.turnId,
                 requireTerminalCompletion: false
             ) {
             case .failure(let failure):
@@ -17212,7 +17217,7 @@ export default CMUXSessionRestore;
             if def.name == "codex", !sessionId.isEmpty {
                 startCodexTranscriptMonitor(
                     sessionId: sessionId,
-                    turnId: input.object.flatMap { firstString(in: $0, keys: ["turn_id", "turnId"]) },
+                    turnId: input.turnId,
                     transcriptPath: normalizedHookValue(input.transcriptPath),
                     cwd: input.cwd ?? mapped?.cwd,
                     workspaceId: workspaceId,
