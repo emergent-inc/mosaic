@@ -14957,6 +14957,9 @@ struct CMUXCLI {
         if codexHookStopPayloadHasAssistantMessage(parsedInput.object) {
             return nil
         }
+        if let candidate = codexHookFailureCandidate(from: parsedInput.object) {
+            return summarizeCodexHookFailureCandidate(candidate)
+        }
 
         let transcriptPath = normalizedHookValue(parsedInput.transcriptPath)
             ?? findCodexTranscriptPath(sessionId: sessionId, env: env)
@@ -14975,9 +14978,6 @@ struct CMUXCLI {
             }
         }
 
-        if let candidate = codexHookFailureCandidate(from: parsedInput.object) {
-            return summarizeCodexHookFailureCandidate(candidate)
-        }
         if let fallback = parsedInput.rawFallback, !fallback.isEmpty {
             return summarizeCodexHookFailureCandidate(
                 CodexHookFailureCandidate(
