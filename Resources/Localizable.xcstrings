@@ -19244,6 +19244,23 @@
         }
       }
     },
+    "agent.codex.error.noFinalResponse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex ended before sending a final response"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex は最終応答を送信する前に終了しました"
+          }
+        }
+      }
+    },
     "agent.codex.completion.body.sessionCompleted": {
       "extractionState": "manual",
       "localizations": {

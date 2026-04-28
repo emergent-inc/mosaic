@@ -1969,7 +1969,9 @@ struct CMUXCLI {
         // Codex hook handler: gracefully no-op when not inside cmux
         // (before socket connection, so it doesn't fail when no socket exists)
         if command == "codex-hook" {
-            guard ProcessInfo.processInfo.environment["CMUX_SURFACE_ID"] != nil else {
+            let env = ProcessInfo.processInfo.environment
+            let hasExplicitTarget = commandArgs.contains("--workspace") || commandArgs.contains("--surface")
+            guard env["CMUX_SURFACE_ID"] != nil || env["CMUX_WORKSPACE_ID"] != nil || hasExplicitTarget else {
                 print("{}")
                 return
             }
@@ -14942,6 +14944,7 @@ struct CMUXCLI {
 
     private enum CodexTranscriptFailureReadResult {
         case unavailable
+        case pending
         case healthy
         case failure(CodexHookFailureCandidate)
     }
@@ -14958,12 +14961,16 @@ struct CMUXCLI {
         let transcriptPath = normalizedHookValue(parsedInput.transcriptPath)
             ?? findCodexTranscriptPath(sessionId: sessionId, env: env)
         if let transcriptPath {
-            switch readCodexTranscriptFailure(path: transcriptPath) {
+            switch readCodexTranscriptFailure(
+                path: transcriptPath,
+                turnId: parsedInput.object.flatMap { firstString(in: $0, keys: ["turn_id", "turnId"]) },
+                requireTerminalCompletion: false
+            ) {
             case .failure(let failure):
                 return summarizeCodexHookFailureCandidate(failure)
             case .healthy:
                 return nil
-            case .unavailable:
+            case .pending, .unavailable:
                 break
             }
         }
@@ -14984,12 +14991,18 @@ struct CMUXCLI {
         return nil
     }
 
-    private func readCodexTranscriptFailure(path: String) -> CodexTranscriptFailureReadResult {
+    private func readCodexTranscriptFailure(
+        path: String,
+        turnId: String? = nil,
+        requireTerminalCompletion: Bool = false
+    ) -> CodexTranscriptFailureReadResult {
         guard let content = readTextFileTail(path: path, maxBytes: 512 * 1024) else {
             return .unavailable
         }
 
         var candidate: CodexHookFailureCandidate?
+        var sawAssistantMessage = false
+        var sawTerminalTurn = false
         for line in content.split(separator: "\n", omittingEmptySubsequences: true) {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty,
@@ -14999,6 +15012,7 @@ struct CMUXCLI {
             }
 
             if codexTranscriptLineHasAssistantMessage(object) {
+                sawAssistantMessage = true
                 candidate = nil
             }
 
@@ -15022,17 +15036,40 @@ struct CMUXCLI {
                     requireFailureSignal: false
                 )
             case "task_complete", "turn_complete":
+                if let turnId,
+                   let payloadTurnId = payload["turn_id"] as? String,
+                   payloadTurnId != turnId {
+                    continue
+                }
+                sawTerminalTurn = true
                 if let lastMessage = payload["last_agent_message"] as? String,
                    !lastMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    sawAssistantMessage = true
                     candidate = nil
+                } else if candidate == nil {
+                    candidate = CodexHookFailureCandidate(
+                        message: String(
+                            localized: "agent.codex.error.noFinalResponse",
+                            defaultValue: "Codex ended before sending a final response"
+                        ),
+                        codexErrorInfo: nil,
+                        additionalDetails: nil,
+                        isStreamError: false
+                    )
                 }
             default:
                 break
             }
         }
 
+        if requireTerminalCompletion, !sawTerminalTurn {
+            return .pending
+        }
         if let candidate {
             return .failure(candidate)
+        }
+        if !sawTerminalTurn, !sawAssistantMessage {
+            return .pending
         }
         return .healthy
     }
@@ -15256,6 +15293,146 @@ struct CMUXCLI {
         }
 
         return directories
+    }
+
+    private func startCodexTranscriptMonitor(
+        sessionId: String,
+        turnId: String?,
+        transcriptPath: String?,
+        cwd: String?,
+        workspaceId: String,
+        surfaceId: String?,
+        env: [String: String]
+    ) {
+        guard !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !workspaceId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        let executablePath = resolvedExecutableURL()?.path ?? args.first ?? "cmux"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        var monitorArgs = [
+            "codex-hook",
+            "monitor",
+            "--workspace",
+            workspaceId,
+            "--session",
+            sessionId,
+        ]
+        if let surfaceId, !surfaceId.isEmpty {
+            monitorArgs += ["--surface", surfaceId]
+        }
+        if let turnId, !turnId.isEmpty {
+            monitorArgs += ["--turn", turnId]
+        }
+        if let transcriptPath, !transcriptPath.isEmpty {
+            monitorArgs += ["--transcript", transcriptPath]
+        }
+        if let cwd, !cwd.isEmpty {
+            monitorArgs += ["--cwd", cwd]
+        }
+        process.arguments = monitorArgs
+        process.environment = env.merging(["CMUX_CLI_SENTRY_DISABLED": "1"], uniquingKeysWith: { _, new in new })
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
+
+    private func runCodexTranscriptMonitor(commandArgs: [String], client: SocketClient) throws {
+        let env = ProcessInfo.processInfo.environment
+        let workspaceId = optionValue(commandArgs, name: "--workspace") ?? env["CMUX_WORKSPACE_ID"] ?? ""
+        let surfaceId = optionValue(commandArgs, name: "--surface") ?? env["CMUX_SURFACE_ID"]
+        let sessionId = optionValue(commandArgs, name: "--session")
+            ?? env["CMUX_CODEX_SESSION_ID"]
+            ?? env["CODEX_SESSION_ID"]
+            ?? env["CMUX_AGENT_SESSION_ID"]
+            ?? ""
+        let turnId = optionValue(commandArgs, name: "--turn")
+        var transcriptPath = optionValue(commandArgs, name: "--transcript")
+
+        guard !workspaceId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        let deadline = Date().addingTimeInterval(4 * 60 * 60)
+        while Date() < deadline {
+            if transcriptPath == nil {
+                transcriptPath = findCodexTranscriptPath(sessionId: sessionId, env: env)
+            }
+
+            if let transcriptPath {
+                switch readCodexTranscriptFailure(
+                    path: transcriptPath,
+                    turnId: turnId,
+                    requireTerminalCompletion: true
+                ) {
+                case .failure(let failure):
+                    publishCodexMonitorFailure(
+                        failure,
+                        workspaceId: workspaceId,
+                        surfaceId: surfaceId,
+                        client: client
+                    )
+                    return
+                case .healthy:
+                    return
+                case .pending, .unavailable:
+                    break
+                }
+            }
+
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else { return }
+            waitForCodexTranscriptChange(path: transcriptPath, timeout: min(30, remaining))
+        }
+    }
+
+    private func publishCodexMonitorFailure(
+        _ failure: CodexHookFailureCandidate,
+        workspaceId: String,
+        surfaceId: String?,
+        client: SocketClient
+    ) {
+        let summary = summarizeCodexHookFailureCandidate(failure)
+        if let surfaceId, !surfaceId.isEmpty {
+            let payload = "Codex|\(sanitizeNotificationField(summary.subtitle))|\(sanitizeNotificationField(summary.body))"
+            _ = try? sendV1Command("notify_target \(workspaceId) \(surfaceId) \(payload)", client: client)
+        }
+        _ = try? sendV1Command("set_status codex \(summary.statusValue) --icon=exclamationmark.triangle.fill --color=#FF453A --priority=100 --tab=\(workspaceId)", client: client)
+    }
+
+    private func waitForCodexTranscriptChange(path: String?, timeout: TimeInterval) {
+        guard timeout > 0 else { return }
+        guard let path, !path.isEmpty else {
+            _ = DispatchSemaphore(value: 0).wait(timeout: .now() + timeout)
+            return
+        }
+
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        let fd = open(expandedPath, O_EVTONLY)
+        guard fd >= 0 else {
+            _ = DispatchSemaphore(value: 0).wait(timeout: .now() + timeout)
+            return
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .extend, .delete, .rename],
+            queue: DispatchQueue.global(qos: .utility)
+        )
+        source.setEventHandler {
+            semaphore.signal()
+        }
+        source.setCancelHandler {
+            close(fd)
+        }
+        source.resume()
+        _ = semaphore.wait(timeout: .now() + timeout)
+        source.cancel()
     }
 
     private func extractMessageText(from message: [String: Any]) -> String? {
@@ -16949,6 +17126,11 @@ export default CMUXSessionRestore;
         let hookArgs = Array(commandArgs.dropFirst())
         telemetry.breadcrumb("\(def.name)-hook.\(subcommand)")
 
+        if def.name == "codex", subcommand == "monitor" {
+            try runCodexTranscriptMonitor(commandArgs: hookArgs, client: client)
+            return
+        }
+
         // Workspace/surface resolution: prefer --workspace/--surface flags, then session store, then env
         let hookWsFlag = optionValue(hookArgs, name: "--workspace")
         let workspaceArg = hookWsFlag ?? env["CMUX_WORKSPACE_ID"]
@@ -17027,6 +17209,17 @@ export default CMUXSessionRestore;
             }
             _ = try? sendV1Command("clear_notifications --tab=\(workspaceId)", client: client)
             _ = try sendV1Command("set_status \(def.statusKey) Running --icon=bolt.fill --color=#4C8DFF --tab=\(workspaceId)", client: client)
+            if def.name == "codex", !sessionId.isEmpty {
+                startCodexTranscriptMonitor(
+                    sessionId: sessionId,
+                    turnId: input.object.flatMap { firstString(in: $0, keys: ["turn_id", "turnId"]) },
+                    transcriptPath: normalizedHookValue(input.transcriptPath),
+                    cwd: input.cwd ?? mapped?.cwd,
+                    workspaceId: workspaceId,
+                    surfaceId: mapped?.surfaceId ?? surfaceArg,
+                    env: env
+                )
+            }
 
         case .stop:
             do {
