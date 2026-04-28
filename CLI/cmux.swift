@@ -14961,9 +14961,17 @@ struct CMUXCLI {
 
             switch eventType {
             case "error":
-                candidate = codexHookFailureCandidate(from: payload, isStreamError: false)
+                candidate = codexHookFailureCandidate(
+                    from: payload,
+                    isStreamError: false,
+                    requireFailureSignal: false
+                )
             case "stream_error":
-                candidate = codexHookFailureCandidate(from: payload, isStreamError: true)
+                candidate = codexHookFailureCandidate(
+                    from: payload,
+                    isStreamError: true,
+                    requireFailureSignal: false
+                )
             case "task_complete", "turn_complete":
                 if let lastMessage = payload["last_agent_message"] as? String,
                    !lastMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -14993,7 +15001,8 @@ struct CMUXCLI {
 
     private func codexHookFailureCandidate(
         from object: [String: Any]?,
-        isStreamError: Bool = false
+        isStreamError: Bool = false,
+        requireFailureSignal: Bool = true
     ) -> CodexHookFailureCandidate? {
         guard let object else { return nil }
         let message = firstString(in: object, keys: ["message", "error", "body", "text", "description"])
@@ -15003,7 +15012,8 @@ struct CMUXCLI {
             .compactMap { $0 }
             .joined(separator: " ")
             .lowercased()
-        guard signal.contains("error") ||
+        guard !requireFailureSignal ||
+              signal.contains("error") ||
               signal.contains("failed") ||
               signal.contains("exception") ||
               signal.contains("usage limit") ||
