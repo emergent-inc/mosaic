@@ -4,12 +4,10 @@ import CMUXWorkstream
 import Observation
 import SwiftUI
 
-#if DEBUG
 private func rightSidebarDebugResponder(_ responder: NSResponder?) -> String {
     guard let responder else { return "nil" }
     return String(describing: type(of: responder))
 }
-#endif
 
 /// Mode shown in the right sidebar (the panel toggled by ⌘⌥B).
 enum RightSidebarMode: String, CaseIterable {
@@ -169,9 +167,7 @@ struct RightSidebarPanelView: View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
                 modeBar
-                    .overlay(alignment: .bottom) {
-                        WindowChromeBorder(orientation: .horizontal, ignoresSafeArea: false)
-                    }
+                    .rightSidebarChromeBottomBorder()
                 contentForMode
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -227,10 +223,14 @@ struct RightSidebarPanelView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.leading, 4)
-        .padding(.trailing, 6)
-        .padding(.vertical, 4)
-        .frame(height: titlebarHeight)
+        .rightSidebarChromeBar(leadingPadding: 4, trailingPadding: 6, height: titlebarHeight)
+        .background(MinimalModeTitlebarControlHitRegionView())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("RightSidebarModeBar")
+        .reportRightSidebarChromeGeometryForBonsplitUITest(
+            isVisible: true,
+            titlebarHeight: titlebarHeight
+        )
     }
 
     @ViewBuilder
@@ -406,12 +406,10 @@ private struct ModeBarButton: View {
                     pendingChip
                 }
             }
-            .foregroundColor(isSelected ? .primary : .secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(backgroundColor)
+            .rightSidebarChromePill(
+                isSelected: isSelected,
+                isHovered: isHovered,
+                geometryKeyPrefix: "rightSidebarModeControl_\(mode.rawValue)"
             )
             .overlay(alignment: .trailing) {
                 if showsShortcutHint {
@@ -438,16 +436,6 @@ private struct ModeBarButton: View {
             )
         }
         return mode.label
-    }
-
-    private var backgroundColor: Color {
-        if isSelected {
-            return Color.primary.opacity(0.10)
-        }
-        if isHovered {
-            return Color.primary.opacity(0.05)
-        }
-        return Color.clear
     }
 
     /// Subtle inline count chip that sits after the label instead of
