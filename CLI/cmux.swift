@@ -14472,8 +14472,11 @@ struct CMUXCLI {
                 candidateCanPublishBeforeTerminal = false
             case "error":
                 let payloadTurnId = payload["turn_id"] as? String
-                guard turnId == nil || payloadTurnId == nil || payloadTurnId == turnId else {
-                    continue
+                if let turnId, let payloadTurnId {
+                    guard payloadTurnId == turnId else {
+                        continue
+                    }
+                    sawRelevantTurn = true
                 }
                 if let failure = codexHookFailureCandidate(
                     from: payload,
@@ -14485,8 +14488,11 @@ struct CMUXCLI {
                 }
             case "stream_error":
                 let payloadTurnId = payload["turn_id"] as? String
-                guard turnId == nil || payloadTurnId == nil || payloadTurnId == turnId else {
-                    continue
+                if let turnId, let payloadTurnId {
+                    guard payloadTurnId == turnId else {
+                        continue
+                    }
+                    sawRelevantTurn = true
                 }
                 if let failure = codexHookFailureCandidate(
                     from: payload,
@@ -14529,6 +14535,9 @@ struct CMUXCLI {
 
         if let candidate, candidateCanPublishBeforeTerminal {
             return .failure(candidate)
+        }
+        if candidate != nil, turnId != nil, !sawRelevantTurn {
+            return .pending
         }
         if requireTerminalCompletion, !sawTerminalTurn {
             return .pending
