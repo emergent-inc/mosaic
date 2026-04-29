@@ -60,11 +60,14 @@ final class FeedSidebarUITests: XCTestCase {
 
         // The reply arrives once the Feed row's Allow Once button is
         // clicked — run that on the UI side while the send is in-flight.
-        let allowButton = app.buttons["Once"].firstMatch
-        XCTAssertTrue(
-            allowButton.waitForExistence(timeout: 10),
-            "Allow Once button did not appear in Feed"
-        )
+        guard let allowButton = waitForFirstButton(
+            app,
+            identifiers: ["FeedPermissionAllowOnceButton", "Allow Once", "Once"],
+            timeout: 10
+        ) else {
+            XCTFail("Allow Once button did not appear in Feed")
+            return
+        }
         allowButton.click()
 
         // Await the socket reply from the earlier push.
@@ -91,6 +94,24 @@ final class FeedSidebarUITests: XCTestCase {
             return
         }
         XCTFail("cmux failed to launch for Feed UI test. state=\(app.state.rawValue)")
+    }
+
+    private func waitForFirstButton(
+        _ app: XCUIApplication,
+        identifiers: [String],
+        timeout: TimeInterval
+    ) -> XCUIElement? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            for identifier in identifiers {
+                let button = app.buttons[identifier].firstMatch
+                if button.exists {
+                    return button
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return nil
     }
 
     private struct FeedPushResult {
