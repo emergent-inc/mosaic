@@ -696,12 +696,25 @@ final class WindowBrowserHostViewTests: XCTestCase {
     }
 
     func testDragHoverEventsDoNotPassThroughForUnrelatedPasteboardTypes() {
-        XCTAssertFalse(
-            WindowBrowserHostView.shouldPassThroughToDragTargets(
-                pasteboardTypes: [.fileURL],
-                eventType: .cursorUpdate
+        let externalPayloads: [[NSPasteboard.PasteboardType]] = [
+            [.fileURL],
+            [.URL],
+            [.png],
+            [.tiff],
+            [.html],
+            [.string],
+            [.fileURL, .png],
+        ]
+
+        for pasteboardTypes in externalPayloads {
+            XCTAssertFalse(
+                WindowBrowserHostView.shouldPassThroughToDragTargets(
+                    pasteboardTypes: pasteboardTypes,
+                    eventType: .cursorUpdate
+                ),
+                "Browser host should keep external drag payload in WebKit: \(pasteboardTypes)"
             )
-        )
+        }
     }
 
     func testHostViewKeepsHostedInspectorDividerInteractive() {
@@ -2013,6 +2026,26 @@ final class BrowserPaneDropRoutingTests: XCTestCase {
                 eventType: .cursorUpdate
             )
         )
+
+        let externalPayloads: [[NSPasteboard.PasteboardType]] = [
+            [.fileURL],
+            [.URL],
+            [.png],
+            [.tiff],
+            [.html],
+            [.string],
+            [.fileURL, .png],
+        ]
+
+        for pasteboardTypes in externalPayloads {
+            XCTAssertFalse(
+                BrowserPaneDropTargetView.shouldCaptureHitTesting(
+                    pasteboardTypes: pasteboardTypes,
+                    eventType: .cursorUpdate
+                ),
+                "Browser pane drop target should not capture external drag payload: \(pasteboardTypes)"
+            )
+        }
     }
 
     func testCenterDropOnSamePaneIsNoOp() {

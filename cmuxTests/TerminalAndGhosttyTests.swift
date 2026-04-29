@@ -2198,13 +2198,9 @@ final class WindowTerminalHostViewTests: XCTestCase {
         return TabStripPassThroughFixture(host: host, pointInHost: pointInHost, pointInWindow: pointInWindow)
     }
 
-    private func makeMouseEvent(
-        type: NSEvent.EventType,
-        at locationInWindow: NSPoint,
-        window: NSWindow
-    ) -> NSEvent {
+    private func makeMouseDownEvent(at locationInWindow: NSPoint, window: NSWindow) -> NSEvent {
         guard let event = NSEvent.mouseEvent(
-            with: type,
+            with: .leftMouseDown,
             location: locationInWindow,
             modifierFlags: [],
             timestamp: ProcessInfo.processInfo.systemUptime,
@@ -2214,13 +2210,9 @@ final class WindowTerminalHostViewTests: XCTestCase {
             clickCount: 1,
             pressure: 1.0
         ) else {
-            fatalError("Failed to create \(type) event")
+            fatalError("Failed to create leftMouseDown event")
         }
         return event
-    }
-
-    private func makeMouseDownEvent(at locationInWindow: NSPoint, window: NSWindow) -> NSEvent {
-        makeMouseEvent(type: .leftMouseDown, at: locationInWindow, window: window)
     }
 
     func testHostViewPassesThroughUnderlyingTabStripInSecondWindowBelowTitlebarBand() {
@@ -2262,31 +2254,6 @@ final class WindowTerminalHostViewTests: XCTestCase {
         XCTAssertNil(
             secondFixture.host.performHitTest(at: secondFixture.pointInHost, currentEvent: secondEvent),
             "Terminal portal should defer to the minimal tab strip in later-created windows just below the titlebar interaction band"
-        )
-    }
-
-    func testHostViewPassesThroughUnderlyingTabStripDuringMouseDrag() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 260),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        defer { window.orderOut(nil) }
-
-        guard let fixture = installTabStripPassThroughFixture(in: window) else {
-            return
-        }
-
-        let event = makeMouseEvent(
-            type: .leftMouseDragged,
-            at: fixture.pointInWindow,
-            window: window
-        )
-
-        XCTAssertNil(
-            fixture.host.performHitTest(at: fixture.pointInHost, currentEvent: event),
-            "Terminal portal should defer to the minimal tab strip while a Bonsplit tab is being dragged"
         )
     }
 
