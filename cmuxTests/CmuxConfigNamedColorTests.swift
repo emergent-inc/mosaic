@@ -38,6 +38,10 @@ final class CmuxConfigNamedColorTests: XCTestCase {
     }
 
     func testDecodeWorkspaceCommandRejectsUnknownNamedColor() {
+        let suiteName = "cmux-config-unknown-color-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
         let json = """
         {
           "commands": [{
@@ -49,7 +53,7 @@ final class CmuxConfigNamedColorTests: XCTestCase {
           }]
         }
         """
-        XCTAssertThrowsError(try decode(json))
+        XCTAssertThrowsError(try decode(json, colorDefaults: defaults))
     }
 
     @MainActor
