@@ -14447,7 +14447,7 @@ struct CMUXCLI {
                 continue
             }
 
-            if codexTranscriptLineHasAssistantMessage(object) {
+            if (turnId == nil || sawRelevantTurn) && codexTranscriptLineHasAssistantMessage(object) {
                 sawAssistantMessage = true
                 candidate = nil
                 candidateCanPublishBeforeTerminal = false
@@ -14461,9 +14461,9 @@ struct CMUXCLI {
 
             switch eventType {
             case "task_started":
+                let payloadTurnId = firstString(in: payload, keys: ["turn_id", "turnId"])
                 if let turnId {
-                    guard let payloadTurnId = payload["turn_id"] as? String,
-                          payloadTurnId == turnId else {
+                    guard payloadTurnId == turnId else {
                         continue
                     }
                 }
@@ -14471,7 +14471,7 @@ struct CMUXCLI {
                 candidate = nil
                 candidateCanPublishBeforeTerminal = false
             case "error":
-                let payloadTurnId = payload["turn_id"] as? String
+                let payloadTurnId = firstString(in: payload, keys: ["turn_id", "turnId"])
                 if let turnId, let payloadTurnId {
                     guard payloadTurnId == turnId else {
                         continue
@@ -14487,7 +14487,7 @@ struct CMUXCLI {
                     candidateCanPublishBeforeTerminal = turnId == nil || payloadTurnId == turnId || sawRelevantTurn
                 }
             case "stream_error":
-                let payloadTurnId = payload["turn_id"] as? String
+                let payloadTurnId = firstString(in: payload, keys: ["turn_id", "turnId"])
                 if let turnId, let payloadTurnId {
                     guard payloadTurnId == turnId else {
                         continue
@@ -14503,9 +14503,9 @@ struct CMUXCLI {
                     candidateCanPublishBeforeTerminal = turnId == nil || payloadTurnId == turnId || sawRelevantTurn
                 }
             case "task_complete", "turn_complete":
+                let payloadTurnId = firstString(in: payload, keys: ["turn_id", "turnId"])
                 if let turnId {
-                    guard let payloadTurnId = payload["turn_id"] as? String,
-                          payloadTurnId == turnId else {
+                    guard payloadTurnId == turnId else {
                         continue
                     }
                 }
@@ -14516,7 +14516,7 @@ struct CMUXCLI {
                     sawAssistantMessage = true
                     candidate = nil
                     candidateCanPublishBeforeTerminal = false
-                } else if candidate == nil {
+                } else if candidate == nil && !sawAssistantMessage {
                     candidate = CodexHookFailureCandidate(
                         message: String(
                             localized: "agent.codex.error.noFinalResponse",
