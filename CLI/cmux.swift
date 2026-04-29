@@ -14198,7 +14198,7 @@ struct CMUXCLI {
 
     private func compactClaudeHookValue(_ rawValue: Any?, key: String) -> String? {
         switch key {
-        case "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails":
+        case "error", "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails":
             return compactClaudeHookCodexFailureValue(rawValue, key: key)
         default:
             return compactClaudeHookStringValue(rawValue, maxLength: claudeHookCompactFieldLimit(for: key))
@@ -14400,21 +14400,25 @@ struct CMUXCLI {
         sessionId: String,
         env: [String: String]
     ) -> CodexHookFailureSummary? {
-        if codexHookStopPayloadHasAssistantMessage(parsedInput.object) {
-            return nil
-        }
         if let candidate = codexHookFailureCandidate(from: parsedInput.object) {
             return summarizeCodexHookFailureCandidate(candidate)
         }
 
-        let transcriptPath = normalizedHookValue(parsedInput.transcriptPath)
-            ?? findCodexTranscriptPath(sessionId: sessionId, env: env)
-        if let transcriptPath {
-            switch readCodexTranscriptFailure(
-                path: transcriptPath,
+        let payloadHasAssistantMessage = codexHookStopPayloadHasAssistantMessage(parsedInput.object)
+        let providedTranscriptPath = normalizedHookValue(parsedInput.transcriptPath)
+        var checkedTranscriptPaths: Set<String> = []
+        let readTranscriptFailure: (String) -> CodexTranscriptFailureReadResult = { path in
+            checkedTranscriptPaths.insert(path)
+            return readCodexTranscriptFailure(
+                path: path,
                 turnId: parsedInput.turnId,
                 requireTerminalCompletion: false
-            ) {
+            )
+        }
+
+        if let transcriptPath = providedTranscriptPath
+            ?? findCodexTranscriptPath(sessionId: sessionId, env: env) {
+            switch readTranscriptFailure(transcriptPath) {
             case .failure(let failure):
                 return summarizeCodexHookFailureCandidate(failure)
             case .healthy:
@@ -14424,6 +14428,22 @@ struct CMUXCLI {
             }
         }
 
+        if providedTranscriptPath != nil,
+           let resolvedTranscriptPath = findCodexTranscriptPath(sessionId: sessionId, env: env),
+           !checkedTranscriptPaths.contains(resolvedTranscriptPath) {
+            switch readTranscriptFailure(resolvedTranscriptPath) {
+            case .failure(let failure):
+                return summarizeCodexHookFailureCandidate(failure)
+            case .healthy:
+                return nil
+            case .pending, .unavailable:
+                break
+            }
+        }
+
+        if payloadHasAssistantMessage {
+            return nil
+        }
         if let fallback = parsedInput.rawFallback, !fallback.isEmpty {
             return summarizeCodexHookFailureCandidate(
                 CodexHookFailureCandidate(
@@ -14596,12 +14616,14 @@ struct CMUXCLI {
         let codexErrorInfo = codexHookStringValue(object["codex_error_info"] ?? object["codexErrorInfo"])
         let eventType = firstString(in: object, keys: ["type", "kind"])?.lowercased()
         let typedFailure = eventType == "error" || eventType == "stream_error"
+        let hasExplicitErrorField = object["error"].map { !($0 is NSNull) } ?? false
         let signal = [message, additionalDetails, codexErrorInfo]
             .compactMap { $0 }
             .joined(separator: " ")
             .lowercased()
         guard !requireFailureSignal ||
               typedFailure ||
+              hasExplicitErrorField ||
               codexErrorInfo != nil ||
               signal.contains("error") ||
               signal.contains("failed") ||
