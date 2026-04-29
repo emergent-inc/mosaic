@@ -564,6 +564,7 @@ struct WorkspaceContentView: View {
         [
             config.backgroundColor.hexString(includeAlpha: true),
             String(format: "%.4f", config.backgroundOpacity),
+            String(describing: config.backgroundBlur),
             String(format: "%.4f", config.surfaceTabBarFontSize),
             String(format: "%.4f", config.unfocusedSplitOpacity),
             config.unfocusedSplitFill?.hexString(includeAlpha: true) ?? "nil",

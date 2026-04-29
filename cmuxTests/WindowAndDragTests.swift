@@ -29,18 +29,26 @@ final class WindowGlassEffectTests: XCTestCase {
 
         WindowGlassEffect.apply(to: window, tintColor: .systemBlue)
 
-        if WindowGlassEffect.isAvailable {
-            XCTAssertFalse(window.contentView === originalContentView)
-            XCTAssertTrue(window.contentView?.subviews.contains(where: { $0 === originalContentView }) == true)
-        } else {
-            XCTAssertTrue(window.contentView === originalContentView)
-            XCTAssertTrue(originalContentView.subviews.contains(where: { $0 is NSVisualEffectView }))
-        }
+        XCTAssertTrue(window.contentView === originalContentView)
+        XCTAssertTrue(Self.windowContainsGlassBackground(window))
 
         WindowGlassEffect.remove(from: window)
 
         XCTAssertTrue(window.contentView === originalContentView)
-        XCTAssertFalse(originalContentView.subviews.contains(where: { $0 is NSVisualEffectView }))
+        XCTAssertFalse(Self.windowContainsGlassBackground(window))
+    }
+
+    private static func windowContainsGlassBackground(_ window: NSWindow) -> Bool {
+        guard let contentView = window.contentView else { return false }
+        let root = contentView.superview ?? contentView
+        return root.subviews.contains(where: isCmuxGlassBackgroundView)
+    }
+
+    private static func isCmuxGlassBackgroundView(_ view: NSView) -> Bool {
+        if view.identifier == WindowGlassEffect.backgroundViewIdentifier {
+            return true
+        }
+        return view.subviews.contains(where: isCmuxGlassBackgroundView)
     }
 }
 

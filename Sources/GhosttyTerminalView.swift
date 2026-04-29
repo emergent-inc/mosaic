@@ -160,8 +160,8 @@ func cmuxShouldUseTransparentBackgroundWindow() -> Bool {
     )
 }
 
-func cmuxShouldUseClearWindowBackground(for opacity: Double) -> Bool {
-    cmuxShouldUseTransparentBackgroundWindow() || opacity < 0.999
+func cmuxShouldUseClearWindowBackground(for opacity: Double, usesGhosttyGlassStyle: Bool = false) -> Bool {
+    cmuxShouldUseTransparentBackgroundWindow() || usesGhosttyGlassStyle || opacity < 0.999
 }
 
 private func cmuxTransparentWindowBaseColor() -> NSColor {
@@ -1498,6 +1498,7 @@ class GhosttyApp {
     private let _tickLock = NSLock()
     private(set) var defaultBackgroundColor: NSColor = .windowBackgroundColor
     private(set) var defaultBackgroundOpacity: Double = 1.0
+    private(set) var defaultBackgroundBlur: GhosttyBackgroundBlur = .disabled
     private(set) var usesHostLayerBackground = false
     private(set) var userGhosttyShellIntegrationMode: String = "detect"
     private static func resolveBackgroundLogURL(
@@ -3023,13 +3024,24 @@ class GhosttyApp {
         let opacityKey = "background-opacity"
         _ = ghostty_config_get(config, &opacity, opacityKey, UInt(opacityKey.lengthOfBytes(using: .utf8)))
         opacity = min(1.0, max(0.0, opacity))
+        let backgroundBlur = defaultBackgroundBlurValue(from: config)
         applyDefaultBackground(
             color: resolvedColor,
             opacity: opacity,
+            backgroundBlur: backgroundBlur,
             source: source,
             scope: scope,
             forceNotify: forceNotify
         )
+    }
+
+    private func defaultBackgroundBlurValue(from config: ghostty_config_t) -> GhosttyBackgroundBlur {
+        var value: Int16 = 0
+        let key = "background-blur"
+        guard ghostty_config_get(config, &value, key, UInt(key.lengthOfBytes(using: .utf8))) else {
+            return .disabled
+        }
+        return GhosttyBackgroundBlur(cValue: value)
     }
 
     func focusFollowsMouseEnabled() -> Bool {
@@ -3113,6 +3125,7 @@ class GhosttyApp {
     private func applyDefaultBackground(
         color: NSColor,
         opacity: Double,
+        backgroundBlur: GhosttyBackgroundBlur,
         source: String,
         scope: GhosttyDefaultBackgroundUpdateScope,
         forceNotify: Bool = false
@@ -3133,17 +3146,20 @@ class GhosttyApp {
 
         let previousHex = defaultBackgroundColor.hexString()
         let previousOpacity = defaultBackgroundOpacity
+        let previousBlur = defaultBackgroundBlur
         defaultBackgroundColor = color
         defaultBackgroundOpacity = opacity
+        defaultBackgroundBlur = backgroundBlur
         let hasChanged = forceNotify ||
             previousHex != defaultBackgroundColor.hexString() ||
-            abs(previousOpacity - defaultBackgroundOpacity) > 0.0001
+            abs(previousOpacity - defaultBackgroundOpacity) > 0.0001 ||
+            previousBlur != defaultBackgroundBlur
         if hasChanged {
             notifyDefaultBackgroundDidChange(source: source)
         }
         if backgroundLogEnabled {
             logBackground(
-                "default background updated source=\(source) scope=\(scope.logLabel) previousScope=\(previousScope.logLabel) previousScopeSource=\(previousScopeSource) previousColor=\(previousHex) previousOpacity=\(String(format: "%.3f", previousOpacity)) color=\(defaultBackgroundColor) opacity=\(String(format: "%.3f", defaultBackgroundOpacity)) changed=\(hasChanged) forced=\(forceNotify)"
+                "default background updated source=\(source) scope=\(scope.logLabel) previousScope=\(previousScope.logLabel) previousScopeSource=\(previousScopeSource) previousColor=\(previousHex) previousOpacity=\(String(format: "%.3f", previousOpacity)) previousBlur=\(previousBlur) color=\(defaultBackgroundColor) opacity=\(String(format: "%.3f", defaultBackgroundOpacity)) blur=\(defaultBackgroundBlur) changed=\(hasChanged) forced=\(forceNotify)"
             )
         }
     }
@@ -3378,6 +3394,7 @@ class GhosttyApp {
                 applyDefaultBackground(
                     color: resolvedColor,
                     opacity: defaultBackgroundOpacity,
+                    backgroundBlur: defaultBackgroundBlur,
                     source: "action.color_change.app",
                     scope: .app
                 )
@@ -3850,12 +3867,17 @@ class GhosttyApp {
 
     private func applyBackgroundToKeyWindow() {
         guard let window = activeMainWindow() else { return }
-        if cmuxShouldUseClearWindowBackground(for: defaultBackgroundOpacity) {
+        if cmuxShouldUseClearWindowBackground(
+            for: defaultBackgroundOpacity,
+            usesGhosttyGlassStyle: defaultBackgroundBlur.isMacOSGlassStyle
+        ) {
             window.backgroundColor = cmuxTransparentWindowBaseColor()
             window.isOpaque = false
-            applyWindowBlurIfNeeded(window)
+            if !defaultBackgroundBlur.isMacOSGlassStyle {
+                applyWindowBlurIfNeeded(window)
+            }
             if backgroundLogEnabled {
-                logBackground("applied transparent window background opacity=\(String(format: "%.3f", defaultBackgroundOpacity))")
+                logBackground("applied transparent window background opacity=\(String(format: "%.3f", defaultBackgroundOpacity)) blur=\(defaultBackgroundBlur)")
             }
         } else {
             let color = defaultBackgroundColor.withAlphaComponent(defaultBackgroundOpacity)
@@ -6016,16 +6038,23 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
         applySurfaceBackground()
         let color = effectiveBackgroundColor()
-        if cmuxShouldUseClearWindowBackground(for: color.alphaComponent) {
+        let usesGhosttyGlassStyle = GhosttyApp.shared.defaultBackgroundBlur.isMacOSGlassStyle
+        let shouldUseClearWindowBackground = cmuxShouldUseClearWindowBackground(
+            for: color.alphaComponent,
+            usesGhosttyGlassStyle: usesGhosttyGlassStyle
+        )
+        if shouldUseClearWindowBackground {
             window.backgroundColor = cmuxTransparentWindowBaseColor()
             window.isOpaque = false
-            GhosttyApp.shared.applyWindowBlurIfNeeded(window)
+            if !usesGhosttyGlassStyle {
+                GhosttyApp.shared.applyWindowBlurIfNeeded(window)
+            }
         } else {
             window.backgroundColor = color
             window.isOpaque = color.alphaComponent >= 1.0
         }
         if GhosttyApp.shared.backgroundLogEnabled {
-            let signature = "\(cmuxShouldUseClearWindowBackground(for: color.alphaComponent) ? "transparent" : color.hexString()):\(String(format: "%.3f", color.alphaComponent))"
+            let signature = "\(shouldUseClearWindowBackground ? "transparent" : color.hexString()):\(String(format: "%.3f", color.alphaComponent)):\(GhosttyApp.shared.defaultBackgroundBlur)"
             if signature != lastLoggedWindowBackgroundSignature {
                 lastLoggedWindowBackgroundSignature = signature
                 let hasOverride = backgroundColor != nil
@@ -6033,7 +6062,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 let defaultHex = GhosttyApp.shared.defaultBackgroundColor.hexString()
                 let source = hasOverride ? "surfaceOverride" : "defaultBackground"
                 GhosttyApp.shared.logBackground(
-                    "window background applied tab=\(tabId?.uuidString ?? "unknown") surface=\(terminalSurface?.id.uuidString ?? "unknown") source=\(source) override=\(overrideHex) default=\(defaultHex) transparent=\(cmuxShouldUseClearWindowBackground(for: color.alphaComponent)) color=\(color.hexString()) opacity=\(String(format: "%.3f", color.alphaComponent))"
+                    "window background applied tab=\(tabId?.uuidString ?? "unknown") surface=\(terminalSurface?.id.uuidString ?? "unknown") source=\(source) override=\(overrideHex) default=\(defaultHex) transparent=\(shouldUseClearWindowBackground) color=\(color.hexString()) opacity=\(String(format: "%.3f", color.alphaComponent)) blur=\(GhosttyApp.shared.defaultBackgroundBlur)"
                 )
             }
         }

@@ -3745,7 +3745,11 @@ struct ContentView: View {
 
             if shouldApplyWindowGlass {
                 // Apply liquid glass effect to the window with tint from settings
-                WindowGlassEffect.apply(to: window, tintColor: appearance.windowGlassSettings.tintColor)
+                WindowGlassEffect.apply(
+                    to: window,
+                    tintColor: appearance.windowGlassSettings.tintColor,
+                    style: appearance.windowGlassSettings.style
+                )
             } else {
                 WindowGlassEffect.remove(from: window)
             }
@@ -3755,7 +3759,8 @@ struct ContentView: View {
             // material otherwise blends a lighter strip over the terminal area.
             syncNativeTitlebarBackdrop(
                 in: window,
-                enabled: true
+                enabled: true,
+                usesGlassStyle: shouldApplyWindowGlass
             )
             AppDelegate.shared?.registerMainWindow(
                 window,
@@ -4038,7 +4043,8 @@ struct ContentView: View {
 
     private func syncNativeTitlebarBackdrop(
         in window: NSWindow,
-        enabled: Bool
+        enabled: Bool,
+        usesGlassStyle: Bool
     ) {
         guard let titlebarContainer = nativeTitlebarContainer(in: window) else { return }
         let titlebarView = firstNativeDescendant(
@@ -4070,10 +4076,10 @@ struct ContentView: View {
         }
 
         titlebarContainer.wantsLayer = true
-        titlebarContainer.layer?.backgroundColor = nil
+        titlebarContainer.layer?.backgroundColor = usesGlassStyle ? NSColor.clear.cgColor : nil
         titlebarContainer.layer?.isOpaque = false
         titlebarView?.wantsLayer = true
-        titlebarView?.layer?.backgroundColor = nil
+        titlebarView?.layer?.backgroundColor = usesGlassStyle ? NSColor.clear.cgColor : nil
         titlebarView?.layer?.isOpaque = false
         for titlebarBackgroundView in titlebarBackgroundViews {
             titlebarBackgroundView.isHidden = true
