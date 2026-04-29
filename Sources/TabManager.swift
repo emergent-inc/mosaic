@@ -300,18 +300,6 @@ enum WorkspaceTabColorSettings {
         effectivePaletteMap(defaults: defaults)[name]
     }
 
-    static func resolvedColorHex(_ raw: String, defaults: UserDefaults = .standard) -> String? {
-        if let normalized = normalizedHex(raw) {
-            return normalized
-        }
-
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return effectivePaletteMap(defaults: defaults)
-            .first { name, _ in name.caseInsensitiveCompare(trimmed) == .orderedSame }?
-            .value
-    }
-
     static func setColor(named name: String, hex: String, defaults: UserDefaults = .standard) {
         guard let normalizedName = normalizedColorName(name),
               let normalizedHex = normalizedHex(hex) else { return }
