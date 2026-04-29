@@ -13301,15 +13301,22 @@ struct CMUXCLI {
             ]
         )
 
-        // Fire-and-forget Feed telemetry push so the Feed's "All" view
-        // shows Claude session/prompt/stop activity even when there's
-        // no actionable permission/plan/question event.
-        sendFeedTelemetry(
-            client: client,
-            source: "claude",
-            subcommand: subcommand,
-            parsedInput: parsedInput
-        )
+        var didSendFeedTelemetry = false
+        func sendClaudeFeedTelemetry(workspaceId: String? = nil) {
+            didSendFeedTelemetry = true
+            sendFeedTelemetry(
+                client: client,
+                source: "claude",
+                subcommand: subcommand,
+                parsedInput: parsedInput,
+                workspaceId: workspaceId ?? workspaceArg
+            )
+        }
+        defer {
+            if !didSendFeedTelemetry {
+                sendClaudeFeedTelemetry()
+            }
+        }
 
         switch subcommand {
         case "session-start", "active":
@@ -13325,6 +13332,7 @@ struct CMUXCLI {
                 workspaceId: workspaceId,
                 client: client
             )
+            sendClaudeFeedTelemetry(workspaceId: workspaceId)
             let claudePid: Int? = {
                 guard let raw = ProcessInfo.processInfo.environment["CMUX_CLAUDE_PID"]?
                     .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -13379,6 +13387,7 @@ struct CMUXCLI {
                     workspaceId: workspaceId,
                     client: client
                 )
+                sendClaudeFeedTelemetry(workspaceId: workspaceId)
 
                 // Update session with transcript summary and send completion notification.
                 let completion = summarizeClaudeHookStop(
@@ -13429,13 +13438,8 @@ struct CMUXCLI {
                 fallback: workspaceArg,
                 client: client
             )
+            sendClaudeFeedTelemetry(workspaceId: workspaceId)
             _ = try sendV1Command("clear_notifications --tab=\(workspaceId)", client: client)
-            sendWorkspacePromptSubmit(
-                client: client,
-                workspaceId: workspaceId,
-                source: "claude",
-                parsedInput: parsedInput
-            )
             try setClaudeStatus(
                 client: client,
                 workspaceId: workspaceId,
@@ -13455,6 +13459,7 @@ struct CMUXCLI {
                 fallback: workspaceArg,
                 client: client
             )
+            sendClaudeFeedTelemetry(workspaceId: workspaceId)
             if let mappedSession,
                let savedBody = mappedSession.lastBody, !savedBody.isEmpty,
                summary.body.contains("needs your attention") || summary.body.contains("needs your input") {
@@ -13522,6 +13527,7 @@ struct CMUXCLI {
             )
             if let consumedSession {
                 let workspaceId = consumedSession.workspaceId
+                sendClaudeFeedTelemetry(workspaceId: workspaceId)
                 _ = try? clearClaudeStatus(client: client, workspaceId: workspaceId)
                 _ = try? sendV1Command("clear_agent_pid claude_code --tab=\(workspaceId)", client: client)
                 _ = try? sendV1Command("clear_notifications --tab=\(workspaceId)", client: client)
@@ -13538,6 +13544,7 @@ struct CMUXCLI {
                 fallback: workspaceArg,
                 client: client
             )
+            sendClaudeFeedTelemetry(workspaceId: workspaceId)
             let claudePid = mappedSession?.pid
 
             // AskUserQuestion means Claude is about to ask the user something.
@@ -15881,15 +15888,6 @@ export default CMUXSessionRestore;
         let rawInput = String(data: FileHandle.standardInput.readDataToEndOfFile(), encoding: .utf8) ?? ""
         let input = parseClaudeHookInput(rawInput: rawInput)
 
-        // Feed telemetry so session events from every agent show up in
-        // the Feed "All" view.
-        sendFeedTelemetry(
-            client: client,
-            source: def.name,
-            subcommand: subcommand,
-            parsedInput: input
-        )
-
         let store = ClaudeHookSessionStore(
             processEnv: env.merging(
                 ["CMUX_CLAUDE_HOOK_STATE_PATH": agentHookStatePath(sessionStoreSuffix: def.sessionStoreSuffix, env: env)],
@@ -15900,11 +15898,23 @@ export default CMUXSessionRestore;
         let sessionId = input.sessionId ?? env["CMUX_SURFACE_ID"] ?? ""
         let action = Self.subcommandActions[subcommand] ?? .noop
         let pidKey = "\(def.statusKey).\(sessionId.isEmpty ? "default" : sessionId)"
+        var didSendFeedTelemetry = false
+        func sendAgentFeedTelemetry(workspaceId: String? = nil) {
+            didSendFeedTelemetry = true
+            sendFeedTelemetry(
+                client: client,
+                source: def.name,
+                subcommand: subcommand,
+                parsedInput: input,
+                workspaceId: workspaceId ?? workspaceArg
+            )
+        }
 
         switch action {
         case .sessionStart:
             let workspaceId = try resolvePreferredWorkspaceIdForClaudeHook(preferred: nil, fallback: workspaceArg, client: client)
             let surfaceId = try resolvePreferredSurfaceIdForClaudeHook(preferred: nil, fallback: surfaceArg, workspaceId: workspaceId, client: client)
+            sendAgentFeedTelemetry(workspaceId: workspaceId)
             let pid = inferredCodexAgentPID()
             let launchCommand = agentLaunchCommandFromEnvironment(
                 env,
@@ -15929,6 +15939,7 @@ export default CMUXSessionRestore;
         case .promptSubmit:
             let mapped = sessionId.isEmpty ? nil : (try? store.lookup(sessionId: sessionId))
             let workspaceId = try resolvePreferredWorkspaceIdForClaudeHook(preferred: mapped?.workspaceId, fallback: workspaceArg, client: client)
+            sendAgentFeedTelemetry(workspaceId: workspaceId)
             let pid = mapped?.pid ?? inferredCodexAgentPID()
             let launchCommand = agentLaunchCommandFromEnvironment(
                 env,
@@ -15950,12 +15961,6 @@ export default CMUXSessionRestore;
                 _ = try? sendV1Command("set_agent_pid \(pidKey) \(pid) --tab=\(workspaceId)", client: client)
             }
             _ = try? sendV1Command("clear_notifications --tab=\(workspaceId)", client: client)
-            sendWorkspacePromptSubmit(
-                client: client,
-                workspaceId: workspaceId,
-                source: def.name,
-                parsedInput: input
-            )
             _ = try sendV1Command("set_status \(def.statusKey) Running --icon=bolt.fill --color=#4C8DFF --tab=\(workspaceId)", client: client)
 
         case .stop:
@@ -15963,6 +15968,7 @@ export default CMUXSessionRestore;
                 let mapped = sessionId.isEmpty ? nil : (try? store.lookup(sessionId: sessionId))
                 let workspaceId = try resolvePreferredWorkspaceIdForClaudeHook(preferred: mapped?.workspaceId, fallback: workspaceArg, client: client)
                 let surfaceId = try resolvePreferredSurfaceIdForClaudeHook(preferred: mapped?.surfaceId, fallback: surfaceArg, workspaceId: workspaceId, client: client)
+                sendAgentFeedTelemetry(workspaceId: workspaceId)
                 let pid = mapped?.pid ?? inferredCodexAgentPID()
 
                 let lastMsg = input.object?["last_assistant_message"] as? String
@@ -16007,12 +16013,17 @@ export default CMUXSessionRestore;
 
         case .sessionEnd:
             if let mapped = try? store.consume(sessionId: sessionId, workspaceId: nil, surfaceId: nil) {
+                sendAgentFeedTelemetry(workspaceId: mapped.workspaceId)
                 _ = try? sendV1Command("clear_status \(def.statusKey) --tab=\(mapped.workspaceId)", client: client)
                 _ = try? sendV1Command("clear_agent_pid \(pidKey) --tab=\(mapped.workspaceId)", client: client)
             }
 
         case .noop:
             break
+        }
+
+        if !didSendFeedTelemetry {
+            sendAgentFeedTelemetry()
         }
 
         print("{}")
@@ -16222,26 +16233,6 @@ export default CMUXSessionRestore;
 
     // MARK: - Feed telemetry helper
 
-    private func sendWorkspacePromptSubmit(
-        client: SocketClient,
-        workspaceId: String,
-        source: String,
-        parsedInput: ClaudeHookParsedInput
-    ) {
-        var params: [String: Any] = [
-            "workspace_id": workspaceId,
-            "source": source,
-        ]
-        if let prompt = feedPromptText(from: parsedInput.object) ?? parsedInput.rawFallback {
-            params["message"] = prompt
-        }
-        _ = try? client.sendV2(
-            method: "workspace.prompt_submit",
-            params: params,
-            responseTimeout: 1
-        )
-    }
-
     /// Non-blocking `feed.push` call used by the per-agent hook handlers
     /// so session-start / prompt-submit / stop events show up in Feed's
     /// "All" view even when no permission/plan/question event fires.
@@ -16250,10 +16241,14 @@ export default CMUXSessionRestore;
         client: SocketClient,
         source: String,
         subcommand: String,
-        parsedInput: ClaudeHookParsedInput
+        parsedInput: ClaudeHookParsedInput,
+        workspaceId: String? = nil
     ) {
         let hookEventName = Self.feedEventName(forClaudeSubcommand: subcommand)
         guard !hookEventName.isEmpty else { return }
+        let promptText = hookEventName == "UserPromptSubmit"
+            ? (feedPromptText(from: parsedInput.object) ?? parsedInput.rawFallback)
+            : nil
         let sessionId = parsedInput.sessionId ?? UUID().uuidString
         var event: [String: Any] = [
             "session_id": "\(source)-\(sessionId)",
@@ -16261,6 +16256,9 @@ export default CMUXSessionRestore;
             "_source": source,
             "_ppid": ProcessInfo.processInfo.processIdentifier,
         ]
+        if let workspaceId = feedWorkspaceId(rawObject: parsedInput.object, fallback: workspaceId) {
+            event["workspace_id"] = workspaceId
+        }
         if let cwd = parsedInput.cwd { event["cwd"] = cwd }
         let toolName = parsedInput.object?["tool_name"] as? String
         if let toolName, !toolName.isEmpty {
@@ -16268,9 +16266,6 @@ export default CMUXSessionRestore;
         }
         if let toolInput = parsedInput.object?["tool_input"] {
             event["tool_input"] = toolInput
-        } else if hookEventName == "UserPromptSubmit",
-                  let prompt = feedPromptText(from: parsedInput.object) {
-            event["tool_input"] = ["prompt": prompt]
         }
         if let context = feedContextForEvent(
             source: source,
@@ -16282,6 +16277,11 @@ export default CMUXSessionRestore;
         ) {
             event["context"] = context
         }
+        enrichUserPromptSubmitFeedEvent(
+            &event,
+            hookEventName: hookEventName,
+            promptText: promptText
+        )
         event["_opencode_request_id"] = "\(source)-\(sessionId)-\(hookEventName)-\(Int(Date().timeIntervalSince1970 * 1000))"
 
         let frame: [String: Any] = [
@@ -16380,6 +16380,43 @@ export default CMUXSessionRestore;
             }
         }
         return nil
+    }
+
+    private func feedWorkspaceId(rawObject: [String: Any]?, fallback: String?) -> String? {
+        if let rawObject,
+           let direct = firstString(
+                in: rawObject,
+                keys: ["workspace_id", "workspaceId", "workspace_ref", "workspaceRef"]
+           ) {
+            return direct
+        }
+        guard let fallback else { return nil }
+        let trimmed = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func enrichUserPromptSubmitFeedEvent(
+        _ event: inout [String: Any],
+        hookEventName: String,
+        promptText: String?
+    ) {
+        guard hookEventName == "UserPromptSubmit",
+              let promptText else { return }
+        if event["tool_input"] == nil {
+            event["tool_input"] = ["prompt": promptText]
+        }
+        var context = event["context"] as? [String: Any] ?? [:]
+        if context["lastUserMessage"] == nil {
+            setFeedContext(
+                &context,
+                key: "lastUserMessage",
+                value: promptText,
+                maxLength: 1_000
+            )
+        }
+        if !context.isEmpty {
+            event["context"] = context
+        }
     }
 
     private func feedContext(from raw: [String: Any]) -> [String: Any] {
@@ -16897,8 +16934,12 @@ export default CMUXSessionRestore;
             "_source": source,
             "_ppid": agentPid,
         ]
+        if let workspaceId = feedWorkspaceId(rawObject: stdinObj, fallback: env["CMUX_WORKSPACE_ID"]) {
+            eventDict["workspace_id"] = workspaceId
+        }
         if let cwd = stdinObj["cwd"] as? String { eventDict["cwd"] = cwd }
         if !toolName.isEmpty { eventDict["tool_name"] = toolName }
+        let promptText = hookEventName == "UserPromptSubmit" ? feedPromptText(from: stdinObj) : nil
         if let toolInput = stdinObj["tool_input"] {
             eventDict["tool_input"] = toolInput
         }
@@ -16912,6 +16953,11 @@ export default CMUXSessionRestore;
         ) {
             eventDict["context"] = context
         }
+        enrichUserPromptSubmitFeedEvent(
+            &eventDict,
+            hookEventName: hookEventName,
+            promptText: promptText
+        )
         let requestId = stdinObj["_opencode_request_id"] as? String
             ?? firstString(in: stdinObj, keys: ["request_id", "tool_use_id", "toolUseID"])
             ?? "\(source)-\(sessionId)-\(rawEvent)-\(toolName)-\(Int(Date().timeIntervalSince1970 * 1000))"

@@ -7483,11 +7483,30 @@ class TerminalController {
             )
         }
 
+        v2ApplyPromptSubmitSideEffects(for: event)
+
         let result = FeedCoordinator.shared.ingestBlocking(
             event: event,
             waitTimeout: waitTimeout
         )
         return .ok(FeedSocketEncoding.payload(for: result))
+    }
+
+    private func v2ApplyPromptSubmitSideEffects(for event: WorkstreamEvent) {
+        guard event.hookEventName == .userPromptSubmit,
+              let rawWorkspaceId = event.workspaceId,
+              let workspaceId = v2UUID(["workspace_id": rawWorkspaceId], "workspace_id"),
+              let tabManager = v2ResolveTabManager(params: ["workspace_id": rawWorkspaceId])
+        else { return }
+
+        let iMessageModeEnabled = IMessageModeSettings.isEnabled()
+        v2MainSync {
+            _ = tabManager.handlePromptSubmit(
+                workspaceId: workspaceId,
+                message: event.submittedPromptMessage,
+                iMessageModeEnabled: iMessageModeEnabled
+            )
+        }
     }
 
     private func v2FeedPermissionReply(params: [String: Any]) -> V2CallResult {
