@@ -6059,7 +6059,7 @@ struct SettingsView: View {
                         SettingsCardRow(
                             configurationReview: .json("app.iMessageMode"),
                             String(localized: "settings.app.iMessageMode", defaultValue: "iMessage Mode"),
-                            subtitle: String(localized: "settings.app.iMessageMode.subtitle", defaultValue: "Move a workspace to the top and show the submitted message when you send a Claude or Codex prompt.")
+                            subtitle: String(localized: "settings.app.iMessageMode.subtitle", defaultValue: "Move a workspace to the top and show the submitted message when you send an agent prompt.")
                         ) {
                             Toggle("", isOn: $iMessageMode)
                                 .labelsHidden()
