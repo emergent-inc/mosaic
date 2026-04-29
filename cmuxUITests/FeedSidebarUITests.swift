@@ -33,19 +33,10 @@ final class FeedSidebarUITests: XCTestCase {
             "cmux failed to launch for Feed UI test"
         )
 
-        // Wait for the socket to come up.
-        let socketExists = expectation(description: "socket exists")
-        DispatchQueue.global().async {
-            let deadline = Date().addingTimeInterval(10)
-            while Date() < deadline {
-                if FileManager.default.fileExists(atPath: self.socketPath) {
-                    socketExists.fulfill()
-                    return
-                }
-                Thread.sleep(forTimeInterval: 0.1)
-            }
-        }
-        wait(for: [socketExists], timeout: 12)
+        XCTAssertTrue(
+            waitForSocketPong(timeout: 12),
+            "Expected control socket at \(socketPath)"
+        )
 
         // Reveal the right sidebar and toggle to Feed.
         var feedButton = waitForButton(
@@ -136,7 +127,11 @@ final class FeedSidebarUITests: XCTestCase {
                     ],
                     "wait_timeout_seconds": waitSeconds,
                 ]
-                let respObj = try self.sendFrame(method: "feed.push", params: params)
+                let respObj = try self.sendFrame(
+                    method: "feed.push",
+                    params: params,
+                    responseTimeout: waitSeconds + 5
+                )
                 guard (respObj["ok"] as? Bool) == true,
                       let result = respObj["result"] as? [String: Any],
                       let status = result["status"] as? String
@@ -174,7 +169,22 @@ final class FeedSidebarUITests: XCTestCase {
         return nil
     }
 
-    private func sendFrame(method: String, params: [String: Any]) throws -> [String: Any] {
+    private func waitForSocketPong(timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if (try? sendLine("ping\n", responseTimeout: 1)) == "PONG" {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return false
+    }
+
+    private func sendFrame(
+        method: String,
+        params: [String: Any],
+        responseTimeout: TimeInterval = 3
+    ) throws -> [String: Any] {
         let frame: [String: Any] = [
             "id": UUID().uuidString,
             "method": method,
@@ -182,7 +192,7 @@ final class FeedSidebarUITests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: frame)
         let line = (String(data: data, encoding: .utf8) ?? "{}") + "\n"
-        let response = try sendLine(line)
+        let response = try sendLine(line, responseTimeout: responseTimeout)
         guard let respData = response.data(using: .utf8),
               let respObj = try JSONSerialization.jsonObject(with: respData) as? [String: Any]
         else {
@@ -195,18 +205,7 @@ final class FeedSidebarUITests: XCTestCase {
         return respObj
     }
 
-    private func sendLine(_ line: String) throws -> String {
-        do {
-            return try sendLineViaDarwinSocket(line)
-        } catch {
-            if let response = sendLineViaNetcat(line) {
-                return response
-            }
-            throw error
-        }
-    }
-
-    private func sendLineViaDarwinSocket(_ line: String) throws -> String {
+    private func sendLine(_ line: String, responseTimeout: TimeInterval) throws -> String {
         let sockFd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard sockFd != -1 else {
             throw NSError(
@@ -216,6 +215,19 @@ final class FeedSidebarUITests: XCTestCase {
             )
         }
         defer { close(sockFd) }
+
+#if os(macOS)
+        var noSigPipe: Int32 = 1
+        _ = withUnsafePointer(to: &noSigPipe) { ptr in
+            setsockopt(
+                sockFd,
+                SOL_SOCKET,
+                SO_NOSIGPIPE,
+                ptr,
+                socklen_t(MemoryLayout<Int32>.size)
+            )
+        }
+#endif
 
         var addr = sockaddr_un()
         memset(&addr, 0, MemoryLayout<sockaddr_un>.size)
@@ -256,57 +268,50 @@ final class FeedSidebarUITests: XCTestCase {
             )
         }
 
-        let data = line.data(using: .utf8)!
-        _ = data.withUnsafeBytes { bytes in
-            send(sockFd, bytes.baseAddress, data.count, 0)
+        let wrote = line.withCString { cString in
+            var remaining = strlen(cString)
+            var pointer = UnsafeRawPointer(cString)
+            while remaining > 0 {
+                let written = write(sockFd, pointer, remaining)
+                if written <= 0 { return false }
+                remaining -= written
+                pointer = pointer.advanced(by: written)
+            }
+            return true
+        }
+        guard wrote else {
+            throw NSError(
+                domain: "FeedSidebarUITests",
+                code: 6,
+                userInfo: [NSLocalizedDescriptionKey: "write() failed errno=\(errno)"]
+            )
         }
 
         // Read until newline or EOF.
-        var buffer = Data()
+        let deadline = Date().addingTimeInterval(responseTimeout)
         var chunk = [UInt8](repeating: 0, count: 4096)
-        while true {
-            let n = recv(sockFd, &chunk, chunk.count, 0)
+        var accumulator = ""
+        while Date() < deadline {
+            var pollDescriptor = pollfd(fd: sockFd, events: Int16(POLLIN), revents: 0)
+            let ready = poll(&pollDescriptor, 1, 100)
+            if ready < 0 {
+                throw NSError(
+                    domain: "FeedSidebarUITests",
+                    code: 7,
+                    userInfo: [NSLocalizedDescriptionKey: "poll() failed errno=\(errno)"]
+                )
+            }
+            if ready == 0 { continue }
+            let n = read(sockFd, &chunk, chunk.count)
             if n <= 0 { break }
-            buffer.append(chunk, count: n)
-            if chunk.prefix(n).contains(0x0A) { break }
+            if let text = String(bytes: chunk[0..<n], encoding: .utf8) {
+                accumulator.append(text)
+                if let newline = accumulator.firstIndex(of: "\n") {
+                    return String(accumulator[..<newline])
+                }
+            }
         }
-        return String(data: buffer, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-
-    private func sendLineViaNetcat(_ line: String) -> String? {
-        let nc = "/usr/bin/nc"
-        guard FileManager.default.isExecutableFile(atPath: nc) else { return nil }
-
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: nc)
-        proc.arguments = ["-U", socketPath, "-w", "3"]
-
-        let inPipe = Pipe()
-        let outPipe = Pipe()
-        proc.standardInput = inPipe
-        proc.standardOutput = outPipe
-        proc.standardError = Pipe()
-
-        do {
-            try proc.run()
-        } catch {
-            return nil
-        }
-
-        if let data = line.data(using: .utf8) {
-            inPipe.fileHandleForWriting.write(data)
-        }
-        try? inPipe.fileHandleForWriting.close()
-        proc.waitUntilExit()
-
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let outStr = String(data: outData, encoding: .utf8) else { return nil }
-        if let first = outStr.split(separator: "\n", maxSplits: 1).first {
-            return String(first).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        let trimmed = outStr.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        return accumulator.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func removeSocketFile() {
