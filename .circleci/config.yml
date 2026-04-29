@@ -1,0 +1,432 @@
+version: 2.1
+
+executors:
+  linux-python-node:
+    docker:
+      - image: cimg/python:3.12-node
+    resource_class: medium
+
+  linux-go:
+    docker:
+      - image: cimg/go:1.22
+    resource_class: medium
+
+  macos-xcode:
+    macos:
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
+    shell: /bin/bash --login -eo pipefail
+
+commands:
+  checkout-source:
+    parameters:
+      submodules:
+        type: boolean
+        default: false
+    steps:
+      - checkout
+      - when:
+          condition: << parameters.submodules >>
+          steps:
+            - run:
+                name: Initialize submodules
+                command: |
+                  git submodule sync --recursive
+                  git submodule update --init --recursive
+
+  install-bun:
+    steps:
+      - run:
+          name: Install Bun
+          command: |
+            curl -fsSL https://bun.sh/install | bash
+            {
+              echo 'export BUN_INSTALL="$HOME/.bun"'
+              echo 'export PATH="$BUN_INSTALL/bin:$PATH"'
+            } >> "$BASH_ENV"
+            source "$BASH_ENV"
+            bun --version
+
+  install-zig:
+    steps:
+      - run:
+          name: Install zig
+          command: |
+            ZIG_REQUIRED="0.15.2"
+            if command -v zig >/dev/null 2>&1 && zig version 2>/dev/null | grep -q "^${ZIG_REQUIRED}"; then
+              echo "zig ${ZIG_REQUIRED} already installed"
+              exit 0
+            fi
+
+            case "$(uname -m)" in
+              arm64) ZIG_ARCH="aarch64" ;;
+              x86_64) ZIG_ARCH="x86_64" ;;
+              *)
+                echo "Unsupported macOS architecture: $(uname -m)" >&2
+                exit 1
+                ;;
+            esac
+
+            echo "Installing zig ${ZIG_REQUIRED} from tarball"
+            curl -fSL "https://ziglang.org/download/${ZIG_REQUIRED}/zig-${ZIG_ARCH}-macos-${ZIG_REQUIRED}.tar.xz" -o /tmp/zig.tar.xz
+            tar xf /tmp/zig.tar.xz -C /tmp
+            sudo mkdir -p /usr/local/bin /usr/local/lib
+            sudo cp -f "/tmp/zig-${ZIG_ARCH}-macos-${ZIG_REQUIRED}/zig" /usr/local/bin/zig
+            sudo cp -rf "/tmp/zig-${ZIG_ARCH}-macos-${ZIG_REQUIRED}/lib" /usr/local/lib/zig
+            zig version
+
+  print-xcode:
+    steps:
+      - run:
+          name: Print Xcode environment
+          command: |
+            xcodebuild -version
+            xcrun --sdk macosx --show-sdk-path
+            sw_vers
+
+  restore-swift-package-cache:
+    parameters:
+      prefix:
+        type: string
+    steps:
+      - restore_cache:
+          keys:
+            - v1-spm-<< parameters.prefix >>-{{ checksum "GhosttyTabs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+            - v1-spm-<< parameters.prefix >>-
+
+  save-swift-package-cache:
+    parameters:
+      prefix:
+        type: string
+      path:
+        type: string
+        default: .ci-source-packages
+    steps:
+      - save_cache:
+          key: v1-spm-<< parameters.prefix >>-{{ checksum "GhosttyTabs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+          paths:
+            - << parameters.path >>
+
+  restore-zig-cache:
+    steps:
+      - restore_cache:
+          keys:
+            - v1-zig-{{ checksum "ghostty/build.zig.zon" }}-{{ checksum "ghostty/build.zig.zon.json" }}
+            - v1-zig-
+
+  save-zig-cache:
+    steps:
+      - save_cache:
+          key: v1-zig-{{ checksum "ghostty/build.zig.zon" }}-{{ checksum "ghostty/build.zig.zon.json" }}
+          paths:
+            - ~/.cache/zig
+
+  resolve-swift-packages:
+    parameters:
+      scheme:
+        type: string
+      source-packages-dir:
+        type: string
+        default: .ci-source-packages
+    steps:
+      - run:
+          name: Resolve Swift packages
+          command: |
+            SOURCE_PACKAGES_DIR="$PWD/<< parameters.source-packages-dir >>"
+            mkdir -p "$SOURCE_PACKAGES_DIR"
+
+            for attempt in 1 2 3; do
+              if xcodebuild -project GhosttyTabs.xcodeproj -scheme << parameters.scheme >> -configuration Debug \
+                -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
+                -resolvePackageDependencies; then
+                exit 0
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "Failed to resolve Swift packages after 3 attempts" >&2
+                exit 1
+              fi
+              echo "Package resolution failed on attempt $attempt, retrying..."
+              sleep $((attempt * 5))
+            done
+
+jobs:
+  workflow-guard-tests:
+    executor: linux-python-node
+    steps:
+      - checkout-source
+      - run:
+          name: Validate workflow guard tests
+          command: |
+            ./tests/test_ci_self_hosted_guard.sh
+            ./tests/test_ci_create_dmg_pinned.sh
+            ./tests/test_ci_unit_test_spm_retry.sh
+            ./tests/test_ci_scheme_testaction_debug.sh
+            ./tests/test_ci_ghosttykit_checksum_verification.sh
+            node scripts/release_asset_guard.test.js
+            ./tests/test_ci_ghosttykit_checksum_present.sh
+            ./tests/test_ci_swift_warning_budget.sh
+            ./tests/test_ci_swift_file_length_budget.sh
+            python3 scripts/swift_file_length_budget.py --budget .github/swift-file-length-budget.tsv
+
+  remote-daemon-tests:
+    executor: linux-go
+    steps:
+      - checkout-source
+      - restore_cache:
+          keys:
+            - v1-go-mod-{{ checksum "daemon/remote/go.sum" }}
+            - v1-go-mod-
+      - run:
+          name: Run remote daemon tests
+          command: |
+            cd daemon/remote
+            go test ./...
+      - run:
+          name: Validate remote daemon release assets
+          command: ./tests/test_remote_daemon_release_assets.sh
+      - save_cache:
+          key: v1-go-mod-{{ checksum "daemon/remote/go.sum" }}
+          paths:
+            - ~/go/pkg/mod
+
+  web-typecheck:
+    executor: linux-python-node
+    steps:
+      - checkout-source
+      - install-bun
+      - restore_cache:
+          keys:
+            - v1-web-bun-{{ checksum "web/bun.lock" }}
+            - v1-web-bun-
+      - run:
+          name: Install web dependencies
+          command: |
+            cd web
+            bun install --frozen-lockfile
+      - run:
+          name: Typecheck web
+          command: |
+            cd web
+            bun tsc --noEmit
+      - run:
+          name: Run web tests
+          command: |
+            cd web
+            bun test
+      - save_cache:
+          key: v1-web-bun-{{ checksum "web/bun.lock" }}
+          paths:
+            - ~/.bun/install/cache
+            - web/node_modules
+
+  web-db-migrations:
+    docker:
+      - image: cimg/python:3.12-node
+      - image: postgres:16-alpine
+        environment:
+          POSTGRES_DB: cmux_test
+          POSTGRES_PASSWORD: cmux
+          POSTGRES_USER: cmux
+    resource_class: medium
+    steps:
+      - checkout-source
+      - install-bun
+      - run:
+          name: Install PostgreSQL client
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+      - restore_cache:
+          keys:
+            - v1-web-bun-{{ checksum "web/bun.lock" }}
+            - v1-web-bun-
+      - run:
+          name: Install web dependencies
+          command: |
+            cd web
+            bun install --frozen-lockfile
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            for attempt in $(seq 1 60); do
+              if pg_isready -h localhost -p 5432 -U cmux -d cmux_test; then
+                exit 0
+              fi
+              echo "PostgreSQL not ready on attempt $attempt"
+              sleep 1
+            done
+            echo "PostgreSQL did not become ready" >&2
+            exit 1
+      - run:
+          name: Apply migrations twice
+          environment:
+            DATABASE_URL: postgres://cmux:cmux@localhost:5432/cmux_test
+            DIRECT_DATABASE_URL: postgres://cmux:cmux@localhost:5432/cmux_test
+          command: |
+            cd web
+            bunx drizzle-kit migrate --config drizzle.config.ts
+            bunx drizzle-kit migrate --config drizzle.config.ts
+      - run:
+          name: Run database behavior tests
+          environment:
+            CMUX_DB_TEST: "1"
+            DATABASE_URL: postgres://cmux:cmux@localhost:5432/cmux_test
+            DIRECT_DATABASE_URL: postgres://cmux:cmux@localhost:5432/cmux_test
+          command: |
+            cd web
+            bun test tests/db-schema.test.ts
+            bun test tests/drizzle-effect.test.ts
+            bun test tests/vm-db-read-model.test.ts
+      - save_cache:
+          key: v1-web-bun-{{ checksum "web/bun.lock" }}
+          paths:
+            - ~/.bun/install/cache
+            - web/node_modules
+
+  macos-unit-tests:
+    executor: macos-xcode
+    steps:
+      - checkout-source:
+          submodules: true
+      - print-xcode
+      - restore-swift-package-cache:
+          prefix: unit
+      - restore-zig-cache
+      - run:
+          name: Download pre-built GhosttyKit.xcframework
+          command: ./scripts/download-prebuilt-ghosttykit.sh
+      - install-zig
+      - resolve-swift-packages:
+          scheme: cmux-unit
+      - run:
+          name: Run unit tests
+          command: |
+            SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
+            run_unit_tests() {
+              xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux-unit -configuration Debug \
+                -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
+                -disableAutomaticPackageResolution \
+                -destination "platform=macOS" \
+                -skip-testing:cmuxTests/AppDelegateShortcutRoutingTests/testCmdWClosesWindowWhenClosingLastSurfaceInLastWorkspace \
+                test 2>&1
+            }
+
+            set +e
+            run_unit_tests | tee /tmp/test-output.txt
+            EXIT_CODE=${PIPESTATUS[0]}
+            OUTPUT=$(cat /tmp/test-output.txt)
+            set -e
+
+            if [ "$EXIT_CODE" -ne 0 ] && echo "$OUTPUT" | grep -q "Could not resolve package dependencies"; then
+              echo "SwiftPM package resolution failed, clearing caches and retrying once"
+              rm -rf ~/Library/Caches/org.swift.swiftpm
+              mkdir -p ~/Library/Caches/org.swift.swiftpm
+              rm -rf ~/Library/Developer/Xcode/DerivedData/GhosttyTabs-*
+              set +e
+              run_unit_tests | tee /tmp/test-output.txt
+              EXIT_CODE=${PIPESTATUS[0]}
+              OUTPUT=$(cat /tmp/test-output.txt)
+              set -e
+            fi
+
+            if [ "$EXIT_CODE" -ne 0 ]; then
+              SUMMARY=$(echo "$OUTPUT" | grep "Executed.*tests.*with.*failures" | tail -1)
+              if echo "$SUMMARY" | grep -q "(0 unexpected)"; then
+                echo "All failures are expected, treating as pass"
+              else
+                echo "Unexpected test failures detected"
+                exit 1
+              fi
+            fi
+      - run:
+          name: Run bundled Ghostty theme picker helper regression
+          command: |
+            CMUX_SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages" \
+              ./tests/test_bundled_ghostty_theme_picker_helper.sh
+      - run:
+          name: Run CLI no-socket regressions
+          command: |
+            CLI_BIN="$(
+              find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/Build/Products/Debug/cmux" -exec stat -f '%m %N' {} \; \
+                | sort -nr \
+                | head -1 \
+                | cut -d' ' -f2-
+            )"
+            if [ -z "${CLI_BIN:-}" ] || [ ! -x "$CLI_BIN" ]; then
+              echo "cmux CLI binary not found in DerivedData" >&2
+              exit 1
+            fi
+
+            CMUX_CLI_BIN="$CLI_BIN" python3 tests/test_cli_version_memory_guard.py
+            CMUX_CLI_BIN="$CLI_BIN" python3 tests/test_cli_contract_help.py
+      - save-swift-package-cache:
+          prefix: unit
+      - save-zig-cache
+
+  macos-debug-build:
+    executor: macos-xcode
+    steps:
+      - checkout-source:
+          submodules: true
+      - print-xcode
+      - restore-swift-package-cache:
+          prefix: debug-build
+      - restore-zig-cache
+      - run:
+          name: Download pre-built GhosttyKit.xcframework
+          command: ./scripts/download-prebuilt-ghosttykit.sh
+      - install-zig
+      - resolve-swift-packages:
+          scheme: cmux
+      - run:
+          name: Build app and capture warnings
+          command: |
+            SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
+            xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux -configuration Debug \
+              -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
+              -disableAutomaticPackageResolution \
+              -destination "platform=macOS" build 2>&1 | tee /tmp/cmux-build-output.txt
+      - run:
+          name: Validate Swift warning budget
+          command: python3 scripts/swift_warning_budget.py --log /tmp/cmux-build-output.txt
+      - save-swift-package-cache:
+          prefix: debug-build
+      - save-zig-cache
+
+  macos-release-build:
+    executor: macos-xcode
+    steps:
+      - checkout-source:
+          submodules: true
+      - print-xcode
+      - restore-swift-package-cache:
+          prefix: release
+      - restore-zig-cache
+      - run:
+          name: Download pre-built GhosttyKit.xcframework
+          command: ./scripts/download-prebuilt-ghosttykit.sh
+      - install-zig
+      - run:
+          name: Build universal app (Release)
+          command: |
+            xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux -configuration Release -derivedDataPath build-universal \
+              -destination "generic/platform=macOS" \
+              -clonedSourcePackagesDirPath .spm-cache \
+              ARCHS="arm64 x86_64" \
+              ONLY_ACTIVE_ARCH=NO \
+              CODE_SIGNING_ALLOWED=NO ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-Nightly build
+      - save-swift-package-cache:
+          prefix: release
+          path: .spm-cache
+      - save-zig-cache
+
+workflows:
+  ci:
+    jobs:
+      - workflow-guard-tests
+      - remote-daemon-tests
+      - web-typecheck
+      - web-db-migrations
+      - macos-unit-tests
+      - macos-debug-build
+      - macos-release-build
