@@ -192,6 +192,17 @@ final class FeedSidebarUITests: XCTestCase {
     }
 
     private func sendLine(_ line: String) throws -> String {
+        do {
+            return try sendLineViaDarwinSocket(line)
+        } catch {
+            if let response = sendLineViaNetcat(line) {
+                return response
+            }
+            throw error
+        }
+    }
+
+    private func sendLineViaDarwinSocket(_ line: String) throws -> String {
         let sockFd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard sockFd != -1 else {
             throw NSError(
@@ -203,13 +214,31 @@ final class FeedSidebarUITests: XCTestCase {
         defer { close(sockFd) }
 
         var addr = sockaddr_un()
+        memset(&addr, 0, MemoryLayout<sockaddr_un>.size)
         addr.sun_family = sa_family_t(AF_UNIX)
-        _ = socketPath.withCString { src in
-            withUnsafeMutableBytes(of: &addr.sun_path) { dst in
-                strlcpy(dst.baseAddress!.assumingMemoryBound(to: Int8.self), src, dst.count)
+
+        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
+        let bytes = Array(socketPath.utf8CString)
+        guard bytes.count <= maxLen else {
+            throw NSError(
+                domain: "FeedSidebarUITests",
+                code: 5,
+                userInfo: [NSLocalizedDescriptionKey: "socket path too long: \(socketPath)"]
+            )
+        }
+        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+            let raw = UnsafeMutableRawPointer(ptr).assumingMemoryBound(to: CChar.self)
+            memset(raw, 0, maxLen)
+            for index in 0..<bytes.count {
+                raw[index] = bytes[index]
             }
         }
-        let size = socklen_t(MemoryLayout<sockaddr_un>.size)
+
+        let pathOffset = MemoryLayout<sockaddr_un>.offset(of: \.sun_path) ?? 0
+        let size = socklen_t(pathOffset + bytes.count)
+#if os(macOS)
+        addr.sun_len = UInt8(min(Int(size), 255))
+#endif
         let result = withUnsafePointer(to: &addr) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { base in
                 connect(sockFd, base, size)
@@ -239,6 +268,41 @@ final class FeedSidebarUITests: XCTestCase {
         }
         return String(data: buffer, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func sendLineViaNetcat(_ line: String) -> String? {
+        let nc = "/usr/bin/nc"
+        guard FileManager.default.isExecutableFile(atPath: nc) else { return nil }
+
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: nc)
+        proc.arguments = ["-U", socketPath, "-w", "3"]
+
+        let inPipe = Pipe()
+        let outPipe = Pipe()
+        proc.standardInput = inPipe
+        proc.standardOutput = outPipe
+        proc.standardError = Pipe()
+
+        do {
+            try proc.run()
+        } catch {
+            return nil
+        }
+
+        if let data = line.data(using: .utf8) {
+            inPipe.fileHandleForWriting.write(data)
+        }
+        try? inPipe.fileHandleForWriting.close()
+        proc.waitUntilExit()
+
+        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let outStr = String(data: outData, encoding: .utf8) else { return nil }
+        if let first = outStr.split(separator: "\n", maxSplits: 1).first {
+            return String(first).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let trimmed = outStr.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func removeSocketFile() {
