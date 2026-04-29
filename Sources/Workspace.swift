@@ -12273,10 +12273,11 @@ final class Workspace: Identifiable, ObservableObject {
             referenceWindowId: currentWindowId
         )
 
-        var options: [(title: String, destination: PanelMoveDestination)] = [
-            (String(localized: "alert.moveTab.newWorkspaceInCurrentWindow", defaultValue: "New Workspace in Current Window"), .newWorkspaceInCurrentWindow),
-            (String(localized: "alert.moveTab.selectedWorkspaceInNewWindow", defaultValue: "Selected Workspace in New Window"), .selectedWorkspaceInNewWindow),
-        ]
+        var options: [(title: String, destination: PanelMoveDestination)] = []
+        if app.canMoveSurfaceToNewWorkspace(panelId: panelId) {
+            options.append((String(localized: "alert.moveTab.newWorkspaceInCurrentWindow", defaultValue: "New Workspace in Current Window"), .newWorkspaceInCurrentWindow))
+        }
+        options.append((String(localized: "alert.moveTab.selectedWorkspaceInNewWindow", defaultValue: "Selected Workspace in New Window"), .selectedWorkspaceInNewWindow))
         options.append(contentsOf: workspaceTargets.map { target in
             (target.label, .existingWorkspace(target.workspaceId))
         })
@@ -12300,27 +12301,24 @@ final class Workspace: Identifiable, ObservableObject {
         let moved: Bool
         switch destination {
         case .newWorkspaceInCurrentWindow:
-            guard let manager = app.tabManagerFor(tabId: id) else { return }
-            let workspace = manager.addWorkspace(select: true)
-            moved = app.moveSurface(
+            moved = app.moveSurfaceToNewWorkspace(
                 panelId: panelId,
-                toWorkspace: workspace.id,
                 focus: true,
                 focusWindow: false
-            )
+            ) != nil
 
         case .selectedWorkspaceInNewWindow:
             let newWindowId = app.createMainWindow()
-            guard let destinationManager = app.tabManagerFor(windowId: newWindowId),
-                  let destinationWorkspaceId = destinationManager.selectedTabId else {
-                return
+            if let destinationManager = app.tabManagerFor(windowId: newWindowId), let destinationWorkspaceId = destinationManager.selectedTabId {
+                moved = app.moveSurface(
+                    panelId: panelId,
+                    toWorkspace: destinationWorkspaceId,
+                    focus: true,
+                    focusWindow: true
+                )
+            } else {
+                moved = false
             }
-            moved = app.moveSurface(
-                panelId: panelId,
-                toWorkspace: destinationWorkspaceId,
-                focus: true,
-                focusWindow: true
-            )
             if !moved {
                 _ = app.closeMainWindow(windowId: newWindowId)
             }
@@ -13645,6 +13643,8 @@ extension Workspace: BonsplitDelegate {
             closeTabs(tabIdsToCloseOthers(of: tab.id, inPane: pane))
         case .move:
             promptMovePanel(tabId: tab.id)
+        case .moveToNewWorkspace:
+            _ = AppDelegate.shared?.moveBonsplitTabToNewWorkspace(tabId: tab.id.uuid, focus: true, focusWindow: false)
         case .newTerminalToRight:
             createTerminalToRight(of: tab.id, inPane: pane)
         case .newBrowserToRight:
