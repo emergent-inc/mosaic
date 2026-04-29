@@ -45,9 +45,8 @@ final class FeedSidebarUITests: XCTestCase {
         }
         wait(for: [socketExists], timeout: 12)
 
-        // Reveal the right sidebar and toggle to Feed. Uses accessibility
-        // identifiers registered on the ModeBarButton row.
-        let feedButton = app.buttons["Feed"].firstMatch
+        // Reveal the right sidebar and toggle to Feed.
+        let feedButton = app.buttons["RightSidebarModeButton.feed"].firstMatch
         if !feedButton.waitForExistence(timeout: 5) {
             // Fall back: send the right-sidebar toggle shortcut (⌘⌥B).
             app.typeKey("b", modifierFlags: [.command, .option])
@@ -58,11 +57,16 @@ final class FeedSidebarUITests: XCTestCase {
 
         // Push a synthetic permission request via the socket.
         let requestId = "uitest-\(UUID().uuidString)"
+        let workstreamId = "uitest-\(requestId)"
         let replyPayload = try sendFeedPush(requestId: requestId, waitSeconds: 30)
+        XCTAssertTrue(
+            try waitForPendingFeedPermission(workstreamId: workstreamId, timeout: 10),
+            "feed.push did not register a pending permission item"
+        )
 
         // The reply arrives once the Feed row's Allow Once button is
-        // clicked — run that on the UI side while the send is in-flight.
-        let allowButton = app.buttons["Allow Once"].firstMatch
+        // clicked, run that on the UI side while the send is in-flight.
+        let allowButton = app.buttons["FeedPermissionAllowOnceButton"].firstMatch
         XCTAssertTrue(
             allowButton.waitForExistence(timeout: 10),
             "Allow Once button did not appear in Feed"
@@ -85,6 +89,11 @@ final class FeedSidebarUITests: XCTestCase {
     private struct FeedPushResult {
         let status: String
         let mode: String
+    }
+
+    private struct FeedListResult {
+        let items: [[String: Any]]
+        let rawResponse: String
     }
 
     private final class FeedPushFuture {
@@ -121,23 +130,14 @@ final class FeedSidebarUITests: XCTestCase {
                     ],
                     "wait_timeout_seconds": waitSeconds,
                 ]
-                let frame: [String: Any] = [
-                    "id": UUID().uuidString,
-                    "method": "feed.push",
-                    "params": params,
-                ]
-                let data = try JSONSerialization.data(withJSONObject: frame)
-                let line = (String(data: data, encoding: .utf8) ?? "{}") + "\n"
-                let response = try self.sendLine(line)
-                guard let respData = response.data(using: .utf8),
-                      let respObj = try JSONSerialization.jsonObject(with: respData) as? [String: Any],
-                      (respObj["ok"] as? Bool) == true,
+                let respObj = try self.sendFrame(method: "feed.push", params: params)
+                guard (respObj["ok"] as? Bool) == true,
                       let result = respObj["result"] as? [String: Any],
                       let status = result["status"] as? String
                 else {
                     future.resolve(.failure(NSError(
                         domain: "FeedPush", code: 2,
-                        userInfo: [NSLocalizedDescriptionKey: "invalid response: \(response)"]
+                        userInfo: [NSLocalizedDescriptionKey: "invalid response: \(respObj)"]
                     )))
                     return
                 }
@@ -148,6 +148,69 @@ final class FeedSidebarUITests: XCTestCase {
             }
         }
         return future
+    }
+
+    private func waitForPendingFeedPermission(
+        workstreamId: String,
+        timeout: TimeInterval
+    ) throws -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        var lastResponse = ""
+        while Date() < deadline {
+            let response = try sendFeedList(pendingOnly: true)
+            lastResponse = response.rawResponse
+            if response.items.contains(where: { item in
+                (item["workstream_id"] as? String) == workstreamId
+                    && (item["kind"] as? String) == "permissionRequest"
+                    && (item["status"] as? String) == "pending"
+            }) {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTContext.runActivity(named: "Last feed.list response") { activity in
+            activity.add(XCTAttachment(string: lastResponse))
+        }
+        return false
+    }
+
+    private func sendFeedList(pendingOnly: Bool) throws -> FeedListResult {
+        let response = try sendFrame(
+            method: "feed.list",
+            params: ["pending_only": pendingOnly]
+        )
+        guard (response["ok"] as? Bool) == true,
+              let result = response["result"] as? [String: Any],
+              let items = result["items"] as? [[String: Any]]
+        else {
+            throw NSError(
+                domain: "FeedSidebarUITests",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "invalid feed.list response: \(response)"]
+            )
+        }
+        return FeedListResult(items: items, rawResponse: "\(response)")
+    }
+
+    private func sendFrame(method: String, params: [String: Any]) throws -> [String: Any] {
+        let frame: [String: Any] = [
+            "id": UUID().uuidString,
+            "method": method,
+            "params": params,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: frame)
+        let line = (String(data: data, encoding: .utf8) ?? "{}") + "\n"
+        let response = try sendLine(line)
+        guard let respData = response.data(using: .utf8),
+              let respObj = try JSONSerialization.jsonObject(with: respData) as? [String: Any]
+        else {
+            throw NSError(
+                domain: "FeedSidebarUITests",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: "invalid socket response: \(response)"]
+            )
+        }
+        return respObj
     }
 
     private func sendLine(_ line: String) throws -> String {
