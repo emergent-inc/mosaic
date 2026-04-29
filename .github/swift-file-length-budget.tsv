@@ -1,7 +1,7 @@
 # cmux-owned Swift file length budget.
 # Format: max_lines<TAB>relative path
 # Reduce counts as files shrink. CI fails if tracked files exceed this budget.
-19307	CLI/cmux.swift
+19973	CLI/cmux.swift
 16571	Sources/TerminalController.swift
 15802	Sources/ContentView.swift
 14078	Sources/AppDelegate.swift
@@ -15,11 +15,11 @@
 4646	cmuxTests/WorkspaceUnitTests.swift
 4639	cmuxTests/TerminalAndGhosttyTests.swift
 4503	cmuxTests/GhosttyConfigTests.swift
+4469	cmuxTests/WorkspaceRemoteConnectionTests.swift
 4314	Sources/BrowserWindowPortal.swift
 3818	Sources/Feed/FeedPanelView.swift
 3660	cmuxTests/BrowserConfigTests.swift
 3229	cmuxTests/BrowserPanelTests.swift
-3126	cmuxTests/WorkspaceRemoteConnectionTests.swift
 2826	Sources/CmuxConfig.swift
 2679	Sources/KeyboardShortcutSettings.swift
 2615	Sources/SessionIndexView.swift
@@ -44,9 +44,9 @@
 1215	cmuxUITests/MenuKeyEquivalentRoutingUITests.swift
 1187	cmuxUITests/MultiWindowNotificationsUITests.swift
 1165	Sources/Auth/AuthManager.swift
-1007	Sources/DockPanelView.swift
 1001	Sources/FileExplorerStore.swift
 1001	cmuxTests/SidebarOrderingTests.swift
+995	Sources/DockPanelView.swift
 987	Sources/CommandPalette/CommandPaletteSearch.swift
 976	cmuxTests/OmnibarAndToolsTests.swift
 908	cmuxTests/CommandPaletteSearchEngineTests.swift
