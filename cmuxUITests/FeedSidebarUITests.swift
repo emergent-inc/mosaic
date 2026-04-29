@@ -259,13 +259,31 @@ final class FeedSidebarUITests: XCTestCase {
         defer { close(sockFd) }
 
         var addr = sockaddr_un()
+        memset(&addr, 0, MemoryLayout<sockaddr_un>.size)
         addr.sun_family = sa_family_t(AF_UNIX)
-        _ = socketPath.withCString { src in
-            withUnsafeMutableBytes(of: &addr.sun_path) { dst in
-                strlcpy(dst.baseAddress!.assumingMemoryBound(to: Int8.self), src, dst.count)
+
+        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
+        let bytes = Array(socketPath.utf8CString)
+        guard bytes.count <= maxLen else {
+            throw NSError(
+                domain: "FeedSidebarUITests",
+                code: 5,
+                userInfo: [NSLocalizedDescriptionKey: "socket path too long: \(socketPath)"]
+            )
+        }
+        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+            let raw = UnsafeMutableRawPointer(ptr).assumingMemoryBound(to: CChar.self)
+            memset(raw, 0, maxLen)
+            for index in 0..<bytes.count {
+                raw[index] = bytes[index]
             }
         }
-        let size = socklen_t(MemoryLayout<sockaddr_un>.size)
+
+        let pathOffset = MemoryLayout<sockaddr_un>.offset(of: \.sun_path) ?? 0
+        let size = socklen_t(pathOffset + bytes.count)
+#if os(macOS)
+        addr.sun_len = UInt8(min(Int(size), 255))
+#endif
         let result = withUnsafePointer(to: &addr) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { base in
                 connect(sockFd, base, size)
