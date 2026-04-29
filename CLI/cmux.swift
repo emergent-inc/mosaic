@@ -14850,8 +14850,14 @@ struct CMUXCLI {
                 case .pending:
                     break
                 case .unavailable:
+                    let unavailableTranscriptPath = currentTranscriptPath
                     transcriptPath = nil
-                    continue
+                    if let resolvedTranscriptPath = findCodexTranscriptPath(sessionId: sessionId, env: env) {
+                        transcriptPath = resolvedTranscriptPath
+                        if resolvedTranscriptPath != unavailableTranscriptPath {
+                            continue
+                        }
+                    }
                 }
             }
 
