@@ -46,14 +46,25 @@ final class FeedSidebarUITests: XCTestCase {
         wait(for: [socketExists], timeout: 12)
 
         // Reveal the right sidebar and toggle to Feed.
-        let feedButton = app.buttons["RightSidebarModeButton.feed"].firstMatch
-        if !feedButton.waitForExistence(timeout: 5) {
+        var feedButton = waitForButton(
+            in: app,
+            matching: ["RightSidebarModeButton.feed", "Feed"],
+            timeout: 5
+        )
+        if feedButton == nil {
             // Fall back: send the right-sidebar toggle shortcut (⌘⌥B).
             app.typeKey("b", modifierFlags: [.command, .option])
-            _ = feedButton.waitForExistence(timeout: 5)
+            feedButton = waitForButton(
+                in: app,
+                matching: ["RightSidebarModeButton.feed", "Feed"],
+                timeout: 5
+            )
         }
-        XCTAssertTrue(feedButton.exists, "Feed tab not visible in right sidebar")
-        feedButton.click()
+        let visibleFeedButton = try XCTUnwrap(
+            feedButton,
+            "Feed tab not visible in right sidebar"
+        )
+        visibleFeedButton.click()
 
         // Push a synthetic permission request via the socket.
         let requestId = "uitest-\(UUID().uuidString)"
@@ -66,9 +77,12 @@ final class FeedSidebarUITests: XCTestCase {
 
         // The reply arrives once the Feed row's Allow Once button is
         // clicked, run that on the UI side while the send is in-flight.
-        let allowButton = app.buttons["FeedPermissionAllowOnceButton"].firstMatch
-        XCTAssertTrue(
-            allowButton.waitForExistence(timeout: 10),
+        let allowButton = try XCTUnwrap(
+            waitForButton(
+                in: app,
+                matching: ["FeedPermissionAllowOnceButton", "Allow Once"],
+                timeout: 10
+            ),
             "Allow Once button did not appear in Feed"
         )
         allowButton.click()
@@ -148,6 +162,24 @@ final class FeedSidebarUITests: XCTestCase {
             }
         }
         return future
+    }
+
+    private func waitForButton(
+        in app: XCUIApplication,
+        matching identifiersOrLabels: [String],
+        timeout: TimeInterval
+    ) -> XCUIElement? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            for identifierOrLabel in identifiersOrLabels {
+                let candidate = app.buttons[identifierOrLabel].firstMatch
+                if candidate.exists {
+                    return candidate
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return nil
     }
 
     private func waitForPendingFeedPermission(
