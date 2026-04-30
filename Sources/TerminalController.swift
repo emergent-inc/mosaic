@@ -144,6 +144,7 @@ class TerminalController {
         "surface.focus",
         "pane.focus",
         "pane.last",
+        "file.open",
         "browser.focus_webview",
         "browser.focus",
         "browser.tab.switch",
@@ -281,14 +282,14 @@ class TerminalController {
         requested && socketCommandAllowsInAppFocusMutations()
     }
 
-    private func v2MaybeFocusWindow(for tabManager: TabManager) {
+    func v2MaybeFocusWindow(for tabManager: TabManager) {
         guard socketCommandAllowsInAppFocusMutations(),
               let windowId = v2ResolveWindowId(tabManager: tabManager) else { return }
         _ = AppDelegate.shared?.focusMainWindow(windowId: windowId)
         setActiveTabManager(tabManager)
     }
 
-    private func v2MaybeSelectWorkspace(_ tabManager: TabManager, workspace: Workspace) {
+    func v2MaybeSelectWorkspace(_ tabManager: TabManager, workspace: Workspace) {
         guard socketCommandAllowsInAppFocusMutations() else { return }
         if tabManager.selectedTabId != workspace.id {
             tabManager.selectWorkspace(workspace)
@@ -2696,6 +2697,8 @@ class TerminalController {
         // Markdown
         case "markdown.open":
             return v2Result(id: id, self.v2MarkdownOpen(params: params))
+        case "file.open":
+            return v2Result(id: id, self.v2FileOpen(params: params))
 
         case "surface.read_text":
             return v2Result(id: id, self.v2SurfaceReadText(params: params))
@@ -2865,6 +2868,7 @@ class TerminalController {
             "notification.clear",
             "app.focus_override.set",
             "app.simulate_active",
+            "file.open",
             "markdown.open",
             "browser.open_split",
             "browser.navigate",
@@ -3674,7 +3678,7 @@ class TerminalController {
         return NSNull()
     }
 
-    private nonisolated func v2MainSync<T>(_ body: @MainActor () -> T) -> T {
+    nonisolated func v2MainSync<T>(_ body: @MainActor () -> T) -> T {
         let policyStack = Self.currentSocketCommandFocusAllowanceStack()
         if Thread.isMainThread {
             return MainActor.assumeIsolated {
@@ -3917,7 +3921,7 @@ class TerminalController {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private func v2StringArray(_ params: [String: Any], _ key: String) -> [String]? {
+    func v2StringArray(_ params: [String: Any], _ key: String) -> [String]? {
         if let raw = params[key] as? [String] {
             let normalized = raw
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -4051,12 +4055,15 @@ class TerminalController {
 
     private func v2PanelType(_ params: [String: Any], _ key: String) -> PanelType? {
         guard let s = v2String(params, key) else { return nil }
-        return PanelType(rawValue: s.lowercased())
+        let normalized = s.replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: "_", with: "")
+            .lowercased()
+        return PanelType(rawValue: normalized)
     }
 
     // MARK: - V2 Context Resolution
 
-    private func v2ResolveTabManager(params: [String: Any]) -> TabManager? {
+    func v2ResolveTabManager(params: [String: Any]) -> TabManager? {
         // Prefer explicit window_id routing. Fall back to global lookup by workspace_id/surface_id/tab_id,
         // and finally to the active window's TabManager.
         if let windowId = v2UUID(params, "window_id") {
@@ -4072,10 +4079,15 @@ class TerminalController {
                 return tm
             }
         }
+        if let paneId = v2UUID(params, "pane_id") {
+            if let tm = v2MainSync({ v2LocatePane(paneId)?.tabManager }) {
+                return tm
+            }
+        }
         return tabManager
     }
 
-    private func v2ResolveWindowId(tabManager: TabManager?) -> UUID? {
+    func v2ResolveWindowId(tabManager: TabManager?) -> UUID? {
         guard let tabManager else { return nil }
         return v2MainSync { AppDelegate.shared?.windowId(for: tabManager) }
     }
@@ -5744,12 +5756,16 @@ class TerminalController {
 
     // MARK: - V2 Surface Methods
 
-    private func v2ResolveWorkspace(params: [String: Any], tabManager: TabManager) -> Workspace? {
+    func v2ResolveWorkspace(params: [String: Any], tabManager: TabManager) -> Workspace? {
         if let wsId = v2UUID(params, "workspace_id") {
             return tabManager.tabs.first(where: { $0.id == wsId })
         }
         if let surfaceId = v2UUID(params, "surface_id") ?? v2UUID(params, "tab_id") {
             return tabManager.tabs.first(where: { $0.panels[surfaceId] != nil })
+        }
+        if let paneId = v2UUID(params, "pane_id"),
+           let located = v2LocatePane(paneId) {
+            return located.workspace
         }
         guard let wsId = tabManager.selectedTabId else { return nil }
         return tabManager.tabs.first(where: { $0.id == wsId })
@@ -8765,25 +8781,12 @@ class TerminalController {
             return .err(code: "invalid_params", message: "Missing 'path' parameter", data: nil)
         }
 
-        // Resolve the path (expand ~ and standardize)
-        let expandedPath = NSString(string: rawPath).expandingTildeInPath
-        let filePath = NSString(string: expandedPath).standardizingPath
-
-        // Reject paths that aren't absolute after resolution
-        guard filePath.hasPrefix("/") else {
-            return .err(code: "invalid_params", message: "Path must be absolute: \(filePath)", data: ["path": filePath])
+        let resolvedFilePath = v2ResolveReadableFilePath(rawPath)
+        if let error = resolvedFilePath.error {
+            return error
         }
-
-        // Validate the file exists and is a regular file (not a directory)
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: filePath, isDirectory: &isDir) else {
-            return .err(code: "not_found", message: "File not found: \(filePath)", data: ["path": filePath])
-        }
-        guard !isDir.boolValue else {
-            return .err(code: "invalid_params", message: "Path is a directory, not a file: \(filePath)", data: ["path": filePath])
-        }
-        guard FileManager.default.isReadableFile(atPath: filePath) else {
-            return .err(code: "permission_denied", message: "File not readable: \(filePath)", data: ["path": filePath])
+        guard let filePath = resolvedFilePath.path else {
+            return .err(code: "internal_error", message: "Failed to resolve file path", data: nil)
         }
 
         var result: V2CallResult = .err(code: "internal_error", message: "Failed to create markdown panel", data: nil)
@@ -13110,7 +13113,7 @@ class TerminalController {
         var shouldPassThrough = false
         v2MainSync {
             let pb = NSPasteboard(name: .drag)
-            shouldPassThrough = DragOverlayRoutingPolicy.shouldPassThroughPortalHitTesting(
+            shouldPassThrough = DragOverlayRoutingPolicy.shouldPassThroughTerminalPortalHitTesting(
                 pasteboardTypes: pb.types,
                 eventType: eventType
             )

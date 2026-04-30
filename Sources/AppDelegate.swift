@@ -905,10 +905,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
         }
 
-        let directories = externalOpenDirectories(from: urls)
-        guard !directories.isEmpty else { return }
+        let fileURLs = externalOpenFileURLs(from: urls)
+        let directories = externalOpenDirectories(from: urls.filter { externalOpenURLIsDirectory($0) })
+        guard !fileURLs.isEmpty || !directories.isEmpty else { return }
 
         prepareForExplicitOpenIntentAtStartup()
+        for fileURL in fileURLs {
+            _ = openFilePreviewInPreferredMainWindow(
+                filePath: fileURL.path(percentEncoded: false),
+                debugSource: "application.openURLs"
+            )
+        }
         for directory in directories {
             openWorkspaceForExternalDirectory(
                 workingDirectory: directory,
@@ -3690,25 +3697,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return windowId
     }
 
-    func unregisterMainWindowContextForTesting(windowId: UUID) {
-        let removedContexts = mainWindowContexts.values.filter { $0.windowId == windowId }
-        guard !removedContexts.isEmpty else { return }
-
-        for removedContext in removedContexts {
-            let keys = mainWindowContexts.compactMap { key, context in
-                context === removedContext ? key : nil
-            }
-            for key in keys {
-                mainWindowContexts.removeValue(forKey: key)
-            }
-        }
-
-        notifyMainWindowContextsDidChange()
-
-        if removedContexts.contains(where: { tabManager === $0.tabManager }) {
-            activateMainWindowContext(mainWindowContexts.values.first)
-        }
-    }
 #endif
 
     struct MainWindowSummary {
@@ -5017,7 +5005,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return removed
     }
 
-    private func discardOrphanedMainWindowContext(_ context: MainWindowContext) {
+    private func discardOrphanedMainWindowContext(_ context: MainWindowContext, allowWindowlessFallback: Bool = false) {
         let contextKeys = mainWindowContexts.compactMap { key, value in
             value === context ? key : nil
         }
@@ -5035,7 +5023,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         commandPaletteSnapshotByWindowId.removeValue(forKey: context.windowId)
 
         if tabManager === context.tabManager {
-            activateMainWindowContext(Array(mainWindowContexts.values).first { resolvedWindow(for: $0) != nil })
+            activateMainWindowContext(Array(mainWindowContexts.values).first { resolvedWindow(for: $0) != nil } ?? (allowWindowlessFallback ? mainWindowContexts.values.first : nil))
         }
 
         if let store = notificationStore {
@@ -5044,6 +5032,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
         }
     }
+
+#if DEBUG
+    func unregisterMainWindowContextForTesting(windowId: UUID) {
+        mainWindowContexts.values.filter { $0.windowId == windowId }.forEach { discardOrphanedMainWindowContext($0, allowWindowlessFallback: true) }
+    }
+#endif
 
     private func mainWindowId(for window: NSWindow) -> UUID? {
         if let context = mainWindowContexts[ObjectIdentifier(window)] {
@@ -6260,6 +6254,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         )
     }
 
+    private func externalOpenFileURLs(from urls: [URL]) -> [URL] {
+        var seen: Set<String> = []
+        var fileURLs: [URL] = []
+        for url in urls where url.isFileURL && !externalOpenURLIsDirectory(url) {
+            let standardized = url.standardizedFileURL.resolvingSymlinksInPath()
+            guard !externalOpenURLIsDescendantOfCurrentBundle(standardized) else { continue }
+            let path = standardized.path(percentEncoded: false)
+            guard seen.insert(path).inserted else { continue }
+            fileURLs.append(url.standardizedFileURL)
+        }
+        return fileURLs
+    }
+
+    private func externalOpenURLIsDirectory(_ url: URL) -> Bool {
+        guard url.isFileURL else { return false }
+        if url.hasDirectoryPath {
+            return true
+        }
+        return (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
+    private func externalOpenURLIsDescendantOfCurrentBundle(_ url: URL) -> Bool {
+        let pathComponents = url.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        let bundleComponents = Bundle.main.bundleURL.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        guard pathComponents.count >= bundleComponents.count else { return false }
+        return Array(pathComponents.prefix(bundleComponents.count)) == bundleComponents
+    }
+
     private func openWorkspaceForExternalDirectory(
         workingDirectory: String,
         debugSource: String
@@ -6272,6 +6294,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return
         }
         _ = createMainWindow(initialWorkingDirectory: workingDirectory)
+    }
+
+    @discardableResult
+    func openFilePreviewInPreferredMainWindow(
+        filePath: String,
+        preferredWindow: NSWindow? = nil,
+        debugSource: String = "unspecified"
+    ) -> Bool {
+        let parentDirectory = URL(fileURLWithPath: filePath).deletingLastPathComponent().path
+        let context: MainWindowContext? = {
+            if let existing = preferredRegisteredMainWindowContext(preferredWindow: preferredWindow) {
+                return existing
+            }
+            let windowId = createMainWindow(initialWorkingDirectory: parentDirectory)
+            return mainWindowContexts.values.first { $0.windowId == windowId }
+        }()
+        guard let context else { return false }
+
+        let window = context.window ?? windowForMainWindowId(context.windowId)
+        if let window {
+            bringToFront(window)
+            setActiveMainWindow(window)
+        }
+
+        let workspace = context.tabManager.selectedWorkspace
+            ?? context.tabManager.addWorkspace(workingDirectory: parentDirectory, select: true)
+        guard let paneId = workspace.bonsplitController.focusedPaneId
+            ?? workspace.bonsplitController.allPaneIds.first else {
+            return false
+        }
+
+#if DEBUG
+        cmuxDebugLog("file.preview.externalOpen source=\(debugSource) path=\(filePath)")
+#endif
+        _ = workspace.openOrFocusFilePreviewSurface(inPane: paneId, filePath: filePath)
+        return true
     }
 
     @discardableResult
@@ -10270,7 +10328,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func handleCustomShortcut(event: NSEvent) -> Bool {
-        guard event.type == .keyDown else { return false }
+        guard event.type == .keyDown else {
+            clearConfiguredShortcutChordState()
+            return false
+        }
         guard !KeyboardShortcutRecorderActivity.isAnyRecorderActive else {
             clearConfiguredShortcutChordState()
             return false
@@ -11242,6 +11303,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return tabManager?.resetZoomFocusedBrowser() ?? false
         }
 
+        if matchConfiguredShortcut(event: event, action: .findInDirectory) {
+            return focusFileSearchInActiveMainWindow(preferredWindow: resolvedShortcutEventWindow(event))
+        }
+
         if matchConfiguredShortcut(event: event, action: .findNext) {
             guard !shouldLetFocusedBrowserOwnFindShortcut(event) else {
                 return false
@@ -11985,6 +12050,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if matchConfiguredShortcut(event: event, action: .find) {
             let shortcutWindow = resolvedShortcutEventWindow(event)
             cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: shortcutWindow ?? NSApp.keyWindow); return performFindShortcutInActiveMainWindow(preferredWindow: shortcutWindow)
+        }
+        if matchConfiguredShortcut(event: event, action: .findInDirectory) {
+            return focusFileSearchInActiveMainWindow(preferredWindow: resolvedShortcutEventWindow(event))
         }
         return false
     }

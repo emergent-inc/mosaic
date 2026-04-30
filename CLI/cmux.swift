@@ -2054,7 +2054,7 @@ struct CMUXCLI {
             )
             return
         }
-
+        if command == "open" { try runOpenCommand(commandArgs: commandArgs, socketPath: resolvedSocketPath, explicitPassword: socketPasswordArg, jsonOutput: jsonOutput, idFormat: try resolvedIDFormat(jsonOutput: jsonOutput, raw: idFormatArg)); return }
         if command == "restore-session" {
             try runRestoreSession(
                 commandArgs: commandArgs,
@@ -3370,7 +3370,7 @@ struct CMUXCLI {
         }
     }
 
-    private func resolvePath(_ path: String) -> String {
+    func resolvePath(_ path: String) -> String {
         let expanded = NSString(string: path).expandingTildeInPath
         if expanded.hasPrefix("/") { return expanded }
         let cwd = FileManager.default.currentDirectoryPath
@@ -3741,7 +3741,7 @@ struct CMUXCLI {
         return response
     }
 
-    private func formatIDs(_ object: Any, mode: CLIIDFormat) -> Any {
+    func formatIDs(_ object: Any, mode: CLIIDFormat) -> Any {
         switch object {
         case let dict as [String: Any]:
             var out: [String: Any] = [:]
@@ -3839,7 +3839,7 @@ struct CMUXCLI {
         return Int(String(pieces[1])) != nil
     }
 
-    private func normalizeWindowHandle(_ raw: String?, client: SocketClient, allowCurrent: Bool = false) throws -> String? {
+    func normalizeWindowHandle(_ raw: String?, client: SocketClient, allowCurrent: Bool = false) throws -> String? {
         guard let raw else {
             if !allowCurrent { return nil }
             let current = try client.sendV2(method: "window.current")
@@ -3863,7 +3863,7 @@ struct CMUXCLI {
         throw CLIError(message: "Window index not found")
     }
 
-    private func normalizeWorkspaceHandle(
+    func normalizeWorkspaceHandle(
         _ raw: String?,
         client: SocketClient,
         windowHandle: String? = nil,
@@ -3896,7 +3896,7 @@ struct CMUXCLI {
         throw CLIError(message: "Workspace index not found")
     }
 
-    private func normalizePaneHandle(
+    func normalizePaneHandle(
         _ raw: String?,
         client: SocketClient,
         workspaceHandle: String? = nil,
@@ -3930,7 +3930,7 @@ struct CMUXCLI {
         throw CLIError(message: "Pane index not found")
     }
 
-    private func normalizeSurfaceHandle(
+    func normalizeSurfaceHandle(
         _ raw: String?,
         client: SocketClient,
         workspaceHandle: String? = nil,
@@ -9676,6 +9676,7 @@ struct CMUXCLI {
             return "Legacy alias for 'cmux browser focus-webview'. Run 'cmux browser --help' for details."
         case "is-webview-focused":
             return "Legacy alias for 'cmux browser is-webview-focused'. Run 'cmux browser --help' for details."
+        case "open": return openSubcommandUsage()
         case "markdown":
             return """
             Usage: cmux markdown open <path> [options]
@@ -9780,7 +9781,7 @@ struct CMUXCLI {
         return args[index + 1]
     }
 
-    private func hasFlag(_ args: [String], name: String) -> Bool {
+    func hasFlag(_ args: [String], name: String) -> Bool {
         args.contains(name)
     }
 

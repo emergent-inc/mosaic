@@ -394,6 +394,14 @@ struct cmuxApp: App {
                     Button("File Explorer Style Debug…") {
                         FileExplorerStyleDebugWindowController.shared.show()
                     }
+                    Button(
+                        String(
+                            localized: "debug.menu.pdfPreviewChromeDebug",
+                            defaultValue: "PDF Preview Chrome Debug…"
+                        )
+                    ) {
+                        PDFPreviewChromeDebugWindowController.shared.show()
+                    }
                     Button("Open All Debug Windows") {
                         openAllDebugWindows()
                     }
@@ -548,6 +556,12 @@ struct cmuxApp: App {
                         cmuxDebugLog("find.menu Cmd+F fired")
 #endif
                         _ = AppDelegate.shared?.performFindShortcutInActiveMainWindow(
+                            preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
+                        )
+                    }
+
+                    splitCommandButton(title: String(localized: "menu.find.findInDirectory", defaultValue: "Find in Directory…"), shortcut: menuShortcut(for: .findInDirectory)) {
+                        _ = AppDelegate.shared?.focusFileSearchInActiveMainWindow(
                             preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
                         )
                     }
@@ -1086,6 +1100,7 @@ struct cmuxApp: App {
         BackgroundDebugWindowController.shared.show()
         StartupAppearanceDebugWindowController.shared.show()
         MenuBarExtraDebugWindowController.shared.show()
+        PDFPreviewChromeDebugWindowController.shared.show()
         FeedPreviewWindowController.shared.show()
         FeedTextEditorDebugWindowController.shared.show()
         FeedButtonStyleDebugWindowController.shared.show()
@@ -1729,6 +1744,14 @@ private struct DebugWindowControlsView: View {
                         }
                         Button(
                             String(
+                                localized: "debug.menu.pdfPreviewChromeDebug",
+                                defaultValue: "PDF Preview Chrome Debug…"
+                            )
+                        ) {
+                            PDFPreviewChromeDebugWindowController.shared.show()
+                        }
+                        Button(
+                            String(
                                 localized: "debug.menu.tabBarBackdropLab",
                                 defaultValue: "Tab Bar Backdrop Lab…"
                             )
@@ -1751,6 +1774,8 @@ private struct DebugWindowControlsView: View {
                             BackgroundDebugWindowController.shared.show()
                             StartupAppearanceDebugWindowController.shared.show()
                             MenuBarExtraDebugWindowController.shared.show()
+                            PDFPreviewChromeDebugWindowController.shared.show()
+                            TabBarBackdropLabWindowController.shared.show()
                             FeedTextEditorDebugWindowController.shared.show()
                         }
                     }
@@ -6244,7 +6269,7 @@ struct SettingsView: View {
                             configurationReview: .json("app.commandPaletteSearchesAllSurfaces"),
                             String(localized: "settings.app.commandPaletteSearchAllSurfaces", defaultValue: "Command Palette Searches All Surfaces"),
                             subtitle: commandPaletteSearchAllSurfaces
-                                ? String(localized: "settings.app.commandPaletteSearchAllSurfaces.subtitleOn", defaultValue: "Cmd+P also matches terminal, browser, and markdown surfaces across workspaces.")
+                                ? String(localized: "settings.app.commandPaletteSearchAllSurfaces.subtitleOn", defaultValue: "Cmd+P also matches panel surfaces across workspaces.")
                                 : String(localized: "settings.app.commandPaletteSearchAllSurfaces.subtitleOff", defaultValue: "Cmd+P matches workspace rows only.")
                         ) {
                             Toggle("", isOn: $commandPaletteSearchAllSurfaces)
