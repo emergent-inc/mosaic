@@ -39,6 +39,8 @@ enum WindowGlassEffect {
         private let tintOverlay: NSView
         private let usesNativeGlass: Bool
         private var effectTopConstraint: NSLayoutConstraint!
+        private weak var observedWindow: NSWindow?
+        private var currentTintColor: NSColor?
 
         init(
             frame: NSRect,
@@ -104,6 +106,15 @@ enum WindowGlassEffect {
             fatalError("init(coder:) has not been implemented")
         }
 
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateObservedWindow(window)
+        }
+
         func updateTopOffset(_ offset: CGFloat) {
             effectTopConstraint.constant = offset
         }
@@ -114,6 +125,7 @@ enum WindowGlassEffect {
             cornerRadius: CGFloat?,
             isKeyWindow: Bool
         ) {
+            currentTintColor = tintColor
             effectView.layer?.cornerRadius = cornerRadius ?? 0
             if usesNativeGlass {
                 updateNativeGlassConfiguration(
@@ -133,6 +145,42 @@ enum WindowGlassEffect {
                 tintOverlay.layer?.backgroundColor = nil
                 tintOverlay.alphaValue = 0
             }
+        }
+
+        private func updateObservedWindow(_ window: NSWindow?) {
+            guard usesNativeGlass else { return }
+            if let observedWindow, observedWindow === window {
+                updateInactiveTintOverlay(tintColor: currentTintColor, isKeyWindow: observedWindow.isKeyWindow)
+                return
+            }
+
+            if let observedWindow {
+                NotificationCenter.default.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: observedWindow)
+                NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: observedWindow)
+            }
+            observedWindow = window
+            guard let window else { return }
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowDidBecomeKey(_:)),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowDidResignKey(_:)),
+                name: NSWindow.didResignKeyNotification,
+                object: window
+            )
+            updateInactiveTintOverlay(tintColor: currentTintColor, isKeyWindow: window.isKeyWindow)
+        }
+
+        @objc private func windowDidBecomeKey(_ notification: Notification) {
+            updateInactiveTintOverlay(tintColor: currentTintColor, isKeyWindow: true)
+        }
+
+        @objc private func windowDidResignKey(_ notification: Notification) {
+            updateInactiveTintOverlay(tintColor: currentTintColor, isKeyWindow: false)
         }
 
         private func updateInactiveTintOverlay(tintColor: NSColor?, isKeyWindow: Bool) {

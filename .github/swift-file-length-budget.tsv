@@ -29,7 +29,7 @@
 2153	cmuxTests/SessionPersistenceTests.swift
 2112	Sources/Update/UpdateTitlebarAccessory.swift
 2026	cmuxTests/CJKIMEInputTests.swift
-2004	cmuxTests/WindowAndDragTests.swift
+2035	cmuxTests/WindowAndDragTests.swift
 1949	Sources/FileExplorerView.swift
 1949	Sources/Panels/BrowserWebAuthnSupport.swift
 1941	Sources/SessionIndexStore.swift
@@ -71,6 +71,7 @@
 586	Sources/Update/UpdateViewModel.swift
 582	cmuxTests/TerminalControllerSocketSecurityTests.swift
 573	Sources/Feed/FeedTextEditorDebugWindowController.swift
+546	Sources/Windowing/WindowGlassEffect.swift
 536	Sources/SessionPersistence.swift
 510	Sources/Update/UpdatePopoverView.swift
 505	cmuxUITests/DisplayResolutionRegressionUITests.swift

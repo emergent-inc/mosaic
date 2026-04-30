@@ -50,17 +50,48 @@ final class WindowGlassEffectTests: XCTestCase {
         XCTAssertFalse(Self.windowContainsGlassBackground(window))
     }
 
+    func testNativeGlassTintFollowsWindowKeyNotifications() throws {
+        guard WindowGlassEffect.isAvailable else {
+            throw XCTSkip("NSGlassEffectView is unavailable on this macOS version")
+        }
+        _ = NSApplication.shared
+
+        let originalContentView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 200))
+        let window = NSWindow(
+            contentRect: originalContentView.bounds,
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = originalContentView
+
+        WindowGlassEffect.apply(to: window, tintColor: .black, style: .clear)
+
+        guard let backgroundView = Self.glassBackgroundView(in: window.contentView),
+              let tintOverlay = backgroundView.subviews.last else {
+            XCTFail("Expected glass background tint overlay")
+            return
+        }
+
+        XCTAssertGreaterThan(tintOverlay.alphaValue, 0)
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        XCTAssertEqual(tintOverlay.alphaValue, 0, accuracy: 0.001)
+        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+        XCTAssertGreaterThan(tintOverlay.alphaValue, 0)
+    }
+
     private static func windowContainsGlassBackground(_ window: NSWindow) -> Bool {
         guard let contentView = window.contentView else { return false }
         let root = contentView.superview ?? contentView
-        return root.subviews.contains(where: isCmuxGlassBackgroundView)
+        return glassBackgroundView(in: root) != nil
     }
 
-    private static func isCmuxGlassBackgroundView(_ view: NSView) -> Bool {
+    private static func glassBackgroundView(in view: NSView?) -> NSView? {
+        guard let view else { return nil }
         if view.identifier == WindowGlassEffect.backgroundViewIdentifier {
-            return true
+            return view
         }
-        return view.subviews.contains(where: isCmuxGlassBackgroundView)
+        return view.subviews.lazy.compactMap(glassBackgroundView(in:)).first
     }
 }
 
