@@ -2069,8 +2069,10 @@ struct CMUXCLI {
             if try runHooksNoSocketCommand(commandArgs: commandArgs) {
                 return
             }
-            if Self.hooksCommandNeedsCmuxSurface(commandArgs),
-               ProcessInfo.processInfo.environment["CMUX_SURFACE_ID"]?.isEmpty != false {
+            if Self.hooksCommandNeedsCmuxTarget(commandArgs),
+               processEnv["CMUX_SURFACE_ID"]?.isEmpty != false,
+               processEnv["CMUX_WORKSPACE_ID"]?.isEmpty != false,
+               !commandArgs.contains(where: { $0 == "--workspace" || $0 == "--surface" || $0.hasPrefix("--workspace=") || $0.hasPrefix("--surface=") }) {
                 print("{}")
                 return
             }
@@ -8366,8 +8368,8 @@ struct CMUXCLI {
             return """
             Usage: cmux hooks setup [--agent <name>] [--yes|-y]
                    cmux hooks uninstall [--agent <name>] [--yes|-y]
-                   cmux hooks <agent> install [--project] [--yes|-y]
-                   cmux hooks <agent> uninstall [--project] [--yes|-y]
+                   cmux hooks <agent> install [--yes|-y] (opencode supports --project)
+                   cmux hooks <agent> uninstall [--yes|-y] (opencode supports --project)
                    cmux hooks <agent> <event> [flags]
                    cmux hooks feed --source <agent> [--event <event>]
 
@@ -14644,7 +14646,7 @@ struct CMUXCLI {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
         var monitorArgs = [
-            "codex-hook",
+            "hooks", "codex",
             "monitor",
             "--workspace",
             workspaceId,
@@ -19220,19 +19222,12 @@ export default CMUXSessionRestore;
         }
     }
 
-    private static func hooksCommandNeedsCmuxSurface(_ commandArgs: [String]) -> Bool {
-        guard let first = commandArgs.first?.lowercased() else {
-            return false
-        }
-        if first == "feed" || first == "claude" {
-            return true
-        }
-        guard Self.agentDef(named: first) != nil else {
-            return false
-        }
+    private static func hooksCommandNeedsCmuxTarget(_ commandArgs: [String]) -> Bool {
+        guard let first = commandArgs.first?.lowercased() else { return false }
+        if first == "feed" || first == "claude" { return true }
+        guard Self.agentDef(named: first) != nil else { return false }
         let action = commandArgs.dropFirst().first?.lowercased()
-        return action != "install"
-            && action != "uninstall"
+        return action != "install" && action != "uninstall"
     }
 
     private func installHooksForAgent(_ def: AgentHookDef, arguments: [String]) throws {
@@ -19798,7 +19793,7 @@ export default CMUXSessionRestore;
           omx [omx-args...]
           omc [omc-args...]
           hooks setup|uninstall [--agent <name>]
-          hooks <agent> <install|uninstall|event> [options]
+          hooks <agent> <install|uninstall|event> [options; opencode supports --project]
           hooks feed --source <agent> [--event <event>]
           codex <install-hooks|uninstall-hooks>   (compatibility alias)
           ping
