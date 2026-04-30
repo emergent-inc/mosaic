@@ -9381,36 +9381,6 @@ private final class GhosttyFlashOverlayView: NSView {
     }
 }
 
-private final class GhosttyPassthroughVisualEffectView: NSVisualEffectView {
-    override var acceptsFirstResponder: Bool { false }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        nil
-    }
-}
-
-func shouldAllowEnsureFocusWindowActivation(
-    activeTabManager: TabManager?,
-    targetTabManager: TabManager,
-    keyWindow: NSWindow?,
-    mainWindow: NSWindow?,
-    targetWindow: NSWindow
-) -> Bool {
-    guard activeTabManager === targetTabManager || (keyWindow == nil && mainWindow == nil) else {
-        return false
-    }
-
-    if let keyWindow {
-        return keyWindow === targetWindow
-    }
-
-    if let mainWindow {
-        return mainWindow === targetWindow
-    }
-
-    return true
-}
-
 final class GhosttySurfaceScrollView: NSView {
     enum FlashStyle {
         case navigation
@@ -9447,6 +9417,7 @@ final class GhosttySurfaceScrollView: NSView {
     private let surfaceView: GhosttyNSView
     private let inactiveOverlayView: GhosttyFlashOverlayView
     private let dropZoneOverlayView: GhosttyFlashOverlayView
+    private let paneDropTargetView = TerminalPaneDropTargetView(frame: .zero)
     private let notificationRingOverlayView: GhosttyFlashOverlayView
     private let notificationRingLayer: CAShapeLayer
     private let flashOverlayView: GhosttyFlashOverlayView
@@ -9719,6 +9690,8 @@ final class GhosttySurfaceScrollView: NSView {
         backgroundView.layer?.isOpaque = false
         addSubview(backgroundView)
         addSubview(scrollView)
+        paneDropTargetView.hostedView = self
+        addSubview(paneDropTargetView, positioned: .above, relativeTo: nil)
         synchronizeScrollbarAppearance()
         inactiveOverlayView.wantsLayer = true
         inactiveOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
@@ -10060,6 +10033,8 @@ final class GhosttySurfaceScrollView: NSView {
     override func layout() {
         super.layout()
         synchronizeGeometryAndContent()
+        _ = setFrameIfNeeded(paneDropTargetView, to: bounds)
+        bringPaneDropTargetToFrontIfNeeded()
     }
 
     override func viewDidMoveToSuperview() {
@@ -10121,6 +10096,7 @@ final class GhosttySurfaceScrollView: NSView {
         )
         _ = setFrameIfNeeded(documentView, to: targetDocumentFrame)
         _ = setFrameIfNeeded(inactiveOverlayView, to: bounds)
+        _ = setFrameIfNeeded(paneDropTargetView, to: bounds)
         if let zone = activeDropZone {
             attachDropZoneOverlayIfNeeded()
             _ = setFrameIfNeeded(
@@ -10145,6 +10121,7 @@ final class GhosttySurfaceScrollView: NSView {
         if let overlay = searchOverlayHostingView {
             _ = setFrameIfNeeded(overlay, to: bounds)
         }
+        bringPaneDropTargetToFrontIfNeeded()
         // NSScrollView can defer clip-view/content-size updates until its own layout pass,
         // which makes interactive width changes arrive a queue turn late on Sequoia.
         if didScrollbarAppearanceChange {
@@ -10177,6 +10154,12 @@ final class GhosttySurfaceScrollView: NSView {
 
     private func dropZoneOverlayContainerView() -> NSView {
         superview ?? self
+    }
+
+    private func bringPaneDropTargetToFrontIfNeeded() {
+        if paneDropTargetView.superview !== self || subviews.last !== paneDropTargetView {
+            addSubview(paneDropTargetView, positioned: .above, relativeTo: nil)
+        }
     }
 
     private func attachDropZoneOverlayIfNeeded() {
@@ -10908,6 +10891,13 @@ final class GhosttySurfaceScrollView: NSView {
                 self.logDropZoneOverlay(event: "hideComplete", zone: nil, frame: nil)
 #endif
             }
+        }
+    }
+
+    func setPaneDropContext(_ context: TerminalPaneDropContext?) {
+        paneDropTargetView.dropContext = context
+        if context == nil {
+            paneDropTargetView.draggingExited(nil)
         }
     }
 
@@ -13156,6 +13146,11 @@ struct GhosttyTerminalView: NSViewRepresentable {
         hostedView.setFocusHandler { onFocus?(terminalSurface.id) }
         hostedView.setTriggerFlashHandler(onTriggerFlash)
         if hostOwnsPortalNow {
+            hostedView.setPaneDropContext(TerminalPaneDropContext(
+                workspaceId: terminalSurface.tabId,
+                panelId: terminalSurface.id,
+                paneId: paneId
+            ))
             hostedView.setInactiveOverlay(
                 color: inactiveOverlayColor,
                 opacity: CGFloat(inactiveOverlayOpacity),
