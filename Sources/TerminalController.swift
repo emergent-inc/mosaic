@@ -8005,12 +8005,13 @@ class TerminalController {
 
     private nonisolated func v2ApplyPromptSubmitSideEffects(for event: WorkstreamEvent) {
         guard event.hookEventName == .userPromptSubmit,
-              let rawWorkspaceId = event.workspaceId,
-              let workspaceId = UUID(uuidString: rawWorkspaceId.trimmingCharacters(in: .whitespacesAndNewlines))
+              let rawWorkspaceId = event.workspaceId?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawWorkspaceId.isEmpty
         else { return }
 
         let iMessageModeEnabled = IMessageModeSettings.isEnabled()
         v2MainSync {
+            guard let workspaceId = v2UUIDAny(rawWorkspaceId) else { return }
             guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId) else { return }
             _ = tabManager.handlePromptSubmit(
                 workspaceId: workspaceId,
