@@ -151,6 +151,68 @@ export default function CustomCommandsPage() {
         })}
       </p>
 
+      <h2>{t("newWorkspaceButton")}</h2>
+      <p>
+        {t.rich("newWorkspaceButtonDesc", {
+          action: (chunks) => <code>{chunks}</code>,
+          contextMenu: (chunks) => <code>{chunks}</code>,
+          rightClick: (chunks) => <code>{chunks}</code>,
+          separator: (chunks) => <code>{chunks}</code>,
+        })}
+      </p>
+      <CodeBlock title="cmux.json" lang="json">{`{
+  "actions": {
+    "codex-worktree": {
+      "type": "workspaceCommand",
+      "title": "Codex Worktree",
+      "commandName": "Codex Worktree",
+      "icon": { "type": "symbol", "name": "plus.rectangle.on.folder" }
+    }
+  },
+  "ui": {
+    "newWorkspace": {
+      "action": "codex-worktree",
+      "contextMenu": [
+        { "action": "codex-worktree", "title": "Codex Worktree" },
+        { "type": "separator" },
+        { "action": "cmux.newTerminal", "title": "New Terminal" },
+        { "action": "cmux.newBrowser", "title": "New Browser" }
+      ]
+    }
+  },
+  "commands": [
+    {
+      "name": "Codex Worktree",
+      "description": "Create a fresh Git worktree and start Codex inside it",
+      "restart": "confirm",
+      "workspace": {
+        "name": "Codex Worktree",
+        "cwd": ".",
+        "layout": {
+          "pane": {
+            "surfaces": [
+              {
+                "type": "terminal",
+                "name": "Codex",
+                "command": "repo=$(git rev-parse --show-toplevel) && mkdir -p \\"$repo/../worktrees\\" && slug=codex-$(date +%Y%m%d-%H%M%S) && dir=\\"$repo/../worktrees/$slug\\" && git -C \\"$repo\\" worktree add -b \\"$slug\\" \\"$dir\\" && cd \\"$dir\\" && exec codex --dangerously-bypass-approvals-and-sandbox",
+                "focus": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}`}</CodeBlock>
+      <p>
+        {t.rich("newWorkspaceWorktreeNote", {
+          action: (chunks) => <code>{chunks}</code>,
+          commands: (chunks) => <code>{chunks}</code>,
+          worktree: (chunks) => <code>{chunks}</code>,
+          codex: (chunks) => <code>{chunks}</code>,
+        })}
+      </p>
+
       <h2>{t("simpleCommands")}</h2>
       <p>{t("simpleCommandsDesc")}</p>
       <CodeBlock title="cmux.json" lang="json">{`{
