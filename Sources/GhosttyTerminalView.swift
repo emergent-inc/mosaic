@@ -1957,6 +1957,7 @@ class GhosttyApp {
 
         // Notify observers that a usable config is available (initial load).
         lastAppearanceColorScheme = GhosttyConfig.currentColorSchemePreference()
+        GhosttyConfig.invalidateLoadCache()
         NotificationCenter.default.post(name: .ghosttyConfigDidReload, object: nil)
 
         #if os(macOS)
@@ -2884,6 +2885,7 @@ class GhosttyApp {
         if soft, let config {
             ghostty_app_update_config(app, config)
             lastAppearanceColorScheme = GhosttyConfig.currentColorSchemePreference()
+            GhosttyConfig.invalidateLoadCache()
             NotificationCenter.default.post(name: .ghosttyConfigDidReload, object: nil)
             scheduleSurfaceRefreshAfterConfigurationReload(source: source)
             logThemeAction("reload end source=\(source) soft=\(soft) mode=soft")
@@ -2910,6 +2912,7 @@ class GhosttyApp {
         }
         config = newConfig
         lastAppearanceColorScheme = GhosttyConfig.currentColorSchemePreference()
+        GhosttyConfig.invalidateLoadCache()
         NotificationCenter.default.post(name: .ghosttyConfigDidReload, object: nil)
         scheduleSurfaceRefreshAfterConfigurationReload(source: source)
         logThemeAction("reload end source=\(source) soft=\(soft) mode=full")
@@ -10956,13 +10959,11 @@ final class GhosttySurfaceScrollView: NSView {
                fr === surfaceView || fr.isDescendant(of: surfaceView) {
                 window.makeFirstResponder(nil)
             }
-        } else {
-            if !wasVisible {
-                // Workspace/sidebar selection can make an already-sized terminal visible again
-                // without a portal frame delta or a focus handoff. Reuse the portal refresh
-                // path so the Metal layer is nudged immediately on plain visibility restores.
-                refreshSurfaceNow(reason: "setVisibleInUI")
-            }
+        } else if !wasVisible {
+            // Workspace/sidebar selection can make an already-sized terminal visible again
+            // without a portal frame delta or a focus handoff. Reuse the portal refresh
+            // path so the Metal layer is nudged immediately on plain visibility restores.
+            refreshSurfaceNow(reason: "setVisibleInUI")
             scheduleAutomaticFirstResponderApply(reason: "setVisibleInUI")
         }
     }
@@ -10993,9 +10994,9 @@ final class GhosttySurfaceScrollView: NSView {
             )
         }
 #endif
-        if active {
+        if active && !wasActive {
             scheduleAutomaticFirstResponderApply(reason: "setActive")
-        } else {
+        } else if !active {
             resignOwnedFirstResponderIfNeeded(reason: "setActive(false)")
         }
     }
