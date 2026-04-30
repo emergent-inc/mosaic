@@ -113,7 +113,7 @@ For Claude Code, AskUserQuestion is answered by allowing the PermissionRequest w
 
 Feed is advisory, not blocking. The hook waits at most 120 seconds for a user decision. On timeout the bridge emits `{}` (no decision) and the agent falls through to its own in-TUI prompt. This matches Vibe Island's "soft wait" model — it never freezes a workflow forever.
 
-Per-event timeout inside the agent's hook config is bumped to 120 000 ms specifically for Feed bridge entries, so a user taking 30 seconds to approve something doesn't trip the agent's default 5 000 ms timeout.
+Per-event timeout inside agent hook configs is raised to roughly 120 to 125 seconds for Feed bridge entries (Claude uses 125 seconds for PermissionRequest), so a user taking 30 seconds to approve something does not trip default 5 000 ms hook timeouts.
 
 ## Storage
 

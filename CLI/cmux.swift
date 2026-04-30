@@ -2069,7 +2069,7 @@ struct CMUXCLI {
             if try runHooksNoSocketCommand(commandArgs: commandArgs) {
                 return
             }
-            if hooksCommandNeedsCmuxSurface(commandArgs),
+            if Self.hooksCommandNeedsCmuxSurface(commandArgs),
                ProcessInfo.processInfo.environment["CMUX_SURFACE_ID"]?.isEmpty != false {
                 print("{}")
                 return
@@ -19220,7 +19220,7 @@ export default CMUXSessionRestore;
         }
     }
 
-    private func hooksCommandNeedsCmuxSurface(_ commandArgs: [String]) -> Bool {
+    private static func hooksCommandNeedsCmuxSurface(_ commandArgs: [String]) -> Bool {
         guard let first = commandArgs.first?.lowercased() else {
             return false
         }
@@ -19239,6 +19239,7 @@ export default CMUXSessionRestore;
         if def.name == "opencode" {
             let projectLocal = arguments.contains("--project")
             if projectLocal {
+                // Project-local OpenCode install manages only the plugin file.
                 try installOpenCodePlugin(projectLocal: true)
                 return
             }
@@ -19251,8 +19252,13 @@ export default CMUXSessionRestore;
 
     private func uninstallHooksForAgent(_ def: AgentHookDef, arguments: [String]) throws {
         if def.name == "opencode" {
+            let projectLocal = arguments.contains("--project")
+            if projectLocal {
+                try uninstallOpenCodePlugin(projectLocal: true)
+                return
+            }
             try uninstallAgentHooks(def)
-            try uninstallOpenCodePlugin(projectLocal: arguments.contains("--project"))
+            try uninstallOpenCodePlugin(projectLocal: false)
             return
         }
         try uninstallAgentHooks(def)
@@ -19269,6 +19275,9 @@ export default CMUXSessionRestore;
         let rest = Array(commandArgs.dropFirst())
 
         switch first {
+        case "setup", "install", "uninstall":
+            throw CLIError(message: "hooks \(first) must be handled before socket dispatch")
+
         case "feed":
             telemetry.breadcrumb("hooks.feed.dispatch")
             do {
