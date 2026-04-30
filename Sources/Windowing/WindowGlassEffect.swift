@@ -1,6 +1,5 @@
 import AppKit
 import ObjectiveC
-import SwiftUI
 
 /// Applies NSGlassEffectView (macOS 26+) to a window, falling back to NSVisualEffectView
 enum WindowGlassEffect {
@@ -126,7 +125,8 @@ enum WindowGlassEffect {
                 updateInactiveTintOverlay(tintColor: tintColor, isKeyWindow: isKeyWindow)
             } else if let tintColor {
                 effectView.layer?.masksToBounds = cornerRadius != nil
-                tintOverlay.layer?.backgroundColor = tintColor.cgColor
+                let fallbackTint = tintColor.withAlphaComponent(min(tintColor.alphaComponent, 0.45))
+                tintOverlay.layer?.backgroundColor = fallbackTint.cgColor
                 tintOverlay.alphaValue = 1
             } else {
                 effectView.layer?.masksToBounds = cornerRadius != nil
@@ -236,6 +236,7 @@ enum WindowGlassEffect {
     }
 
     private static var glassRootViewKey: UInt8 = 0
+    private static var fallbackBackgroundViewKey: UInt8 = 0
     private static var originalContentViewKey: UInt8 = 0
     private static var originalContentLayoutStateKey: UInt8 = 0
 
@@ -246,6 +247,11 @@ enum WindowGlassEffect {
     @discardableResult
     static func apply(to window: NSWindow, tintColor: NSColor? = nil, style: Style? = nil) -> Bool {
         guard let currentContentView = window.contentView else { return false }
+        guard isAvailable else {
+            return applyFallback(to: window, contentView: currentContentView, tintColor: tintColor)
+        }
+        removeFallback(from: window)
+
         let topOffset = glassTopOffset(for: window, contentView: currentContentView)
         let cornerRadius = windowCornerRadius(for: window)
 
@@ -281,14 +287,22 @@ enum WindowGlassEffect {
 
     /// Update the tint color on an existing glass effect
     static func updateTint(to window: NSWindow, color: NSColor?) {
-        guard let rootView = activeRootView(for: window) else { return }
-        rootView.configure(
-            topOffset: glassTopOffset(for: window, contentView: window.contentView),
-            tintColor: color,
-            style: nil,
-            cornerRadius: windowCornerRadius(for: window),
-            isKeyWindow: window.isKeyWindow
-        )
+        if let rootView = activeRootView(for: window) {
+            rootView.configure(
+                topOffset: glassTopOffset(for: window, contentView: window.contentView),
+                tintColor: color,
+                style: nil,
+                cornerRadius: windowCornerRadius(for: window),
+                isKeyWindow: window.isKeyWindow
+            )
+        } else if let fallbackView = fallbackBackgroundView(for: window) {
+            fallbackView.configure(
+                tintColor: color,
+                style: nil,
+                cornerRadius: windowCornerRadius(for: window),
+                isKeyWindow: window.isKeyWindow
+            )
+        }
     }
 
     private static func updateNativeGlassConfiguration(
@@ -306,7 +320,7 @@ enum WindowGlassEffect {
             let cornerRadiusSelector = NSSelectorFromString("setCornerRadius:")
             if glassView.responds(to: cornerRadiusSelector) {
                 typealias CornerRadiusSetter = @convention(c) (AnyObject, Selector, CGFloat) -> Void
-                let implementation = glassView.method(for: cornerRadiusSelector)
+                guard let implementation = glassView.method(for: cornerRadiusSelector) else { return }
                 let setter = unsafeBitCast(implementation, to: CornerRadiusSetter.self)
                 setter(glassView, cornerRadiusSelector, cornerRadius)
             }
@@ -316,7 +330,7 @@ enum WindowGlassEffect {
             let styleSelector = NSSelectorFromString("setStyle:")
             guard glassView.responds(to: styleSelector) else { return }
             typealias StyleSetter = @convention(c) (AnyObject, Selector, Int) -> Void
-            let implementation = glassView.method(for: styleSelector)
+            guard let implementation = glassView.method(for: styleSelector) else { return }
             let setter = unsafeBitCast(implementation, to: StyleSetter.self)
             setter(glassView, styleSelector, style.rawNSGlassEffectViewStyle)
         }
@@ -354,6 +368,61 @@ enum WindowGlassEffect {
         return rootView
     }
 
+    private static func fallbackBackgroundView(for window: NSWindow) -> GlassBackgroundView? {
+        objc_getAssociatedObject(window, &fallbackBackgroundViewKey) as? GlassBackgroundView
+    }
+
+    @discardableResult
+    private static func applyFallback(
+        to window: NSWindow,
+        contentView: NSView,
+        tintColor: NSColor?
+    ) -> Bool {
+        guard let themeFrame = contentView.superview else { return false }
+        let cornerRadius = windowCornerRadius(for: window)
+        if let fallbackView = fallbackBackgroundView(for: window) {
+            if fallbackView.superview !== themeFrame {
+                fallbackView.removeFromSuperview()
+                attachFallback(fallbackView, to: themeFrame, below: contentView)
+            }
+            fallbackView.configure(
+                tintColor: tintColor,
+                style: nil,
+                cornerRadius: cornerRadius,
+                isKeyWindow: window.isKeyWindow
+            )
+            return false
+        }
+
+        let fallbackView = GlassBackgroundView(
+            frame: themeFrame.bounds,
+            topOffset: 0,
+            tintColor: tintColor,
+            style: nil,
+            cornerRadius: cornerRadius,
+            isKeyWindow: window.isKeyWindow
+        )
+        attachFallback(fallbackView, to: themeFrame, below: contentView)
+        objc_setAssociatedObject(window, &fallbackBackgroundViewKey, fallbackView, .OBJC_ASSOCIATION_RETAIN)
+        return true
+    }
+
+    private static func attachFallback(
+        _ fallbackView: GlassBackgroundView,
+        to themeFrame: NSView,
+        below contentView: NSView
+    ) {
+        fallbackView.removeFromSuperview()
+        fallbackView.translatesAutoresizingMaskIntoConstraints = false
+        themeFrame.addSubview(fallbackView, positioned: .below, relativeTo: contentView)
+        NSLayoutConstraint.activate([
+            fallbackView.topAnchor.constraint(equalTo: themeFrame.topAnchor),
+            fallbackView.bottomAnchor.constraint(equalTo: themeFrame.bottomAnchor),
+            fallbackView.leadingAnchor.constraint(equalTo: themeFrame.leadingAnchor),
+            fallbackView.trailingAnchor.constraint(equalTo: themeFrame.trailingAnchor),
+        ])
+    }
+
     private static func glassTopOffset(for window: NSWindow, contentView: NSView?) -> CGFloat {
         guard let themeFrame = contentView?.superview ?? window.contentView?.superview else {
             return 0
@@ -370,6 +439,15 @@ enum WindowGlassEffect {
 
     @discardableResult
     static func remove(from window: NSWindow) -> Bool {
+        if !removeNativeRoot(from: window) {
+            return removeFallback(from: window)
+        }
+        removeFallback(from: window)
+        return true
+    }
+
+    @discardableResult
+    private static func removeNativeRoot(from window: NSWindow) -> Bool {
         guard let rootView = activeRootView(for: window) else {
             return false
         }
@@ -391,6 +469,15 @@ enum WindowGlassEffect {
         objc_setAssociatedObject(window, &originalContentLayoutStateKey, nil, .OBJC_ASSOCIATION_RETAIN)
         return true
     }
+
+    @discardableResult
+    private static func removeFallback(from window: NSWindow) -> Bool {
+        guard let fallbackView = fallbackBackgroundView(for: window) else { return false }
+        fallbackView.removeFromSuperview()
+        objc_setAssociatedObject(window, &fallbackBackgroundViewKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        return true
+    }
+
 }
 
 private extension NSColor {

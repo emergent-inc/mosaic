@@ -29,11 +29,18 @@ final class WindowGlassEffectTests: XCTestCase {
 
         WindowGlassEffect.apply(to: window, tintColor: .systemBlue)
 
-        XCTAssertFalse(window.contentView === originalContentView)
-        XCTAssertTrue(WindowGlassEffect.originalContentView(for: window) === originalContentView)
-        XCTAssertTrue(originalContentView.superview === WindowGlassEffect.foregroundContainer(for: window))
+        if WindowGlassEffect.isAvailable {
+            XCTAssertFalse(window.contentView === originalContentView)
+            XCTAssertTrue(WindowGlassEffect.originalContentView(for: window) === originalContentView)
+            XCTAssertTrue(originalContentView.superview === WindowGlassEffect.foregroundContainer(for: window))
+            XCTAssertNotNil(WindowGlassEffect.portalInstallationTarget(for: window))
+        } else {
+            XCTAssertTrue(window.contentView === originalContentView)
+            XCTAssertNil(WindowGlassEffect.originalContentView(for: window))
+            XCTAssertNil(WindowGlassEffect.foregroundContainer(for: window))
+            XCTAssertNil(WindowGlassEffect.portalInstallationTarget(for: window))
+        }
         XCTAssertTrue(Self.windowContainsGlassBackground(window))
-        XCTAssertNotNil(WindowGlassEffect.portalInstallationTarget(for: window))
 
         WindowGlassEffect.remove(from: window)
 

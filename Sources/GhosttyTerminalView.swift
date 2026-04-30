@@ -164,6 +164,25 @@ func cmuxShouldUseClearWindowBackground(for opacity: Double, usesGhosttyGlassSty
     cmuxShouldUseTransparentBackgroundWindow() || usesGhosttyGlassStyle || opacity < 0.999
 }
 
+@_silgen_name("CGSDefaultConnectionForThread")
+private func cmuxCGSDefaultConnectionForThread() -> UnsafeMutableRawPointer?
+
+@_silgen_name("CGSSetWindowBackgroundBlurRadius")
+@discardableResult
+private func cmuxCGSSetWindowBackgroundBlurRadius(
+    _ connection: UnsafeMutableRawPointer?,
+    _ windowNumber: UInt,
+    _ radius: Int32
+) -> Int32
+
+func cmuxResetCompositorBackgroundBlur(on window: NSWindow) {
+    _ = cmuxCGSSetWindowBackgroundBlurRadius(
+        cmuxCGSDefaultConnectionForThread(),
+        UInt(window.windowNumber),
+        0
+    )
+}
+
 private func cmuxTransparentWindowBaseColor() -> NSColor {
     // A tiny non-zero alpha matches Ghostty's window compositing behavior on macOS and
     // avoids visual artifacts that can happen with a fully clear window background.
@@ -3873,7 +3892,9 @@ class GhosttyApp {
         ) {
             window.backgroundColor = cmuxTransparentWindowBaseColor()
             window.isOpaque = false
-            if !defaultBackgroundBlur.isMacOSGlassStyle {
+            if defaultBackgroundBlur.isMacOSGlassStyle {
+                cmuxResetCompositorBackgroundBlur(on: window)
+            } else {
                 applyWindowBlurIfNeeded(window)
             }
             if backgroundLogEnabled {
@@ -3883,6 +3904,7 @@ class GhosttyApp {
             let color = defaultBackgroundColor.withAlphaComponent(defaultBackgroundOpacity)
             window.backgroundColor = color
             window.isOpaque = color.alphaComponent >= 1.0
+            cmuxResetCompositorBackgroundBlur(on: window)
             if backgroundLogEnabled {
                 logBackground("applied default window background color=\(color) opacity=\(String(format: "%.3f", color.alphaComponent))")
             }
@@ -3893,7 +3915,7 @@ class GhosttyApp {
         guard let app = self.app else { return }
         // ghostty_set_window_background_blur reads background-blur and
         // background-opacity from the app config internally and calls
-        // CGSSetWindowBackgroundBlurRadius — a compositor-level setter that is
+        // CGSSetWindowBackgroundBlurRadius, a compositor-level setter that is
         // idempotent.  It is a no-op when opacity >= 1.0 or blur is disabled,
         // so we can call it unconditionally whenever the window is transparent.
         ghostty_set_window_background_blur(app, Unmanaged.passUnretained(window).toOpaque())
@@ -6046,12 +6068,15 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         if shouldUseClearWindowBackground {
             window.backgroundColor = cmuxTransparentWindowBaseColor()
             window.isOpaque = false
-            if !usesGhosttyGlassStyle {
+            if usesGhosttyGlassStyle {
+                cmuxResetCompositorBackgroundBlur(on: window)
+            } else {
                 GhosttyApp.shared.applyWindowBlurIfNeeded(window)
             }
         } else {
             window.backgroundColor = color
             window.isOpaque = color.alphaComponent >= 1.0
+            cmuxResetCompositorBackgroundBlur(on: window)
         }
         if GhosttyApp.shared.backgroundLogEnabled {
             let signature = "\(shouldUseClearWindowBackground ? "transparent" : color.hexString()):\(String(format: "%.3f", color.alphaComponent)):\(GhosttyApp.shared.defaultBackgroundBlur)"

@@ -418,7 +418,9 @@ struct GhosttyConfig {
                         backgroundOpacity = opacity
                     }
                 case "background-blur":
-                    backgroundBlur = Self.parseBackgroundBlur(value)
+                    if let parsedBlur = Self.parseBackgroundBlur(value) {
+                        backgroundBlur = parsedBlur
+                    }
                 case "foreground":
                     if let color = NSColor(hex: value) {
                         foregroundColor = color
@@ -482,9 +484,9 @@ struct GhosttyConfig {
         return parsed
     }
 
-    private static func parseBackgroundBlur(_ value: String) -> GhosttyBackgroundBlur {
+    private static func parseBackgroundBlur(_ value: String) -> GhosttyBackgroundBlur? {
         switch value {
-        case "false":
+        case "false", "0":
             return .disabled
         case "true":
             return .radius(20)
@@ -494,7 +496,7 @@ struct GhosttyConfig {
             return .macosGlassClear
         default:
             guard let radius = parseIntegerLiteral(value), radius > 0, radius <= Int(UInt8.max) else {
-                return .disabled
+                return nil
             }
             return .radius(radius)
         }
