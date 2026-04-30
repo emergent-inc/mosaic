@@ -111,6 +111,25 @@ final class PortalTabDragRoutingTests: XCTestCase {
         )
     }
 
+    func testHostViewPassesThroughUnderlyingTabStripWithoutCurrentEvent() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 260),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+
+        guard let fixture = installTabStripPassThroughFixture(in: window) else {
+            return
+        }
+
+        XCTAssertNil(
+            fixture.host.performHitTest(at: fixture.pointInHost, currentEvent: nil),
+            "Terminal portal should keep the shared no-event tab-strip pass-through path"
+        )
+    }
+
     func testTabStripPassThroughTreatsAppKitDragRoutingAsPointerEvents() {
         XCTAssertTrue(BonsplitTabBarPassThrough.isPassThroughPointerEvent(.appKitDefined))
         XCTAssertTrue(BonsplitTabBarPassThrough.isPassThroughPointerEvent(.applicationDefined))

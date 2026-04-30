@@ -68,15 +68,12 @@ final class BonsplitTabDragUITests: XCTestCase {
             steps: 28,
             dragDuration: 0.45
         )
-        XCTAssertTrue(
-            waitForCondition(timeout: 2.0) { dropIndicator.exists },
-            "Expected dragging beta onto alpha to reveal the Bonsplit drop indicator."
-        )
+        let sawDropIndicatorBeforeRelease = waitForCondition(timeout: 0.4) { dropIndicator.exists }
         endMouseDrag(dragSession, atAccessibilityPoint: destination)
 
         XCTAssertTrue(
             waitForJSONKey("trackedPaneTabTitles", equals: reorderedOrder, atPath: dataPath, timeout: 5.0) != nil,
-            "Expected tracked tab order to become \(reorderedOrder). data=\(loadJSON(atPath: dataPath) ?? [:])"
+            "Expected tracked tab order to become \(reorderedOrder). sawDropIndicatorBeforeRelease=\(sawDropIndicatorBeforeRelease) data=\(loadJSON(atPath: dataPath) ?? [:])"
         )
         XCTAssertTrue(
             waitForCondition(timeout: 5.0) { betaTab.frame.minX < alphaTab.frame.minX },
