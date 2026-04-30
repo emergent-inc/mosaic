@@ -3328,7 +3328,7 @@ class TerminalController {
         return result
     }
 
-    private nonisolated func v2OrNull(_ value: Any?) -> Any {
+    nonisolated func v2OrNull(_ value: Any?) -> Any {
         // Avoid relying on `?? NSNull()` inference (Swift toolchains can disagree).
         if let value { return value }
         return NSNull()

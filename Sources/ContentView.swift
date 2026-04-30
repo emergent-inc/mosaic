@@ -9900,6 +9900,23 @@ struct VerticalTabsSidebar: View {
                         .frame(height: sidebarTitlebarInteractionHeight)
                         .background(TitlebarDoubleClickMonitorView())
                 }
+                .overlay(alignment: .top) {
+                    if draggedTabId != nil, let firstWorkspaceId = renderContext.workspaceIds.first {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .frame(height: workspaceScrollTopVisibilityInset + 8)
+                            .onDrop(of: SidebarTabDragPayload.dropContentTypes, delegate: SidebarTabDropDelegate(
+                                targetTabId: firstWorkspaceId,
+                                tabManager: tabManager,
+                                draggedTabId: $draggedTabId,
+                                selectedTabIds: $selectedTabIds,
+                                lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
+                                targetRowHeight: nil,
+                                dragAutoScrollController: dragAutoScrollController,
+                                dropIndicator: $dropIndicator
+                            ))
+                    }
+                }
                 .overlay(alignment: .topLeading) {
                     if isMinimalMode {
                         HiddenTitlebarSidebarControlsView(
@@ -12288,7 +12305,7 @@ private struct SidebarEmptyArea: View {
                 dragAutoScrollController: dragAutoScrollController,
                 dropIndicator: $dropIndicator
             ))
-            .onDrop(of: BonsplitTabDragPayload.dropContentTypes, delegate: SidebarBonsplitTabNewWorkspaceDropDelegate(tabManager: tabManager, selectedTabIds: $selectedTabIds, lastSidebarSelectionIndex: $lastSidebarSelectionIndex, dropIndicator: $dropIndicator))
+            .overlay { SidebarBonsplitTabNewWorkspaceDropOverlay(tabManager: tabManager, selectedTabIds: $selectedTabIds, lastSidebarSelectionIndex: $lastSidebarSelectionIndex, dropIndicator: $dropIndicator).frame(maxWidth: .infinity, maxHeight: .infinity) }
             .overlay(alignment: .top) {
                 if shouldShowTopDropIndicator {
                     Rectangle()
