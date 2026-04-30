@@ -12746,6 +12746,7 @@ private struct TabItemView: View, Equatable {
         let latestNotificationSubtitle = latestNotificationText
         let effectiveSubtitle = latestNotificationSubtitle
         let detailVisibility = visibleAuxiliaryDetails
+        let workspaceTooltip = workspaceSnapshot.title
 
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
@@ -13119,6 +13120,7 @@ private struct TabItemView: View, Equatable {
             guard !contextMenuState.isVisible else { return }
             isHovering = hovering
         }
+        .safeHelp(workspaceTooltip)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(accessibilityTitle))
         .accessibilityHint(Text(accessibilityHintText))
