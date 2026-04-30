@@ -2352,7 +2352,7 @@ final class WindowBrowserPortal: NSObject {
         geometryObservers.removeAll()
     }
 
-    private func scheduleExternalGeometrySynchronize() {
+    fileprivate func scheduleExternalGeometrySynchronize() {
         guard !hasExternalGeometrySyncScheduled else { return }
         hasExternalGeometrySyncScheduled = true
         DispatchQueue.main.async { [weak self] in
@@ -4098,6 +4098,16 @@ enum BrowserWindowPortalRegistry {
         guard let window = anchorView.window else { return }
         let portal = portal(for: window)
         portal.synchronizeWebViewForAnchor(anchorView)
+    }
+
+    static func scheduleExternalGeometrySynchronize(for window: NSWindow) {
+        portalsByWindowId[ObjectIdentifier(window)]?.scheduleExternalGeometrySynchronize()
+    }
+
+    static func scheduleExternalGeometrySynchronizeForAllWindows() {
+        for portal in portalsByWindowId.values {
+            portal.scheduleExternalGeometrySynchronize()
+        }
     }
 
     /// Update visibleInUI/zPriority on an existing portal entry without rebinding.
