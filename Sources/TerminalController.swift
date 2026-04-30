@@ -1413,8 +1413,9 @@ class TerminalController {
     }
 
     private nonisolated func parseV2SocketRequest(_ command: String) -> V2SocketRequest? {
-        guard command.hasPrefix("{"),
-              let data = command.data(using: .utf8),
+        let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedCommand.hasPrefix("{"),
+              let data = trimmedCommand.data(using: .utf8),
               let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] else {
             return nil
         }
@@ -1490,19 +1491,13 @@ class TerminalController {
     }
 
     private nonisolated func socketWorkerSystemTopResponseIfNeeded(for command: String) -> String? {
-        guard command.hasPrefix("{"),
-              let data = command.data(using: .utf8),
-              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] else {
+        guard let request = parseV2SocketRequest(command),
+              request.method == "system.top" else {
             return nil
         }
 
-        let method = (dict["method"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard method == "system.top" else { return nil }
-
-        let id: Any? = dict["id"]
-        let params = dict["params"] as? [String: Any] ?? [:]
-        return withSocketCommandPolicy(commandKey: method, isV2: true) {
-            v2Result(id: id, v2SystemTop(params: params))
+        return withSocketCommandPolicy(commandKey: request.method, isV2: true) {
+            v2Result(id: request.id, v2SystemTop(params: request.params))
         }
     }
 
@@ -1856,11 +1851,21 @@ class TerminalController {
     }
 
     private nonisolated func processCommandUsingSocketExecutionPolicy(_ command: String) -> String {
+        if Thread.isMainThread,
+           let request = parseV2SocketRequest(command),
+           Self.executionPolicy(forV2Method: request.method) == .socketWorker {
+            return v2Error(
+                id: request.id,
+                code: "invalid_dispatch",
+                message: "\(request.method) must run off the main thread"
+            )
+        }
+
         if let response = socketWorkerV2ResponseIfNeeded(for: command) {
             return response
         }
         if let response = socketWorkerSystemTopResponseIfNeeded(for: command) {
-            return SocketLineProcessingResult(response: response, authenticated: nextAuthenticated)
+            return response
         }
 
         return v2MainSync {
