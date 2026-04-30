@@ -1811,7 +1811,14 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
     }
 
     func testWindowChromeTitlebarHeightClampsToSharedRange() {
-        [WindowChromeMetrics.appTitlebarHeight, WindowChromeMetrics.bonsplitTabBarHeight, WindowChromeMetrics.secondaryTitlebarHeight, MinimalModeChromeMetrics.titlebarHeight, RightSidebarChromeMetrics.titlebarHeight, RightSidebarChromeMetrics.secondaryBarHeight].forEach { XCTAssertEqual($0, WindowChromeMetrics.sharedChromeBarHeight) }
+        [
+            WindowChromeMetrics.appTitlebarHeight,
+            WindowChromeMetrics.secondaryTitlebarHeight,
+            MinimalModeChromeMetrics.titlebarHeight,
+            RightSidebarChromeMetrics.titlebarHeight,
+            RightSidebarChromeMetrics.secondaryBarHeight,
+        ].forEach { XCTAssertEqual($0, WindowChromeMetrics.sharedChromeBarHeight) }
+        XCTAssertEqual(WindowChromeMetrics.bonsplitTabBarHeight, 24)
         XCTAssertEqual(WindowChromeMetrics.clampedTitlebarHeight(12), 28)
         XCTAssertEqual(WindowChromeMetrics.clampedTitlebarHeight(32), 32)
         XCTAssertEqual(WindowChromeMetrics.clampedTitlebarHeight(96), 72)
