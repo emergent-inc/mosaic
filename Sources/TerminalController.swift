@@ -1805,6 +1805,13 @@ class TerminalController {
             return SocketLineProcessingResult(response: response, authenticated: nextAuthenticated)
         }
 
+        if command.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "ping" {
+            let response = withSocketCommandPolicy(commandKey: "ping", isV2: false) {
+                "PONG"
+            }
+            return SocketLineProcessingResult(response: response, authenticated: nextAuthenticated)
+        }
+
         let response = v2MainSync {
             self.processCommand(command)
         }
