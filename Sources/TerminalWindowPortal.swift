@@ -927,14 +927,11 @@ final class WindowTerminalPortal: NSObject {
     }
 
     private func installationTarget(for window: NSWindow) -> (container: NSView, reference: NSView)? {
-        guard let contentView = window.contentView else { return nil }
-
-        // If NSGlassEffectView wraps the original content view, install inside the glass view
-        // so terminals are above the glass background but below SwiftUI content.
-        if contentView.className == "NSGlassEffectView",
-           let foreground = contentView.subviews.first(where: { $0 !== hostView }) {
-            return (contentView, foreground)
+        if let glassTarget = WindowGlassEffect.portalInstallationTarget(for: window) {
+            return glassTarget
         }
+
+        guard let contentView = window.contentView else { return nil }
 
         guard let themeFrame = contentView.superview else { return nil }
         return (themeFrame, contentView)

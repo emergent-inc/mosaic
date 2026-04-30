@@ -133,6 +133,25 @@ struct SidebarBackdropSettingsSnapshot {
             usesWindowLevelGlass: usesWindowLevelGlass
         )
     }
+
+    var appKitMutationID: String {
+        [
+            materialRawValue,
+            blendModeRawValue,
+            stateRawValue,
+            tintHex,
+            tintHexLight ?? "nil",
+            tintHexDark ?? "nil",
+            Self.identityComponent(tintOpacity),
+            Self.identityComponent(cornerRadius),
+            Self.identityComponent(blurOpacity),
+            String(describing: colorScheme),
+        ].joined(separator: "|")
+    }
+
+    private static func identityComponent(_ value: Double) -> String {
+        String(format: "%.4f", value)
+    }
 }
 
 struct WindowGlassSettingsSnapshot {
@@ -179,6 +198,17 @@ struct WindowGlassSettingsSnapshot {
             bgGlassEnabled: isEnabled,
             glassEffectAvailable: glassEffectAvailable
         )
+    }
+
+    var appKitMutationID: String {
+        [
+            sidebarBlendModeRawValue,
+            String(isEnabled),
+            tintHex,
+            String(format: "%.4f", tintOpacity),
+            String(describing: terminalBackgroundBlur),
+            terminalGlassTintColor?.hexString(includeAlpha: true) ?? "nil",
+        ].joined(separator: "|")
     }
 }
 
@@ -257,6 +287,18 @@ struct WindowAppearanceSnapshot {
 
     var compositedTerminalBackgroundColor: NSColor {
         terminalBackgroundColor.withAlphaComponent(terminalBackgroundOpacity)
+    }
+
+    var appKitWindowMutationID: String {
+        [
+            terminalBackgroundColor.hexString(includeAlpha: true),
+            String(format: "%.4f", Double(terminalBackgroundOpacity)),
+            String(describing: terminalBackgroundBlur),
+            String(describing: terminalRenderingMode),
+            String(unifySurfaceBackdrops),
+            sidebarSettings.appKitMutationID,
+            windowGlassSettings.appKitMutationID,
+        ].joined(separator: "|")
     }
 
     func shouldUseTransparentHosting(glassEffectAvailable: Bool = WindowGlassEffect.isAvailable) -> Bool {

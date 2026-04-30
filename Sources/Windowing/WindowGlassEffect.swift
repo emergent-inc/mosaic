@@ -17,6 +17,23 @@ enum WindowGlassEffect {
     }
 
     static let backgroundViewIdentifier = NSUserInterfaceItemIdentifier("cmux.windowGlassBackground")
+    static let rootViewIdentifier = NSUserInterfaceItemIdentifier("cmux.windowGlassRoot")
+    static let foregroundContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.windowGlassForeground")
+
+    private final class OriginalContentLayoutState: NSObject {
+        let translatesAutoresizingMaskIntoConstraints: Bool
+        let autoresizingMask: NSView.AutoresizingMask
+
+        init(view: NSView) {
+            translatesAutoresizingMaskIntoConstraints = view.translatesAutoresizingMaskIntoConstraints
+            autoresizingMask = view.autoresizingMask
+        }
+
+        func restore(to view: NSView) {
+            view.translatesAutoresizingMaskIntoConstraints = translatesAutoresizingMaskIntoConstraints
+            view.autoresizingMask = autoresizingMask
+        }
+    }
 
     private final class GlassBackgroundView: NSView {
         private let effectView: NSView
@@ -130,67 +147,143 @@ enum WindowGlassEffect {
         }
     }
 
-    private static var glassViewKey: UInt8 = 0
+    private final class GlassRootView: NSView {
+        let foregroundContainer = NSView(frame: .zero)
+        weak var originalContentView: NSView?
+
+        private let backgroundView: GlassBackgroundView
+
+        override var isOpaque: Bool { false }
+
+        init(
+            frame: NSRect,
+            topOffset: CGFloat,
+            tintColor: NSColor?,
+            style: Style?,
+            cornerRadius: CGFloat?,
+            isKeyWindow: Bool
+        ) {
+            backgroundView = GlassBackgroundView(
+                frame: frame,
+                topOffset: topOffset,
+                tintColor: tintColor,
+                style: style,
+                cornerRadius: cornerRadius,
+                isKeyWindow: isKeyWindow
+            )
+
+            super.init(frame: frame)
+
+            identifier = WindowGlassEffect.rootViewIdentifier
+            autoresizingMask = [.width, .height]
+            wantsLayer = true
+            layer?.backgroundColor = NSColor.clear.cgColor
+            layer?.isOpaque = false
+
+            backgroundView.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(backgroundView)
+
+            foregroundContainer.identifier = WindowGlassEffect.foregroundContainerIdentifier
+            foregroundContainer.frame = bounds
+            foregroundContainer.translatesAutoresizingMaskIntoConstraints = false
+            foregroundContainer.wantsLayer = true
+            foregroundContainer.layer?.backgroundColor = NSColor.clear.cgColor
+            foregroundContainer.layer?.isOpaque = false
+            addSubview(foregroundContainer, positioned: .above, relativeTo: backgroundView)
+
+            NSLayoutConstraint.activate([
+                backgroundView.topAnchor.constraint(equalTo: topAnchor),
+                backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor),
+                backgroundView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
+
+                foregroundContainer.topAnchor.constraint(equalTo: topAnchor),
+                foregroundContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
+                foregroundContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
+                foregroundContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
+            ])
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        func attachOriginalContentView(_ contentView: NSView) {
+            originalContentView = contentView
+            contentView.removeFromSuperview()
+            contentView.frame = foregroundContainer.bounds
+            contentView.translatesAutoresizingMaskIntoConstraints = true
+            contentView.autoresizingMask = [.width, .height]
+            foregroundContainer.addSubview(contentView, positioned: .below, relativeTo: nil)
+        }
+
+        func configure(
+            topOffset: CGFloat,
+            tintColor: NSColor?,
+            style: Style?,
+            cornerRadius: CGFloat?,
+            isKeyWindow: Bool
+        ) {
+            backgroundView.updateTopOffset(topOffset)
+            backgroundView.configure(
+                tintColor: tintColor,
+                style: style,
+                cornerRadius: cornerRadius,
+                isKeyWindow: isKeyWindow
+            )
+        }
+    }
+
+    private static var glassRootViewKey: UInt8 = 0
     private static var originalContentViewKey: UInt8 = 0
+    private static var originalContentLayoutStateKey: UInt8 = 0
 
     static var isAvailable: Bool {
         NSClassFromString("NSGlassEffectView") != nil
     }
 
-    static func apply(to window: NSWindow, tintColor: NSColor? = nil, style: Style? = nil) {
-        guard let originalContentView = window.contentView else { return }
-        let target = installationTarget(for: originalContentView)
-        let topOffset = glassTopOffset(for: window, contentView: originalContentView)
+    @discardableResult
+    static func apply(to window: NSWindow, tintColor: NSColor? = nil, style: Style? = nil) -> Bool {
+        guard let currentContentView = window.contentView else { return false }
+        let topOffset = glassTopOffset(for: window, contentView: currentContentView)
         let cornerRadius = windowCornerRadius(for: window)
 
-        // Check if we already applied glass (avoid re-wrapping)
-        if let existingGlass = objc_getAssociatedObject(window, &glassViewKey) as? GlassBackgroundView {
-            if existingGlass.superview === target.container {
-                existingGlass.updateTopOffset(topOffset)
-                existingGlass.configure(
-                    tintColor: tintColor,
-                    style: style,
-                    cornerRadius: cornerRadius,
-                    isKeyWindow: window.isKeyWindow
-                )
-                return
-            }
-            existingGlass.removeFromSuperview()
+        if let rootView = activeRootView(for: window) {
+            rootView.configure(
+                topOffset: topOffset,
+                tintColor: tintColor,
+                style: style,
+                cornerRadius: cornerRadius,
+                isKeyWindow: window.isKeyWindow
+            )
+            return false
         }
 
-        if let staleGlass = objc_getAssociatedObject(window, &glassViewKey) as? NSView {
-            staleGlass.removeFromSuperview()
-        }
-
-        let glassView = GlassBackgroundView(
-            frame: target.reference.bounds,
+        let originalContentView = currentContentView
+        let layoutState = OriginalContentLayoutState(view: originalContentView)
+        let rootView = GlassRootView(
+            frame: originalContentView.frame,
             topOffset: topOffset,
             tintColor: tintColor,
             style: style,
             cornerRadius: cornerRadius,
             isKeyWindow: window.isKeyWindow
         )
-        if target.container === target.reference {
-            target.container.addSubview(glassView, positioned: .below, relativeTo: nil)
-        } else {
-            target.container.addSubview(glassView, positioned: .below, relativeTo: target.reference)
-        }
-        NSLayoutConstraint.activate([
-            glassView.topAnchor.constraint(equalTo: target.reference.topAnchor),
-            glassView.bottomAnchor.constraint(equalTo: target.reference.bottomAnchor),
-            glassView.leadingAnchor.constraint(equalTo: target.reference.leadingAnchor),
-            glassView.trailingAnchor.constraint(equalTo: target.reference.trailingAnchor)
-        ])
+        window.contentView = rootView
+        rootView.attachOriginalContentView(originalContentView)
 
-        // Store reference
-        objc_setAssociatedObject(window, &glassViewKey, glassView, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &glassRootViewKey, rootView, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &originalContentViewKey, originalContentView, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &originalContentLayoutStateKey, layoutState, .OBJC_ASSOCIATION_RETAIN)
+        return true
     }
 
     /// Update the tint color on an existing glass effect
     static func updateTint(to window: NSWindow, color: NSColor?) {
-        guard let glassView = objc_getAssociatedObject(window, &glassViewKey) as? GlassBackgroundView else { return }
-        glassView.updateTopOffset(glassTopOffset(for: window, contentView: window.contentView))
-        glassView.configure(
+        guard let rootView = activeRootView(for: window) else { return }
+        rootView.configure(
+            topOffset: glassTopOffset(for: window, contentView: window.contentView),
             tintColor: color,
             style: nil,
             cornerRadius: windowCornerRadius(for: window),
@@ -229,11 +322,36 @@ enum WindowGlassEffect {
         }
     }
 
-    private static func installationTarget(for contentView: NSView) -> (container: NSView, reference: NSView) {
-        guard let themeFrame = contentView.superview else {
-            return (contentView, contentView)
+    static func foregroundContainer(for window: NSWindow) -> NSView? {
+        activeRootView(for: window)?.foregroundContainer
+    }
+
+    static func originalContentView(for window: NSWindow) -> NSView? {
+        if let rootView = activeRootView(for: window),
+           let originalContentView = rootView.originalContentView {
+            return originalContentView
         }
-        return (themeFrame, contentView)
+        return objc_getAssociatedObject(window, &originalContentViewKey) as? NSView
+    }
+
+    static func portalInstallationTarget(for window: NSWindow) -> (container: NSView, reference: NSView)? {
+        guard let rootView = activeRootView(for: window),
+              let originalContentView = originalContentView(for: window),
+              originalContentView.superview === rootView.foregroundContainer else {
+            return nil
+        }
+        return (rootView.foregroundContainer, originalContentView)
+    }
+
+    private static func activeRootView(for window: NSWindow) -> GlassRootView? {
+        if let rootView = window.contentView as? GlassRootView {
+            return rootView
+        }
+        guard let rootView = objc_getAssociatedObject(window, &glassRootViewKey) as? GlassRootView,
+              window.contentView === rootView else {
+            return nil
+        }
+        return rootView
     }
 
     private static func glassTopOffset(for window: NSWindow, contentView: NSView?) -> CGFloat {
@@ -250,26 +368,28 @@ enum WindowGlassEffect {
         return window.value(forKey: "_cornerRadius") as? CGFloat
     }
 
-    static func remove(from window: NSWindow) {
-        guard let glassView = objc_getAssociatedObject(window, &glassViewKey) as? NSView else {
-            return
+    @discardableResult
+    static func remove(from window: NSWindow) -> Bool {
+        guard let rootView = activeRootView(for: window) else {
+            return false
         }
 
-        if glassView.className == "NSGlassEffectView",
-           window.contentView === glassView {
-            if let originalContentView = objc_getAssociatedObject(window, &originalContentViewKey) as? NSView {
-                originalContentView.removeFromSuperview()
-                originalContentView.translatesAutoresizingMaskIntoConstraints = true
-                originalContentView.autoresizingMask = [.width, .height]
-                originalContentView.frame = glassView.bounds
-                window.contentView = originalContentView
+        if let originalContentView = originalContentView(for: window) {
+            originalContentView.removeFromSuperview()
+            originalContentView.frame = rootView.bounds
+            if let layoutState = objc_getAssociatedObject(
+                window,
+                &originalContentLayoutStateKey
+            ) as? OriginalContentLayoutState {
+                layoutState.restore(to: originalContentView)
             }
-        } else {
-            glassView.removeFromSuperview()
+            window.contentView = originalContentView
         }
 
-        objc_setAssociatedObject(window, &glassViewKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &glassRootViewKey, nil, .OBJC_ASSOCIATION_RETAIN)
         objc_setAssociatedObject(window, &originalContentViewKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &originalContentLayoutStateKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        return true
     }
 }
 
