@@ -10093,6 +10093,23 @@
         }
       }
     },
+    "browser.contextMenu.moveTabToNewWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab to New Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを新しいワークスペースに移動"
+          }
+        }
+      }
+    },
     "browser.contextMenu.openLinkInNewTab": {
       "extractionState": "manual",
       "localizations": {
@@ -23621,6 +23638,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Попередня робоча область"
+          }
+        }
+      }
+    },
+    "command.moveTabToNewWorkspace.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab to New Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを新しいワークスペースに移動"
           }
         }
       }
@@ -101728,6 +101762,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID 복사"
+          }
+        }
+      }
+    },
+    "terminalContextMenu.moveTabToNewWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab to New Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを新しいワークスペースに移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭을 새 워크스페이스로 이동"
           }
         }
       }
