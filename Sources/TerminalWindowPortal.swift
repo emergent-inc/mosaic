@@ -122,13 +122,9 @@ final class WindowTerminalHostView: NSView {
     // `NSApp.currentEvent`; tests can call this directly with a synthetic
     // pointer event so the typing-latency guard doesn't gate them out.
     func performHitTest(at point: NSPoint, currentEvent: NSEvent?) -> NSView? {
-        let isPointerEvent: Bool
-        if let eventType = currentEvent?.type {
-            isPointerEvent = eventType == .scrollWheel
-                || BonsplitTabBarPassThrough.isPassThroughPointerEvent(eventType)
-        } else {
-            isPointerEvent = false
-        }
+        let eventType = currentEvent?.type
+        let isPointerEvent = eventType == .scrollWheel
+            || BonsplitTabBarPassThrough.isPassThroughPointerEvent(eventType)
 
         if isPointerEvent {
             if shouldPassThroughToTitlebar(at: point) {
