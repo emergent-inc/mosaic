@@ -11,11 +11,17 @@ import WebKit
 
 enum DragOverlayRoutingPolicy {
     static let bonsplitTabTransferType = NSPasteboard.PasteboardType("com.splittabbar.tabtransfer")
+    static let filePreviewTransferType = NSPasteboard.PasteboardType("com.cmux.filepreview.transfer")
     static let sidebarTabReorderType = NSPasteboard.PasteboardType(SidebarTabDragPayload.typeIdentifier)
 
     static func hasBonsplitTabTransfer(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
         guard let pasteboardTypes else { return false }
         return pasteboardTypes.contains(bonsplitTabTransferType)
+    }
+
+    static func hasFilePreviewTransfer(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
+        guard let pasteboardTypes else { return false }
+        return pasteboardTypes.contains(filePreviewTransferType)
     }
 
     static func hasSidebarTabReorder(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
@@ -32,17 +38,11 @@ enum DragOverlayRoutingPolicy {
         pasteboardTypes: [NSPasteboard.PasteboardType]?,
         hasLocalDraggingSource: Bool
     ) -> Bool {
-        // Local file drags (e.g. in-app draggable folder views) are valid drop
-        // inputs; rely on explicit non-file drag types below to avoid hijacking
-        // Bonsplit/sidebar drags.
+        // File URL drops are routed at the Bonsplit pane layer so center/edge
+        // drop targets stay visible and the host can open previews or splits.
         _ = hasLocalDraggingSource
         guard hasFileURL(pasteboardTypes) else { return false }
-
-        // Prefer explicit non-file drag types so stale fileURL entries cannot hijack
-        // Bonsplit tab drags or sidebar tab reorder drags.
-        if hasBonsplitTabTransfer(pasteboardTypes) { return false }
-        if hasSidebarTabReorder(pasteboardTypes) { return false }
-        return true
+        return false
     }
 
     static func shouldCaptureFileDropDestination(
@@ -86,7 +86,20 @@ enum DragOverlayRoutingPolicy {
         eventType: NSEvent.EventType?
     ) -> Bool {
         guard isPortalDragEvent(eventType) else { return false }
-        return hasBonsplitTabTransfer(pasteboardTypes) || hasSidebarTabReorder(pasteboardTypes)
+        return hasBonsplitTabTransfer(pasteboardTypes)
+            || hasFilePreviewTransfer(pasteboardTypes)
+            || hasSidebarTabReorder(pasteboardTypes)
+    }
+
+    static func shouldPassThroughTerminalPortalHitTesting(
+        pasteboardTypes: [NSPasteboard.PasteboardType]?,
+        eventType: NSEvent.EventType?
+    ) -> Bool {
+        guard isPortalDragEvent(eventType) else { return false }
+        return shouldPassThroughPortalHitTesting(
+            pasteboardTypes: pasteboardTypes,
+            eventType: eventType
+        ) || hasFileURL(pasteboardTypes)
     }
 
     private static func isDragMouseEvent(_ eventType: NSEvent.EventType?) -> Bool {
@@ -373,6 +386,12 @@ final class FileDropOverlayView: NSView {
             activeDragWebView = nil
         }
         guard let sender else { return }
+        guard DragOverlayRoutingPolicy.shouldCaptureFileDropDestination(
+            pasteboardTypes: sender.draggingPasteboard.types,
+            hasLocalDraggingSource: sender.draggingSource != nil
+        ) else {
+            return
+        }
         let webView = preparedDragWebView ?? activeDragWebView ?? webViewUnderPoint(sender.draggingLocation)
         webView?.concludeDragOperation(sender)
     }
@@ -2694,6 +2713,9 @@ struct ContentView: View {
             workspaceId: tabManager.selectedTabId,
             onResumeSession: { entry in
                 resumeSession(entry: entry)
+            },
+            onOpenFilePreview: { filePath in
+                openFilePreviewFromSidebar(filePath: filePath)
             }
         )
         .frame(width: rightSidebarWidth)
@@ -2968,6 +2990,16 @@ struct ContentView: View {
             workingDirectory: targetCwd,
             initialTerminalInput: inputWithReturn
         )
+    }
+
+    private func openFilePreviewFromSidebar(filePath: String) {
+        guard let workspace = tabManager.selectedWorkspace else { return }
+        guard let paneId = workspace.bonsplitController.focusedPaneId ?? workspace.bonsplitController.allPaneIds.first else {
+            return
+        }
+
+        sidebarSelectionState.selection = .tabs
+        _ = workspace.openOrFocusFilePreviewSurface(inPane: paneId, filePath: filePath)
     }
 
     private func syncFileExplorerDirectory() {
@@ -6549,6 +6581,8 @@ struct ContentView: View {
             return String(localized: "commandPalette.kind.browser", defaultValue: "Browser")
         case .markdown:
             return String(localized: "commandPalette.kind.markdown", defaultValue: "Markdown")
+        case .filePreview:
+            return String(localized: "commandPalette.kind.filePreview", defaultValue: "File Preview")
         }
     }
 
@@ -6560,6 +6594,8 @@ struct ContentView: View {
             return ["browser", "web", "page"]
         case .markdown:
             return ["markdown", "note", "preview"]
+        case .filePreview:
+            return ["file", "preview", "text", "pdf", "image"]
         }
     }
 
@@ -6724,6 +6760,8 @@ struct ContentView: View {
             return .splitRight
         case "palette.terminalSplitDown":
             return .splitDown
+        case "palette.findInDirectory":
+            return .findInDirectory
         case "palette.terminalFind":
             return .find
         case "palette.terminalFindNext":
@@ -6732,6 +6770,8 @@ struct ContentView: View {
             return .findPrevious
         case "palette.terminalHideFind":
             return .hideFind
+        case "palette.terminalUseSelectionForFind":
+            return .useSelectionForFind
         case "palette.toggleSplitZoom":
             return .toggleSplitZoom
         case "palette.triggerFlash":
@@ -6772,7 +6812,7 @@ struct ContentView: View {
         case "palette.terminalFindPrevious":
             return "⌥⌘G"
         case "palette.terminalHideFind":
-            return "⌘⇧F"
+            return "⌥⌘⇧F"
         case "palette.terminalUseSelectionForFind":
             return "⌘E"
         case "palette.toggleFullScreen":
@@ -7559,6 +7599,14 @@ struct ContentView: View {
         )
         contributions.append(
             CommandPaletteCommandContribution(
+                commandId: "palette.findInDirectory",
+                title: constant(String(localized: "menu.find.findInDirectory", defaultValue: "Find in Directory…")),
+                subtitle: constant(String(localized: "command.findInDirectory.subtitle", defaultValue: "Right Sidebar")),
+                keywords: ["files", "directory", "find", "search"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
                 commandId: "palette.terminalFind",
                 title: constant(String(localized: "command.terminalFind.title", defaultValue: "Find…")),
                 subtitle: terminalPanelSubtitle,
@@ -7592,7 +7640,7 @@ struct ContentView: View {
                 commandId: "palette.terminalHideFind",
                 title: constant(String(localized: "command.terminalHideFind.title", defaultValue: "Hide Find Bar")),
                 subtitle: terminalPanelSubtitle,
-                shortcutHint: "⌘⇧F",
+                shortcutHint: "⌥⌘⇧F",
                 keywords: ["terminal", "hide", "find", "search"],
                 when: { $0.bool(CommandPaletteContextKeys.panelIsTerminal) }
             )
@@ -8091,6 +8139,11 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.browserClearHistory") {
             BrowserHistoryStore.shared.clearHistory()
+        }
+        registry.register(commandId: "palette.findInDirectory") {
+            _ = AppDelegate.shared?.focusFileSearchInActiveMainWindow(
+                preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
+            )
         }
         registry.register(commandId: "palette.browserSplitRight") {
             _ = tabManager.createBrowserSplit(direction: .right)
@@ -9021,6 +9074,20 @@ struct ContentView: View {
             return "browser.addressBar"
         case .browser(.findField):
             return "browser.findField"
+        case .filePreview(.textEditor):
+            return "filePreview.textEditor"
+        case .filePreview(.pdfCanvas):
+            return "filePreview.pdfCanvas"
+        case .filePreview(.pdfThumbnails):
+            return "filePreview.pdfThumbnails"
+        case .filePreview(.pdfOutline):
+            return "filePreview.pdfOutline"
+        case .filePreview(.imageCanvas):
+            return "filePreview.imageCanvas"
+        case .filePreview(.mediaPlayer):
+            return "filePreview.mediaPlayer"
+        case .filePreview(.quickLook):
+            return "filePreview.quickLook"
         }
     }
 
@@ -14849,6 +14916,7 @@ enum BonsplitTabDragPayload {
     struct Transfer: Decodable {
         struct TabInfo: Decodable {
             let id: UUID
+            let kind: String?
         }
 
         let tab: TabInfo
@@ -14875,7 +14943,13 @@ enum BonsplitTabDragPayload {
     }
 
     static func currentTransfer() -> Transfer? {
-        let pasteboard = NSPasteboard(name: .drag)
+        transfer(from: NSPasteboard(name: .drag))
+    }
+
+    static func transfer(from pasteboard: NSPasteboard) -> Transfer? {
+        guard !DragOverlayRoutingPolicy.hasFilePreviewTransfer(pasteboard.types) else {
+            return nil
+        }
         let type = NSPasteboard.PasteboardType(typeIdentifier)
 
         if let data = pasteboard.data(forType: type),

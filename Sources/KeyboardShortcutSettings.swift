@@ -87,6 +87,7 @@ enum KeyboardShortcutSettings {
         case toggleFileExplorer
 
         // Panels
+        case saveFilePreview
         case openBrowser
         case focusBrowserAddressBar
         case browserBack
@@ -96,6 +97,7 @@ enum KeyboardShortcutSettings {
         case browserZoomOut
         case browserZoomReset
         case find
+        case findInDirectory
         case findNext
         case findPrevious
         case hideFind
@@ -156,6 +158,7 @@ enum KeyboardShortcutSettings {
             case .splitBrowserRight: return String(localized: "shortcut.splitBrowserRight.label", defaultValue: "Split Browser Right")
             case .splitBrowserDown: return String(localized: "shortcut.splitBrowserDown.label", defaultValue: "Split Browser Down")
             case .toggleFileExplorer: return String(localized: "shortcut.toggleFileExplorer.label", defaultValue: "Toggle File Explorer")
+            case .saveFilePreview: return String(localized: "shortcut.saveFilePreview.label", defaultValue: "Save File Preview")
             case .openBrowser: return String(localized: "shortcut.openBrowser.label", defaultValue: "Open Browser")
             case .focusBrowserAddressBar: return String(localized: "command.browserFocusAddressBar.title", defaultValue: "Focus Address Bar")
             case .browserBack: return String(localized: "menu.view.back", defaultValue: "Back")
@@ -165,6 +168,7 @@ enum KeyboardShortcutSettings {
             case .browserZoomOut: return String(localized: "menu.view.zoomOut", defaultValue: "Zoom Out")
             case .browserZoomReset: return String(localized: "menu.view.actualSize", defaultValue: "Actual Size")
             case .find: return String(localized: "menu.find.find", defaultValue: "Find…")
+            case .findInDirectory: return String(localized: "menu.find.findInDirectory", defaultValue: "Find in Directory…")
             case .findNext: return String(localized: "menu.find.findNext", defaultValue: "Find Next")
             case .findPrevious: return String(localized: "menu.find.findPrevious", defaultValue: "Find Previous")
             case .hideFind: return String(localized: "menu.find.hideFindBar", defaultValue: "Hide Find Bar")
@@ -293,6 +297,8 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "1", command: true, shift: false, option: false, control: false)
             case .toggleFileExplorer:
                 return StoredShortcut(key: "b", command: true, shift: false, option: true, control: false)
+            case .saveFilePreview:
+                return StoredShortcut(key: "s", command: true, shift: false, option: false, control: false)
             case .openBrowser:
                 return StoredShortcut(key: "l", command: true, shift: true, option: false, control: false)
             case .focusBrowserAddressBar:
@@ -311,12 +317,14 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "0", command: true, shift: false, option: false, control: false)
             case .find:
                 return StoredShortcut(key: "f", command: true, shift: false, option: false, control: false)
+            case .findInDirectory:
+                return StoredShortcut(key: "f", command: true, shift: true, option: false, control: false)
             case .findNext:
                 return StoredShortcut(key: "g", command: true, shift: false, option: false, control: false)
             case .findPrevious:
                 return StoredShortcut(key: "g", command: true, shift: false, option: true, control: false)
             case .hideFind:
-                return StoredShortcut(key: "f", command: true, shift: true, option: false, control: false)
+                return StoredShortcut(key: "f", command: true, shift: true, option: true, control: false)
             case .useSelectionForFind:
                 return StoredShortcut(key: "e", command: true, shift: false, option: false, control: false)
             case .toggleBrowserDeveloperTools:

@@ -96,6 +96,33 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
         super.tearDown()
     }
 
+    func testShortcutMonitorIgnoresSystemDefinedEvents() {
+        guard let appDelegate = AppDelegate.shared else {
+            XCTFail("Expected AppDelegate.shared")
+            return
+        }
+        guard let event = NSEvent.otherEvent(
+            with: .systemDefined,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: 0,
+            context: nil,
+            subtype: 7,
+            data1: 1,
+            data2: 1
+        ) else {
+            XCTFail("Failed to construct system-defined event")
+            return
+        }
+
+#if DEBUG
+        XCTAssertFalse(appDelegate.debugHandleShortcutMonitorEvent(event: event))
+#else
+        XCTFail("debugHandleShortcutMonitorEvent is only available in DEBUG")
+#endif
+    }
+
     func testCmdNUsesEventWindowContextWhenActiveManagerIsStale() {
         guard let appDelegate = AppDelegate.shared else {
             XCTFail("Expected AppDelegate.shared")
@@ -4024,30 +4051,6 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
 #endif
     }
 
-    func testShortcutMonitorIgnoresSystemDefinedEvents() {
-        let appDelegate = AppDelegate()
-        guard let event = NSEvent.otherEvent(
-            with: .systemDefined,
-            location: .zero,
-            modifierFlags: [],
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: 0,
-            context: nil,
-            subtype: 8,
-            data1: 0,
-            data2: 0
-        ) else {
-            XCTFail("Failed to construct system-defined event")
-            return
-        }
-
-#if DEBUG
-        XCTAssertFalse(appDelegate.debugHandleShortcutMonitorEvent(event: event))
-#else
-        XCTFail("debugHandleShortcutMonitorEvent is only available in DEBUG")
-#endif
-    }
-
     func testEscapeKeyUpIsConsumedAfterCmdPSwitcherDismiss() {
         assertEscapeKeyUpIsConsumedAfterCommandPaletteOpenRequest { appDelegate, window in
             appDelegate.requestCommandPaletteSwitcher(
@@ -4350,7 +4353,7 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
         let cases: [(name: String, modifiers: NSEvent.ModifierFlags, chars: String, keyCode: UInt16)] = [
             ("cmd-g", [.command], "g", 5),
             ("cmd-shift-g", [.command, .shift], "g", 5),
-            ("cmd-shift-f", [.command, .shift], "f", 3),
+            ("cmd-option-shift-f", [.command, .option, .shift], "f", 3),
             ("cmd-e", [.command], "e", 14),
         ]
 
@@ -4368,18 +4371,25 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
         }
     }
 
-    func testBrowserFirstFindShortcutRoutingExcludesGlobalFindCommand() {
-        let event = makeKeyEvent(
-            modifierFlags: [.command],
-            characters: "f",
-            charactersIgnoringModifiers: "f",
-            keyCode: 3
-        )
+    func testBrowserFirstFindShortcutRoutingExcludesAppOwnedFindCommands() {
+        let cases: [(name: String, modifiers: NSEvent.ModifierFlags, chars: String, keyCode: UInt16)] = [
+            ("cmd-f", [.command], "f", 3),
+            ("cmd-shift-f", [.command, .shift], "f", 3),
+        ]
 
-        XCTAssertFalse(
-            shouldRouteBrowserFindCommandEquivalentThroughWebContentFirst(event),
-            "Cmd+F belongs to cmux focus-aware find routing, not browser-first routing"
-        )
+        for testCase in cases {
+            let event = makeKeyEvent(
+                modifierFlags: testCase.modifiers,
+                characters: testCase.chars,
+                charactersIgnoringModifiers: testCase.chars,
+                keyCode: testCase.keyCode
+            )
+
+            XCTAssertFalse(
+                shouldRouteBrowserFindCommandEquivalentThroughWebContentFirst(event),
+                "\(testCase.name) belongs to cmux find routing, not browser-first routing"
+            )
+        }
     }
 
     func testBrowserFirstFindShortcutRoutingFallsBackToKeyCodeForNonLatinInput() {
