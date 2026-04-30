@@ -8547,7 +8547,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } ?? ""
         updates["browserFindTotal"] = browserWithFind?.searchState?.total.map(String.init) ?? ""
         updates["browserFindVisible"] = browserWithFind == nil ? "false" : "true"
-
+        updates.merge(cmuxFindResponderSnapshot()) { _, new in new }
         return updates
     }
 
@@ -9982,7 +9982,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 let shortcutTimingStart = CmuxTypingTiming.start()
 #endif
                 let shortcutStart = ProcessInfo.processInfo.systemUptime
-                let handledByShortcut = self.handleCustomShortcut(event: event)
+                let handledByShortcut = cmuxCloseFocusedTerminalFindForEscape(event: event, appDelegate: self) || self.handleCustomShortcut(event: event)
 #if DEBUG
                 shortcutMs = (ProcessInfo.processInfo.systemUptime - shortcutStart) * 1000.0
                 CmuxTypingTiming.logDuration(
@@ -10645,6 +10645,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #endif
             return false
         }
+        if cmuxCloseFocusedTerminalFindForEscape(event: event, appDelegate: self) { return true }
+        if matchConfiguredShortcut(event: event, action: .find) {
+            let shortcutWindow = resolvedShortcutEventWindow(event)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: shortcutWindow ?? NSApp.keyWindow); return performFindShortcutInActiveMainWindow(preferredWindow: shortcutWindow)
+        }
 
         // Keep keyboard routing deterministic after split close/reparent transitions:
         // before processing shortcuts, converge first responder with the focused terminal panel.
@@ -10664,7 +10669,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             // Ctrl+D belongs to the focused terminal surface; never treat it as an app shortcut.
             return false
         }
-
         // Chrome-like omnibar navigation while holding Cmd+N / Ctrl+N / Cmd+P / Ctrl+P.
         if let delta = commandOmnibarSelectionDelta(
             hasFocusedAddressBar: hasFocusedAddressBarInShortcutContext,
@@ -11029,7 +11033,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             arrowGlyph: "←",
             arrowKeyCode: 123
         ) || (ghosttyGotoSplitLeftShortcut.map { matchDirectionalShortcut(event: event, shortcut: $0, arrowGlyph: "←", arrowKeyCode: 123) } ?? false) {
-            tabManager?.movePaneFocus(direction: .left)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: NSApp.keyWindow); tabManager?.movePaneFocus(direction: .left)
 #if DEBUG
             recordGotoSplitMoveIfNeeded(direction: .left)
 #endif
@@ -11041,7 +11045,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             arrowGlyph: "→",
             arrowKeyCode: 124
         ) || (ghosttyGotoSplitRightShortcut.map { matchDirectionalShortcut(event: event, shortcut: $0, arrowGlyph: "→", arrowKeyCode: 124) } ?? false) {
-            tabManager?.movePaneFocus(direction: .right)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: NSApp.keyWindow); tabManager?.movePaneFocus(direction: .right)
 #if DEBUG
             recordGotoSplitMoveIfNeeded(direction: .right)
 #endif
@@ -11053,7 +11057,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             arrowGlyph: "↑",
             arrowKeyCode: 126
         ) || (ghosttyGotoSplitUpShortcut.map { matchDirectionalShortcut(event: event, shortcut: $0, arrowGlyph: "↑", arrowKeyCode: 126) } ?? false) {
-            tabManager?.movePaneFocus(direction: .up)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: NSApp.keyWindow); tabManager?.movePaneFocus(direction: .up)
 #if DEBUG
             recordGotoSplitMoveIfNeeded(direction: .up)
 #endif
@@ -11065,7 +11069,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             arrowGlyph: "↓",
             arrowKeyCode: 125
         ) || (ghosttyGotoSplitDownShortcut.map { matchDirectionalShortcut(event: event, shortcut: $0, arrowGlyph: "↓", arrowKeyCode: 125) } ?? false) {
-            tabManager?.movePaneFocus(direction: .down)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: NSApp.keyWindow); tabManager?.movePaneFocus(direction: .down)
 #if DEBUG
             recordGotoSplitMoveIfNeeded(direction: .down)
 #endif
@@ -11236,10 +11240,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         if matchConfiguredShortcut(event: event, action: .browserZoomReset) {
             return tabManager?.resetZoomFocusedBrowser() ?? false
-        }
-
-        if matchConfiguredShortcut(event: event, action: .find) {
-            return performFindShortcutInActiveMainWindow(preferredWindow: resolvedShortcutEventWindow(event))
         }
 
         if matchConfiguredShortcut(event: event, action: .findNext) {
@@ -11983,7 +11983,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @discardableResult
     func handleBrowserSurfaceKeyEquivalentBeforeMainMenu(_ event: NSEvent) -> Bool {
         if matchConfiguredShortcut(event: event, action: .find) {
-            return performFindShortcutInActiveMainWindow(preferredWindow: resolvedShortcutEventWindow(event))
+            let shortcutWindow = resolvedShortcutEventWindow(event)
+            cmuxRememberFindSelectionBeforePanelFocusMove(tabManager: tabManager, window: shortcutWindow ?? NSApp.keyWindow); return performFindShortcutInActiveMainWindow(preferredWindow: shortcutWindow)
         }
         return false
     }
@@ -13590,9 +13591,8 @@ private extension NSWindow {
 #endif
         // recordTypingActivity must run in all builds so runSessionAutosaveTick
         // can honor the typing quiet period in release.
-        if event.type == .keyDown {
-            AppDelegate.shared?.recordTypingActivity()
-        }
+        if event.type == .keyDown, let app = AppDelegate.shared, cmuxCloseFocusedTerminalFindForEscape(event: event, appDelegate: app) { return }
+        if event.type == .keyDown { AppDelegate.shared?.recordTypingActivity() }
         if event.type == .leftMouseDown,
            AppDelegate.shared?.handleMinimalModeSidebarChromeMouseDown(window: self, event: event) == true {
             return
