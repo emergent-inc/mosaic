@@ -354,6 +354,10 @@ class TerminalController {
             outsideAllowsFocus: Self.socketCommandAllowsInAppFocusMutations()
         )
     }
+
+    static func debugNotifyTargetQueuedResponseForTesting(_ args: String) -> String {
+        Self.shared.notifyTargetQueued(args)
+    }
 #endif
 
     nonisolated static func shouldReplaceStatusEntry(
@@ -572,6 +576,8 @@ class TerminalController {
     func setActiveTabManager(_ tabManager: TabManager?) {
         self.tabManager = tabManager
     }
+
+    func activeTabManagerForCallerNotification() -> TabManager? { tabManager }
 
     // MARK: - Process Ancestry Check
 
@@ -1932,6 +1938,9 @@ class TerminalController {
         case "notify_target":
             return notifyTarget(args)
 
+        case "notify_target_async":
+            return notifyTargetQueued(args)
+
         case "list_notifications":
             return listNotifications()
 
@@ -2549,6 +2558,8 @@ class TerminalController {
         // Notifications
         case "notification.create":
             return v2Result(id: id, self.v2NotificationCreate(params: params))
+        case "notification.create_for_caller":
+            return v2Result(id: id, self.v2NotificationCreateForCaller(params: params))
         case "notification.create_for_surface":
             return v2Result(id: id, self.v2NotificationCreateForSurface(params: params))
         case "notification.create_for_target":
@@ -2899,6 +2910,7 @@ class TerminalController {
             "pane.join",
             "pane.last",
             "notification.create",
+            "notification.create_for_caller",
             "notification.create_for_surface",
             "notification.create_for_target",
             "notification.list",
@@ -4002,7 +4014,7 @@ class TerminalController {
         params[key] as? String
     }
 
-    private func v2UUID(_ params: [String: Any], _ key: String) -> UUID? {
+    func v2UUID(_ params: [String: Any], _ key: String) -> UUID? {
         guard let s = v2String(params, key) else { return nil }
         if let uuid = UUID(uuidString: s) {
             return uuid
@@ -7822,7 +7834,7 @@ class TerminalController {
                 return
             }
             let surfaceId = explicitSurfaceId ?? ws.focusedPanelId
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: ws.id,
                 surfaceId: surfaceId,
                 title: title,
@@ -7856,7 +7868,7 @@ class TerminalController {
                 result = .err(code: "not_found", message: "Surface not found", data: ["surface_id": surfaceId.uuidString])
                 return
             }
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: ws.id,
                 surfaceId: surfaceId,
                 title: title,
@@ -7893,7 +7905,7 @@ class TerminalController {
                 result = .err(code: "not_found", message: "Surface not found", data: ["surface_id": surfaceId.uuidString])
                 return
             }
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: ws.id,
                 surfaceId: surfaceId,
                 title: title,
@@ -7924,9 +7936,7 @@ class TerminalController {
     }
 
     private func v2NotificationClear() -> V2CallResult {
-        DispatchQueue.main.async {
-            TerminalNotificationStore.shared.clearAll()
-        }
+        TerminalMutationBus.shared.enqueueClearAllNotifications()
         return .ok([:])
     }
 
@@ -12722,6 +12732,7 @@ class TerminalController {
           notify <title>|<subtitle>|<body>   - Notify focused panel
           notify_surface <id|idx> <payload>  - Notify a specific surface
           notify_target <workspace_id> <surface_id> <payload> - Notify by workspace+surface
+          notify_target_async <workspace_uuid> <surface_uuid> <payload> - Queue notification by workspace+surface
           list_notifications              - List all notifications
           clear_notifications [--tab=X]    - Clear notifications (all or per-tab)
           set_app_focus <active|inactive|clear> - Override app focus state
@@ -13933,7 +13944,7 @@ class TerminalController {
             }
             let surfaceId = tabManager.focusedSurfaceId(for: tabId)
             let (title, subtitle, body) = parseNotificationPayload(args)
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: tabId,
                 surfaceId: surfaceId,
                 title: title,
@@ -13965,7 +13976,7 @@ class TerminalController {
                 return
             }
             let (title, subtitle, body) = parseNotificationPayload(payload)
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: tabId,
                 surfaceId: surfaceId,
                 title: title,
@@ -14001,7 +14012,7 @@ class TerminalController {
                     result = "ERROR: Panel not found"
                     return
                 }
-                TerminalNotificationStore.shared.addNotification(
+                deliverNotificationSynchronously(
                     tabId: workspaceId,
                     surfaceId: panelId,
                     title: title,
@@ -14029,7 +14040,7 @@ class TerminalController {
                 result = "ERROR: Panel not found"
                 return
             }
-            TerminalNotificationStore.shared.addNotification(
+            deliverNotificationSynchronously(
                 tabId: tab.id,
                 surfaceId: panelId,
                 title: title,
@@ -14038,6 +14049,38 @@ class TerminalController {
             )
         }
         return result
+    }
+
+    private func notifyTargetQueued(_ args: String) -> String {
+        let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "ERROR: Usage: notify_target_async <workspace_uuid> <surface_uuid> <title>|<subtitle>|<body>"
+        }
+
+        let parts = trimmed.split(separator: " ", maxSplits: 2).map(String.init)
+        guard parts.count == 3 else {
+            return "ERROR: Usage: notify_target_async <workspace_uuid> <surface_uuid> <title>|<subtitle>|<body>"
+        }
+        guard let tabId = UUID(uuidString: parts[0]) else {
+            return "ERROR: notify_target_async requires workspace_uuid to be a UUID"
+        }
+        guard let surfaceId = UUID(uuidString: parts[1]) else {
+            return "ERROR: notify_target_async requires surface_uuid to be a UUID"
+        }
+
+        let payload = parts[2].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !payload.isEmpty else {
+            return "ERROR: Usage: notify_target_async <workspace_uuid> <surface_uuid> <title>|<subtitle>|<body>"
+        }
+        let (title, subtitle, body) = parseNotificationPayload(payload)
+        TerminalMutationBus.shared.enqueueNotification(
+            tabId: tabId,
+            surfaceId: surfaceId,
+            title: title,
+            subtitle: subtitle,
+            body: body
+        )
+        return "OK"
     }
 
     private func listNotifications() -> String {
@@ -14056,9 +14099,7 @@ class TerminalController {
     private func clearNotifications(_ args: String) -> String {
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            DispatchQueue.main.async {
-                TerminalNotificationStore.shared.clearAll()
-            }
+            TerminalMutationBus.shared.enqueueClearAllNotifications()
             return "OK"
         }
         let parsed = parseOptions(trimmed)
@@ -14070,8 +14111,21 @@ class TerminalController {
         guard let target = targetResolution.target else {
             return targetResolution.error ?? "ERROR: Tab not found"
         }
-        scheduleSidebarMutation(target: target) { _, tab in
-            TerminalNotificationStore.shared.clearNotifications(forTabId: tab.id)
+        if case .workspace(let tabId) = target {
+            TerminalMutationBus.shared.enqueueClearNotifications(forTabId: tabId)
+        } else {
+            let clearBoundary = TerminalMutationBus.shared.markNotificationClearBoundary()
+            TerminalMutationBus.shared.enqueueMainActorMutation { [weak self] in
+                guard let self, let tab = self.resolveSidebarMutationTab(target) else { return }
+                TerminalMutationBus.shared.discardPendingNotifications(
+                    forTabId: tab.id,
+                    through: clearBoundary
+                )
+                TerminalNotificationStore.shared.clearNotifications(
+                    forTabId: tab.id,
+                    discardQueuedNotifications: false
+                )
+            }
         }
         return "OK"
     }
@@ -15046,7 +15100,7 @@ class TerminalController {
             // This DEBUG-only command is used by UI tests to enqueue shell work in an
             // existing workspace. Return once the input is queued on main so a long
             // payload does not hold the control-socket response open in CI.
-            DispatchQueue.main.async { [weak self] in
+            TerminalMutationBus.shared.enqueueMainActorMutation { [weak self] in
                 guard let self else { return }
                 if let surface = terminalPanel.surface.surface {
                     self.sendSocketText(unescaped, surface: surface)
@@ -15903,7 +15957,7 @@ class TerminalController {
         target: SidebarMutationTabTarget,
         mutation: @escaping (TerminalController, Tab) -> Void
     ) {
-        DispatchQueue.main.async { [weak self] in
+        TerminalMutationBus.shared.enqueueMainActorMutation { [weak self] in
             guard let self, let tab = self.resolveSidebarMutationTab(target) else { return }
             mutation(self, tab)
         }
@@ -15937,7 +15991,7 @@ class TerminalController {
         }
 
         if let scope = Self.explicitSocketScope(options: options) {
-            DispatchQueue.main.async { [weak self] in
+            TerminalMutationBus.shared.enqueueMainActorMutation { [weak self] in
                 guard let self,
                       let tab = self.tabForSidebarMutation(id: scope.workspaceId) else {
                     return
@@ -15950,7 +16004,7 @@ class TerminalController {
             return "OK"
         }
 
-        DispatchQueue.main.async { [weak self] in
+        TerminalMutationBus.shared.enqueueMainActorMutation { [weak self] in
             guard let self,
                   let tab = self.resolveTabForReport(args) else {
                 return
@@ -16406,7 +16460,7 @@ class TerminalController {
         // Keep this telemetry path off-main so wake/main-thread stalls don't
         // block socket handlers and starve subsequent branch updates.
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId),
                       let tab = tabManager.tabs.first(where: { $0.id == scope.workspaceId }) else {
                     return
@@ -16442,7 +16496,7 @@ class TerminalController {
         // Keep this telemetry path off-main so wake/main-thread stalls don't
         // block socket handlers and starve subsequent branch updates.
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId),
                       let tab = tabManager.tabs.first(where: { $0.id == scope.workspaceId }) else {
                     return
@@ -16602,7 +16656,7 @@ class TerminalController {
 
         let directory = parsed.positional.joined(separator: " ")
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId),
                       let tab = tabManager.tabs.first(where: { $0.id == scope.workspaceId }) else {
                     return
@@ -16671,7 +16725,7 @@ class TerminalController {
             ) else {
                 return "OK"
             }
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId) else { return }
                 tabManager.updateSurfaceShellActivity(tabId: scope.workspaceId, surfaceId: scope.panelId, state: state)
             }
@@ -16790,7 +16844,7 @@ class TerminalController {
         }
 
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId),
                       let tab = tabManager.tabs.first(where: { $0.id == scope.workspaceId }) else {
                     return
@@ -16866,7 +16920,7 @@ class TerminalController {
         }
 
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            DispatchQueue.main.async {
+            TerminalMutationBus.shared.enqueueMainActorMutation {
                 guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceId),
                       let tab = tabManager.tabs.first(where: { $0.id == scope.workspaceId }) else {
                     return
