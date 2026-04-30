@@ -10103,9 +10103,7 @@ final class GhosttySurfaceScrollView: NSView {
     }
 
     private func bringPaneDropTargetToFrontIfNeeded() {
-        if paneDropTargetView.superview !== self {
-            addSubview(paneDropTargetView, positioned: .above, relativeTo: nil)
-        } else if subviews.last !== paneDropTargetView {
+        if paneDropTargetView.superview !== self || subviews.last !== paneDropTargetView {
             addSubview(paneDropTargetView, positioned: .above, relativeTo: nil)
         }
     }
@@ -13091,14 +13089,14 @@ struct GhosttyTerminalView: NSViewRepresentable {
 
         // Keep the surface lifecycle and handlers updated even if we defer re-parenting.
         hostedView.attachSurface(terminalSurface)
-        hostedView.setPaneDropContext(TerminalPaneDropContext(
-            workspaceId: terminalSurface.tabId,
-            panelId: terminalSurface.id,
-            paneId: paneId
-        ))
         hostedView.setFocusHandler { onFocus?(terminalSurface.id) }
         hostedView.setTriggerFlashHandler(onTriggerFlash)
         if hostOwnsPortalNow {
+            hostedView.setPaneDropContext(TerminalPaneDropContext(
+                workspaceId: terminalSurface.tabId,
+                panelId: terminalSurface.id,
+                paneId: paneId
+            ))
             hostedView.setInactiveOverlay(
                 color: inactiveOverlayColor,
                 opacity: CGFloat(inactiveOverlayOpacity),

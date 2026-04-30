@@ -3451,6 +3451,7 @@ final class CmuxWebViewDragRoutingTests: XCTestCase {
         }
         XCTAssertFalse(registeredTypes.contains(DragOverlayRoutingPolicy.bonsplitTabTransferType))
         XCTAssertFalse(registeredTypes.contains(DragOverlayRoutingPolicy.sidebarTabReorderType))
+        XCTAssertFalse(registeredTypes.contains(.string))
     }
 
     func testWebsiteDragPayloadReachesWebKitDragLifecycle() {

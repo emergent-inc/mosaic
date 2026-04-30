@@ -222,16 +222,10 @@ final class TerminalPaneDropTargetView: NSView {
     }
 
     func shouldDeferToPaneTabBar(at point: NSPoint) -> Bool {
-        guard let window else { return false }
         let windowPoint = convert(point, to: nil)
-        if BonsplitTabBarHitRegionRegistry.containsWindowPoint(windowPoint, in: window) {
-            return true
-        }
-        guard let contentView = window.contentView else { return false }
-        return BonsplitTabBarPassThrough.hasBonsplitTabBarBackground(
-            at: windowPoint,
-            in: contentView
-        )
+        return BonsplitTabBarPassThrough
+            .shouldPassThroughToPaneTabBar(windowPoint: windowPoint, below: self)
+            .result
     }
 
     private func clearDragState(phase: String) {
