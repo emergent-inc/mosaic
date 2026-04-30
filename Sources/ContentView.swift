@@ -7761,12 +7761,12 @@ struct ContentView: View {
                 defaultValue: "Invalid cmux.json"
             )
             return String(format: format, issue.message ?? fallback)
-        case .newWorkspaceActionRequiresWorkspaceCommand:
+        case .newWorkspaceActionNotFound:
             let format = String(
-                localized: "command.cmuxConfig.issue.newWorkspaceActionRequiresWorkspaceCommand.detail",
-                defaultValue: "%@ must reference a workspace command action"
+                localized: "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail",
+                defaultValue: "%@ references missing action '%@'"
             )
-            return String(format: format, issue.settingName)
+            return String(format: format, issue.settingName, issue.commandName ?? "")
         case .newWorkspaceCommandNotFound:
             let format = String(
                 localized: "command.cmuxConfig.issue.newWorkspaceCommandNotFound.detail",

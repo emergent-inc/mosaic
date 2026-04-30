@@ -551,6 +551,53 @@ final class CmuxConfigDecodingTests: XCTestCase {
         XCTAssertEqual(config.actions["new-dev"]?.action?.workspaceCommandName, "Dev Environment")
     }
 
+    func testDecodeNewWorkspaceContextMenuPreservesOrder() throws {
+        let json = """
+        {
+          "actions": {
+            "start-codex": { "type": "command", "command": "codex" },
+            "new-dev": { "type": "workspaceCommand", "commandName": "Dev Environment" }
+          },
+          "ui": {
+            "newWorkspace": {
+              "contextMenu": [
+                "start-codex",
+                { "type": "separator" },
+                {
+                  "action": "new-dev",
+                  "title": "Open Dev",
+                  "icon": { "type": "symbol", "name": "hammer" }
+                }
+              ]
+            }
+          },
+          "commands": [{
+            "name": "Dev Environment",
+            "workspace": { "name": "Dev" }
+          }]
+        }
+        """
+        let config = try decode(json)
+        let menu = try XCTUnwrap(config.ui?.newWorkspace?.contextMenu)
+        XCTAssertEqual(menu.count, 3)
+        if case .action(let first) = menu[0] {
+            XCTAssertEqual(first.action, "start-codex")
+        } else {
+            XCTFail("Expected first context-menu item to be an action.")
+        }
+        if case .separator = menu[1] {
+        } else {
+            XCTFail("Expected second context-menu item to be a separator.")
+        }
+        if case .action(let third) = menu[2] {
+            XCTAssertEqual(third.action, "new-dev")
+            XCTAssertEqual(third.title, "Open Dev")
+            XCTAssertEqual(third.icon, .symbol("hammer"))
+        } else {
+            XCTFail("Expected third context-menu item to be an action.")
+        }
+    }
+
     func testDecodeActionShortcutString() throws {
         let json = """
         {
@@ -878,7 +925,7 @@ final class CmuxConfigDecodingTests: XCTestCase {
     }
 
     @MainActor
-    func testResolvedNewWorkspaceActionExposesNonWorkspaceActionIssue() throws {
+    func testResolvedNewWorkspaceActionAllowsCommandAction() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "cmux-config-store-\(UUID().uuidString)",
             isDirectory: true
@@ -907,8 +954,87 @@ final class CmuxConfigDecodingTests: XCTestCase {
         store.loadAll()
 
         XCTAssertNil(store.resolvedNewWorkspaceCommand())
-        XCTAssertEqual(store.configurationIssues.first?.kind, .newWorkspaceActionRequiresWorkspaceCommand)
-        XCTAssertEqual(store.configurationIssues.first?.sourcePath, configURL.path)
+        let action = try XCTUnwrap(store.resolvedNewWorkspaceAction())
+        XCTAssertEqual(action.id, "start-codex")
+        XCTAssertEqual(action.terminalCommand, "codex")
+        XCTAssertTrue(store.configurationIssues.isEmpty)
+    }
+
+    @MainActor
+    func testResolvedNewWorkspaceContextMenuSupportsBuiltInsAndActionOverrides() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "cmux-config-store-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let configURL = root.appendingPathComponent("cmux.json")
+        let json = """
+        {
+          "actions": {
+            "start-codex": {
+              "type": "command",
+              "command": "codex",
+              "title": "Start Codex",
+              "icon": { "type": "symbol", "name": "sparkles" }
+            },
+            "open-dev": {
+              "type": "workspaceCommand",
+              "commandName": "Dev Environment",
+              "title": "Dev"
+            }
+          },
+          "ui": {
+            "newWorkspace": {
+              "contextMenu": [
+                "cmux.newTerminal",
+                "start-codex",
+                { "type": "separator" },
+                { "action": "open-dev", "title": "Open Dev" }
+              ]
+            }
+          },
+          "commands": [{
+            "name": "Dev Environment",
+            "workspace": { "name": "Dev" }
+          }]
+        }
+        """
+        try json.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let store = CmuxConfigStore(
+            globalConfigPath: root.appendingPathComponent("missing-global.json").path,
+            localConfigPath: configURL.path,
+            startFileWatchers: false
+        )
+        store.loadAll()
+
+        let items = store.newWorkspaceContextMenuItems
+        XCTAssertEqual(items.count, 4)
+        if case .action(let first) = items[0] {
+            XCTAssertEqual(first.action.id, CmuxSurfaceTabBarBuiltInAction.newTerminal.configID)
+        } else {
+            XCTFail("Expected first context-menu item to be an action.")
+        }
+        if case .action(let second) = items[1] {
+            XCTAssertEqual(second.action.id, "start-codex")
+            XCTAssertEqual(second.title, "Start Codex")
+            XCTAssertEqual(second.icon, .symbol("sparkles"))
+        } else {
+            XCTFail("Expected second context-menu item to be an action.")
+        }
+        if case .separator = items[2] {
+        } else {
+            XCTFail("Expected third context-menu item to be a separator.")
+        }
+        if case .action(let fourth) = items[3] {
+            XCTAssertEqual(fourth.action.id, "open-dev")
+            XCTAssertEqual(fourth.title, "Open Dev")
+        } else {
+            XCTFail("Expected fourth context-menu item to be an action.")
+        }
+        XCTAssertTrue(store.configurationIssues.isEmpty)
     }
 
     func testDecodeActionsSurfaceTabBarButtonSupportsWorkspaceCommand() throws {

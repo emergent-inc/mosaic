@@ -596,6 +596,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    @MainActor
+    private final class NewWorkspaceContextMenuActionBox: NSObject {
+        let windowId: UUID
+        let action: CmuxResolvedConfigAction
+
+        init(windowId: UUID, action: CmuxResolvedConfigAction) {
+            self.windowId = windowId
+            self.action = action
+        }
+    }
+
     private final class MainWindowController: NSWindowController, NSWindowDelegate {
         var onClose: (() -> Void)?
 
@@ -5920,7 +5931,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let windowId = createMainWindow()
             if let context = mainWindowContexts.values.first(where: { $0.windowId == windowId }) {
                 let initialWorkspace = context.tabManager.selectedWorkspace
-                _ = executeConfiguredNewWorkspaceCommandIfAvailable(
+                _ = executeConfiguredNewWorkspaceActionIfAvailable(
                     in: context,
                     debugSource: debugSource,
                     replacingInitialWorkspace: initialWorkspace
@@ -5933,7 +5944,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             ?? preferredMainWindowContextForWorkspaceCreation(event: event, debugSource: debugSource)
 
         if let context,
-           executeConfiguredNewWorkspaceCommandIfAvailable(in: context, debugSource: debugSource) {
+           executeConfiguredNewWorkspaceActionIfAvailable(in: context, debugSource: debugSource) {
             return true
         }
 
@@ -5962,42 +5973,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         mainWindowContexts.values.first(where: { $0.tabManager === tabManager })
     }
 
-    private func executeConfiguredNewWorkspaceCommandIfAvailable(
+    private func executeConfiguredNewWorkspaceActionIfAvailable(
         in context: MainWindowContext,
         debugSource: String,
         replacingInitialWorkspace initialWorkspace: Workspace? = nil
     ) -> Bool {
         guard let cmuxConfigStore = context.cmuxConfigStore,
-              let configured = cmuxConfigStore.resolvedNewWorkspaceCommand() else {
+              let action = cmuxConfigStore.resolvedNewWorkspaceAction() else {
             return false
         }
-        guard resolvedWindow(for: context) != nil else {
+        guard let window = resolvedWindow(for: context) else {
             discardOrphanedMainWindowContext(context)
             return false
         }
-        let rawCwd = context.tabManager.selectedWorkspace?.currentDirectory
-        let baseCwd = (rawCwd?.isEmpty == false) ? rawCwd!
-            : FileManager.default.homeDirectoryForCurrentUser.path
 #if DEBUG
         cmuxDebugLog(
             "newWorkspace.configCommand source=\(debugSource) " +
-            "command=\(configured.command.name) windowId=\(String(context.windowId.uuidString.prefix(8)))"
+            "action=\(action.id) windowId=\(String(context.windowId.uuidString.prefix(8)))"
         )
 #endif
         let initialWorkspaceId = initialWorkspace?.id
-        let didExecute = CmuxConfigExecutor.execute(
-            command: configured.command,
-            tabManager: context.tabManager,
-            baseCwd: baseCwd,
-            configSourcePath: configured.sourcePath,
-            globalConfigPath: cmuxConfigStore.globalConfigPath
-        ) { [weak self, weak context] in
+        let onExecuted: (() -> Void)? = action.workspaceCommandName == nil ? nil : { [weak self, weak context] in
             self?.closeInitialWorkspaceIfNeeded(
                 initialWorkspaceId: initialWorkspaceId,
                 in: context
             )
         }
-        return didExecute
+        return executeConfiguredCmuxAction(
+            action,
+            context: context,
+            preferredWindow: window,
+            onExecuted: onExecuted
+        )
     }
 
     private func closeInitialWorkspaceIfNeeded(
@@ -6012,6 +6019,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return
         }
         context.tabManager.closeWorkspace(initialWorkspace)
+    }
+
+    @discardableResult
+    func showNewWorkspaceContextMenu(
+        anchorView: NSView,
+        event: NSEvent,
+        debugSource: String = "titlebar.newWorkspace.contextMenu"
+    ) -> Bool {
+        let context = contextForMainWindow(anchorView.window)
+            ?? mainWindowContext(forShortcutEvent: event, debugSource: debugSource)
+            ?? preferredMainWindowContextForWorkspaceCreation(event: event, debugSource: debugSource)
+        guard let context,
+              let cmuxConfigStore = context.cmuxConfigStore else {
+            return false
+        }
+
+        let configuredItems = cmuxConfigStore.newWorkspaceContextMenuItems
+        guard !configuredItems.isEmpty else { return false }
+
+        let menu = NSMenu()
+        for configuredItem in configuredItems {
+            switch configuredItem {
+            case .separator:
+                if !menu.items.isEmpty, menu.items.last?.isSeparatorItem == false {
+                    menu.addItem(.separator())
+                }
+            case .action(let menuAction):
+                let item = NSMenuItem(
+                    title: sanitizedConfigMenuTitle(menuAction.title, fallback: menuAction.action.id),
+                    action: #selector(performNewWorkspaceContextMenuItem(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = NewWorkspaceContextMenuActionBox(
+                    windowId: context.windowId,
+                    action: menuAction.action
+                )
+                item.toolTip = menuAction.tooltip
+                item.image = menuImage(for: menuAction.icon ?? menuAction.action.icon)
+                menu.addItem(item)
+            }
+        }
+
+        while menu.items.last?.isSeparatorItem == true {
+            menu.removeItem(at: menu.items.count - 1)
+        }
+        guard menu.items.contains(where: { !$0.isSeparatorItem }) else { return false }
+
+        NSMenu.popUpContextMenu(menu, with: event, for: anchorView)
+        return true
+    }
+
+    @objc private func performNewWorkspaceContextMenuItem(_ sender: NSMenuItem) {
+        guard let box = sender.representedObject as? NewWorkspaceContextMenuActionBox,
+              let context = mainWindowContexts.values.first(where: { $0.windowId == box.windowId }),
+              let window = resolvedWindow(for: context) else {
+            NSSound.beep()
+            return
+        }
+        _ = executeConfiguredCmuxAction(box.action, context: context, preferredWindow: window)
+    }
+
+    private func sanitizedConfigMenuTitle(_ title: String, fallback: String) -> String {
+        let dangerous: Set<Unicode.Scalar> = [
+            "\u{200B}", "\u{200C}", "\u{200D}", "\u{200E}", "\u{200F}",
+            "\u{202A}", "\u{202B}", "\u{202C}", "\u{202D}", "\u{202E}",
+            "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}",
+            "\u{FEFF}",
+        ]
+        let sanitized = String(title.unicodeScalars.filter { !dangerous.contains($0) })
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return sanitized.isEmpty ? fallback : sanitized
+    }
+
+    private func menuImage(for icon: CmuxButtonIcon?) -> NSImage? {
+        guard let icon else { return nil }
+        guard case .symbol(let symbolName) = icon else { return nil }
+        return NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
     }
 
     /// Shows the "Open Folder" panel and creates a workspace for the selected directory.
@@ -12187,37 +12272,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         event: NSEvent,
         context: MainWindowContext?
     ) -> Bool {
+        guard let context else { return false }
+        return executeConfiguredCmuxAction(
+            action,
+            context: context,
+            preferredWindow: event.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+        )
+    }
+
+    @discardableResult
+    private func executeConfiguredCmuxAction(
+        _ action: CmuxResolvedConfigAction,
+        context: MainWindowContext,
+        preferredWindow: NSWindow? = nil,
+        onExecuted: (() -> Void)? = nil
+    ) -> Bool {
         switch action.action {
         case .builtIn(let builtIn):
             switch builtIn {
             case .newTerminal:
-                tabManager?.newSurface()
+                context.tabManager.newSurface()
+                onExecuted?()
                 return true
             case .newBrowser:
-                _ = openBrowserAndFocusAddressBar(insertAtEnd: true)
+                let previousTabManager = tabManager
+                tabManager = context.tabManager
+                defer { tabManager = previousTabManager }
+                guard openBrowserAndFocusAddressBar(insertAtEnd: true) != nil else {
+                    return false
+                }
+                onExecuted?()
                 return true
             case .splitRight:
                 if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .right) {
                     return true
                 }
-                _ = performSplitShortcut(
+                let didSplit = performSplitShortcut(
                     direction: .right,
-                    preferredWindow: event.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+                    preferredWindow: preferredWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
                 )
-                return true
+                if didSplit { onExecuted?() }
+                return didSplit
             case .splitDown:
                 if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .down) {
                     return true
                 }
-                _ = performSplitShortcut(
+                let didSplit = performSplitShortcut(
                     direction: .down,
-                    preferredWindow: event.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+                    preferredWindow: preferredWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
                 )
-                return true
+                if didSplit { onExecuted?() }
+                return didSplit
             }
         case .command, .agent, .workspaceCommand:
-            guard let context,
-                  let cmuxConfigStore = context.cmuxConfigStore else {
+            guard let cmuxConfigStore = context.cmuxConfigStore else {
                 return false
             }
             let rawCwd = context.tabManager.selectedWorkspace?.currentDirectory
@@ -12229,7 +12337,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 commandSourcePaths: cmuxConfigStore.commandSourcePaths,
                 tabManager: context.tabManager,
                 baseCwd: baseCwd,
-                globalConfigPath: cmuxConfigStore.globalConfigPath
+                globalConfigPath: cmuxConfigStore.globalConfigPath,
+                presentingWindow: preferredWindow,
+                onExecuted: onExecuted
             )
         case .actionReference:
             return false
