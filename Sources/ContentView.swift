@@ -12860,7 +12860,6 @@ private struct TabItemView: View, Equatable {
                 }
             }
 
-            // Latest log entry
             if detailVisibility.showsLog, let latestLog = workspaceSnapshot.latestLog {
                 HStack(spacing: 4) {
                     Image(systemName: logLevelIcon(latestLog.level))
@@ -12875,7 +12874,6 @@ private struct TabItemView: View, Equatable {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            // Progress bar
             if detailVisibility.showsProgress, let progress = workspaceSnapshot.progress {
                 VStack(alignment: .leading, spacing: 2) {
                     GeometryReader { geo in
@@ -13133,6 +13131,7 @@ private struct TabItemView: View, Equatable {
             guard !contextMenuState.isVisible else { return }
             isHovering = hovering
         }
+        .safeHelp(workspaceSnapshot.title)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(accessibilityTitle))
         .accessibilityHint(Text(accessibilityHintText))

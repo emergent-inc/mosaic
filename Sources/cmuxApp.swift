@@ -6646,7 +6646,7 @@ struct SettingsView: View {
 
                         SettingsCardDivider()
 
-                        SettingsCardNote(String(localized: "settings.automation.cursor.note", defaultValue: "Hooks must be installed with `cmux cursor install-hooks`. They no-op outside cmux terminals."))
+                        SettingsCardNote(String(localized: "settings.automation.cursor.note", defaultValue: "Hooks must be installed with `cmux hooks cursor install`. They no-op outside cmux terminals."))
                     }
 
                     SettingsCard {
@@ -6665,7 +6665,7 @@ struct SettingsView: View {
 
                         SettingsCardDivider()
 
-                        SettingsCardNote(String(localized: "settings.automation.gemini.note", defaultValue: "Hooks must be installed with `cmux gemini install-hooks`. They no-op outside cmux terminals."))
+                        SettingsCardNote(String(localized: "settings.automation.gemini.note", defaultValue: "Hooks must be installed with `cmux hooks gemini install`. They no-op outside cmux terminals."))
                     }
 
                     SettingsCard {
