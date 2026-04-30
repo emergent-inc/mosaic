@@ -2,7 +2,7 @@ import CMUXWorkstream
 import Foundation
 
 enum IMessageModeSettings {
-    static let key = "iMessageMode"
+    static let key = "app.iMessageMode"
     static let defaultValue = false
 
     static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
@@ -16,8 +16,9 @@ enum IMessageModeSettings {
 extension WorkstreamEvent {
     var submittedPromptMessage: String? {
         guard hookEventName == .userPromptSubmit else { return nil }
+        let contextMessage = context?.lastUserMessage.flatMap(Self.normalizedPromptText)
         return Self.promptText(fromJSON: toolInputJSON)
-            ?? context?.lastUserMessage
+            ?? contextMessage
             ?? Self.promptText(fromJSON: extraFieldsJSON)
     }
 

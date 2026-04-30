@@ -16674,6 +16674,11 @@ export default CMUXSessionRestore;
                 workspaceId: workspaceId ?? workspaceArg
             )
         }
+        defer {
+            if !didSendFeedTelemetry {
+                sendAgentFeedTelemetry()
+            }
+        }
 
         switch action {
         case .sessionStart:
@@ -16824,10 +16829,6 @@ export default CMUXSessionRestore;
 
         case .noop:
             break
-        }
-
-        if !didSendFeedTelemetry {
-            sendAgentFeedTelemetry()
         }
 
         print("{}")
@@ -17187,6 +17188,12 @@ export default CMUXSessionRestore;
     }
 
     private func feedWorkspaceId(rawObject: [String: Any]?, fallback: String?) -> String? {
+        if let fallback {
+            let trimmed = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
         if let rawObject,
            let direct = firstString(
                 in: rawObject,
@@ -17194,9 +17201,7 @@ export default CMUXSessionRestore;
            ) {
             return direct
         }
-        guard let fallback else { return nil }
-        let trimmed = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        return nil
     }
 
     private func enrichUserPromptSubmitFeedEvent(
@@ -17206,7 +17211,10 @@ export default CMUXSessionRestore;
     ) {
         guard hookEventName == "UserPromptSubmit",
               let promptText else { return }
-        if event["tool_input"] == nil {
+        if var toolInput = event["tool_input"] as? [String: Any] {
+            toolInput["prompt"] = promptText
+            event["tool_input"] = toolInput
+        } else {
             event["tool_input"] = ["prompt": promptText]
         }
         var context = event["context"] as? [String: Any] ?? [:]

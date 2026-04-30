@@ -92,4 +92,36 @@ final class WorkspacePromptSubmitTests: XCTestCase {
 
         XCTAssertEqual(event.submittedPromptMessage, "from context")
     }
+
+    func testFeedPromptSubmitSkipsBlankContextBeforeExtraFields() {
+        let event = WorkstreamEvent(
+            sessionId: "agent-session",
+            hookEventName: .userPromptSubmit,
+            source: "codex",
+            workspaceId: UUID().uuidString,
+            context: WorkstreamContext(lastUserMessage: " \n "),
+            extraFieldsJSON: #"{"message":"from extra fields"}"#
+        )
+
+        XCTAssertEqual(event.submittedPromptMessage, "from extra fields")
+    }
+
+    func testBlankSubmittedMessageDoesNotClearRecordedPreview() {
+        let workspace = Workspace()
+
+        XCTAssertTrue(workspace.recordSubmittedMessage("keep this preview"))
+        XCTAssertFalse(workspace.recordSubmittedMessage(" \n "))
+        XCTAssertEqual(workspace.latestSubmittedMessage, "keep this preview")
+    }
+
+    func testIMessageModeUsesManagedSettingsKey() throws {
+        let suiteName = "cmux.iMessageMode.test.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertEqual(IMessageModeSettings.key, "app.iMessageMode")
+        XCTAssertFalse(IMessageModeSettings.isEnabled(defaults: defaults))
+        defaults.set(true, forKey: IMessageModeSettings.key)
+        XCTAssertTrue(IMessageModeSettings.isEnabled(defaults: defaults))
+    }
 }

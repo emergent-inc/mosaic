@@ -3743,6 +3743,10 @@ class TerminalController {
         return v2MainSync { AppDelegate.shared?.windowId(for: tabManager) }
     }
 
+    private func v2ResolveWorkspaceOwner(_ workspaceId: UUID) -> TabManager? {
+        v2MainSync { AppDelegate.shared?.tabManagerFor(tabId: workspaceId) }
+    }
+
     // MARK: - V2 Window Methods
 
     private func v2WindowList(params _: [String: Any]) -> V2CallResult {
@@ -4146,17 +4150,21 @@ class TerminalController {
     }
 
     private func v2WorkspacePromptSubmit(params: [String: Any]) -> V2CallResult {
-        guard let tabManager = v2ResolveTabManager(params: params) else {
-            return .err(code: "unavailable", message: "TabManager not available", data: nil)
-        }
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
 
-        let message = v2RawString(params, "message")
-            ?? v2RawString(params, "prompt")
-            ?? v2RawString(params, "text")
-            ?? v2RawString(params, "body")
+        let messageKeys = ["message", "prompt", "text", "body"]
+        for key in messageKeys {
+            guard let raw = params[key], !(raw is NSNull) else { continue }
+            guard raw is String else {
+                return .err(code: "invalid_params", message: "\(key) must be a string", data: nil)
+            }
+        }
+        let message = messageKeys.lazy.compactMap { self.v2RawString(params, $0) }.first
+        guard let tabManager = v2ResolveWorkspaceOwner(workspaceId) ?? v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
         let iMessageModeEnabled = IMessageModeSettings.isEnabled()
         var outcome: (messageRecorded: Bool, reordered: Bool, index: Int)?
         var preview: String?
@@ -7739,7 +7747,7 @@ class TerminalController {
         guard event.hookEventName == .userPromptSubmit,
               let rawWorkspaceId = event.workspaceId,
               let workspaceId = v2UUID(["workspace_id": rawWorkspaceId], "workspace_id"),
-              let tabManager = v2ResolveTabManager(params: ["workspace_id": rawWorkspaceId])
+              let tabManager = v2ResolveWorkspaceOwner(workspaceId)
         else { return }
 
         let iMessageModeEnabled = IMessageModeSettings.isEnabled()

@@ -9026,7 +9026,7 @@ final class Workspace: Identifiable, ObservableObject {
 
     @discardableResult
     func recordSubmittedMessage(_ message: String?) -> Bool {
-        let preview = Self.submittedMessagePreview(from: message)
+        guard let preview = Self.submittedMessagePreview(from: message) else { return false }
         guard latestSubmittedMessage != preview else { return false }
         latestSubmittedMessage = preview
         return true
