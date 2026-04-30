@@ -34,11 +34,15 @@ struct CLISocketOperationTelemetry {
             return "unknown"
         }
 
-        if trimmed.hasPrefix("{"),
-           let data = trimmed.data(using: .utf8),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let method = object["method"] as? String,
-           !method.isEmpty {
+        if trimmed.hasPrefix("{") {
+            guard
+                let data = trimmed.data(using: .utf8),
+                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let method = (object["method"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                !method.isEmpty
+            else {
+                return "unknown"
+            }
             return method
         }
 

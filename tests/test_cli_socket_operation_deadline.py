@@ -24,6 +24,14 @@ class RunResult:
     elapsed: float
 
 
+def output_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value
+
+
 def resolve_cmux_cli() -> str:
     explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
     if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
@@ -128,14 +136,24 @@ def run_cli(cli_path: str, socket_path: str, timeout: float = 3.0) -> RunResult:
     env["CMUX_CLI_SENTRY_DISABLED"] = "1"
     env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
     started = time.monotonic()
-    proc = subprocess.run(
-        [cli_path, "--socket", socket_path, "ping"],
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-        env=env,
-    )
+    try:
+        proc = subprocess.run(
+            [cli_path, "--socket", socket_path, "ping"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stderr = output_text(exc.stderr)
+        stderr = f"{stderr}\nHarness timeout expired after {timeout:.1f}s".lstrip()
+        return RunResult(
+            returncode=124,
+            stdout=output_text(exc.stdout),
+            stderr=stderr,
+            elapsed=time.monotonic() - started,
+        )
     return RunResult(
         returncode=proc.returncode,
         stdout=proc.stdout,
@@ -153,29 +171,48 @@ def main() -> int:
 
     failures: list[str] = []
 
-    with FakeUnixServer(pong_handler) as server:
-        result = run_cli(cli_path, server.path)
-        if result.returncode != 0 or result.stdout != "PONG\n":
-            failures.append(
-                f"ping fixture failed: rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
-            )
-
-    with FakeUnixServer(no_reply_handler) as server:
-        result = run_cli(cli_path, server.path)
-        merged = f"{result.stdout}\n{result.stderr}"
-        if result.returncode == 0:
-            failures.append("no-reply socket unexpectedly succeeded")
-        if "Command timed out" not in merged:
-            failures.append(f"no-reply socket did not surface timeout: {merged!r}")
-        if result.elapsed > 1.5:
-            failures.append(f"no-reply socket took too long: {result.elapsed:.3f}s")
-
-    with FakeUnixServer(close_after_accept_handler) as server:
-        for index in range(20):
+    try:
+        with FakeUnixServer(pong_handler) as server:
             result = run_cli(cli_path, server.path)
-            if result.returncode < 0:
-                failures.append(f"closed peer run {index} terminated by signal: rc={result.returncode}")
-                break
+            if result.returncode != 0 or result.stdout != "PONG\n":
+                failures.append(
+                    f"ping fixture failed: rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
+                )
+
+        with FakeUnixServer(no_reply_handler) as server:
+            result = run_cli(cli_path, server.path)
+            merged = f"{result.stdout}\n{result.stderr}"
+            if result.returncode == 0:
+                failures.append("no-reply socket unexpectedly succeeded")
+            if "Command timed out" not in merged:
+                failures.append(f"no-reply socket did not surface timeout: {merged!r}")
+            if result.elapsed > 1.5:
+                failures.append(f"no-reply socket took too long: {result.elapsed:.3f}s")
+
+        expected_closed_peer_errors = (
+            "Failed to write to socket",
+            "Socket read error",
+            "Command timed out",
+            "Failed to connect",
+        )
+        with FakeUnixServer(close_after_accept_handler) as server:
+            for index in range(20):
+                result = run_cli(cli_path, server.path)
+                merged = f"{result.stdout}\n{result.stderr}"
+                if result.returncode < 0:
+                    failures.append(f"closed peer run {index} terminated by signal: rc={result.returncode}")
+                    break
+                if result.returncode == 0:
+                    failures.append(f"closed peer run {index} unexpectedly succeeded: stdout={result.stdout!r}")
+                    break
+                if not any(token in merged for token in expected_closed_peer_errors):
+                    failures.append(
+                        f"closed peer run {index} returned an unexpected error: "
+                        f"rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
+                    )
+                    break
+    except Exception as exc:
+        failures.append(f"test harness raised {type(exc).__name__}: {exc}")
 
     if failures:
         print("FAIL: CLI socket operation deadline regressions failed")

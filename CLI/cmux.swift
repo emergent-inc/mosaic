@@ -928,7 +928,7 @@ final class SocketClient {
 
     private let path: String
     private var socketFD: Int32 = -1
-    private var lastOperationTelemetry: [String: Any] = [:]
+    private var lastOperationTelemetry: CLISocketOperationTelemetry.State?
     private static let defaultResponseTimeoutSeconds: TimeInterval = 15.0
     private static let multilineResponseIdleTimeoutSeconds: TimeInterval = 0.12
     private static let maxSocketTimeoutSeconds: TimeInterval = 9_007_199_254_740_991
@@ -976,7 +976,7 @@ final class SocketClient {
     }
 
     func operationTelemetryContext() -> [String: Any] {
-        lastOperationTelemetry
+        lastOperationTelemetry?.context() ?? [:]
     }
 
     private var relayEndpoint: RelayEndpoint? {
@@ -1006,7 +1006,7 @@ final class SocketClient {
     }
 
     private func recordOperation(_ operation: CLISocketOperationTelemetry.State) {
-        lastOperationTelemetry = operation.context()
+        lastOperationTelemetry = operation
     }
 
     func connect() throws {
@@ -2250,15 +2250,25 @@ struct CMUXCLI {
         )
 
         let idFormat = try resolvedIDFormat(jsonOutput: jsonOutput, raw: idFormatArg)
+        // Existing CLI --window routing focuses first so commands without an
+        // explicit window_id still target the selected window.
+        if let windowId {
+            do {
+                let normalizedWindow = try normalizeWindowHandle(windowId, client: client) ?? windowId
+                _ = try client.sendV2(method: "window.focus", params: ["window_id": normalizedWindow])
+            } catch {
+                cliTelemetry.captureError(
+                    stage: "socket_command_window_focus",
+                    error: error,
+                    data: client.operationTelemetryContext()
+                )
+                throw error
+            }
+        }
+
         let capturesSocketErrorsInsideCommand = command == "claude-hook" || command == "hooks"
 
         do {
-            // If the user explicitly targets a window, focus it first so commands route correctly.
-            if let windowId {
-                let normalizedWindow = try normalizeWindowHandle(windowId, client: client) ?? windowId
-                _ = try client.sendV2(method: "window.focus", params: ["window_id": normalizedWindow])
-            }
-
         switch command {
         case "ping":
             let response = try sendV1Command("ping", client: client)
