@@ -14418,6 +14418,8 @@ struct CMUXCLI {
             "turnId",
             "last_assistant_message",
             "lastAssistantMessage",
+            "assistantPreamble",
+            "assistant_preamble",
             "event",
             "event_name",
             "hook_event_name",
@@ -14524,7 +14526,7 @@ struct CMUXCLI {
         switch key {
         case "tool_name", "turn_id", "turnId", "event", "event_name", "hook_event_name", "type", "kind", "notification_type", "matcher", "reason":
             return 80
-        case "last_assistant_message", "lastAssistantMessage", "message", "body", "text", "prompt", "error", "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails", "description":
+        case "last_assistant_message", "lastAssistantMessage", "assistantPreamble", "assistant_preamble", "message", "body", "text", "prompt", "error", "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails", "description":
             return 240
         default:
             return 160
@@ -14649,6 +14651,14 @@ struct CMUXCLI {
             return tail.isEmpty ? path : tail
         }()
 
+        if let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object) {
+            var subtitle = "Completed"
+            if let projectName, !projectName.isEmpty {
+                subtitle = "Completed in \(projectName)"
+            }
+            return (subtitle, truncate(assistantMessage, maxLength: 200))
+        }
+
         // Try reading the transcript JSONL for a richer summary.
         let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
 
@@ -14673,6 +14683,22 @@ struct CMUXCLI {
             body += ". Last: \(lastMessage)"
         }
         return ("Completed", body)
+    }
+
+    private func claudeAssistantMessageFromHookPayload(_ object: [String: Any]?) -> String? {
+        guard let object else { return nil }
+        let message = firstString(
+            in: object,
+            keys: [
+                "last_assistant_message",
+                "lastAssistantMessage",
+                "assistantPreamble",
+                "assistant_preamble",
+            ]
+        )
+        guard let message else { return nil }
+        let normalized = normalizedSingleLine(message)
+        return normalized.isEmpty ? nil : normalized
     }
 
     private struct TranscriptSummary {
