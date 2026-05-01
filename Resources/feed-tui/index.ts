@@ -715,6 +715,8 @@ class FeedApp {
     switch (item.kind) {
       case "permissionRequest":
         if (item.source === "codex") {
+          // Codex PermissionRequest hooks only accept allow/deny for this
+          // invocation. Persistent allow/bypass modes are Claude/OpenCode-only.
           return ["deny"].includes(action);
         }
         return ["deny", "always", "all", "bypass"].includes(action);

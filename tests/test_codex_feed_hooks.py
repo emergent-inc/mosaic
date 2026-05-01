@@ -123,6 +123,14 @@ def assert_permission_output(stdout: dict, behavior: str) -> None:
         raise AssertionError(f"wrong permission behavior: {stdout!r}")
 
 
+def assert_codex_allow_has_no_persistent_fields(stdout: dict) -> None:
+    decision = stdout["hookSpecificOutput"]["decision"]
+    forbidden = {"updatedInput", "updatedPermissions", "setMode", "remember"}
+    present = forbidden.intersection(decision)
+    if present:
+        raise AssertionError(f"Codex permission output included unsupported fields {present}: {stdout!r}")
+
+
 def test_install_adds_codex_permission_request_hook(cli_path: str, root: Path) -> None:
     codex_home = root / "codex-home"
     codex_home.mkdir()
@@ -196,6 +204,27 @@ def test_permission_reply_uses_codex_permission_request_schema(cli_path: str, ro
         raise AssertionError(f"deny output should include a message: {stdout!r}")
 
 
+def test_codex_persistent_permission_modes_degrade_to_once(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-persistent",
+        "cwd": "/tmp/project",
+        "hook_event_name": "PermissionRequest",
+        "tool_name": "Bash",
+        "tool_input": {"command": "printf hi"},
+    }
+
+    for mode in ["always", "all", "bypass"]:
+        stdout, _ = run_feed_hook(
+            cli_path,
+            root / f"cmux-{mode}.sock",
+            payload,
+            {"kind": "permission", "mode": mode},
+        )
+        assert_permission_output(stdout, "allow")
+        assert_codex_allow_has_no_persistent_fields(stdout)
+
+
 def test_codex_pre_tool_use_is_telemetry_not_actionable(cli_path: str, root: Path) -> None:
     stdout, frame = run_feed_hook(
         cli_path,
@@ -231,6 +260,7 @@ def main() -> int:
         try:
             test_install_adds_codex_permission_request_hook(cli_path, root)
             test_permission_reply_uses_codex_permission_request_schema(cli_path, root)
+            test_codex_persistent_permission_modes_degrade_to_once(cli_path, root)
             test_codex_pre_tool_use_is_telemetry_not_actionable(cli_path, root)
         except Exception as exc:
             print(f"FAIL: {exc}")

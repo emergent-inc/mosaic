@@ -109,7 +109,7 @@ For Claude Code, the cmux wrapper launches Claude with `--allow-dangerously-skip
 
 For Claude Code, AskUserQuestion is answered by allowing the PermissionRequest with an updated tool input containing the selected answers. Other agents use their native question reply shape where available.
 
-Codex's `request_user_input` and `update_plan` currently surface through its app-server request/notification path, not through command hooks. cmux can route Codex permission approvals through `PermissionRequest`; Codex plan-mode questions still fall back to Codex's own TUI until Codex exposes those app-server frames to hook-based integrations.
+Codex's `request_user_input` and `update_plan` currently surface through its app-server request/notification path, not through command hooks. A stock `codex` TUI running in a cmux terminal keeps those frames inside Codex's in-process app-server client, so its plan-mode questions still fall back to Codex's own TUI. cmux can route Codex permission approvals through `PermissionRequest`; showing Codex plan questions in Feed would require launching Codex against a shared standalone app server and adding a Codex app-server Feed adapter, or upstream Codex hook coverage for those frames.
 
 ## Timeout behavior
 
@@ -140,6 +140,8 @@ Double-click a Feed row and cmux focuses the cmux workspace + surface where the 
 ## Troubleshooting
 
 **Feed shows nothing even though the agent is running.** Check that the hook got installed: `cat ~/.codex/hooks.json` (or similar) should contain a `cmux hooks feed --source codex` entry. Re-run `cmux hooks setup`.
+
+**Codex plan-mode question stays in the terminal.** Codex `request_user_input` is not a hook event in the stock TUI path. Feed only sees Codex permission hooks today.
 
 **Agent hangs on a permission request.** Feed never blocks the agent longer than 120 seconds; if you see a longer hang, the hook failed to reach the socket. Verify `$CMUX_SOCKET_PATH` matches the running app (default is `~/.config/cmux/cmux.sock`).
 
