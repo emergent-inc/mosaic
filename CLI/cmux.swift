@@ -979,6 +979,8 @@ final class SocketClient {
         lastOperationTelemetry?.context() ?? [:]
     }
 
+    func hasUnfinishedOperationTelemetry() -> Bool { lastOperationTelemetry.map { $0.phase != .completed } ?? false }
+
     private var relayEndpoint: RelayEndpoint? {
         Self.parseRelayEndpoint(path)
     }
@@ -1053,12 +1055,12 @@ final class SocketClient {
         var sawNewline = false
 
         while true {
+            let currentTimeout = sawNewline ? Self.multilineResponseIdleTimeoutSeconds : initialResponseTimeout
             operation.phase = sawNewline ? .readMultilineResponse : .waitForResponse
             operation.sawNewline = sawNewline
+            operation.timeout = currentTimeout
             recordOperation(operation)
-            try configureReceiveTimeout(
-                sawNewline ? Self.multilineResponseIdleTimeoutSeconds : initialResponseTimeout
-            )
+            try configureReceiveTimeout(currentTimeout)
 
             var buffer = [UInt8](repeating: 0, count: 8192)
             let count = Darwin.read(socketFD, &buffer, buffer.count)
@@ -1697,6 +1699,12 @@ struct CMUXCLI {
     private static let vmCreateResponseTimeoutSeconds: TimeInterval = 16 * 60
     private static let vmAttachResponseTimeoutSeconds: TimeInterval = 16 * 60
 
+    private func captureSocketTransportError(telemetry: CLISocketSentryTelemetry, stage: String, error: Error, client: SocketClient) {
+        if client.hasUnfinishedOperationTelemetry() {
+            telemetry.captureError(stage: stage, error: error, data: client.operationTelemetryContext())
+        }
+    }
+
     private struct VMCreateIdempotencyStore: Codable {
         var records: [String: VMCreateIdempotencyRecord] = [:]
     }
@@ -2257,11 +2265,7 @@ struct CMUXCLI {
                 let normalizedWindow = try normalizeWindowHandle(windowId, client: client) ?? windowId
                 _ = try client.sendV2(method: "window.focus", params: ["window_id": normalizedWindow])
             } catch {
-                cliTelemetry.captureError(
-                    stage: "socket_command_window_focus",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: cliTelemetry, stage: "socket_command_window_focus", error: error, client: client)
                 throw error
             }
         }
@@ -3312,11 +3316,7 @@ struct CMUXCLI {
                 cliTelemetry.breadcrumb("claude-hook.completed")
             } catch {
                 cliTelemetry.breadcrumb("claude-hook.failure")
-                cliTelemetry.captureError(
-                    stage: "claude_hook_dispatch",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: cliTelemetry, stage: "claude_hook_dispatch", error: error, client: client)
                 throw error
             }
 
@@ -3422,11 +3422,7 @@ struct CMUXCLI {
         }
         } catch {
             if !capturesSocketErrorsInsideCommand {
-                cliTelemetry.captureError(
-                    stage: "socket_command",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: cliTelemetry, stage: "socket_command", error: error, client: client)
             }
             throw error
         }
@@ -19859,11 +19855,7 @@ export default CMUXSessionRestore;
                 telemetry.breadcrumb("hooks.feed.completed")
             } catch {
                 telemetry.breadcrumb("hooks.feed.failure")
-                telemetry.captureError(
-                    stage: "hooks_feed_dispatch",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: telemetry, stage: "hooks_feed_dispatch", error: error, client: client)
                 throw error
             }
 
@@ -19874,11 +19866,7 @@ export default CMUXSessionRestore;
                 telemetry.breadcrumb("hooks.claude.completed")
             } catch {
                 telemetry.breadcrumb("hooks.claude.failure")
-                telemetry.captureError(
-                    stage: "hooks_claude_dispatch",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: telemetry, stage: "hooks_claude_dispatch", error: error, client: client)
                 throw error
             }
 
@@ -19892,11 +19880,7 @@ export default CMUXSessionRestore;
                 telemetry.breadcrumb("hooks.\(def.name).completed")
             } catch {
                 telemetry.breadcrumb("hooks.\(def.name).failure")
-                telemetry.captureError(
-                    stage: "hooks_\(def.name)_dispatch",
-                    error: error,
-                    data: client.operationTelemetryContext()
-                )
+                captureSocketTransportError(telemetry: telemetry, stage: "hooks_\(def.name)_dispatch", error: error, client: client)
                 throw error
             }
         }

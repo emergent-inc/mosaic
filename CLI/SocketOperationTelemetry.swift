@@ -10,7 +10,7 @@ struct CLISocketOperationTelemetry {
 
     struct State {
         let name: String
-        let timeout: TimeInterval
+        var timeout: TimeInterval
         let startedAt: Date
         var phase: Phase
         var bytesRead: Int = 0
