@@ -2918,7 +2918,7 @@ class GhosttyApp {
                 AppDelegate.shared?.reloadCmuxConfigStores(source: source)
             }
         } else {
-            Task { @MainActor in
+            DispatchQueue.main.sync {
                 AppDelegate.shared?.reloadCmuxConfigStores(source: source)
             }
         }

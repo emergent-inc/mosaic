@@ -373,7 +373,7 @@
       "wsFieldLayout": "ដើមប្លង់ដែលកំណត់ការបំបែកនិងបន្ទះ",
       "restartBehavior": "ឥរិយាបថចាប់ផ្ដើមឡើងវិញ",
       "restartBehaviorDesc": "គ្រប់គ្រងអ្វីដែលកើតឡើងនៅពេល workspace ដែលមានឈ្មោះដូចគ្នារួចមានស្រាប់:",
-      "restartIgnore": "ប្ដូរទៅ workspace ដែលមានស្រាប់ (លំនាំដើម)",
+      "restartIgnore": "ប្ដូរទៅ workspace ដែលមានស្រាប់",
       "restartRecreate": "បិទហើយបង្កើតឡើងវិញដោយមិនសួរ",
       "restartConfirm": "សួរអ្នកប្រើប្រាស់មុននឹងបង្កើតឡើងវិញ",
       "layoutTree": "ដើមប្លង់",
@@ -400,7 +400,8 @@
       "cwdHome": "ពង្រីកទៅថតផ្ទះ",
       "absolutePath": "ផ្លូវដាច់ខាត",
       "cwdAbsolute": "ប្រើដូចដែលមាន",
-      "fullExample": "ឧទាហរណ៍ពេញលេញ"
+      "fullExample": "ឧទាហរណ៍ពេញលេញ",
+      "restartNew": "បង្កើត workspace ថ្មី (លំនាំដើម)"
     },
     "keyboardShortcuts": {
       "title": "ផ្លូវកាត់ក្ដារចុច",

@@ -373,8 +373,8 @@
       "wsFieldLayout": "定義分割和窗格的版面配置樹",
       "restartBehavior": "重新啟動行為",
       "restartBehaviorDesc": "控制當同名工作區已存在時的行為：",
-      "restartIgnore": "切換至現有工作區（預設）",
-      "restartRecreate": "無需詢問直接關閉並重新建立",
+      "restartIgnore": "切換至現有 workspace",
+      "restartRecreate": "不詢問，直接關閉並重新建立",
       "restartConfirm": "重新建立前詢問使用者",
       "layoutTree": "版面配置樹",
       "layoutTreeDesc": "版面配置樹使用遞迴分割節點定義窗格的排列方式：",
@@ -400,7 +400,8 @@
       "cwdHome": "展開至主目錄",
       "absolutePath": "絕對路徑",
       "cwdAbsolute": "按原樣使用",
-      "fullExample": "完整範例"
+      "fullExample": "完整範例",
+      "restartNew": "建立新的 workspace（預設）"
     },
     "keyboardShortcuts": {
       "title": "鍵盤快捷鍵",

@@ -373,9 +373,9 @@
       "wsFieldLayout": "Albero di layout che definisce divisioni e pannelli",
       "restartBehavior": "Comportamento al riavvio",
       "restartBehaviorDesc": "Controlla cosa succede quando esiste già un workspace con lo stesso nome:",
-      "restartIgnore": "Passa al workspace esistente (predefinito)",
+      "restartIgnore": "Passa al workspace esistente",
       "restartRecreate": "Chiudi e ricrea senza chiedere",
-      "restartConfirm": "Chiedi all'utente prima di ricreare",
+      "restartConfirm": "Chiedi all’utente prima di ricreare",
       "layoutTree": "Albero di layout",
       "layoutTreeDesc": "L'albero di layout definisce come i pannelli sono disposti usando nodi di divisione ricorsivi:",
       "splitNode": "Nodo di divisione",
@@ -400,7 +400,8 @@
       "cwdHome": "espansa alla directory home",
       "absolutePath": "Percorso assoluto",
       "cwdAbsolute": "usato così com'è",
-      "fullExample": "Esempio completo"
+      "fullExample": "Esempio completo",
+      "restartNew": "Crea un nuovo workspace (predefinito)"
     },
     "keyboardShortcuts": {
       "title": "Scorciatoie da tastiera",

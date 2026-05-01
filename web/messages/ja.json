@@ -377,7 +377,7 @@
       "wsFieldLayout": "分割とペインを定義するレイアウトツリー",
       "restartBehavior": "再起動の動作",
       "restartBehaviorDesc": "同名のワークスペースが既に存在する場合の動作を制御します：",
-      "restartIgnore": "既存のワークスペースに切り替える（デフォルト）",
+      "restartIgnore": "既存のワークスペースに切り替える",
       "restartRecreate": "確認なしに閉じて再作成する",
       "restartConfirm": "再作成前にユーザーに確認する",
       "layoutTree": "レイアウトツリー",
@@ -404,7 +404,8 @@
       "cwdHome": "ホームディレクトリに展開",
       "absolutePath": "絶対パス",
       "cwdAbsolute": "そのまま使用",
-      "fullExample": "完全な例"
+      "fullExample": "完全な例",
+      "restartNew": "新しいワークスペースを作成する (デフォルト)"
     },
     "keyboardShortcuts": {
       "title": "キーボードショートカット",

@@ -373,9 +373,9 @@
       "wsFieldLayout": "분할과 패널을 정의하는 레이아웃 트리",
       "restartBehavior": "재시작 동작",
       "restartBehaviorDesc": "동일한 이름의 워크스페이스가 이미 존재할 때 발생하는 동작을 제어합니다:",
-      "restartIgnore": "기존 워크스페이스로 전환 (기본값)",
-      "restartRecreate": "묻지 않고 닫고 재생성",
-      "restartConfirm": "재생성 전 사용자에게 확인",
+      "restartIgnore": "기존 워크스페이스로 전환",
+      "restartRecreate": "묻지 않고 닫고 다시 만들기",
+      "restartConfirm": "다시 만들기 전에 사용자에게 확인",
       "layoutTree": "레이아웃 트리",
       "layoutTreeDesc": "레이아웃 트리는 재귀적인 분할 노드를 사용하여 패널 배치를 정의합니다:",
       "splitNode": "분할 노드",
@@ -400,7 +400,8 @@
       "cwdHome": "홈 디렉터리로 확장",
       "absolutePath": "절대 경로",
       "cwdAbsolute": "있는 그대로 사용",
-      "fullExample": "전체 예시"
+      "fullExample": "전체 예시",
+      "restartNew": "새 워크스페이스 만들기 (기본값)"
     },
     "keyboardShortcuts": {
       "title": "키보드 단축키",

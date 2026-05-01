@@ -373,7 +373,7 @@
       "wsFieldLayout": "شجرة التخطيط التي تحدد الانقسامات والألواح",
       "restartBehavior": "سلوك إعادة التشغيل",
       "restartBehaviorDesc": "يتحكم فيما يحدث عندما توجد مساحة عمل بنفس الاسم:",
-      "restartIgnore": "التبديل إلى مساحة العمل الموجودة (الافتراضي)",
+      "restartIgnore": "التبديل إلى مساحة العمل الموجودة",
       "restartRecreate": "الإغلاق وإعادة الإنشاء دون سؤال",
       "restartConfirm": "السؤال قبل إعادة الإنشاء",
       "layoutTree": "شجرة التخطيط",
@@ -400,7 +400,8 @@
       "cwdHome": "موسّع إلى الدليل الرئيسي",
       "absolutePath": "مسار مطلق",
       "cwdAbsolute": "يُستخدم كما هو",
-      "fullExample": "مثال كامل"
+      "fullExample": "مثال كامل",
+      "restartNew": "إنشاء مساحة عمل جديدة (الافتراضي)"
     },
     "keyboardShortcuts": {
       "title": "اختصارات لوحة المفاتيح",

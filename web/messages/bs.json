@@ -373,7 +373,7 @@
       "wsFieldLayout": "Stablo rasporeda koje definira podjele i panele",
       "restartBehavior": "Ponašanje pri ponovnom pokretanju",
       "restartBehaviorDesc": "Kontrolira što se dešava kada radni prostor istog naziva već postoji:",
-      "restartIgnore": "Prebaci na postojeći radni prostor (zadano)",
+      "restartIgnore": "Prebaci na postojeći radni prostor",
       "restartRecreate": "Zatvori i ponovo kreiraj bez pitanja",
       "restartConfirm": "Pitaj korisnika prije ponovnog kreiranja",
       "layoutTree": "Stablo rasporeda",
@@ -400,7 +400,8 @@
       "cwdHome": "prošireno na kućni direktorij",
       "absolutePath": "Apsolutna putanja",
       "cwdAbsolute": "koristi se kao takvo",
-      "fullExample": "Potpuni primjer"
+      "fullExample": "Potpuni primjer",
+      "restartNew": "Kreiraj novi radni prostor (zadano)"
     },
     "keyboardShortcuts": {
       "title": "Prečice na tastaturi",

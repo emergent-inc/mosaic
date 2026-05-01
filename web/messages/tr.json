@@ -373,7 +373,7 @@
       "wsFieldLayout": "Bölünmeleri ve panelleri tanımlayan düzen ağacı",
       "restartBehavior": "Yeniden başlatma davranışı",
       "restartBehaviorDesc": "Aynı adda bir workspace zaten mevcut olduğunda ne olacağını kontrol eder:",
-      "restartIgnore": "Mevcut workspace'e geç (varsayılan)",
+      "restartIgnore": "Mevcut workspace’e geç",
       "restartRecreate": "Sormadan kapat ve yeniden oluştur",
       "restartConfirm": "Yeniden oluşturmadan önce kullanıcıya sor",
       "layoutTree": "Düzen ağacı",
@@ -400,7 +400,8 @@
       "cwdHome": "ana dizine genişletilmiş",
       "absolutePath": "Mutlak yol",
       "cwdAbsolute": "olduğu gibi kullanılır",
-      "fullExample": "Tam örnek"
+      "fullExample": "Tam örnek",
+      "restartNew": "Yeni bir workspace oluştur (varsayılan)"
     },
     "keyboardShortcuts": {
       "title": "Klavye Kısayolları",

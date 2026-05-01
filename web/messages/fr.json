@@ -373,9 +373,9 @@
       "wsFieldLayout": "Arbre de mise en page définissant les divisions et panneaux",
       "restartBehavior": "Comportement au redémarrage",
       "restartBehaviorDesc": "Contrôle ce qui se passe lorsqu'un espace de travail du même nom existe déjà :",
-      "restartIgnore": "Basculer vers l'espace de travail existant (par défaut)",
+      "restartIgnore": "Basculer vers le workspace existant",
       "restartRecreate": "Fermer et recréer sans demander",
-      "restartConfirm": "Demander à l'utilisateur avant de recréer",
+      "restartConfirm": "Demander à l’utilisateur avant de recréer",
       "layoutTree": "Arbre de mise en page",
       "layoutTreeDesc": "L'arbre de mise en page définit comment les panneaux sont disposés à l'aide de nœuds de division récursifs :",
       "splitNode": "Nœud de division",
@@ -400,7 +400,8 @@
       "cwdHome": "développé vers le répertoire personnel",
       "absolutePath": "Chemin absolu",
       "cwdAbsolute": "utilisé tel quel",
-      "fullExample": "Exemple complet"
+      "fullExample": "Exemple complet",
+      "restartNew": "Créer un nouveau workspace (par défaut)"
     },
     "keyboardShortcuts": {
       "title": "Raccourcis clavier",

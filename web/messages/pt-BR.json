@@ -373,7 +373,7 @@
       "wsFieldLayout": "Árvore de layout definindo divisões e painéis",
       "restartBehavior": "Comportamento de reinício",
       "restartBehaviorDesc": "Controla o que acontece quando um workspace com o mesmo nome já existe:",
-      "restartIgnore": "Mudar para o workspace existente (padrão)",
+      "restartIgnore": "Mudar para o workspace existente",
       "restartRecreate": "Fechar e recriar sem perguntar",
       "restartConfirm": "Perguntar ao usuário antes de recriar",
       "layoutTree": "Árvore de layout",
@@ -400,7 +400,8 @@
       "cwdHome": "expandido para o diretório home",
       "absolutePath": "Caminho absoluto",
       "cwdAbsolute": "usado como está",
-      "fullExample": "Exemplo completo"
+      "fullExample": "Exemplo completo",
+      "restartNew": "Criar um novo workspace (padrão)"
     },
     "keyboardShortcuts": {
       "title": "Atalhos de Teclado",

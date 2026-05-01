@@ -1193,6 +1193,54 @@ final class CmuxConfigDecodingTests: XCTestCase {
         ])
     }
 
+    @MainActor
+    func testResolvedNewWorkspaceContextMenuSanitizesLabels() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "cmux-config-store-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let configURL = root.appendingPathComponent("cmux.json")
+        let json = """
+        {
+          "actions": {
+            "run": {
+              "type": "command",
+              "title": "Run\\u202E",
+              "command": "echo hi"
+            }
+          },
+          "ui": {
+            "newWorkspace": {
+              "contextMenu": [
+                {
+                  "action": "run",
+                  "title": "\\u202EMenu",
+                  "tooltip": "Tip\\u200B"
+                }
+              ]
+            }
+          }
+        }
+        """
+        try json.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let store = CmuxConfigStore(
+            globalConfigPath: root.appendingPathComponent("missing-global.json").path,
+            localConfigPath: configURL.path,
+            startFileWatchers: false
+        )
+        store.loadAll()
+
+        guard case .action(let item) = store.newWorkspaceContextMenuItems.first else {
+            return XCTFail("Expected resolved menu action.")
+        }
+        XCTAssertEqual(item.title, "Menu")
+        XCTAssertEqual(item.tooltip, "Tip")
+    }
+
     func testDecodeActionsSurfaceTabBarButtonSupportsWorkspaceCommand() throws {
         let json = """
         {
@@ -1327,7 +1375,7 @@ final class CmuxConfigDecodingTests: XCTestCase {
     }
 
     func testDecodeRestartBehaviors() throws {
-        for behavior in ["recreate", "ignore", "confirm"] {
+        for behavior in ["new", "recreate", "ignore", "confirm"] {
             let json = """
             {
               "commands": [{
@@ -1826,31 +1874,100 @@ final class CmuxCommandIdentityTests: XCTestCase {
 @MainActor
 final class CmuxConfigWorkspaceCommandExecutionTests: XCTestCase {
 
-    func testWorkspaceCommandAlwaysCreatesNewWorkspaceWhenNameAlreadyExists() {
-        for restart in [CmuxRestartBehavior.ignore, .recreate] {
-            let manager = TabManager()
-            let existingWorkspace = manager.tabs[0]
-            existingWorkspace.setCustomTitle("Dev")
+    func testWorkspaceCommandCreatesNewWorkspaceByDefaultWhenNameAlreadyExists() {
+        let manager = TabManager()
+        let existingWorkspace = manager.tabs[0]
+        existingWorkspace.setCustomTitle("Dev")
 
-            let command = CmuxCommandDefinition(
-                name: "Dev command",
-                restart: restart,
-                workspace: CmuxWorkspaceDefinition(name: "Dev")
-            )
+        let command = CmuxCommandDefinition(
+            name: "Dev command",
+            workspace: CmuxWorkspaceDefinition(name: "Dev")
+        )
 
-            XCTAssertTrue(CmuxConfigExecutor.execute(
-                command: command,
-                tabManager: manager,
-                baseCwd: NSTemporaryDirectory(),
-                configSourcePath: nil,
-                globalConfigPath: "/tmp/cmux-test-global-config.json"
-            ))
+        XCTAssertTrue(CmuxConfigExecutor.execute(
+            command: command,
+            tabManager: manager,
+            baseCwd: NSTemporaryDirectory(),
+            configSourcePath: nil,
+            globalConfigPath: "/tmp/cmux-test-global-config.json"
+        ))
 
-            XCTAssertEqual(manager.tabs.count, 2)
-            XCTAssertTrue(manager.tabs.contains(where: { $0.id == existingWorkspace.id }))
-            XCTAssertEqual(manager.tabs.filter { $0.customTitle == "Dev" }.count, 2)
-            XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Dev")
-        }
+        XCTAssertEqual(manager.tabs.count, 2)
+        XCTAssertTrue(manager.tabs.contains(where: { $0.id == existingWorkspace.id }))
+        XCTAssertEqual(manager.tabs.filter { $0.customTitle == "Dev" }.count, 2)
+        XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Dev")
+    }
+
+    func testWorkspaceCommandHonorsExplicitNewRestartPolicy() {
+        let manager = TabManager()
+        let existingWorkspace = manager.tabs[0]
+        existingWorkspace.setCustomTitle("Dev")
+
+        let command = CmuxCommandDefinition(
+            name: "Dev command",
+            restart: .new,
+            workspace: CmuxWorkspaceDefinition(name: "Dev")
+        )
+
+        XCTAssertTrue(CmuxConfigExecutor.execute(
+            command: command,
+            tabManager: manager,
+            baseCwd: NSTemporaryDirectory(),
+            configSourcePath: nil,
+            globalConfigPath: "/tmp/cmux-test-global-config.json"
+        ))
+
+        XCTAssertEqual(manager.tabs.count, 2)
+        XCTAssertTrue(manager.tabs.contains(where: { $0.id == existingWorkspace.id }))
+        XCTAssertEqual(manager.tabs.filter { $0.customTitle == "Dev" }.count, 2)
+        XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Dev")
+    }
+
+    func testWorkspaceCommandHonorsIgnoreRestartPolicy() {
+        let manager = TabManager()
+        let existingWorkspace = manager.tabs[0]
+        existingWorkspace.setCustomTitle("Dev")
+
+        let command = CmuxCommandDefinition(
+            name: "Dev command",
+            restart: .ignore,
+            workspace: CmuxWorkspaceDefinition(name: "Dev")
+        )
+
+        XCTAssertTrue(CmuxConfigExecutor.execute(
+            command: command,
+            tabManager: manager,
+            baseCwd: NSTemporaryDirectory(),
+            configSourcePath: nil,
+            globalConfigPath: "/tmp/cmux-test-global-config.json"
+        ))
+
+        XCTAssertEqual(manager.tabs.map(\.id), [existingWorkspace.id])
+        XCTAssertEqual(manager.selectedWorkspace?.id, existingWorkspace.id)
+    }
+
+    func testWorkspaceCommandHonorsRecreateRestartPolicy() {
+        let manager = TabManager()
+        let existingWorkspace = manager.tabs[0]
+        existingWorkspace.setCustomTitle("Dev")
+
+        let command = CmuxCommandDefinition(
+            name: "Dev command",
+            restart: .recreate,
+            workspace: CmuxWorkspaceDefinition(name: "Dev")
+        )
+
+        XCTAssertTrue(CmuxConfigExecutor.execute(
+            command: command,
+            tabManager: manager,
+            baseCwd: NSTemporaryDirectory(),
+            configSourcePath: nil,
+            globalConfigPath: "/tmp/cmux-test-global-config.json"
+        ))
+
+        XCTAssertEqual(manager.tabs.count, 1)
+        XCTAssertFalse(manager.tabs.contains(where: { $0.id == existingWorkspace.id }))
+        XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Dev")
     }
 }
 

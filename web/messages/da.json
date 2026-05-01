@@ -373,7 +373,7 @@
       "wsFieldLayout": "Layouttræ der definerer opdelinger og paneler",
       "restartBehavior": "Genstartsadfærd",
       "restartBehaviorDesc": "Styrer hvad der sker, når der allerede eksisterer et workspace med samme navn:",
-      "restartIgnore": "Skift til det eksisterende workspace (standard)",
+      "restartIgnore": "Skift til det eksisterende workspace",
       "restartRecreate": "Luk og genskab uden at spørge",
       "restartConfirm": "Spørg brugeren inden genskabelse",
       "layoutTree": "Layouttræ",
@@ -400,7 +400,8 @@
       "cwdHome": "udvidet til hjemmemappen",
       "absolutePath": "Absolut sti",
       "cwdAbsolute": "bruges som den er",
-      "fullExample": "Fuldt eksempel"
+      "fullExample": "Fuldt eksempel",
+      "restartNew": "Opret et nyt workspace (standard)"
     },
     "keyboardShortcuts": {
       "title": "Tastaturgenveje",

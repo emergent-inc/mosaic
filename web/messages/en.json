@@ -421,7 +421,7 @@
       "wsFieldLayout": "Layout tree defining splits and panes",
       "restartBehavior": "Restart behavior",
       "restartBehaviorDesc": "Controls what happens when a workspace with the same name already exists:",
-      "restartIgnore": "Switch to the existing workspace (default)",
+      "restartIgnore": "Switch to the existing workspace",
       "restartRecreate": "Close and recreate without asking",
       "restartConfirm": "Ask the user before recreating",
       "layoutTree": "Layout tree",
@@ -448,7 +448,8 @@
       "cwdHome": "expanded to home directory",
       "absolutePath": "Absolute path",
       "cwdAbsolute": "used as-is",
-      "fullExample": "Full example"
+      "fullExample": "Full example",
+      "restartNew": "Create a new workspace (default)"
     },
     "keyboardShortcuts": {
       "title": "Keyboard Shortcuts",

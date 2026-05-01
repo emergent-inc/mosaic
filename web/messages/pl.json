@@ -373,7 +373,7 @@
       "wsFieldLayout": "Drzewo układu definiujące podziały i panele",
       "restartBehavior": "Zachowanie przy restarcie",
       "restartBehaviorDesc": "Kontroluje co się dzieje, gdy workspace o tej samej nazwie już istnieje:",
-      "restartIgnore": "Przełącz do istniejącego workspace (domyślnie)",
+      "restartIgnore": "Przełącz do istniejącego workspace",
       "restartRecreate": "Zamknij i odtwórz bez pytania",
       "restartConfirm": "Zapytaj użytkownika przed odtworzeniem",
       "layoutTree": "Drzewo układu",
@@ -400,7 +400,8 @@
       "cwdHome": "rozwinięty do katalogu domowego",
       "absolutePath": "Ścieżka bezwzględna",
       "cwdAbsolute": "używana bez zmian",
-      "fullExample": "Pełny przykład"
+      "fullExample": "Pełny przykład",
+      "restartNew": "Utwórz nowy workspace (domyślnie)"
     },
     "keyboardShortcuts": {
       "title": "Skróty klawiszowe",

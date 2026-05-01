@@ -373,8 +373,8 @@
       "wsFieldLayout": "定义分屏和面板的布局树",
       "restartBehavior": "重启行为",
       "restartBehaviorDesc": "控制当同名工作区已存在时的行为：",
-      "restartIgnore": "切换到现有工作区（默认）",
-      "restartRecreate": "无需询问直接关闭并重新创建",
+      "restartIgnore": "切换到现有 workspace",
+      "restartRecreate": "不询问，直接关闭并重新创建",
       "restartConfirm": "重新创建前询问用户",
       "layoutTree": "布局树",
       "layoutTreeDesc": "布局树使用递归分割节点定义面板的排列方式：",
@@ -400,7 +400,8 @@
       "cwdHome": "展开到主目录",
       "absolutePath": "绝对路径",
       "cwdAbsolute": "按原样使用",
-      "fullExample": "完整示例"
+      "fullExample": "完整示例",
+      "restartNew": "创建新的 workspace（默认）"
     },
     "keyboardShortcuts": {
       "title": "快捷键",

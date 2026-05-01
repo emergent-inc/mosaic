@@ -400,6 +400,15 @@ export default function CustomCommandsPage() {
         <li><code>layout</code> &mdash; {t("wsFieldLayout")}</li>
       </ul>
 
+      <h3>{t("restartBehavior")}</h3>
+      <p>{t("restartBehaviorDesc")}</p>
+      <ul>
+        <li><code>&quot;new&quot;</code> &mdash; {t("restartNew")}</li>
+        <li><code>&quot;ignore&quot;</code> &mdash; {t("restartIgnore")}</li>
+        <li><code>&quot;recreate&quot;</code> &mdash; {t("restartRecreate")}</li>
+        <li><code>&quot;confirm&quot;</code> &mdash; {t("restartConfirm")}</li>
+      </ul>
+
       <h2>{t("layoutTree")}</h2>
       <p>{t("layoutTreeDesc")}</p>
 

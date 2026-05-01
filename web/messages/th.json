@@ -373,7 +373,7 @@
       "wsFieldLayout": "ต้นไม้เลย์เอาต์ที่กำหนดการแบ่งและแผง",
       "restartBehavior": "พฤติกรรมการรีสตาร์ท",
       "restartBehaviorDesc": "ควบคุมสิ่งที่เกิดขึ้นเมื่อ workspace ที่มีชื่อเดียวกันมีอยู่แล้ว:",
-      "restartIgnore": "สลับไปยัง workspace ที่มีอยู่ (ค่าเริ่มต้น)",
+      "restartIgnore": "สลับไปยัง workspace ที่มีอยู่",
       "restartRecreate": "ปิดและสร้างใหม่โดยไม่ถาม",
       "restartConfirm": "ถามผู้ใช้ก่อนสร้างใหม่",
       "layoutTree": "ต้นไม้เลย์เอาต์",
@@ -400,7 +400,8 @@
       "cwdHome": "ขยายไปยังไดเรกทอรีหลัก",
       "absolutePath": "พาธสัมบูรณ์",
       "cwdAbsolute": "ใช้ตามที่เป็น",
-      "fullExample": "ตัวอย่างเต็ม"
+      "fullExample": "ตัวอย่างเต็ม",
+      "restartNew": "สร้าง workspace ใหม่ (ค่าเริ่มต้น)"
     },
     "keyboardShortcuts": {
       "title": "คีย์ลัด",

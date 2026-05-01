@@ -373,7 +373,7 @@
       "wsFieldLayout": "Oppsettstre som definerer delinger og paneler",
       "restartBehavior": "Omstartsatferd",
       "restartBehaviorDesc": "Styrer hva som skjer når et workspace med samme navn allerede eksisterer:",
-      "restartIgnore": "Bytt til det eksisterende workspacet (standard)",
+      "restartIgnore": "Bytt til det eksisterende workspacet",
       "restartRecreate": "Lukk og gjenopprett uten å spørre",
       "restartConfirm": "Spør brukeren før gjenoppretting",
       "layoutTree": "Oppsettstre",
@@ -400,7 +400,8 @@
       "cwdHome": "utvidet til hjemmemappen",
       "absolutePath": "Absolutt sti",
       "cwdAbsolute": "brukes som den er",
-      "fullExample": "Fullstendig eksempel"
+      "fullExample": "Fullstendig eksempel",
+      "restartNew": "Opprett et nytt workspace (standard)"
     },
     "keyboardShortcuts": {
       "title": "Tastatursnarveier",

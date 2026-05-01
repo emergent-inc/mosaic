@@ -1760,6 +1760,7 @@ struct CmuxCommandDefinition: Codable, Sendable, Identifiable {
 }
 
 enum CmuxRestartBehavior: String, Codable, Sendable {
+    case new
     case recreate
     case ignore
     case confirm
@@ -2702,9 +2703,9 @@ final class CmuxConfigStore: ObservableObject {
                     .action(
                         CmuxResolvedConfigMenuAction(
                             id: "\(settingName).\(index).\(action.id)",
-                            title: item.title ?? action.title,
+                            title: sanitizeConfigText(item.title ?? action.title),
                             icon: item.icon ?? action.icon,
-                            tooltip: item.tooltip ?? action.tooltip,
+                            tooltip: (item.tooltip ?? action.tooltip).map(sanitizeConfigText),
                             action: action
                         )
                     )

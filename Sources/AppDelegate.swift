@@ -6100,7 +6100,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             NSSound.beep()
             return
         }
-        _ = executeConfiguredCmuxAction(box.action, context: context, preferredWindow: window)
+        guard executeConfiguredCmuxAction(box.action, context: context, preferredWindow: window) else {
+            NSSound.beep()
+            return
+        }
     }
 
     private func sanitizedConfigMenuTitle(_ title: String, fallback: String) -> String {
