@@ -21,7 +21,7 @@ function renderRawRich(
       nodes.push(message.slice(lastIndex, index));
     }
     const render = renderers[tagName];
-    nodes.push(render ? render(chunks, key) : fullMatch);
+    nodes.push(render ? render(chunks, key) : chunks);
     key += 1;
     lastIndex = index + fullMatch.length;
   }
