@@ -473,7 +473,7 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         searchField.typeText("show sidebar")
 
         let snapshot = try XCTUnwrap(
-            waitForCommandPaletteSnapshot(windowId: mainWindowId, mode: "commands", query: "show sidebar", timeout: 5.0) { snapshot in
+            waitForCommandPaletteSnapshot(windowId: mainWindowId, mode: "commands", query: "show sidebar", timeout: 5.0, limit: 100) { snapshot in
                 let commandIds = Set(self.commandPaletteResultRows(from: snapshot).compactMap { $0["command_id"] as? String })
                 return expectedCommandIds.isSubset(of: commandIds)
             },
@@ -1146,11 +1146,12 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         mode: String = "switcher",
         query: String,
         timeout: TimeInterval,
+        limit: Int = 20,
         predicate: (([String: Any]) -> Bool)? = nil
     ) -> [String: Any]? {
         var latest: [String: Any]?
         let matched = sidebarHelpPollUntil(timeout: timeout) {
-            guard let snapshot = commandPaletteSnapshot(windowId: windowId) else { return false }
+            guard let snapshot = commandPaletteSnapshot(windowId: windowId, limit: limit) else { return false }
             latest = snapshot
             guard (snapshot["visible"] as? Bool) == true else { return false }
             guard (snapshot["mode"] as? String) == mode else { return false }
@@ -1160,12 +1161,12 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         return matched ? latest : nil
     }
 
-    private func commandPaletteSnapshot(windowId: String) -> [String: Any]? {
+    private func commandPaletteSnapshot(windowId: String, limit: Int = 20) -> [String: Any]? {
         let envelope = socketJSON(
             method: "debug.command_palette.results",
             params: [
                 "window_id": windowId,
-                "limit": 20,
+                "limit": limit,
             ]
         )
         guard let ok = envelope?["ok"] as? Bool, ok else { return nil }
