@@ -19776,6 +19776,23 @@
         }
       }
     },
+    "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ references missing action '%@'"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ は存在しないアクション '%@' を参照しています"
+          }
+        }
+      }
+    },
     "command.cmuxConfig.issue.newWorkspaceCommandNotFound.detail": {
       "extractionState": "manual",
       "localizations": {
