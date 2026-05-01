@@ -16282,7 +16282,7 @@ struct CMUXCLI {
                 .init(agentEvent: "UserPromptSubmit", cmuxSubcommand: "prompt-submit"),
                 .init(agentEvent: "Stop", cmuxSubcommand: "stop"),
             ],
-            feedHookEvents: ["PreToolUse"],
+            feedHookEvents: ["PreToolUse", "PermissionRequest"],
             postInstallAction: .codexConfigToml
         ),
         AgentHookDef(
@@ -18657,6 +18657,9 @@ export default CMUXSessionRestore;
         guard item.canResolve else { return "Resolved or informational item" }
         switch item.kind {
         case "permissionRequest":
+            if item.source == "codex" {
+                return "Permission: Enter/o once, d deny"
+            }
             return "Permission: Enter/o once, a always, l all tools, b bypass, d deny"
         case "exitPlan":
             return "Plan: Enter default, a auto, m manual, u ultraplan, b bypass, f replan, d deny"
@@ -18696,11 +18699,11 @@ export default CMUXSessionRestore;
             switch key {
             case .enter, .once:
                 mode = "once"
-            case .always:
+            case .always where item.source != "codex":
                 mode = "always"
-            case .all:
+            case .all where item.source != "codex":
                 mode = "all"
-            case .bypass:
+            case .bypass where item.source != "codex":
                 mode = "bypass"
             case .deny:
                 mode = "deny"
@@ -19363,6 +19366,7 @@ export default CMUXSessionRestore;
         event: String,
         toolName: String
     ) -> (String, Bool) {
+        let event = normalizedFeedEventName(event)
         if source == "claude" {
             switch event {
             case "PermissionRequest":
@@ -19386,6 +19390,25 @@ export default CMUXSessionRestore;
                 return ("Stop", false)
             case "Notification":
                 return ("Notification", false)
+            default:
+                return ("PreToolUse", false)
+            }
+        }
+
+        if source == "codex" {
+            switch event {
+            case "PermissionRequest":
+                return ("PermissionRequest", true)
+            case "PostToolUse":
+                return ("PostToolUse", false)
+            case "UserPromptSubmit":
+                return ("UserPromptSubmit", false)
+            case "SessionStart":
+                return ("SessionStart", false)
+            case "SessionEnd":
+                return ("SessionEnd", false)
+            case "Stop", "SubagentStop":
+                return ("Stop", false)
             default:
                 return ("PreToolUse", false)
             }
@@ -19428,6 +19451,20 @@ export default CMUXSessionRestore;
         }
     }
 
+    private static func normalizedFeedEventName(_ rawEvent: String) -> String {
+        switch rawEvent {
+        case "preToolUse": return "PreToolUse"
+        case "permissionRequest": return "PermissionRequest"
+        case "postToolUse": return "PostToolUse"
+        case "sessionStart": return "SessionStart"
+        case "sessionEnd": return "SessionEnd"
+        case "userPromptSubmit": return "UserPromptSubmit"
+        case "subagentStop": return "SubagentStop"
+        case "stop": return "Stop"
+        default: return rawEvent
+        }
+    }
+
     /// Tools that mutate state and deserve a user-visible approve/
     /// deny prompt in Feed. Keyed on the canonical tool names Claude,
     /// Codex, and similar agents emit. Read-only tools (Read, Grep,
@@ -19466,7 +19503,7 @@ export default CMUXSessionRestore;
             return s
         }
 
-        func claudePermissionRequestDecision(
+        func permissionRequestHookDecision(
             behavior: String,
             message: String? = nil,
             updatedInput: [String: Any]? = nil,
@@ -19534,7 +19571,7 @@ export default CMUXSessionRestore;
             let mode = decision["mode"] as? String ?? "deny"
             if source == "claude" {
                 if mode == "deny" {
-                    return encode(claudePermissionRequestDecision(
+                    return encode(permissionRequestHookDecision(
                         behavior: "deny",
                         message: "User denied permission via cmux Feed."
                     ))
@@ -19549,23 +19586,19 @@ export default CMUXSessionRestore;
                         "destination": "session",
                     ]]
                 }
-                return encode(claudePermissionRequestDecision(
+                return encode(permissionRequestHookDecision(
                     behavior: "allow",
                     updatedPermissions: updatedPermissions
                 ))
             }
             if source == "codex" {
                 if mode == "deny" {
-                    return encode([
-                        "decision": "block",
-                        "reason": "User denied permission via cmux Feed."
-                    ])
+                    return encode(permissionRequestHookDecision(
+                        behavior: "deny",
+                        message: "User denied permission via cmux Feed."
+                    ))
                 }
-                var out: [String: Any] = ["decision": "approve"]
-                if mode == "always" || mode == "all" || mode == "bypass" {
-                    out["remember"] = (mode == "bypass") ? "always" : "session"
-                }
-                return encode(out)
+                return encode(permissionRequestHookDecision(behavior: "allow"))
             }
             if mode == "deny" {
                 return encode(nonClaudePreToolDecision(
@@ -19588,19 +19621,19 @@ export default CMUXSessionRestore;
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if source == "claude" {
                 if let feedback, !feedback.isEmpty {
-                    return encode(claudePermissionRequestDecision(
+                    return encode(permissionRequestHookDecision(
                         behavior: "deny",
                         message: "User rejected the plan via cmux Feed and wants this change: \(feedback)"
                     ))
                 }
                 if mode == "deny" {
-                    return encode(claudePermissionRequestDecision(
+                    return encode(permissionRequestHookDecision(
                         behavior: "deny",
                         message: "User rejected the plan via cmux Feed."
                     ))
                 }
                 if mode == "ultraplan" {
-                    return encode(claudePermissionRequestDecision(
+                    return encode(permissionRequestHookDecision(
                         behavior: "deny",
                         message: "User chose Ultraplan via cmux Feed. Refine this plan with Ultraplan on Claude Code on the web."
                     ))
@@ -19619,7 +19652,7 @@ export default CMUXSessionRestore;
                         "destination": "session",
                     ]]
                 }
-                return encode(claudePermissionRequestDecision(
+                return encode(permissionRequestHookDecision(
                     behavior: "allow",
                     updatedInput: jsonDictionary(from: toolInput),
                     updatedPermissions: updatedPermissions
@@ -19668,7 +19701,7 @@ export default CMUXSessionRestore;
             if selections == [Self.skipInterviewAndPlanAnswer] {
                 let message = "User chose Skip interview and plan immediately via cmux Feed. Do not ask more interview questions. Write the plan now."
                 if source == "claude" {
-                    return encode(claudePermissionRequestDecision(
+                    return encode(permissionRequestHookDecision(
                         behavior: "deny",
                         message: message
                     ))
@@ -19684,7 +19717,7 @@ export default CMUXSessionRestore;
                     toolInput: toolInput,
                     selections: selections
                 )
-                return encode(claudePermissionRequestDecision(
+                return encode(permissionRequestHookDecision(
                     behavior: "allow",
                     updatedInput: updatedInput
                 ))

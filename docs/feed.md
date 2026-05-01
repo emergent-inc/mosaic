@@ -62,7 +62,7 @@ Installs Feed-relevant hooks for every supported CLI whose binary is on `PATH`:
 | Agent        | Config                                    | Feed trigger             |
 |--------------|-------------------------------------------|--------------------------|
 | Claude Code  | wrapper-injected                          | PermissionRequest        |
-| Codex        | `~/.codex/hooks.json`                     | PreToolUse               |
+| Codex        | `~/.codex/hooks.json`                     | PermissionRequest        |
 | Cursor CLI   | `~/.cursor/hooks.json`                    | beforeShellExecution     |
 | Gemini       | `~/.gemini/settings.json`                 | PreToolUse               |
 | Copilot      | `~/.copilot/config.json`                  | PreToolUse               |
@@ -108,6 +108,8 @@ For Claude Code, the cmux wrapper launches Claude with `--allow-dangerously-skip
 **AskUserQuestion**
 
 For Claude Code, AskUserQuestion is answered by allowing the PermissionRequest with an updated tool input containing the selected answers. Other agents use their native question reply shape where available.
+
+Codex's `request_user_input` and `update_plan` currently surface through its app-server request/notification path, not through command hooks. cmux can route Codex permission approvals through `PermissionRequest`; Codex plan-mode questions still fall back to Codex's own TUI until Codex exposes those app-server frames to hook-based integrations.
 
 ## Timeout behavior
 
