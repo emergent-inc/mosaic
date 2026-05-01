@@ -1,42 +1,9 @@
-import fs from "fs";
-import path from "path";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { buildAlternates } from "../../../../i18n/seo";
 import { CodeBlock } from "../../components/code-block";
 import { Callout } from "../../components/callout";
-
-function pngDimensions(filePath: string): { width: number; height: number } {
-  const abs = path.join(process.cwd(), "public", filePath);
-  const buf = fs.readFileSync(abs);
-  return {
-    width: buf.readUInt32BE(16),
-    height: buf.readUInt32BE(24),
-  };
-}
-
-function DocsImage({ src, alt, caption }: { src: string; alt: string; caption: string }) {
-  const { width, height } = pngDimensions(src);
-  return (
-    <figure className="not-prose my-6">
-      <div className="overflow-hidden rounded-lg border border-border bg-muted/20">
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          sizes="(max-width: 640px) 100vw, 640px"
-          className="block h-auto w-full"
-        />
-      </div>
-      <figcaption className="mt-2 text-sm text-muted">
-        {caption}
-      </figcaption>
-    </figure>
-  );
-}
 
 function renderRawRich(
   message: string,
@@ -250,11 +217,6 @@ export default function CustomCommandsPage() {
           newTerminal: (chunks) => <code>{chunks}</code>,
         })}
       </p>
-      <DocsImage
-        src="/docs/custom-commands-command-palette.png"
-        alt={t("commandPaletteScreenshotAlt")}
-        caption={t("commandPaletteScreenshotCaption")}
-      />
 
       <h2>{t("newWorkspaceButton")}</h2>
       <p>
@@ -265,11 +227,6 @@ export default function CustomCommandsPage() {
           separator: inlineCode,
         })}
       </p>
-      <DocsImage
-        src="/docs/custom-commands-workspace-context-menu.png"
-        alt={t("plusButtonScreenshotAlt")}
-        caption={t("plusButtonScreenshotCaption")}
-      />
       <CodeBlock title="cmux.json" lang="json">{`{
   "actions": {
     "worktree-agents": {
