@@ -301,6 +301,7 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
     private let hiddenSurfaceToken = "cmux-command-palette-hidden-surface"
     private let visibleSurfaceToken = "cmux-command-palette-visible-surface"
     private let noMatchWorkspaceQuery = "cmux-command-palette-no-match"
+    private let launchTag = "ui-test-command-palette"
 
     override func setUp() {
         super.setUp()
@@ -324,7 +325,7 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
         app.launchEnvironment["CMUX_SOCKET_ENABLE"] = "1"
         app.launchEnvironment["CMUX_SOCKET_MODE"] = "allowAll"
-        app.launchEnvironment["CMUX_TAG"] = "ui-test-command-palette"
+        app.launchEnvironment["CMUX_TAG"] = launchTag
         app.launchEnvironment["CMUX_ALLOW_SOCKET_OVERRIDE"] = "1"
         if showSettingsWindow {
             app.launchEnvironment["CMUX_UI_TEST_SHOW_SETTINGS"] = "1"
@@ -1034,9 +1035,43 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
     }
 
     private func waitForSocketPong(timeout: TimeInterval) -> Bool {
+        var resolvedPath: String?
         sidebarHelpPollUntil(timeout: timeout) {
-            socketCommand("ping") == "PONG"
+            let originalPath = socketPath
+            for candidate in socketCandidates() {
+                guard FileManager.default.fileExists(atPath: candidate) else { continue }
+                socketPath = candidate
+                if socketCommand("ping") == "PONG" {
+                    resolvedPath = candidate
+                    return true
+                }
+                socketPath = originalPath
+            }
+            return false
         }
+        if let resolvedPath {
+            socketPath = resolvedPath
+            return true
+        }
+        return false
+    }
+
+    private func socketCandidates() -> [String] {
+        var candidates = [socketPath, taggedSocketPath()]
+        var seen = Set<String>()
+        candidates.removeAll { !seen.insert($0).inserted }
+        return candidates
+    }
+
+    private func taggedSocketPath() -> String {
+        let slug = launchTag
+            .lowercased()
+            .replacingOccurrences(of: ".", with: "-")
+            .replacingOccurrences(of: "_", with: "-")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: "-")
+        return "/tmp/cmux-debug-\(slug).sock"
     }
 
     private func waitForSurfaceIDs(minimumCount: Int, timeout: TimeInterval) -> [String] {
