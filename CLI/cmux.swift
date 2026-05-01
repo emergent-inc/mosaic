@@ -14619,24 +14619,25 @@ struct CMUXCLI {
             let tail = URL(fileURLWithPath: path).lastPathComponent
             return tail.isEmpty ? path : tail
         }()
+        let completedSubtitle: String = {
+            guard let projectName, !projectName.isEmpty else {
+                return String(localized: "agent.claude.completion.subtitle.completed", defaultValue: "Completed")
+            }
+            return String.localizedStringWithFormat(
+                String(localized: "agent.claude.completion.subtitle.completedInProject", defaultValue: "Completed in %@"),
+                projectName
+            )
+        }()
 
         if let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object) {
-            var subtitle = "Completed"
-            if let projectName, !projectName.isEmpty {
-                subtitle = "Completed in \(projectName)"
-            }
-            return (subtitle, truncate(assistantMessage, maxLength: 200))
+            return (completedSubtitle, truncate(assistantMessage, maxLength: 200))
         }
 
         // Try reading the transcript JSONL for a richer summary.
         let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
 
         if let lastMsg = transcript?.lastAssistantMessage {
-            var subtitle = "Completed"
-            if let projectName, !projectName.isEmpty {
-                subtitle = "Completed in \(projectName)"
-            }
-            return (subtitle, truncate(lastMsg, maxLength: 200))
+            return (completedSubtitle, truncate(lastMsg, maxLength: 200))
         }
 
         // Fallback: use session record data.

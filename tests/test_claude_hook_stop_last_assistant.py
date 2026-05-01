@@ -17,8 +17,10 @@ import uuid
 
 def resolve_cmux_cli() -> str:
     explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
-    if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
-        return explicit
+    if explicit:
+        if os.path.exists(explicit) and os.access(explicit, os.X_OK):
+            return explicit
+        raise RuntimeError(f"Configured cmux CLI is not executable: {explicit}")
 
     candidates: list[str] = []
     candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
@@ -93,7 +95,7 @@ class CapturingSocketServer:
                     continue
                 if not chunk:
                     break
-                idle_deadline = time.time() + 0.5
+                idle_deadline = time.time() + 2.0
                 buffer += chunk
                 while b"\n" in buffer:
                     raw_line, buffer = buffer.split(b"\n", 1)
