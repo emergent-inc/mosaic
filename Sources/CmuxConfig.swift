@@ -1975,6 +1975,7 @@ final class CmuxConfigStore: ObservableObject {
     private(set) var localConfigPath: String?
     private weak var tabManager: TabManager?
     let globalConfigPath: String
+    private let fileWatchingEnabled: Bool
 
     nonisolated private static func defaultGlobalConfigPath() -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -2049,10 +2050,11 @@ final class CmuxConfigStore: ObservableObject {
     init(
         globalConfigPath: String = CmuxConfigStore.defaultGlobalConfigPath(),
         localConfigPath: String? = nil,
-        startFileWatchers: Bool = true
+        startFileWatchers: Bool = false
     ) {
         self.globalConfigPath = globalConfigPath
         self.localConfigPath = localConfigPath
+        self.fileWatchingEnabled = startFileWatchers
         self.localConfigSearchDirectory = localConfigPath.map(Self.searchDirectoryForLocalConfigPath(_:))
         NotificationCenter.default.publisher(for: CmuxActionTrust.didChangeNotification)
             .receive(on: DispatchQueue.main)
@@ -2121,7 +2123,7 @@ final class CmuxConfigStore: ObservableObject {
         guard newPath != localConfigPath else { return }
         stopLocalFileWatcher()
         localConfigPath = newPath
-        if newPath != nil {
+        if fileWatchingEnabled, newPath != nil {
             startLocalFileWatcher()
         }
         loadAll()

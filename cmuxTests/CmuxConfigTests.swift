@@ -691,6 +691,56 @@ final class CmuxConfigDecodingTests: XCTestCase {
     }
 
     @MainActor
+    func testConfigChangesRequireExplicitLoadByDefault() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "cmux-config-store-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let configURL = root.appendingPathComponent("cmux.json")
+        try """
+        {
+          "actions": {
+            "first": { "type": "command", "command": "echo first" }
+          }
+        }
+        """.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let store = CmuxConfigStore(globalConfigPath: configURL.path)
+        store.loadAll()
+        XCTAssertNotNil(store.resolvedAction(id: "first"))
+        XCTAssertNil(store.resolvedAction(id: "second"))
+
+        let didAutoReload = expectation(description: "cmux.json should not hot reload")
+        didAutoReload.isInverted = true
+        var cancellable: AnyCancellable?
+        cancellable = store.$loadedActions.dropFirst().sink { actions in
+            if actions.contains(where: { $0.id == "second" }) {
+                didAutoReload.fulfill()
+            }
+        }
+
+        try """
+        {
+          "actions": {
+            "second": { "type": "command", "command": "echo second" }
+          }
+        }
+        """.write(to: configURL, atomically: true, encoding: .utf8)
+
+        await fulfillment(of: [didAutoReload], timeout: 0.25)
+        XCTAssertNotNil(store.resolvedAction(id: "first"))
+        XCTAssertNil(store.resolvedAction(id: "second"))
+
+        store.loadAll()
+        XCTAssertNil(store.resolvedAction(id: "first"))
+        XCTAssertNotNil(store.resolvedAction(id: "second"))
+        cancellable?.cancel()
+    }
+
+    @MainActor
     func testLocalWatcherDetectsFirstCanonicalConfigAfterDirectoryCreation() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "cmux-config-store-\(UUID().uuidString)",
@@ -1662,6 +1712,39 @@ final class CmuxCommandIdentityTests: XCTestCase {
         let cmd = CmuxCommandDefinition(name: "palette.newWorkspace", command: "echo")
         XCTAssertTrue(cmd.id.hasPrefix("cmux.config.command."))
         XCTAssertNotEqual(cmd.id, "palette.newWorkspace")
+    }
+}
+
+// MARK: - Workspace command execution
+
+@MainActor
+final class CmuxConfigWorkspaceCommandExecutionTests: XCTestCase {
+
+    func testWorkspaceCommandAlwaysCreatesNewWorkspaceWhenNameAlreadyExists() {
+        for restart in [CmuxRestartBehavior.ignore, .recreate] {
+            let manager = TabManager()
+            let existingWorkspace = manager.tabs[0]
+            existingWorkspace.setCustomTitle("Dev")
+
+            let command = CmuxCommandDefinition(
+                name: "Dev command",
+                restart: restart,
+                workspace: CmuxWorkspaceDefinition(name: "Dev")
+            )
+
+            XCTAssertTrue(CmuxConfigExecutor.execute(
+                command: command,
+                tabManager: manager,
+                baseCwd: NSTemporaryDirectory(),
+                configSourcePath: nil,
+                globalConfigPath: "/tmp/cmux-test-global-config.json"
+            ))
+
+            XCTAssertEqual(manager.tabs.count, 2)
+            XCTAssertTrue(manager.tabs.contains(where: { $0.id == existingWorkspace.id }))
+            XCTAssertEqual(manager.tabs.filter { $0.customTitle == "Dev" }.count, 2)
+            XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Dev")
+        }
     }
 }
 

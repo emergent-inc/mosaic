@@ -12626,6 +12626,22 @@ struct SidebarWorkspaceSnapshotBuilder {
     }
 }
 
+enum SidebarPortDisplayText {
+    static func label(for port: Int) -> String {
+        String(
+            format: String(localized: "sidebar.port.label", defaultValue: ":%lld"),
+            Int64(port)
+        )
+    }
+
+    static func openTooltip(for port: Int) -> String {
+        String(
+            format: String(localized: "sidebar.port.openTooltip", defaultValue: "Open localhost:%lld"),
+            Int64(port)
+        )
+    }
+}
+
 private final class SidebarTabItemContextMenuState: ObservableObject {
     var isVisible = false
     var hasDeferredWorkspaceObservationInvalidation = false
@@ -13164,15 +13180,16 @@ private struct TabItemView: View, Equatable {
             if detailVisibility.showsPorts, !workspaceSnapshot.listeningPorts.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(workspaceSnapshot.listeningPorts, id: \.self) { port in
-                        let portText = String(port)
+                        let portLabel = SidebarPortDisplayText.label(for: port)
+                        let portTooltip = SidebarPortDisplayText.openTooltip(for: port)
                         Button(action: {
                             openPortLink(port)
                         }) {
-                            Text(String(localized: "sidebar.port.label", defaultValue: ":\(portText)"))
+                            Text(portLabel)
                                 .underline()
                         }
                         .buttonStyle(.plain)
-                        .safeHelp(String(localized: "sidebar.port.openTooltip", defaultValue: "Open localhost:\(portText)"))
+                        .safeHelp(portTooltip)
                     }
                     Spacer(minLength: 0)
                 }

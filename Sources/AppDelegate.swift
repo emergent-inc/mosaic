@@ -10238,6 +10238,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    func reloadCmuxConfigStores(source: String) {
+        var seenStores = Set<ObjectIdentifier>()
+        for context in mainWindowContexts.values {
+            guard let store = context.cmuxConfigStore else { continue }
+            let identifier = ObjectIdentifier(store)
+            guard seenStores.insert(identifier).inserted else { continue }
+            store.loadAll()
+        }
+#if DEBUG
+        cmuxDebugLog("cmuxConfig.reload source=\(source) stores=\(seenStores.count)")
+#endif
+    }
+
     private func refreshGhosttyGotoSplitShortcuts() {
         guard let config = GhosttyApp.shared.config else {
             ghosttyGotoSplitLeftShortcut = nil
