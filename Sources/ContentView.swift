@@ -7858,10 +7858,7 @@ struct ContentView: View {
             )
             return String(format: format, issue.message ?? fallback)
         case .newWorkspaceActionNotFound:
-            let format = String(
-                localized: "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail",
-                defaultValue: "%@ references missing action '%@'"
-            )
+            let format = String(localized: "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail", defaultValue: "%@ references missing action '%@'")
             return String(format: format, issue.settingName, issue.commandName ?? "")
         case .newWorkspaceCommandNotFound:
             let format = String(
@@ -12623,22 +12620,6 @@ struct SidebarWorkspaceSnapshotBuilder {
         let branchLinesContainBranch: Bool
         let pullRequestRows: [PullRequestDisplay]
         let listeningPorts: [Int]
-    }
-}
-
-enum SidebarPortDisplayText {
-    static func label(for port: Int) -> String {
-        String(
-            format: String(localized: "sidebar.port.label", defaultValue: ":%lld"),
-            Int64(port)
-        )
-    }
-
-    static func openTooltip(for port: Int) -> String {
-        String(
-            format: String(localized: "sidebar.port.openTooltip", defaultValue: "Open localhost:%lld"),
-            Int64(port)
-        )
     }
 }
 

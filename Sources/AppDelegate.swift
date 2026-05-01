@@ -6069,7 +6069,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 }
             case .action(let menuAction):
                 let item = NSMenuItem(
-                    title: sanitizedConfigMenuTitle(menuAction.title, fallback: menuAction.action.id),
+                    title: menuAction.title,
                     action: #selector(performNewWorkspaceContextMenuItem(_:)),
                     keyEquivalent: ""
                 )
@@ -6079,7 +6079,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     action: menuAction.action
                 )
                 item.toolTip = menuAction.tooltip
-                item.image = menuImage(for: menuAction.icon ?? menuAction.action.icon)
+                item.image = (menuAction.icon ?? menuAction.action.icon)?.sfSymbolImage
                 menu.addItem(item)
             }
         }
@@ -6103,31 +6103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard executeConfiguredCmuxAction(box.action, context: context, preferredWindow: window) else {
             NSSound.beep()
             return
-        }
-    }
-
-    private func sanitizedConfigMenuTitle(_ title: String, fallback: String) -> String {
-        let dangerous: Set<Unicode.Scalar> = [
-            "\u{200B}", "\u{200C}", "\u{200D}", "\u{200E}", "\u{200F}",
-            "\u{202A}", "\u{202B}", "\u{202C}", "\u{202D}", "\u{202E}",
-            "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}",
-            "\u{FEFF}",
-        ]
-        let sanitized = String(title.unicodeScalars.filter { !dangerous.contains($0) })
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return sanitized.isEmpty ? fallback : sanitized
-    }
-
-    private func menuImage(for icon: CmuxButtonIcon?) -> NSImage? {
-        guard let icon else { return nil }
-        switch icon {
-        case .symbol(let symbolName):
-            return NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
-        case .emoji, .imagePath:
-#if DEBUG
-            assertionFailure("new workspace context-menu icons only support SF Symbols")
-#endif
-            return nil
         }
     }
 
