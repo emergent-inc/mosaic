@@ -1403,23 +1403,19 @@ private struct PermissionActionArea: View {
             codeBlock
             if status.isPending {
                 HStack(spacing: 6) {
-                    FeedButton(
-                        label: String(localized: "feed.permission.deny", defaultValue: "Deny"),
-                        kind: .dark, size: .medium, fullWidth: true
-                    ) { onApprove(.deny) }.accessibilityIdentifier("FeedPermissionDenyButton")
-                    FeedButton(
-                        label: String(localized: "feed.permission.once", defaultValue: "Allow Once"),
-                        kind: .light, size: .medium, fullWidth: true
-                    ) { onApprove(.once) }.accessibilityIdentifier("FeedPermissionAllowOnceButton")
+                    FeedButton(label: String(localized: "feed.permission.deny", defaultValue: "Deny"),
+                               kind: .dark, size: .medium, fullWidth: true) { onApprove(.deny) }
+                        .accessibilityIdentifier("FeedPermissionDenyButton")
+                    FeedButton(label: String(localized: "feed.permission.once", defaultValue: "Allow Once"),
+                               kind: .light, size: .medium, fullWidth: true) { onApprove(.once) }
+                        .accessibilityIdentifier("FeedPermissionAllowOnceButton")
                     if source != .codex {
-                        FeedButton(
-                            label: String(localized: "feed.permission.always", defaultValue: "Always Allow"),
-                            kind: .primary, size: .medium, fullWidth: true
-                        ) { onApprove(.always) }.accessibilityIdentifier("FeedPermissionAlwaysAllowButton")
-                        FeedButton(
-                            label: String(localized: "feed.permission.bypass", defaultValue: "Bypass"),
-                            kind: .destructive, size: .medium, fullWidth: true
-                        ) { onApprove(.bypass) }.accessibilityIdentifier("FeedPermissionBypassButton")
+                        FeedButton(label: String(localized: "feed.permission.always", defaultValue: "Always Allow"),
+                                   kind: .primary, size: .medium, fullWidth: true) { onApprove(.always) }
+                            .accessibilityIdentifier("FeedPermissionAlwaysAllowButton")
+                        FeedButton(label: String(localized: "feed.permission.bypass", defaultValue: "Bypass"),
+                                   kind: .destructive, size: .medium, fullWidth: true) { onApprove(.bypass) }
+                            .accessibilityIdentifier("FeedPermissionBypassButton")
                     }
                 }
             } else if let badge = submittedBadge {

@@ -19366,7 +19366,6 @@ export default CMUXSessionRestore;
         event: String,
         toolName: String
     ) -> (String, Bool) {
-        let event = normalizedFeedEventName(event)
         if source == "claude" {
             switch event {
             case "PermissionRequest":
@@ -19395,27 +19394,9 @@ export default CMUXSessionRestore;
             }
         }
 
-        if source == "codex" {
-            switch event {
-            case "PermissionRequest":
-                return ("PermissionRequest", true)
-            case "PostToolUse":
-                return ("PostToolUse", false)
-            case "UserPromptSubmit":
-                return ("UserPromptSubmit", false)
-            case "SessionStart":
-                return ("SessionStart", false)
-            case "SessionEnd":
-                return ("SessionEnd", false)
-            case "Stop", "SubagentStop":
-                return ("Stop", false)
-            default:
-                return ("PreToolUse", false)
-            }
-        }
-
         switch event {
         case "PreToolUse", "beforeShellExecution":
+            if source == "codex" { return ("PreToolUse", false) }
             switch toolName {
             case "ExitPlanMode":
                 return ("ExitPlanMode", true)
@@ -19448,20 +19429,6 @@ export default CMUXSessionRestore;
             return ("Notification", false)
         default:
             return ("PreToolUse", false)
-        }
-    }
-
-    private static func normalizedFeedEventName(_ rawEvent: String) -> String {
-        switch rawEvent {
-        case "preToolUse": return "PreToolUse"
-        case "permissionRequest": return "PermissionRequest"
-        case "postToolUse": return "PostToolUse"
-        case "sessionStart": return "SessionStart"
-        case "sessionEnd": return "SessionEnd"
-        case "userPromptSubmit": return "UserPromptSubmit"
-        case "subagentStop": return "SubagentStop"
-        case "stop": return "Stop"
-        default: return rawEvent
         }
     }
 
