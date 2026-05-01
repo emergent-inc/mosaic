@@ -128,7 +128,12 @@ def close_after_accept_handler(conn: socket.socket, _stop_event: threading.Event
     conn.close()
 
 
-def run_cli(cli_path: str, socket_path: str, timeout: float = 3.0) -> RunResult:
+def close_after_command_handler(conn: socket.socket, stop_event: threading.Event) -> None:
+    read_one_command(conn, stop_event)
+    conn.close()
+
+
+def run_cli(cli_path: str, socket_path: str, timeout: float = 3.0, args: tuple[str, ...] = ("ping",)) -> RunResult:
     env = dict(os.environ)
     env["CMUX_SOCKET_PATH"] = socket_path
     env["CMUX_SOCKET"] = socket_path
@@ -138,7 +143,7 @@ def run_cli(cli_path: str, socket_path: str, timeout: float = 3.0) -> RunResult:
     started = time.monotonic()
     try:
         proc = subprocess.run(
-            [cli_path, "--socket", socket_path, "ping"],
+            [cli_path, "--socket", socket_path, *args],
             text=True,
             capture_output=True,
             check=False,
@@ -189,9 +194,19 @@ def main() -> int:
             if result.elapsed > 1.5:
                 failures.append(f"no-reply socket took too long: {result.elapsed:.3f}s")
 
+        with FakeUnixServer(close_after_command_handler) as server:
+            result = run_cli(cli_path, server.path, args=("capabilities",))
+            merged = f"{result.stdout}\n{result.stderr}"
+            if result.returncode == 0:
+                failures.append("EOF-before-v2-reply socket unexpectedly succeeded")
+            if "Socket closed before reply" not in merged:
+                failures.append(f"EOF-before-v2-reply socket did not surface socket closure: {merged!r}")
+
         expected_closed_peer_errors = (
             "Failed to write to socket",
             "Socket read error",
+            "Socket closed before reply",
+            "Socket closed before complete reply",
             "Command timed out",
             "Failed to connect",
         )

@@ -1053,6 +1053,7 @@ final class SocketClient {
 
         var data = Data()
         var sawNewline = false
+        var receivedCompleteResponse = false
 
         while true {
             let currentTimeout = sawNewline ? Self.multilineResponseIdleTimeoutSeconds : initialResponseTimeout
@@ -1070,6 +1071,7 @@ final class SocketClient {
                 }
                 if errno == EAGAIN || errno == EWOULDBLOCK {
                     if sawNewline {
+                        receivedCompleteResponse = true
                         break
                     }
                     throw CLIError(message: "Command timed out")
@@ -1077,6 +1079,15 @@ final class SocketClient {
                 throw CLIError(message: "Socket read error")
             }
             if count == 0 {
+                operation.sawNewline = sawNewline
+                recordOperation(operation)
+                if data.isEmpty {
+                    throw CLIError(message: "Socket closed before reply")
+                }
+                if !sawNewline {
+                    throw CLIError(message: "Socket closed before complete reply")
+                }
+                receivedCompleteResponse = true
                 break
             }
             data.append(buffer, count: count)
@@ -1084,13 +1095,16 @@ final class SocketClient {
             if data.contains(UInt8(0x0A)) {
                 sawNewline = true
                 if Self.isCompleteSingleLineResponse(data) {
+                    receivedCompleteResponse = true
                     break
                 }
             }
         }
 
-        operation.phase = .completed
         operation.sawNewline = sawNewline
+        if receivedCompleteResponse {
+            operation.phase = .completed
+        }
         recordOperation(operation)
 
         guard var response = String(data: data, encoding: .utf8) else {
