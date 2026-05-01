@@ -86,10 +86,14 @@ struct BonsplitTabBarDebugNumberSetting {
     }
 
     func currentValue(defaults: UserDefaults = .standard) -> Double {
+#if DEBUG
         guard defaults.object(forKey: key) != nil else {
             return defaultValue
         }
         return resolved(defaults.double(forKey: key))
+#else
+        return defaultValue
+#endif
     }
 
     func format(_ value: Double) -> String {
@@ -161,7 +165,7 @@ enum BonsplitTabBarDebugSettings {
     }
 
     static func currentTuningDescription(defaults: UserDefaults = .standard) -> String {
-        let effect = Workspace.bonsplitSplitButtonBackdropEffect()
+        let effect = Workspace.bonsplitSplitButtonBackdropEffect(defaults: defaults)
         return [
             "bonsplit-tabbar-tuning",
             "separatorFadeWidth=\(formatPixels(separatorFadeWidth(defaults: defaults)))",
@@ -7694,14 +7698,18 @@ final class Workspace: Identifiable, ObservableObject {
 
     nonisolated static let bonsplitSplitButtonBackdropSoftness: CGFloat = 0.60
 
-    nonisolated static func bonsplitSplitButtonBackdropEffect() -> BonsplitConfiguration.Appearance.SplitButtonBackdropEffect {
+    nonisolated static func bonsplitSplitButtonBackdropEffect(
+        defaults: UserDefaults = .standard
+    ) -> BonsplitConfiguration.Appearance.SplitButtonBackdropEffect {
         .init(
             style: .translucentChrome,
             fadeWidth: CGFloat(BonsplitTabBarDebugSettings.backdropFadeWidth),
-            contentFadeWidth: CGFloat(BonsplitTabBarDebugSettings.contentFadeWidth()),
+            contentFadeWidth: CGFloat(BonsplitTabBarDebugSettings.contentFadeWidth(defaults: defaults)),
             solidWidth: 23.875,
-            solidSurfaceWidthAdjustment: CGFloat(BonsplitTabBarDebugSettings.solidSurfaceWidthAdjustment()),
-            separatorFadeWidth: CGFloat(BonsplitTabBarDebugSettings.separatorFadeWidth()),
+            solidSurfaceWidthAdjustment: CGFloat(
+                BonsplitTabBarDebugSettings.solidSurfaceWidthAdjustment(defaults: defaults)
+            ),
+            separatorFadeWidth: CGFloat(BonsplitTabBarDebugSettings.separatorFadeWidth(defaults: defaults)),
             fadeRampStartFraction: bonsplitSplitButtonBackdropSoftness,
             leadingOpacity: 0,
             trailingOpacity: 0.8625,
