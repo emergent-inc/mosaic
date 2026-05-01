@@ -444,6 +444,48 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         XCTAssertEqual(row1.value as? String, "palette.attemptUpdate")
     }
 
+    func testCmdShiftPIncludesRightSidebarModeActions() throws {
+        let app = XCUIApplication()
+        configureSocketControlledLaunch(app)
+        launchAndActivate(app)
+
+        XCTAssertTrue(
+            sidebarHelpPollUntil(timeout: 8.0) {
+                app.windows.count >= 1
+            },
+            "Expected the main window to be visible"
+        )
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+
+        let mainWindowId = try XCTUnwrap(
+            socketCommand("current_window")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        let expectedCommandIds: Set<String> = [
+            "palette.showRightSidebarFiles",
+            "palette.showRightSidebarFind",
+            "palette.showRightSidebarSessions",
+            "palette.showRightSidebarFeed",
+            "palette.showRightSidebarDock",
+        ]
+
+        openCommandPaletteCommands(app: app)
+        let searchField = app.textFields["CommandPaletteSearchField"]
+        searchField.typeText("show sidebar")
+
+        let snapshot = try XCTUnwrap(
+            waitForCommandPaletteSnapshot(windowId: mainWindowId, mode: "commands", query: "show sidebar", timeout: 5.0) { snapshot in
+                let commandIds = Set(self.commandPaletteResultRows(from: snapshot).compactMap { $0["command_id"] as? String })
+                return expectedCommandIds.isSubset(of: commandIds)
+            },
+            "Expected all right sidebar mode actions in Cmd-Shift-P results"
+        )
+        let commandIds = Set(commandPaletteResultRows(from: snapshot).compactMap { $0["command_id"] as? String })
+        XCTAssertTrue(
+            expectedCommandIds.isSubset(of: commandIds),
+            "Expected all right sidebar mode actions. missing=\(expectedCommandIds.subtracting(commandIds)) snapshot=\(snapshot)"
+        )
+    }
+
     func testCmdPSearchCanIncludeSurfacesFromOtherWorkspacesWhenEnabled() throws {
         let app = XCUIApplication()
         configureSocketControlledLaunch(app, showSettingsWindow: true)

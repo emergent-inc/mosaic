@@ -6719,6 +6719,16 @@ struct ContentView: View {
             return .closeWindow
         case "palette.toggleSidebar":
             return .toggleSidebar
+        case "palette.showRightSidebarFiles":
+            return .switchRightSidebarToFiles
+        case "palette.showRightSidebarFind":
+            return .switchRightSidebarToFind
+        case "palette.showRightSidebarSessions":
+            return .switchRightSidebarToSessions
+        case "palette.showRightSidebarFeed":
+            return .switchRightSidebarToFeed
+        case "palette.showRightSidebarDock":
+            return .switchRightSidebarToDock
         case "palette.showNotifications":
             return .showNotifications
         case "palette.jumpUnread":
@@ -7080,6 +7090,16 @@ struct ContentView: View {
                 keywords: ["toggle", "sidebar", "layout"]
             )
         )
+        for mode in RightSidebarMode.allCases {
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: commandPaletteRightSidebarModeCommandID(mode),
+                    title: constant(mode.shortcutAction.label),
+                    subtitle: constant(String(localized: "command.findInDirectory.subtitle", defaultValue: "Right Sidebar")),
+                    keywords: ["right", "sidebar", "show", "switch", "focus", mode.rawValue]
+                )
+            )
+        }
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.toggleMatchTerminalBackground",
@@ -7816,6 +7836,21 @@ struct ContentView: View {
         return "palette.workspaceColor.\(String(hash, radix: 16))"
     }
 
+    private func commandPaletteRightSidebarModeCommandID(_ mode: RightSidebarMode) -> String {
+        switch mode {
+        case .files:
+            return "palette.showRightSidebarFiles"
+        case .find:
+            return "palette.showRightSidebarFind"
+        case .sessions:
+            return "palette.showRightSidebarSessions"
+        case .feed:
+            return "palette.showRightSidebarFeed"
+        case .dock:
+            return "palette.showRightSidebarDock"
+        }
+    }
+
     private func commandPaletteCmuxConfigIssueTitle(_ issue: CmuxConfigIssue) -> String {
         switch issue.kind {
         case .schemaError:
@@ -7960,6 +7995,20 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.toggleSidebar") {
             sidebarState.toggle()
+        }
+        for mode in RightSidebarMode.allCases {
+            registry.register(commandId: commandPaletteRightSidebarModeCommandID(mode)) {
+                if AppDelegate.shared?.focusRightSidebarInActiveMainWindow(
+                    mode: mode,
+                    focusFirstItem: true,
+                    preferredWindow: observedWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
+                ) != true {
+                    fileExplorerState.setVisible(true)
+                    if fileExplorerState.mode != mode {
+                        fileExplorerState.mode = mode
+                    }
+                }
+            }
         }
         registry.register(commandId: "palette.toggleMatchTerminalBackground") {
             sidebarMatchTerminalBackground.toggle()
