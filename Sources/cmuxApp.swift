@@ -383,6 +383,9 @@ struct cmuxApp: App {
                     Button("Split Button Layout Debug…") {
                         SplitButtonLayoutDebugWindowController.shared.show()
                     }
+                    Button("Bonsplit Tab Bar Debug…") {
+                        BonsplitTabBarDebugWindowController.shared.show()
+                    }
                     Button(
                         String(
                             localized: "debug.menu.tabBarBackdropLab",
@@ -1104,6 +1107,7 @@ struct cmuxApp: App {
         FeedPreviewWindowController.shared.show()
         FeedTextEditorDebugWindowController.shared.show()
         FeedButtonStyleDebugWindowController.shared.show()
+        BonsplitTabBarDebugWindowController.shared.show()
     }
 #endif
 }
@@ -1136,6 +1140,7 @@ private let cmuxAuxiliaryWindowIdentifiers: Set<String> = [
     "cmux.menubarDebug",
     "cmux.backgroundDebug",
     "cmux.startupAppearanceDebug",
+    "cmux.bonsplitTabBarDebug",
 ]
 
 /// Returns whether the given window should handle the standard close shortcut
@@ -1750,6 +1755,9 @@ private struct DebugWindowControlsView: View {
                         ) {
                             PDFPreviewChromeDebugWindowController.shared.show()
                         }
+                        Button("Bonsplit Tab Bar Debug…") {
+                            BonsplitTabBarDebugWindowController.shared.show()
+                        }
                         Button(
                             String(
                                 localized: "debug.menu.tabBarBackdropLab",
@@ -1775,6 +1783,7 @@ private struct DebugWindowControlsView: View {
                             StartupAppearanceDebugWindowController.shared.show()
                             MenuBarExtraDebugWindowController.shared.show()
                             PDFPreviewChromeDebugWindowController.shared.show()
+                            BonsplitTabBarDebugWindowController.shared.show()
                             TabBarBackdropLabWindowController.shared.show()
                             FeedTextEditorDebugWindowController.shared.show()
                         }
@@ -3331,6 +3340,203 @@ private struct SplitButtonLayoutDebugView: View {
     }
 }
 
+// MARK: - Bonsplit Tab Bar Debug Window
+
+private final class BonsplitTabBarDebugWindowController: NSWindowController, NSWindowDelegate {
+    static let shared = BonsplitTabBarDebugWindowController()
+
+    private init() {
+        let window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+            styleMask: [.titled, .closable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Bonsplit Tab Bar Debug"
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier("cmux.bonsplitTabBarDebug")
+        window.center()
+        window.contentView = NSHostingView(rootView: BonsplitTabBarDebugView())
+        AppDelegate.shared?.applyWindowDecorations(to: window)
+        super.init(window: window)
+        window.delegate = self
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    func show() {
+        window?.center()
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+private struct BonsplitTabBarDebugView: View {
+    @AppStorage(BonsplitTabBarDebugSettings.separatorFadeWidthKey)
+    private var separatorFadeWidth = BonsplitTabBarDebugSettings.defaultSeparatorFadeWidth
+    @AppStorage(BonsplitTabBarDebugSettings.contentFadeWidthKey)
+    private var contentFadeWidth = BonsplitTabBarDebugSettings.defaultContentFadeWidth
+    @AppStorage(BonsplitTabBarDebugSettings.solidSurfaceWidthAdjustmentKey)
+    private var solidSurfaceWidthAdjustment = BonsplitTabBarDebugSettings.defaultSolidSurfaceWidthAdjustment
+
+    private var resolvedSeparatorFadeWidth: Double {
+        BonsplitTabBarDebugSettings.resolvedSeparatorFadeWidth(separatorFadeWidth)
+    }
+
+    private var resolvedContentFadeWidth: Double {
+        BonsplitTabBarDebugSettings.resolvedContentFadeWidth(contentFadeWidth)
+    }
+
+    private var resolvedSolidSurfaceWidthAdjustment: Double {
+        BonsplitTabBarDebugSettings.resolvedSolidSurfaceWidthAdjustment(solidSurfaceWidthAdjustment)
+    }
+
+    private var separatorFadeBinding: Binding<Double> {
+        Binding(
+            get: { resolvedSeparatorFadeWidth },
+            set: { setSeparatorFadeWidth($0) }
+        )
+    }
+
+    private var contentFadeBinding: Binding<Double> {
+        Binding(
+            get: { resolvedContentFadeWidth },
+            set: { setContentFadeWidth($0) }
+        )
+    }
+
+    private var solidSurfaceWidthAdjustmentBinding: Binding<Double> {
+        Binding(
+            get: { resolvedSolidSurfaceWidthAdjustment },
+            set: { setSolidSurfaceWidthAdjustment($0) }
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Bonsplit Tab Bar")
+                .font(.headline)
+
+            GroupBox("Action Lane Geometry") {
+                VStack(alignment: .leading, spacing: 10) {
+                    BonsplitTabBarDebugSliderRow(
+                        title: "Content fade",
+                        value: contentFadeBinding,
+                        setting: BonsplitTabBarDebugSettings.contentFadeWidthSetting
+                    )
+                    BonsplitTabBarDebugSliderRow(
+                        title: "Solid bg extra",
+                        value: solidSurfaceWidthAdjustmentBinding,
+                        setting: BonsplitTabBarDebugSettings.solidSurfaceWidthAdjustmentSetting
+                    )
+                }
+                .padding(.top, 2)
+            }
+
+            GroupBox("Action Lane Border") {
+                VStack(alignment: .leading, spacing: 10) {
+                    BonsplitTabBarDebugSliderRow(
+                        title: "Separator fade frame",
+                        value: separatorFadeBinding,
+                        setting: BonsplitTabBarDebugSettings.separatorFadeWidthSetting
+                    )
+                }
+                .padding(.top, 2)
+            }
+
+            HStack(spacing: 10) {
+                Button("Reset") {
+                    setSeparatorFadeWidth(BonsplitTabBarDebugSettings.defaultSeparatorFadeWidth)
+                    setContentFadeWidth(BonsplitTabBarDebugSettings.defaultContentFadeWidth)
+                    setSolidSurfaceWidthAdjustment(BonsplitTabBarDebugSettings.defaultSolidSurfaceWidthAdjustment)
+                }
+                Button("Copy Config") {
+                    BonsplitTabBarDebugSettings.copyCurrentTuningToPasteboard()
+                }
+            }
+
+            Text(verbatim: BonsplitTabBarDebugSettings.currentTuningDescription())
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func setSeparatorFadeWidth(_ value: Double) {
+        separatorFadeWidth = BonsplitTabBarDebugSettings.resolvedSeparatorFadeWidth(value)
+        refreshLiveWorkspaces()
+    }
+
+    private func setContentFadeWidth(_ value: Double) {
+        contentFadeWidth = BonsplitTabBarDebugSettings.resolvedContentFadeWidth(value)
+        refreshLiveWorkspaces()
+    }
+
+    private func setSolidSurfaceWidthAdjustment(_ value: Double) {
+        solidSurfaceWidthAdjustment = BonsplitTabBarDebugSettings.resolvedSolidSurfaceWidthAdjustment(value)
+        refreshLiveWorkspaces()
+    }
+
+    private func refreshLiveWorkspaces() {
+        let managers = [
+            AppDelegate.shared?.activeTabManagerForCommands(),
+            AppDelegate.shared?.tabManager
+        ].compactMap { $0 }
+        var seen = Set<ObjectIdentifier>()
+        for manager in managers {
+            guard seen.insert(ObjectIdentifier(manager)).inserted else { continue }
+            manager.refreshSplitButtonBackdropEffect()
+        }
+    }
+}
+
+private struct BonsplitTabBarDebugSliderRow: View {
+    let title: String
+    @Binding var value: Double
+    let setting: BonsplitTabBarDebugNumberSetting
+
+    private var resolvedValue: Double {
+        setting.resolved(value)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .frame(width: 112, alignment: .leading)
+                Slider(
+                    value: Binding(
+                        get: { resolvedValue },
+                        set: { value = setting.resolved($0) }
+                    ),
+                    in: setting.range,
+                    step: setting.step
+                )
+                Text("\(setting.format(resolvedValue)) px")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .frame(width: 76, alignment: .trailing)
+            }
+
+            Stepper(
+                "Fine tune",
+                value: Binding(
+                    get: { resolvedValue },
+                    set: { value = setting.resolved($0) }
+                ),
+                in: setting.range,
+                step: setting.step
+            )
+        }
+    }
+}
+
 // MARK: - Tab Bar Backdrop Lab Window
 
 private final class TabBarBackdropLabWindowController: NSWindowController, NSWindowDelegate {
@@ -3390,7 +3596,7 @@ private struct TabBarBackdropLabVariant: Identifiable {
     let opacity: CGFloat
 
     var renderIdentity: String {
-        "\(id)-\(chromeHex)-\(tabBarHex)-\(splitButtonBackdropHex)-\(paneHex)-\(borderHex)-\(String(format: "%.3f", opacity))-\(String(format: "%.1f", effect.fadeWidth))-\(String(format: "%.1f", effect.contentFadeWidth))-\(String(format: "%.1f", effect.solidWidth))-\(String(format: "%.2f", effect.fadeRampStartFraction))-\(String(format: "%.2f", effect.leadingOpacity))-\(String(format: "%.2f", effect.trailingOpacity))-\(String(format: "%.2f", effect.contentOcclusionFraction))-\(effect.masksTabContent ? 1 : 0)"
+        "\(id)-\(chromeHex)-\(tabBarHex)-\(splitButtonBackdropHex)-\(paneHex)-\(borderHex)-\(String(format: "%.3f", opacity))-\(String(format: "%.1f", effect.fadeWidth))-\(String(format: "%.1f", effect.contentFadeWidth))-\(String(format: "%.1f", effect.solidWidth))-\(String(format: "%.1f", effect.solidSurfaceWidthAdjustment))-\(String(format: "%.2f", effect.fadeRampStartFraction))-\(String(format: "%.2f", effect.leadingOpacity))-\(String(format: "%.2f", effect.trailingOpacity))-\(String(format: "%.2f", effect.contentOcclusionFraction))-\(effect.masksTabContent ? 1 : 0)"
     }
 }
 
@@ -3435,6 +3641,7 @@ private struct TabBarBackdropLabView: View {
             fadeWidth: interpolate(strong: 20, production: production.fadeWidth, soft: 240),
             contentFadeWidth: interpolate(strong: 0, production: production.contentFadeWidth, soft: 80),
             solidWidth: interpolate(strong: 72, production: production.solidWidth, soft: 0),
+            solidSurfaceWidthAdjustment: production.solidSurfaceWidthAdjustment,
             fadeRampStartFraction: interpolate(strong: 0, production: production.fadeRampStartFraction, soft: 0.98),
             leadingOpacity: production.leadingOpacity,
             trailingOpacity: interpolate(strong: 1.0, production: production.trailingOpacity, soft: 0.25),

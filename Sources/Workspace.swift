@@ -74,6 +74,115 @@ private final class WorkspacePendingTerminalInputObserver: @unchecked Sendable {
     var observer: NSObjectProtocol?
 }
 
+struct BonsplitTabBarDebugNumberSetting {
+    let key: String
+    let defaultValue: Double
+    let range: ClosedRange<Double>
+    let step: Double
+
+    func resolved(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultValue }
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    func currentValue(defaults: UserDefaults = .standard) -> Double {
+        guard defaults.object(forKey: key) != nil else {
+            return defaultValue
+        }
+        return resolved(defaults.double(forKey: key))
+    }
+
+    func format(_ value: Double) -> String {
+        String(format: "%.3f", resolved(value))
+    }
+}
+
+enum BonsplitTabBarDebugSettings {
+    static let backdropFadeWidth = 99.75
+
+    static let separatorFadeWidthSetting = BonsplitTabBarDebugNumberSetting(
+        key: "debugBonsplitTabBarSeparatorFadeWidthV2",
+        defaultValue: backdropFadeWidth,
+        range: 0.0...140.0,
+        step: 0.25
+    )
+    static let contentFadeWidthSetting = BonsplitTabBarDebugNumberSetting(
+        key: "debugBonsplitTabBarContentFadeWidth",
+        defaultValue: 28.875,
+        range: 0.0...80.0,
+        step: 0.5
+    )
+    static let solidSurfaceWidthAdjustmentSetting = BonsplitTabBarDebugNumberSetting(
+        key: "debugBonsplitTabBarSolidSurfaceWidthAdjustmentV2",
+        defaultValue: -80.0,
+        range: -80.0...120.0,
+        step: 0.5
+    )
+
+    static let separatorFadeWidthKey = separatorFadeWidthSetting.key
+    static let contentFadeWidthKey = contentFadeWidthSetting.key
+    static let solidSurfaceWidthAdjustmentKey = solidSurfaceWidthAdjustmentSetting.key
+    static let defaultSeparatorFadeWidth = separatorFadeWidthSetting.defaultValue
+    static let defaultContentFadeWidth = contentFadeWidthSetting.defaultValue
+    static let defaultSolidSurfaceWidthAdjustment = solidSurfaceWidthAdjustmentSetting.defaultValue
+    static let separatorFadeWidthRange = separatorFadeWidthSetting.range
+    static let contentFadeWidthRange = contentFadeWidthSetting.range
+    static let solidSurfaceWidthAdjustmentRange = solidSurfaceWidthAdjustmentSetting.range
+    static let separatorFadeWidthStep = separatorFadeWidthSetting.step
+    static let contentFadeWidthStep = contentFadeWidthSetting.step
+    static let solidSurfaceWidthAdjustmentStep = solidSurfaceWidthAdjustmentSetting.step
+
+    static func resolvedSeparatorFadeWidth(_ width: Double) -> Double {
+        separatorFadeWidthSetting.resolved(width)
+    }
+
+    static func resolvedContentFadeWidth(_ width: Double) -> Double {
+        contentFadeWidthSetting.resolved(width)
+    }
+
+    static func resolvedSolidSurfaceWidthAdjustment(_ width: Double) -> Double {
+        solidSurfaceWidthAdjustmentSetting.resolved(width)
+    }
+
+    static func separatorFadeWidth(defaults: UserDefaults = .standard) -> Double {
+        separatorFadeWidthSetting.currentValue(defaults: defaults)
+    }
+
+    static func contentFadeWidth(defaults: UserDefaults = .standard) -> Double {
+        contentFadeWidthSetting.currentValue(defaults: defaults)
+    }
+
+    static func solidSurfaceWidthAdjustment(defaults: UserDefaults = .standard) -> Double {
+        solidSurfaceWidthAdjustmentSetting.currentValue(defaults: defaults)
+    }
+
+    static func formatPixels(_ value: Double) -> String {
+        String(format: "%.3f", value)
+    }
+
+    static func currentTuningDescription(defaults: UserDefaults = .standard) -> String {
+        let effect = Workspace.bonsplitSplitButtonBackdropEffect()
+        return [
+            "bonsplit-tabbar-tuning",
+            "separatorFadeWidth=\(formatPixels(separatorFadeWidth(defaults: defaults)))",
+            "contentFadeWidth=\(formatPixels(contentFadeWidth(defaults: defaults)))",
+            "solidSurfaceWidthAdjustment=\(formatPixels(solidSurfaceWidthAdjustment(defaults: defaults)))",
+            "fadeWidth=\(String(format: "%.3f", Double(effect.fadeWidth)))",
+            "solidWidth=\(String(format: "%.3f", Double(effect.solidWidth)))",
+            "fadeRampStartFraction=\(String(format: "%.3f", Double(effect.fadeRampStartFraction)))",
+            "trailingOpacity=\(String(format: "%.3f", Double(effect.trailingOpacity)))",
+            "contentOcclusionFraction=\(String(format: "%.3f", Double(effect.contentOcclusionFraction)))",
+            "masksTabContent=\(effect.masksTabContent ? "true" : "false")"
+        ].joined(separator: " ")
+    }
+
+    static func copyCurrentTuningToPasteboard(defaults: UserDefaults = .standard) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(currentTuningDescription(defaults: defaults), forType: .string)
+    }
+}
+
 func cmuxSurfaceContextName(_ context: ghostty_surface_context_e) -> String {
     switch context {
     case GHOSTTY_SURFACE_CONTEXT_WINDOW:
@@ -7588,9 +7697,11 @@ final class Workspace: Identifiable, ObservableObject {
     nonisolated static func bonsplitSplitButtonBackdropEffect() -> BonsplitConfiguration.Appearance.SplitButtonBackdropEffect {
         .init(
             style: .translucentChrome,
-            fadeWidth: 99.75,
-            contentFadeWidth: 28.875,
+            fadeWidth: CGFloat(BonsplitTabBarDebugSettings.backdropFadeWidth),
+            contentFadeWidth: CGFloat(BonsplitTabBarDebugSettings.contentFadeWidth()),
             solidWidth: 23.875,
+            solidSurfaceWidthAdjustment: CGFloat(BonsplitTabBarDebugSettings.solidSurfaceWidthAdjustment()),
+            separatorFadeWidth: CGFloat(BonsplitTabBarDebugSettings.separatorFadeWidth()),
             fadeRampStartFraction: bonsplitSplitButtonBackdropSoftness,
             leadingOpacity: 0,
             trailingOpacity: 0.8625,
@@ -7949,6 +8060,12 @@ final class Workspace: Identifiable, ObservableObject {
         var configuration = bonsplitController.configuration
         guard configuration.appearance.splitButtonTooltips != tooltips else { return }
         configuration.appearance.splitButtonTooltips = tooltips
+        bonsplitController.configuration = configuration
+    }
+
+    func refreshSplitButtonBackdropEffect() {
+        var configuration = bonsplitController.configuration
+        configuration.appearance.splitButtonBackdropEffect = Self.bonsplitSplitButtonBackdropEffect()
         bonsplitController.configuration = configuration
     }
 

@@ -5350,6 +5350,13 @@ class TabManager: ObservableObject {
         }
     }
 
+    /// Refresh Bonsplit right-side action button backdrop tuning for all workspaces.
+    func refreshSplitButtonBackdropEffect() {
+        for workspace in tabs {
+            workspace.refreshSplitButtonBackdropEffect()
+        }
+    }
+
     func applySurfaceTabBarButtons(
         _ buttons: [CmuxSurfaceTabBarButton],
         sourcePath: String?,
