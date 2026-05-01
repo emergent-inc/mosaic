@@ -269,12 +269,19 @@ private struct BonsplitTabBarDebugView: View {
 
             HStack(spacing: 10) {
                 Button(String(localized: "debug.bonsplitTabBarDebug.reset", defaultValue: "Reset")) {
+                    cmuxDebugLog(
+                        "bonsplit.tabbarDebug.reset " +
+                        "separatorFadeWidth=\(BonsplitTabBarDebugSettings.formatPixels(BonsplitTabBarDebugSettings.defaultSeparatorFadeWidth)) " +
+                        "contentFadeWidth=\(BonsplitTabBarDebugSettings.formatPixels(BonsplitTabBarDebugSettings.defaultContentFadeWidth)) " +
+                        "solidSurfaceWidthAdjustment=\(BonsplitTabBarDebugSettings.formatPixels(BonsplitTabBarDebugSettings.defaultSolidSurfaceWidthAdjustment))"
+                    )
                     setSeparatorFadeWidth(BonsplitTabBarDebugSettings.defaultSeparatorFadeWidth)
                     setContentFadeWidth(BonsplitTabBarDebugSettings.defaultContentFadeWidth)
                     setSolidSurfaceWidthAdjustment(BonsplitTabBarDebugSettings.defaultSolidSurfaceWidthAdjustment)
                 }
                 Button(String(localized: "debug.bonsplitTabBarDebug.copyConfig", defaultValue: "Copy Config")) {
                     BonsplitTabBarDebugSettings.copyCurrentTuningToPasteboard()
+                    cmuxDebugLog("bonsplit.tabbarDebug.copyConfig \(BonsplitTabBarDebugSettings.currentTuningDescription())")
                 }
             }
 
@@ -290,16 +297,28 @@ private struct BonsplitTabBarDebugView: View {
 
     private func setSeparatorFadeWidth(_ value: Double) {
         separatorFadeWidth = BonsplitTabBarDebugSettings.resolvedSeparatorFadeWidth(value)
+        cmuxDebugLog(
+            "bonsplit.tabbarDebug.separatorFadeWidth=" +
+            BonsplitTabBarDebugSettings.formatPixels(separatorFadeWidth)
+        )
         refreshLiveWorkspaces()
     }
 
     private func setContentFadeWidth(_ value: Double) {
         contentFadeWidth = BonsplitTabBarDebugSettings.resolvedContentFadeWidth(value)
+        cmuxDebugLog(
+            "bonsplit.tabbarDebug.contentFadeWidth=" +
+            BonsplitTabBarDebugSettings.formatPixels(contentFadeWidth)
+        )
         refreshLiveWorkspaces()
     }
 
     private func setSolidSurfaceWidthAdjustment(_ value: Double) {
         solidSurfaceWidthAdjustment = BonsplitTabBarDebugSettings.resolvedSolidSurfaceWidthAdjustment(value)
+        cmuxDebugLog(
+            "bonsplit.tabbarDebug.solidSurfaceWidthAdjustment=" +
+            BonsplitTabBarDebugSettings.formatPixels(solidSurfaceWidthAdjustment)
+        )
         refreshLiveWorkspaces()
     }
 
@@ -322,6 +341,13 @@ private struct BonsplitTabBarDebugSliderRow: View {
         setting.resolved(value)
     }
 
+    private var pixelValueText: String {
+        String(
+            format: String(localized: "debug.bonsplitTabBarDebug.pixelsValue", defaultValue: "%@ px"),
+            setting.format(resolvedValue)
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -335,7 +361,7 @@ private struct BonsplitTabBarDebugSliderRow: View {
                     in: setting.range,
                     step: setting.step
                 )
-                Text("\(setting.format(resolvedValue)) px")
+                Text(pixelValueText)
                     .font(.caption)
                     .monospacedDigit()
                     .frame(width: 76, alignment: .trailing)

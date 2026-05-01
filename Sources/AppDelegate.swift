@@ -5187,7 +5187,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }?.tabManager
     }
 
-    func allMainWindowTabManagersForDebug() -> [TabManager] { mainWindowContexts.values.compactMap { resolvedWindow(for: $0) == nil ? nil : $0.tabManager } }
+    func allMainWindowTabManagersForDebug() -> [TabManager] {
+        Array(mainWindowContexts.values).compactMap { context in
+            resolvedWindow(for: context) == nil ? nil : context.tabManager
+        }
+    }
 #if DEBUG
     private func debugManagerToken(_ manager: TabManager?) -> String {
         guard let manager else { return "nil" }

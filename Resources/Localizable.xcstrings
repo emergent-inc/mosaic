@@ -14,6 +14,7 @@
     "debug.bonsplitTabBarDebug.copyConfig": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copy Config" } }, "ja": { "stringUnit": { "state": "translated", "value": "設定をコピー" } } } },
     "debug.bonsplitTabBarDebug.fineTune": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fine tune" } }, "ja": { "stringUnit": { "state": "translated", "value": "微調整" } } } },
     "debug.bonsplitTabBarDebug.heading": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Bonsplit Tab Bar" } }, "ja": { "stringUnit": { "state": "translated", "value": "Bonsplitタブバー" } } } },
+    "debug.bonsplitTabBarDebug.pixelsValue": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ px" } }, "ja": { "stringUnit": { "state": "translated", "value": "%@ px" } } } },
     "debug.bonsplitTabBarDebug.reset": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reset" } }, "ja": { "stringUnit": { "state": "translated", "value": "リセット" } } } },
     "debug.bonsplitTabBarDebug.separatorFadeFrame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Separator fade frame" } }, "ja": { "stringUnit": { "state": "translated", "value": "区切り線のフェード幅" } } } },
     "debug.bonsplitTabBarDebug.solidBgExtra": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Solid bg extra" } }, "ja": { "stringUnit": { "state": "translated", "value": "単色背景の追加幅" } } } },
