@@ -105632,6 +105632,159 @@
         }
       }
     },
+    "dock.empty.agentPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add cmux Dock controls for this repo. Create .cmux/dock.json with a controls array. Each control needs id, title, command, and optional cwd, height, env. Use safe commands for this repo and do not include secrets. Include a Feed control only if cmux feed tui --opentui is useful. Add useful controls for this project, such as git, logs, dev server status, task queue, or test watcher."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリポジトリ用のcmux Dockコントロールを追加してください。controls配列を含む .cmux/dock.json を作成してください。各コントロールには id、title、command が必要で、cwd、height、env は任意です。このリポジトリで安全なコマンドを使い、シークレットは含めないでください。cmux feed tui --opentui が有用な場合のみFeedコントロールを含めてください。git、ログ、開発サーバー状態、タスクキュー、テストウォッチャーなど、このプロジェクトに役立つコントロールを追加してください。"
+          }
+        }
+      }
+    },
+    "dock.empty.copyPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Agent Prompt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェント用プロンプトをコピー"
+          }
+        }
+      }
+    },
+    "dock.empty.copyPrompt.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy a prompt you can paste into an AI coding agent"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIコーディングエージェントに貼り付けるプロンプトをコピー"
+          }
+        }
+      }
+    },
+    "dock.empty.copyPromptDone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピーしました"
+          }
+        }
+      }
+    },
+    "dock.empty.openDocs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docs"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ドキュメント"
+          }
+        }
+      }
+    },
+    "dock.empty.openDocs.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the Dock documentation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dockドキュメントを開く"
+          }
+        }
+      }
+    },
+    "dock.empty.promptInfo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Agent Prompt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェント用プロンプトを表示"
+          }
+        }
+      }
+    },
+    "dock.empty.promptInfo.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the prompt that will be copied"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピーされるプロンプトを表示"
+          }
+        }
+      }
+    },
+    "dock.empty.promptPopoverTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Prompt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェント用プロンプト"
+          }
+        }
+      }
+    },
     "dock.empty.title": {
       "extractionState": "manual",
       "localizations": {
