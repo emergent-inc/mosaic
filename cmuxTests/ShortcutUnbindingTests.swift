@@ -99,6 +99,140 @@ final class ShortcutUnbindingRoutingTests: XCTestCase {
     }
 }
 
+@MainActor
+final class ShortcutRecorderEventRoutingTests: XCTestCase {
+    override func tearDown() {
+        KeyboardShortcutSettings.resetAll()
+        super.tearDown()
+    }
+
+    func testShortcutRecorderReportsFirstStrokeConflictImmediately() {
+#if DEBUG
+        KeyboardShortcutSettings.resetAll()
+
+        let button = ShortcutRecorderNSButton(frame: .zero)
+        let conflictingShortcut = StoredShortcut(
+            key: "t",
+            command: true,
+            shift: false,
+            option: false,
+            control: false,
+            keyCode: 17
+        )
+        var rejectedAttempt: ShortcutRecorderRejectedAttempt?
+
+        button.transformRecordedShortcut = { shortcut in
+            XCTAssertEqual(shortcut, conflictingShortcut)
+            return .rejected(.conflictsWithAction(.newSurface))
+        }
+        button.onRecorderFeedbackChanged = { rejectedAttempt = $0 }
+        button.performClick(nil)
+
+        guard let event = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: 0,
+            context: nil,
+            characters: "t",
+            charactersIgnoringModifiers: "t",
+            isARepeat: false,
+            keyCode: 17
+        ) else {
+            XCTFail("Failed to construct Command-T event")
+            return
+        }
+
+        XCTAssertNil(button.debugHandleRecordingEvent(event))
+        XCTAssertEqual(
+            rejectedAttempt,
+            ShortcutRecorderRejectedAttempt(
+                reason: .conflictsWithAction(.newSurface),
+                proposedShortcut: conflictingShortcut
+            )
+        )
+        XCTAssertTrue(button.debugIsRecording)
+#else
+        XCTFail("Shortcut recorder debug hooks are only available in DEBUG")
+#endif
+    }
+
+    func testShortcutRecorderKeepsCaptureActiveAfterRejectedBareKeys() {
+#if DEBUG
+        KeyboardShortcutSettings.resetAll()
+
+        let button = ShortcutRecorderNSButton(frame: .zero)
+        var rejectedAttempt: ShortcutRecorderRejectedAttempt?
+        button.onRecorderFeedbackChanged = { rejectedAttempt = $0 }
+        button.performClick(nil)
+
+        guard let firstEvent = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: 0,
+            context: nil,
+            characters: "a",
+            charactersIgnoringModifiers: "a",
+            isARepeat: false,
+            keyCode: 0
+        ) else {
+            XCTFail("Failed to construct bare A event")
+            return
+        }
+        guard let secondEvent = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: 0,
+            context: nil,
+            characters: "t",
+            charactersIgnoringModifiers: "t",
+            isARepeat: false,
+            keyCode: 17
+        ) else {
+            XCTFail("Failed to construct bare T event")
+            return
+        }
+        guard let escapeEvent = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: 0,
+            context: nil,
+            characters: "\u{1b}",
+            charactersIgnoringModifiers: "\u{1b}",
+            isARepeat: false,
+            keyCode: 53
+        ) else {
+            XCTFail("Failed to construct Escape event")
+            return
+        }
+
+        XCTAssertNil(
+            button.debugHandleMonitoredRecordingEvent(firstEvent),
+            "The recorder's local monitor must swallow consumed key events so Settings search and sidebar type-selection cannot see them."
+        )
+        XCTAssertEqual(rejectedAttempt?.reason, .bareKeyNotAllowed)
+        XCTAssertTrue(button.debugIsRecording)
+        XCTAssertNil(
+            button.debugHandleMonitoredRecordingEvent(secondEvent),
+            "The recorder must keep swallowing later invalid keys while the validation message is visible."
+        )
+        XCTAssertEqual(rejectedAttempt?.reason, .bareKeyNotAllowed)
+        XCTAssertTrue(button.debugIsRecording)
+        XCTAssertNil(button.debugHandleMonitoredRecordingEvent(escapeEvent))
+        XCTAssertFalse(button.debugIsRecording)
+#else
+        XCTFail("Shortcut recorder debug hooks are only available in DEBUG")
+#endif
+    }
+}
+
 final class ShortcutUnbindingParsingTests: XCTestCase {
     func testSettingsFileStoreParsesEmptyShortcutBindingAsUnbound() throws {
         let directoryURL = FileManager.default.temporaryDirectory

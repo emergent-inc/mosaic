@@ -471,59 +471,6 @@ final class WorkspaceRenameShortcutDefaultsTests: XCTestCase {
 #endif
     }
 
-    func testShortcutRecorderReportsFirstStrokeConflictImmediately() {
-#if DEBUG
-        KeyboardShortcutSettings.resetAll()
-        defer { KeyboardShortcutSettings.resetAll() }
-
-        let button = ShortcutRecorderNSButton(frame: .zero)
-        let conflictingShortcut = StoredShortcut(
-            key: "t",
-            command: true,
-            shift: false,
-            option: false,
-            control: false,
-            keyCode: 17
-        )
-        var rejectedAttempt: ShortcutRecorderRejectedAttempt?
-
-        button.transformRecordedShortcut = { shortcut in
-            XCTAssertEqual(shortcut, conflictingShortcut)
-            return .rejected(.conflictsWithAction(.newSurface))
-        }
-        button.onRecorderFeedbackChanged = { rejectedAttempt = $0 }
-        button.performClick(nil)
-
-        guard let event = NSEvent.keyEvent(
-            with: .keyDown,
-            location: .zero,
-            modifierFlags: [.command],
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: 0,
-            context: nil,
-            characters: "t",
-            charactersIgnoringModifiers: "t",
-            isARepeat: false,
-            keyCode: 17
-        ) else {
-            XCTFail("Failed to construct Command-T event")
-            return
-        }
-
-        XCTAssertNil(button.debugHandleRecordingEvent(event))
-        XCTAssertEqual(
-            rejectedAttempt,
-            ShortcutRecorderRejectedAttempt(
-                reason: .conflictsWithAction(.newSurface),
-                proposedShortcut: conflictingShortcut
-            )
-        )
-        XCTAssertFalse(button.debugIsRecording)
-#else
-        XCTFail("Shortcut recorder debug hooks are only available in DEBUG")
-#endif
-    }
-
     func testShortcutRecorderCommitsAcceptedFirstStrokeImmediately() {
 #if DEBUG
         KeyboardShortcutSettings.resetAll()

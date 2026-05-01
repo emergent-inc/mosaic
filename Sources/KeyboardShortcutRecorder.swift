@@ -286,7 +286,8 @@ final class ShortcutRecorderNSButton: NSButton {
         updateTitle()
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { [weak self] event in
-            self?.handleRecordingEvent(event) ?? event
+            guard let self else { return event }
+            return self.handleMonitoredRecordingEvent(event)
         }
 
         NotificationCenter.default.addObserver(
@@ -319,7 +320,6 @@ final class ShortcutRecorderNSButton: NSButton {
                     onRecorderFeedbackChanged?(
                         ShortcutRecorderRejectedAttempt(reason: reason, proposedShortcut: firstShortcut)
                     )
-                    stopRecording()
                     return nil
                 }
             case let .rejected(reason):
@@ -327,7 +327,6 @@ final class ShortcutRecorderNSButton: NSButton {
                 onRecorderFeedbackChanged?(
                     ShortcutRecorderRejectedAttempt(reason: reason, proposedShortcut: nil)
                 )
-                stopRecording()
                 return nil
             case .unsupportedKey:
                 return nil
@@ -352,13 +351,16 @@ final class ShortcutRecorderNSButton: NSButton {
                 onRecorderFeedbackChanged?(
                     ShortcutRecorderRejectedAttempt(reason: reason, proposedShortcut: newShortcut)
                 )
-                stopRecording()
                 return nil
             }
         }
 
         // Consume unsupported keys while recording to avoid triggering app shortcuts.
         return nil
+    }
+
+    private func handleMonitoredRecordingEvent(_ event: NSEvent) -> NSEvent? {
+        handleRecordingEvent(event)
     }
 
     private func stopRecording() {
@@ -425,6 +427,10 @@ final class ShortcutRecorderNSButton: NSButton {
 
     func debugHandleRecordingEvent(_ event: NSEvent) -> NSEvent? {
         handleRecordingEvent(event)
+    }
+
+    func debugHandleMonitoredRecordingEvent(_ event: NSEvent) -> NSEvent? {
+        handleMonitoredRecordingEvent(event)
     }
 #endif
 

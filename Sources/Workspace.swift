@@ -7795,7 +7795,7 @@ final class Workspace: Identifiable, ObservableObject {
         configTemplate: CmuxSurfaceConfigTemplate? = nil,
         initialTerminalCommand: String? = nil,
         initialTerminalInput: String? = nil,
-        initialTerminalEnvironment: [String: String] = [:]
+        initialTerminalEnvironment: [String: String] = [:], initialDetachedSurface: DetachedSurfaceTransfer? = nil
     ) {
         self.id = UUID()
         self.portOrdinal = portOrdinal
@@ -7854,33 +7854,40 @@ final class Workspace: Identifiable, ObservableObject {
             resolvedConfigTemplate = template
         }
 
-        // Create initial terminal panel
-        let terminalPanel = TerminalPanel(
-            workspaceId: id,
-            context: GHOSTTY_SURFACE_CONTEXT_TAB,
-            configTemplate: resolvedConfigTemplate,
-            workingDirectory: hasWorkingDirectory ? trimmedWorkingDirectory : nil,
-            portOrdinal: portOrdinal,
-            initialCommand: initialTerminalCommand,
-            initialInput: initialTerminalInput,
-            initialEnvironmentOverrides: initialTerminalEnvironment
-        )
-        configureTerminalPanel(terminalPanel)
-        panels[terminalPanel.id] = terminalPanel
-        panelTitles[terminalPanel.id] = terminalPanel.displayTitle
-        seedTerminalInheritanceFontPoints(panelId: terminalPanel.id, configTemplate: configTemplate)
-
-        // Create initial tab in bonsplit and store the mapping
         var initialTabId: TabID?
-        if let tabId = bonsplitController.createTab(
-            title: title,
-            icon: "terminal.fill",
-            kind: SurfaceKind.terminal,
-            isDirty: false,
-            isPinned: false
-        ) {
-            surfaceIdToPanelId[tabId] = terminalPanel.id
-            initialTabId = tabId
+        if let initialDetachedSurface {
+            if let initialPaneId = bonsplitController.allPaneIds.first,
+               attachDetachedSurface(initialDetachedSurface, inPane: initialPaneId, focus: false) != nil {
+                initialTabId = surfaceIdFromPanelId(initialDetachedSurface.panelId)
+            }
+        } else {
+            // Create initial terminal panel
+            let terminalPanel = TerminalPanel(
+                workspaceId: id,
+                context: GHOSTTY_SURFACE_CONTEXT_TAB,
+                configTemplate: resolvedConfigTemplate,
+                workingDirectory: hasWorkingDirectory ? trimmedWorkingDirectory : nil,
+                portOrdinal: portOrdinal,
+                initialCommand: initialTerminalCommand,
+                initialInput: initialTerminalInput,
+                initialEnvironmentOverrides: initialTerminalEnvironment
+            )
+            configureTerminalPanel(terminalPanel)
+            panels[terminalPanel.id] = terminalPanel
+            panelTitles[terminalPanel.id] = terminalPanel.displayTitle
+            seedTerminalInheritanceFontPoints(panelId: terminalPanel.id, configTemplate: configTemplate)
+
+            // Create initial tab in bonsplit and store the mapping
+            if let tabId = bonsplitController.createTab(
+                title: title,
+                icon: "terminal.fill",
+                kind: SurfaceKind.terminal,
+                isDirty: false,
+                isPinned: false
+            ) {
+                surfaceIdToPanelId[tabId] = terminalPanel.id
+                initialTabId = tabId
+            }
         }
 
         // Close the default Welcome tab(s)
@@ -7907,7 +7914,7 @@ final class Workspace: Identifiable, ObservableObject {
         // Ensure bonsplit has a focused pane and our didSelectTab handler runs for the
         // initial terminal. bonsplit's createTab selects internally but does not emit
         // didSelectTab, and focusedPaneId can otherwise be nil until user interaction.
-        if let initialTabId {
+        if let initialTabId, initialDetachedSurface == nil {
             // Focus the pane containing the initial tab (or the first pane as fallback).
             let paneToFocus: PaneID? = {
                 for paneId in bonsplitController.allPaneIds {
@@ -8067,46 +8074,6 @@ final class Workspace: Identifiable, ObservableObject {
         let generation: UInt64
         let preferredPanelId: UUID
         let splitPanelId: UUID
-    }
-
-    struct DetachedSurfaceTransfer {
-        let panelId: UUID
-        let panel: any Panel
-        let title: String
-        let icon: String?
-        let iconImageData: Data?
-        let kind: String?
-        let isLoading: Bool
-        let isPinned: Bool
-        let directory: String?
-        let ttyName: String?
-        let cachedTitle: String?
-        let customTitle: String?
-        let manuallyUnread: Bool
-        let isRemoteTerminal: Bool
-        let remoteRelayPort: Int?
-        let remoteCleanupConfiguration: WorkspaceRemoteConfiguration?
-
-        func withRemoteCleanupConfiguration(_ configuration: WorkspaceRemoteConfiguration?) -> Self {
-            Self(
-                panelId: panelId,
-                panel: panel,
-                title: title,
-                icon: icon,
-                iconImageData: iconImageData,
-                kind: kind,
-                isLoading: isLoading,
-                isPinned: isPinned,
-                directory: directory,
-                ttyName: ttyName,
-                cachedTitle: cachedTitle,
-                customTitle: customTitle,
-                manuallyUnread: manuallyUnread,
-                isRemoteTerminal: isRemoteTerminal,
-                remoteRelayPort: remoteRelayPort,
-                remoteCleanupConfiguration: configuration
-            )
-        }
     }
 
     private var detachingTabIds: Set<TabID> = []
@@ -11115,7 +11082,8 @@ final class Workspace: Identifiable, ObservableObject {
         _ detached: DetachedSurfaceTransfer,
         inPane paneId: PaneID,
         atIndex index: Int? = nil,
-        focus: Bool = true
+        focus: Bool = true,
+        focusIntent: PanelFocusIntent? = nil
     ) -> UUID? {
 #if DEBUG
         let attachStart = ProcessInfo.processInfo.systemUptime
@@ -11245,8 +11213,7 @@ final class Workspace: Identifiable, ObservableObject {
         if focus {
             bonsplitController.focusPane(paneId)
             bonsplitController.selectTab(newTabId)
-            detached.panel.focus()
-            applyTabSelection(tabId: newTabId, inPane: paneId)
+            applyTabSelection(tabId: newTabId, inPane: paneId, focusIntent: focusIntent)
         } else {
             scheduleFocusReconcile()
         }
@@ -11354,7 +11321,8 @@ final class Workspace: Identifiable, ObservableObject {
     func focusPanel(
         _ panelId: UUID,
         previousHostedView: GhosttySurfaceScrollView? = nil,
-        trigger: FocusPanelTrigger = .standard
+        trigger: FocusPanelTrigger = .standard,
+        focusIntent: PanelFocusIntent? = nil
     ) {
         markExplicitFocusIntent(on: panelId)
 #if DEBUG
@@ -11430,7 +11398,7 @@ final class Workspace: Identifiable, ObservableObject {
         }
 
         if let targetPaneId {
-            let activationIntent = panels[panelId]?.preferredFocusIntentForActivation()
+            let activationIntent = focusIntent ?? panels[panelId]?.preferredFocusIntentForActivation()
             applyTabSelection(
                 tabId: tabId,
                 inPane: targetPaneId,
