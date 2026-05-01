@@ -1087,6 +1087,112 @@ final class CmuxConfigDecodingTests: XCTestCase {
         XCTAssertTrue(store.configurationIssues.isEmpty)
     }
 
+    @MainActor
+    func testResolvedNewWorkspaceContextMenuSurfacesMissingActionIssue() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "cmux-config-store-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let configURL = root.appendingPathComponent("cmux.json")
+        let json = """
+        {
+          "actions": {
+            "start-codex": { "type": "command", "command": "codex" }
+          },
+          "ui": {
+            "newWorkspace": {
+              "contextMenu": [
+                "missing-action",
+                "start-codex"
+              ]
+            }
+          }
+        }
+        """
+        try json.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let store = CmuxConfigStore(
+            globalConfigPath: root.appendingPathComponent("missing-global.json").path,
+            localConfigPath: configURL.path,
+            startFileWatchers: false
+        )
+        store.loadAll()
+
+        XCTAssertEqual(store.newWorkspaceContextMenuItems.count, 1)
+        if case .action(let item) = store.newWorkspaceContextMenuItems.first {
+            XCTAssertEqual(item.action.id, "start-codex")
+        } else {
+            XCTFail("Expected missing context-menu action to be filtered.")
+        }
+        XCTAssertEqual(store.configurationIssues.first?.kind, .newWorkspaceActionNotFound)
+        XCTAssertEqual(store.configurationIssues.first?.settingName, "ui.newWorkspace.contextMenu[0]")
+        XCTAssertEqual(store.configurationIssues.first?.commandName, "missing-action")
+        XCTAssertEqual(store.configurationIssues.first?.sourcePath, configURL.path)
+    }
+
+    @MainActor
+    func testResolvedNewWorkspaceContextMenuFiltersInvalidWorkspaceCommandActions() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "cmux-config-store-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let configURL = root.appendingPathComponent("cmux.json")
+        let json = """
+        {
+          "actions": {
+            "missing-dev": { "type": "workspaceCommand", "commandName": "Missing Dev" },
+            "run-tests": { "type": "workspaceCommand", "commandName": "Run Tests" }
+          },
+          "ui": {
+            "newWorkspace": {
+              "contextMenu": [
+                "missing-dev",
+                "run-tests",
+                "cmux.newTerminal"
+              ]
+            }
+          },
+          "commands": [{
+            "name": "Run Tests",
+            "command": "npm test"
+          }]
+        }
+        """
+        try json.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let store = CmuxConfigStore(
+            globalConfigPath: root.appendingPathComponent("missing-global.json").path,
+            localConfigPath: configURL.path,
+            startFileWatchers: false
+        )
+        store.loadAll()
+
+        XCTAssertEqual(store.newWorkspaceContextMenuItems.count, 1)
+        if case .action(let item) = store.newWorkspaceContextMenuItems.first {
+            XCTAssertEqual(item.action.id, CmuxSurfaceTabBarBuiltInAction.newTerminal.configID)
+        } else {
+            XCTFail("Expected invalid workspace-command actions to be filtered.")
+        }
+        XCTAssertEqual(store.configurationIssues.map(\.kind), [
+            .newWorkspaceCommandNotFound,
+            .newWorkspaceCommandRequiresWorkspace,
+        ])
+        XCTAssertEqual(store.configurationIssues.map(\.settingName), [
+            "ui.newWorkspace.contextMenu[0]",
+            "ui.newWorkspace.contextMenu[1]",
+        ])
+        XCTAssertEqual(store.configurationIssues.map(\.commandName), [
+            "Missing Dev",
+            "Run Tests",
+        ])
+    }
+
     func testDecodeActionsSurfaceTabBarButtonSupportsWorkspaceCommand() throws {
         let json = """
         {

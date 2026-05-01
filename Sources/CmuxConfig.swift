@@ -1997,6 +1997,11 @@ final class CmuxConfigStore: ObservableObject {
         let terminalCommandSourcePaths: [String: String]
     }
 
+    private struct ResolvedContextMenuItems {
+        let items: [CmuxResolvedConfigContextMenuItem]
+        let issues: [CmuxConfigIssue]
+    }
+
     private struct NewWorkspaceCommandResolution {
         let command: CmuxResolvedCommand?
         let issue: CmuxConfigIssue?
@@ -2167,6 +2172,7 @@ final class CmuxConfigStore: ObservableObject {
         var configuredNewWorkspaceActionID: String?
         var configuredNewWorkspaceActionSourcePath: String?
         var configuredNewWorkspaceContextMenu: [CmuxConfigContextMenuItem]?
+        var configuredNewWorkspaceContextMenuSourcePath: String?
         var configuredSurfaceTabBarButtons: [CmuxSurfaceTabBarButton]?
         var configuredSurfaceTabBarButtonSourcePath: String?
         let localPath = localConfigPath
@@ -2192,6 +2198,7 @@ final class CmuxConfigStore: ObservableObject {
             }
             if let contextMenu = localConfig.ui?.newWorkspace?.contextMenu {
                 configuredNewWorkspaceContextMenu = contextMenu
+                configuredNewWorkspaceContextMenuSourcePath = localPath
             }
             if configuredNewWorkspaceActionID == nil,
                let newWorkspaceCommand = localConfig.newWorkspaceCommand {
@@ -2224,6 +2231,7 @@ final class CmuxConfigStore: ObservableObject {
             if configuredNewWorkspaceContextMenu == nil,
                let contextMenu = globalConfig.ui?.newWorkspace?.contextMenu {
                 configuredNewWorkspaceContextMenu = contextMenu
+                configuredNewWorkspaceContextMenuSourcePath = globalConfigPath
             }
             if configuredNewWorkspaceActionID == nil,
                configuredNewWorkspaceCommandName == nil,
@@ -2286,7 +2294,10 @@ final class CmuxConfigStore: ObservableObject {
         let resolvedNewWorkspaceContextMenuItems = resolvedConfigContextMenuItems(
             configuredNewWorkspaceContextMenu,
             actions: resolvedActionLookup,
-            settingName: "ui.newWorkspace.contextMenu"
+            commands: commands,
+            sourcePaths: sourcePaths,
+            settingName: "ui.newWorkspace.contextMenu",
+            settingSourcePath: configuredNewWorkspaceContextMenuSourcePath
         )
 
         loadedCommands = commands
@@ -2296,7 +2307,7 @@ final class CmuxConfigStore: ObservableObject {
         newWorkspaceActionID = configuredNewWorkspaceActionID
         newWorkspaceActionSourcePath = configuredNewWorkspaceActionSourcePath
         newWorkspaceCommandName = configuredNewWorkspaceCommandName
-        newWorkspaceContextMenuItems = resolvedNewWorkspaceContextMenuItems
+        newWorkspaceContextMenuItems = resolvedNewWorkspaceContextMenuItems.items
         surfaceTabBarButtonSourcePath = configuredSurfaceTabBarButtonSourcePath
         surfaceTabBarCommandSourcePaths = resolvedButtons.terminalCommandSourcePaths
         surfaceTabBarWorkspaceCommands = resolvedWorkspaceButtons.workspaceCommands
@@ -2306,6 +2317,7 @@ final class CmuxConfigStore: ObservableObject {
         if let issue = resolvedNewWorkspaceAction.issue {
             issues.append(issue)
         }
+        issues.append(contentsOf: resolvedNewWorkspaceContextMenuItems.issues)
         configurationIssues = issues
         applySurfaceTabBarButtonsToCurrentManager()
         configRevision &+= 1
@@ -2637,13 +2649,20 @@ final class CmuxConfigStore: ObservableObject {
     private func resolvedConfigContextMenuItems(
         _ configuredItems: [CmuxConfigContextMenuItem]?,
         actions: [String: CmuxResolvedConfigAction],
-        settingName: String
-    ) -> [CmuxResolvedConfigContextMenuItem] {
-        guard let configuredItems, !configuredItems.isEmpty else { return [] }
+        commands: [CmuxCommandDefinition],
+        sourcePaths: [String: String],
+        settingName: String,
+        settingSourcePath: String?
+    ) -> ResolvedContextMenuItems {
+        guard let configuredItems, !configuredItems.isEmpty else {
+            return ResolvedContextMenuItems(items: [], issues: [])
+        }
         var resolvedItems: [CmuxResolvedConfigContextMenuItem] = []
+        var issues: [CmuxConfigIssue] = []
         resolvedItems.reserveCapacity(configuredItems.count)
 
         for (index, configuredItem) in configuredItems.enumerated() {
+            let itemSettingName = "\(settingName)[\(index)]"
             switch configuredItem {
             case .separator:
                 guard !resolvedItems.isEmpty else { continue }
@@ -2653,8 +2672,31 @@ final class CmuxConfigStore: ObservableObject {
                 resolvedItems.append(.separator(id: "\(settingName).separator.\(index)"))
             case .action(let item):
                 guard let action = actions[item.action] else {
-                    NSLog("[CmuxConfig] %@ action '%@' does not match any loaded action", settingName, item.action)
+                    let issue = CmuxConfigIssue(
+                        kind: .newWorkspaceActionNotFound,
+                        settingName: itemSettingName,
+                        commandName: item.action,
+                        sourcePath: settingSourcePath
+                    )
+                    NSLog("[CmuxConfig] %@", issue.logMessage)
+                    issues.append(issue)
                     continue
+                }
+                if let actionCommandName = action.workspaceCommandName {
+                    let commandResolution = resolvedConfiguredNewWorkspaceCommand(
+                        named: actionCommandName,
+                        settingName: itemSettingName,
+                        settingSourcePath: action.actionSourcePath ?? settingSourcePath,
+                        commands: commands,
+                        sourcePaths: sourcePaths
+                    )
+                    if let issue = commandResolution.issue {
+                        issues.append(issue)
+                        continue
+                    }
+                    guard commandResolution.command != nil else {
+                        continue
+                    }
                 }
                 resolvedItems.append(
                     .action(
@@ -2673,7 +2715,7 @@ final class CmuxConfigStore: ObservableObject {
         if let last = resolvedItems.last, case .separator = last {
             resolvedItems.removeLast()
         }
-        return resolvedItems
+        return ResolvedContextMenuItems(items: resolvedItems, issues: issues)
     }
 
     private func resolvedConfiguredNewWorkspaceCommand(

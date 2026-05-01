@@ -6117,8 +6117,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func menuImage(for icon: CmuxButtonIcon?) -> NSImage? {
         guard let icon else { return nil }
-        guard case .symbol(let symbolName) = icon else { return nil }
-        return NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+        switch icon {
+        case .symbol(let symbolName):
+            return NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+        case .emoji, .imagePath:
+#if DEBUG
+            assertionFailure("new workspace context-menu icons only support SF Symbols")
+#endif
+            return nil
+        }
     }
 
     /// Shows the "Open Folder" panel and creates a workspace for the selected directory.
@@ -11453,9 +11460,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return false
     }
 
-    private func shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: SplitDirection) -> Bool {
-        guard let tabManager,
-              let workspace = tabManager.selectedWorkspace,
+    private func shouldSuppressSplitShortcutForTransientTerminalFocusState(
+        direction: SplitDirection,
+        tabManager preferredTabManager: TabManager? = nil
+    ) -> Bool {
+        let targetTabManager = preferredTabManager ?? tabManager
+        guard let targetTabManager,
+              let workspace = targetTabManager.selectedWorkspace,
               let focusedPanelId = workspace.focusedPanelId,
               let terminalPanel = workspace.terminalPanel(for: focusedPanelId) else {
             return false
@@ -11475,7 +11486,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         )
         guard shouldSuppress else { return false }
 
-        tabManager.reconcileFocusedPanelFromFirstResponderForKeyboard()
+        targetTabManager.reconcileFocusedPanelFromFirstResponderForKeyboard()
 
 #if DEBUG
         let directionLabel: String
@@ -12424,7 +12435,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 onExecuted?()
                 return true
             case .splitRight:
-                if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .right) {
+                if shouldSuppressSplitShortcutForTransientTerminalFocusState(
+                    direction: .right,
+                    tabManager: context.tabManager
+                ) {
                     return true
                 }
                 let didSplit = performSplitShortcut(
@@ -12434,7 +12448,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 if didSplit { onExecuted?() }
                 return didSplit
             case .splitDown:
-                if shouldSuppressSplitShortcutForTransientTerminalFocusState(direction: .down) {
+                if shouldSuppressSplitShortcutForTransientTerminalFocusState(
+                    direction: .down,
+                    tabManager: context.tabManager
+                ) {
                     return true
                 }
                 let didSplit = performSplitShortcut(
