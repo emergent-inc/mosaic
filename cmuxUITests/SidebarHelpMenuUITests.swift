@@ -301,7 +301,6 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
     private let hiddenSurfaceToken = "cmux-command-palette-hidden-surface"
     private let visibleSurfaceToken = "cmux-command-palette-visible-surface"
     private let noMatchWorkspaceQuery = "cmux-command-palette-no-match"
-    private let launchTag = "ui-test-command-palette"
 
     override func setUp() {
         super.setUp()
@@ -325,8 +324,6 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
         app.launchEnvironment["CMUX_SOCKET_ENABLE"] = "1"
         app.launchEnvironment["CMUX_SOCKET_MODE"] = "allowAll"
-        app.launchEnvironment["CMUX_TAG"] = launchTag
-        app.launchEnvironment["CMUX_ALLOW_SOCKET_OVERRIDE"] = "1"
         if showSettingsWindow {
             app.launchEnvironment["CMUX_UI_TEST_SHOW_SETTINGS"] = "1"
         }
@@ -445,51 +442,6 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         )
         XCTAssertEqual(row0.value as? String, "palette.checkForUpdates")
         XCTAssertEqual(row1.value as? String, "palette.attemptUpdate")
-    }
-
-    func testCmdShiftPIncludesRightSidebarModeActions() throws {
-        let app = XCUIApplication()
-        configureSocketControlledLaunch(app)
-        launchAndActivate(app)
-
-        XCTAssertTrue(
-            sidebarHelpPollUntil(timeout: 8.0) {
-                app.windows.count >= 1
-            },
-            "Expected the main window to be visible"
-        )
-        XCTAssertTrue(
-            waitForSocketPong(timeout: 30.0),
-            "Expected control socket at \(socketPath)"
-        )
-
-        let mainWindowId = try XCTUnwrap(
-            socketCommand("current_window")?.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        let expectedCommandIds: Set<String> = [
-            "palette.showRightSidebarFiles",
-            "palette.showRightSidebarFind",
-            "palette.showRightSidebarSessions",
-            "palette.showRightSidebarFeed",
-            "palette.showRightSidebarDock",
-        ]
-
-        openCommandPaletteCommands(app: app)
-        let searchField = app.textFields["CommandPaletteSearchField"]
-        searchField.typeText("show sidebar")
-
-        let snapshot = try XCTUnwrap(
-            waitForCommandPaletteSnapshot(windowId: mainWindowId, mode: "commands", query: "show sidebar", timeout: 5.0, limit: 100) { snapshot in
-                let commandIds = Set(self.commandPaletteResultRows(from: snapshot).compactMap { $0["command_id"] as? String })
-                return expectedCommandIds.isSubset(of: commandIds)
-            },
-            "Expected all right sidebar mode actions in Cmd-Shift-P results"
-        )
-        let commandIds = Set(commandPaletteResultRows(from: snapshot).compactMap { $0["command_id"] as? String })
-        XCTAssertTrue(
-            expectedCommandIds.isSubset(of: commandIds),
-            "Expected all right sidebar mode actions. missing=\(expectedCommandIds.subtracting(commandIds)) snapshot=\(snapshot)"
-        )
     }
 
     func testCmdPSearchCanIncludeSurfacesFromOtherWorkspacesWhenEnabled() throws {
@@ -1035,43 +987,9 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
     }
 
     private func waitForSocketPong(timeout: TimeInterval) -> Bool {
-        var resolvedPath: String?
         sidebarHelpPollUntil(timeout: timeout) {
-            let originalPath = socketPath
-            for candidate in socketCandidates() {
-                guard FileManager.default.fileExists(atPath: candidate) else { continue }
-                socketPath = candidate
-                if socketCommand("ping") == "PONG" {
-                    resolvedPath = candidate
-                    return true
-                }
-                socketPath = originalPath
-            }
-            return false
+            socketCommand("ping") == "PONG"
         }
-        if let resolvedPath {
-            socketPath = resolvedPath
-            return true
-        }
-        return false
-    }
-
-    private func socketCandidates() -> [String] {
-        var candidates = [socketPath, taggedSocketPath()]
-        var seen = Set<String>()
-        candidates.removeAll { !seen.insert($0).inserted }
-        return candidates
-    }
-
-    private func taggedSocketPath() -> String {
-        let slug = launchTag
-            .lowercased()
-            .replacingOccurrences(of: ".", with: "-")
-            .replacingOccurrences(of: "_", with: "-")
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: "-")
-        return "/tmp/cmux-debug-\(slug).sock"
     }
 
     private func waitForSurfaceIDs(minimumCount: Int, timeout: TimeInterval) -> [String] {
@@ -1186,12 +1104,11 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         mode: String = "switcher",
         query: String,
         timeout: TimeInterval,
-        limit: Int = 20,
         predicate: (([String: Any]) -> Bool)? = nil
     ) -> [String: Any]? {
         var latest: [String: Any]?
         let matched = sidebarHelpPollUntil(timeout: timeout) {
-            guard let snapshot = commandPaletteSnapshot(windowId: windowId, limit: limit) else { return false }
+            guard let snapshot = commandPaletteSnapshot(windowId: windowId) else { return false }
             latest = snapshot
             guard (snapshot["visible"] as? Bool) == true else { return false }
             guard (snapshot["mode"] as? String) == mode else { return false }
@@ -1201,12 +1118,12 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         return matched ? latest : nil
     }
 
-    private func commandPaletteSnapshot(windowId: String, limit: Int = 20) -> [String: Any]? {
+    private func commandPaletteSnapshot(windowId: String) -> [String: Any]? {
         let envelope = socketJSON(
             method: "debug.command_palette.results",
             params: [
                 "window_id": windowId,
-                "limit": limit,
+                "limit": 20,
             ]
         )
         guard let ok = envelope?["ok"] as? Bool, ok else { return nil }

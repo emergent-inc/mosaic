@@ -1974,6 +1974,8 @@ struct ContentView: View {
         private var boolValues: [String: Bool] = [:]
         private var stringValues: [String: String] = [:]
 
+        init() {}
+
         mutating func setBool(_ key: String, _ value: Bool) {
             boolValues[key] = value
         }
@@ -6692,7 +6694,7 @@ struct ContentView: View {
            let configuredShortcut = cmuxConfigStore.resolvedAction(id: configuredPaletteAction)?.shortcut {
             return configuredShortcut.displayString
         }
-        if let action = commandPaletteShortcutAction(for: contribution.commandId) {
+        if let action = Self.commandPaletteShortcutAction(forCommandID: contribution.commandId) {
             return KeyboardShortcutSettings.shortcut(for: action).displayString
         }
         if let staticShortcut = commandPaletteStaticShortcutHint(for: contribution.commandId) {
@@ -6701,7 +6703,7 @@ struct ContentView: View {
         return contribution.shortcutHint
     }
 
-    private func commandPaletteShortcutAction(for commandId: String) -> KeyboardShortcutSettings.Action? {
+    static func commandPaletteShortcutAction(forCommandID commandId: String) -> KeyboardShortcutSettings.Action? {
         switch commandId {
         case "palette.newWorkspace":
             return .newTab
@@ -7090,16 +7092,7 @@ struct ContentView: View {
                 keywords: ["toggle", "sidebar", "layout"]
             )
         )
-        for mode in RightSidebarMode.allCases {
-            contributions.append(
-                CommandPaletteCommandContribution(
-                    commandId: commandPaletteRightSidebarModeCommandID(mode),
-                    title: constant(mode.shortcutAction.label),
-                    subtitle: constant(String(localized: "command.findInDirectory.subtitle", defaultValue: "Right Sidebar")),
-                    keywords: ["right", "sidebar", "show", "switch", "focus", mode.rawValue]
-                )
-            )
-        }
+        contributions.append(contentsOf: Self.commandPaletteRightSidebarModeCommandContributions())
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.toggleMatchTerminalBackground",
@@ -7836,7 +7829,22 @@ struct ContentView: View {
         return "palette.workspaceColor.\(String(hash, radix: 16))"
     }
 
-    private func commandPaletteRightSidebarModeCommandID(_ mode: RightSidebarMode) -> String {
+    static func commandPaletteRightSidebarModeCommandContributions() -> [CommandPaletteCommandContribution] {
+        func constant(_ value: String) -> (CommandPaletteContextSnapshot) -> String {
+            { _ in value }
+        }
+
+        return RightSidebarMode.allCases.map { mode in
+            CommandPaletteCommandContribution(
+                commandId: Self.commandPaletteRightSidebarModeCommandID(mode),
+                title: constant(mode.shortcutAction.label),
+                subtitle: constant(String(localized: "command.findInDirectory.subtitle", defaultValue: "Right Sidebar")),
+                keywords: ["right", "sidebar", "show", "switch", "focus", mode.rawValue]
+            )
+        }
+    }
+
+    static func commandPaletteRightSidebarModeCommandID(_ mode: RightSidebarMode) -> String {
         switch mode {
         case .files:
             return "palette.showRightSidebarFiles"
@@ -7997,7 +8005,7 @@ struct ContentView: View {
             sidebarState.toggle()
         }
         for mode in RightSidebarMode.allCases {
-            registry.register(commandId: commandPaletteRightSidebarModeCommandID(mode)) {
+            registry.register(commandId: Self.commandPaletteRightSidebarModeCommandID(mode)) {
                 if AppDelegate.shared?.focusRightSidebarInActiveMainWindow(
                     mode: mode,
                     focusFirstItem: true,
