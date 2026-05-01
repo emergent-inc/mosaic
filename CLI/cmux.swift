@@ -14413,31 +14413,11 @@ struct CMUXCLI {
         var compact: [String: Any] = [:]
 
         for key in [
-            "tool_name",
-            "turn_id",
-            "turnId",
-            "last_assistant_message",
-            "lastAssistantMessage",
-            "assistantPreamble",
-            "assistant_preamble",
-            "event",
-            "event_name",
-            "hook_event_name",
-            "type",
-            "kind",
-            "notification_type",
-            "matcher",
-            "reason",
-            "message",
-            "body",
-            "text",
-            "prompt",
-            "error",
-            "codex_error_info",
-            "codexErrorInfo",
-            "additional_details",
-            "additionalDetails",
-            "description",
+            "tool_name", "turn_id", "turnId",
+            "last_assistant_message", "lastAssistantMessage", "assistantPreamble", "assistant_preamble",
+            "event", "event_name", "hook_event_name", "type", "kind", "notification_type", "matcher", "reason",
+            "message", "body", "text", "prompt", "error", "codex_error_info", "codexErrorInfo",
+            "additional_details", "additionalDetails", "description",
         ] {
             if let value = compactClaudeHookValue(object[key], key: key) {
                 compact[key] = value
@@ -14496,19 +14476,8 @@ struct CMUXCLI {
             guard let nested = object[key] as? [String: Any] else { continue }
             var compactNested: [String: Any] = [:]
             for nestedKey in [
-                "type",
-                "kind",
-                "reason",
-                "message",
-                "body",
-                "text",
-                "prompt",
-                "error",
-                "codex_error_info",
-                "codexErrorInfo",
-                "additional_details",
-                "additionalDetails",
-                "description",
+                "type", "kind", "reason", "message", "body", "text", "prompt", "error",
+                "codex_error_info", "codexErrorInfo", "additional_details", "additionalDetails", "description",
             ] {
                 if let value = compactClaudeHookValue(nested[nestedKey], key: nestedKey) {
                     compactNested[nestedKey] = value
