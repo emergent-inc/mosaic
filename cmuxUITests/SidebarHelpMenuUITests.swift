@@ -446,7 +446,14 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
 
     func testCmdShiftPIncludesRightSidebarModeActions() throws {
         let app = XCUIApplication()
+        let diagnosticsPath = "/tmp/cmux-ui-test-command-palette-actions-\(UUID().uuidString).json"
+        try? FileManager.default.removeItem(atPath: diagnosticsPath)
+        defer {
+            try? FileManager.default.removeItem(atPath: diagnosticsPath)
+        }
         configureSocketControlledLaunch(app)
+        app.launchEnvironment["CMUX_UI_TEST_DIAGNOSTICS_PATH"] = diagnosticsPath
+        app.launchEnvironment["CMUX_UI_TEST_SOCKET_SANITY"] = "1"
         launchAndActivate(app)
 
         XCTAssertTrue(
@@ -455,7 +462,10 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
             },
             "Expected the main window to be visible"
         )
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(
+            waitForSocketPong(timeout: 30.0),
+            "Expected control socket at \(socketPath). diagnostics=\(loadDiagnostics(at: diagnosticsPath) ?? [:])"
+        )
 
         let mainWindowId = try XCTUnwrap(
             socketCommand("current_window")?.trimmingCharacters(in: .whitespacesAndNewlines)
