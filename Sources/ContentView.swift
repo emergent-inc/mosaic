@@ -6704,6 +6704,10 @@ struct ContentView: View {
     }
 
     static func commandPaletteShortcutAction(forCommandID commandId: String) -> KeyboardShortcutSettings.Action? {
+        if let rightSidebarModeAction = commandPaletteRightSidebarModeShortcutAction(forCommandID: commandId) {
+            return rightSidebarModeAction
+        }
+
         switch commandId {
         case "palette.newWorkspace":
             return .newTab
@@ -6721,16 +6725,6 @@ struct ContentView: View {
             return .closeWindow
         case "palette.toggleSidebar":
             return .toggleSidebar
-        case "palette.showRightSidebarFiles":
-            return .switchRightSidebarToFiles
-        case "palette.showRightSidebarFind":
-            return .switchRightSidebarToFind
-        case "palette.showRightSidebarSessions":
-            return .switchRightSidebarToSessions
-        case "palette.showRightSidebarFeed":
-            return .switchRightSidebarToFeed
-        case "palette.showRightSidebarDock":
-            return .switchRightSidebarToDock
         case "palette.showNotifications":
             return .showNotifications
         case "palette.jumpUnread":
@@ -7838,7 +7832,7 @@ struct ContentView: View {
             CommandPaletteCommandContribution(
                 commandId: Self.commandPaletteRightSidebarModeCommandID(mode),
                 title: constant(mode.shortcutAction.label),
-                subtitle: constant(String(localized: "command.findInDirectory.subtitle", defaultValue: "Right Sidebar")),
+                subtitle: constant(String(localized: "command.rightSidebarMode.subtitle", defaultValue: "Right Sidebar")),
                 keywords: ["right", "sidebar", "show", "switch", "focus", mode.rawValue]
             )
         }
@@ -7857,6 +7851,14 @@ struct ContentView: View {
         case .dock:
             return "palette.showRightSidebarDock"
         }
+    }
+
+    private static func commandPaletteRightSidebarModeShortcutAction(
+        forCommandID commandID: String
+    ) -> KeyboardShortcutSettings.Action? {
+        RightSidebarMode.allCases.first { mode in
+            Self.commandPaletteRightSidebarModeCommandID(mode) == commandID
+        }?.shortcutAction
     }
 
     private func commandPaletteCmuxConfigIssueTitle(_ issue: CmuxConfigIssue) -> String {

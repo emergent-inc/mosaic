@@ -1148,7 +1148,10 @@ final class RightSidebarModeShortcutHintTests: XCTestCase {
             )
 
             XCTAssertEqual(contribution.title(context), mode.shortcutAction.label)
-            XCTAssertEqual(contribution.subtitle(context), "Right Sidebar")
+            XCTAssertEqual(
+                contribution.subtitle(context),
+                String(localized: "command.rightSidebarMode.subtitle", defaultValue: "Right Sidebar")
+            )
             XCTAssertTrue(contribution.keywords.contains("right"))
             XCTAssertTrue(contribution.keywords.contains("sidebar"))
             XCTAssertTrue(contribution.keywords.contains(mode.rawValue))
