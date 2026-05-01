@@ -9475,6 +9475,23 @@
         }
       }
     },
+    "command.rightSidebarMode.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right Sidebar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右サイドバー"
+          }
+        }
+      }
+    },
     "browser.import.warning.additionalDataUnavailable": {
       "extractionState": "manual",
       "localizations": {
