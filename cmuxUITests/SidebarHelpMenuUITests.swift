@@ -324,6 +324,8 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
         app.launchEnvironment["CMUX_SOCKET_ENABLE"] = "1"
         app.launchEnvironment["CMUX_SOCKET_MODE"] = "allowAll"
+        app.launchEnvironment["CMUX_TAG"] = "ui-test-command-palette"
+        app.launchEnvironment["CMUX_ALLOW_SOCKET_OVERRIDE"] = "1"
         if showSettingsWindow {
             app.launchEnvironment["CMUX_UI_TEST_SHOW_SETTINGS"] = "1"
         }
@@ -446,14 +448,7 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
 
     func testCmdShiftPIncludesRightSidebarModeActions() throws {
         let app = XCUIApplication()
-        let diagnosticsPath = "/tmp/cmux-ui-test-command-palette-actions-\(UUID().uuidString).json"
-        try? FileManager.default.removeItem(atPath: diagnosticsPath)
-        defer {
-            try? FileManager.default.removeItem(atPath: diagnosticsPath)
-        }
         configureSocketControlledLaunch(app)
-        app.launchEnvironment["CMUX_UI_TEST_DIAGNOSTICS_PATH"] = diagnosticsPath
-        app.launchEnvironment["CMUX_UI_TEST_SOCKET_SANITY"] = "1"
         launchAndActivate(app)
 
         XCTAssertTrue(
@@ -464,7 +459,7 @@ final class CommandPaletteAllSurfacesUITests: XCTestCase {
         )
         XCTAssertTrue(
             waitForSocketPong(timeout: 30.0),
-            "Expected control socket at \(socketPath). diagnostics=\(loadDiagnostics(at: diagnosticsPath) ?? [:])"
+            "Expected control socket at \(socketPath)"
         )
 
         let mainWindowId = try XCTUnwrap(
