@@ -125,13 +125,29 @@ function createCreditItemId(
   planId: string,
   env: Record<string, string | undefined>,
 ): string | null {
-  const planSpecific = env[createCreditItemIdEnvKey(planId)]?.trim();
-  if (planSpecific) return planSpecific;
+  const planSpecific = resolvedCreateCreditItemIdValue(env[createCreditItemIdEnvKey(planId)]);
+  if (planSpecific.kind === "disabled") return null;
+  if (planSpecific.kind === "item") return planSpecific.itemId;
 
-  const global = env.CMUX_VM_CREATE_CREDIT_ITEM_ID?.trim();
-  if (global) return global;
+  const global = resolvedCreateCreditItemIdValue(env.CMUX_VM_CREATE_CREDIT_ITEM_ID);
+  if (global.kind === "disabled") return null;
+  if (global.kind === "item") return global.itemId;
 
   return normalizedPlanId(planId) === "free" ? DEFAULT_FREE_CREATE_CREDIT_ITEM_ID : null;
+}
+
+function resolvedCreateCreditItemIdValue(
+  raw: string | undefined,
+): { readonly kind: "unset" } | { readonly kind: "disabled" } | { readonly kind: "item"; readonly itemId: string } {
+  const value = raw?.trim();
+  if (!value) return { kind: "unset" };
+  return isDisabledCreateCreditValue(value)
+    ? { kind: "disabled" }
+    : { kind: "item", itemId: value };
+}
+
+function isDisabledCreateCreditValue(value: string): boolean {
+  return ["disabled", "false", "none", "off"].includes(value.toLowerCase());
 }
 
 function createCreditItemIdEnvKey(planId: string): string {

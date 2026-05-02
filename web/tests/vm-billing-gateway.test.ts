@@ -62,6 +62,30 @@ describe("Stack VM billing gateway", () => {
     expect(getItem).not.toHaveBeenCalled();
   });
 
+  test("allows the default free-plan create-credit item to be disabled", async () => {
+    stackConfigured = false;
+    const gateway = makeStackVmBillingGateway({
+      CMUX_VM_PLAN_FREE_CREATE_CREDIT_ITEM_ID: "none",
+    });
+
+    const reservation = await Effect.runPromise(gateway.reserveCreate(createInput()));
+
+    expect(reservation).toEqual({ kind: "none" });
+    expect(getItem).not.toHaveBeenCalled();
+  });
+
+  test("allows the global create-credit item to disable the free-plan default", async () => {
+    stackConfigured = false;
+    const gateway = makeStackVmBillingGateway({
+      CMUX_VM_CREATE_CREDIT_ITEM_ID: "disabled",
+    });
+
+    const reservation = await Effect.runPromise(gateway.reserveCreate(createInput()));
+
+    expect(reservation).toEqual({ kind: "none" });
+    expect(getItem).not.toHaveBeenCalled();
+  });
+
   test("preserves global Stack Auth create-credit items for paid plans", async () => {
     const gateway = makeStackVmBillingGateway({
       CMUX_VM_CREATE_CREDIT_ITEM_ID: "global-vm-create-credit",
