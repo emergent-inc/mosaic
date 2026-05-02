@@ -884,8 +884,9 @@ struct cmuxApp: App {
     }
 
     private func toggleSelectedWorkspacePinned(in manager: TabManager) {
-        guard let workspace = manager.selectedWorkspace else { return }
-        manager.setPinned(workspace, pinned: !workspace.isPinned)
+        if !WorkspacePinCommands.toggleSelectedWorkspace(in: manager) {
+            NSSound.beep()
+        }
     }
 
     private func clearSelectedWorkspaceCustomName(in manager: TabManager) {
@@ -971,15 +972,12 @@ struct cmuxApp: App {
         let workspace = manager.selectedWorkspace
         let workspaceIndex = workspace.flatMap { selectedWorkspaceIndex(in: manager, workspaceId: $0.id) }
         let windowMoveTargets = selectedWorkspaceWindowMoveTargets(in: manager)
+        let pinState = WorkspacePinCommands.selectedWorkspacePinState(in: manager)
 
-        Button(
-            workspace?.isPinned == true
-                ? String(localized: "contextMenu.unpinWorkspace", defaultValue: "Unpin Workspace")
-                : String(localized: "contextMenu.pinWorkspace", defaultValue: "Pin Workspace")
-        ) {
+        Button(WorkspacePinCommands.selectedWorkspaceMenuLabel(in: manager, pinState: pinState)) {
             toggleSelectedWorkspacePinned(in: manager)
         }
-        .disabled(workspace == nil)
+        .disabled(pinState == nil)
 
         Button(String(localized: "menu.view.renameWorkspace", defaultValue: "Rename Workspace…")) {
             _ = AppDelegate.shared?.requestRenameWorkspaceViaCommandPalette()
