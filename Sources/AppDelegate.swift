@@ -609,10 +609,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private final class MainWindowController: NSWindowController, NSWindowDelegate {
         var onClose: (() -> Void)?
+        var shouldClose: (() -> Bool)?
 
-        func windowWillClose(_ notification: Notification) {
-            onClose?()
-        }
+        func windowShouldClose(_ sender: NSWindow) -> Bool { shouldClose?() ?? true }
+        func windowWillClose(_ notification: Notification) { onClose?() }
     }
 
     struct ScriptableMainWindowState {
@@ -3275,12 +3275,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     nonisolated static func shouldPersistSnapshotOnWindowUnregister(isTerminatingApp: Bool) -> Bool {
-        !isTerminatingApp
-    }
-
-    nonisolated static func shouldRemoveSnapshotWhenNoWindowsRemainOnWindowUnregister(
-        isTerminatingApp: Bool
-    ) -> Bool {
         !isTerminatingApp
     }
 
@@ -6880,6 +6874,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self, let controller else { return }
             self.mainWindowControllers.removeAll(where: { $0 === controller })
         }
+        controller.shouldClose = { [weak self] in self?.handleMainTerminalWindowShouldClose() ?? true }
         window.delegate = controller
         mainWindowControllers.append(controller)
 
@@ -13152,15 +13147,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #endif
     }
 
+    private func handleMainTerminalWindowShouldClose() -> Bool {
+        // XCTest has no UI for the warn-before-quit dialog and would either block
+        // on runModal or have NSApp.terminate kill the test process.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return true }
+        guard !isTerminatingApp, mainWindowContexts.count <= 1 else { return true }
+        _ = handleQuitShortcutWarning()
+        return false
+    }
+
     private func unregisterMainWindow(_ window: NSWindow) {
         // Reset cascade point so the next new window appears near the closing
         // window's position, matching upstream Ghostty behavior.
         let frame = window.frame
         lastCascadePoint = NSPoint(x: frame.minX, y: frame.maxY)
 
-        // Keep geometry available as a fallback even if the full session snapshot
-        // is removed when the last window closes.
+        // Keep geometry available as a fallback for the next window placement.
         persistWindowGeometry(from: window)
+
         guard let removed = unregisterMainWindowContext(for: window) else { return }
         commandPaletteVisibilityByWindowId.removeValue(forKey: removed.windowId)
         commandPalettePendingOpenByWindowId.removeValue(forKey: removed.windowId)
@@ -13194,12 +13198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // in applicationShouldTerminate/applicationWillTerminate. Saving again here would
         // overwrite it as windows tear down one-by-one, dropping closed windows and replay.
         if Self.shouldPersistSnapshotOnWindowUnregister(isTerminatingApp: isTerminatingApp) {
-            _ = saveSessionSnapshot(
-                includeScrollback: false,
-                removeWhenEmpty: Self.shouldRemoveSnapshotWhenNoWindowsRemainOnWindowUnregister(
-                    isTerminatingApp: isTerminatingApp
-                )
-            )
+            _ = saveSessionSnapshot(includeScrollback: false, removeWhenEmpty: false)
         }
     }
 
