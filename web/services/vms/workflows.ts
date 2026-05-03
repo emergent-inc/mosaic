@@ -52,10 +52,10 @@ export async function runVmWorkflow<A>(
   }
 }
 
-export function listUserVms(userId: string) {
+export function listUserVms(userId: string, billingTeamId?: string | null) {
   return Effect.gen(function* () {
     const repo = yield* VmRepository;
-    const rows = yield* repo.listUserVms(userId);
+    const rows = yield* repo.listUserVms(userId, billingTeamId);
     return rows.filter((row) => row.providerVmId).map(vmEntryFromRow);
   });
 }
