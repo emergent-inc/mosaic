@@ -14,7 +14,7 @@ reviews:
     - path: "**/*.swift"
       instructions: |
         Apply the cmux custom Swift lint rules in `.github/review-bot-rules/` during review. Treat those files as the source of truth. Focus on production Swift changes and ignore test-only scaffolding unless it makes production behavior worse.
-    - path: "Package.swift"
+    - path: "**/Package.swift"
       instructions: |
         Apply the cmux custom Swift lint rules in `.github/review-bot-rules/`, especially the concurrency modernization, actor isolation, blocking runtime, and architectural rethink rules.
     - path: "GhosttyTabs.xcodeproj/**"
@@ -30,7 +30,7 @@ reviews:
       - name: "cmux Swift blocking runtime"
         mode: error
         instructions: |
-          For production Swift changes, fail when the diff introduces or materially expands blocking or timing-based synchronization from `.github/review-bot-rules/swift-blocking-runtime.md`: semaphores, blocking waits, sleeps, delayed dispatch, polling, main-queue sync, or manual locks where an actor or explicit signal should own synchronization. Pass for deterministic test-only scaffolding and visual UI animation delays.
+          For production Swift changes, fail when the diff introduces or materially expands blocking or timing-based synchronization from `.github/review-bot-rules/swift-blocking-runtime.md`: semaphores, blocking waits, sleeps, delayed dispatch, polling, main-queue sync, or manual locks where an actor or explicit signal should own synchronization. Pass for deterministic test-only scaffolding and short user-visible UI animation delays that do not use `Task.sleep`.
       - name: "cmux Swift concurrency"
         mode: error
         instructions: |

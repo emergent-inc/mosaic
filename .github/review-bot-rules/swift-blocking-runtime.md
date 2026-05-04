@@ -12,12 +12,12 @@ Report a failure when the diff introduces or materially expands any of these in 
 Allowed cases:
 
 - Deterministic sleeps in tests or explicit test-only scaffolding.
-- UI animation delays where the delay is visual timing, not synchronization.
+- Short, user-visible UI animation delays where the delay is visual timing only, not synchronization, and does not use `Task.sleep` in production code.
 - Intentional init-time or passive-callback safety deferrals that use delayed main-queue dispatch to avoid AppKit constraint-pass crashes, when the code documents why a real signal is unavailable.
 - Very small lock usage around non-async, low-level platform bridges when an actor cannot be used and the code documents the reason.
 - Existing blocking code that the PR does not introduce or worsen.
 
-Do not allow `Task.sleep` in production code just because it is inside an async function. Retry backoff, keepalive loops, readiness waits, delayed dispatch, and polling still need a real cancellation-aware scheduler, timer abstraction, async sequence, callback, notification, or state transition unless the changed code is test-only.
+Do not allow `Task.sleep` in production code just because it is inside an async function, including for animation timing. Retry backoff, keepalive loops, readiness waits, delayed dispatch, and polling still need a real cancellation-aware scheduler, timer abstraction, async sequence, callback, notification, or state transition unless the changed code is marked test-only.
 
 cmux-specific emphasis:
 
