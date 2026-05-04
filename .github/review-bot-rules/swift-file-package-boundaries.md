@@ -2,6 +2,8 @@
 
 Flag Swift changes that add too much unrelated responsibility to one file or keep independently testable feature logic inside the app target when it should be isolated behind a SwiftPM package boundary.
 
+cmux already has a checked-in Swift file length budget enforced by CI (`.github/swift-file-length-budget.tsv` and `scripts/swift_file_length_budget.py`). This rule is the review judgment layer: do not satisfy the budget by mechanically moving code around, and do not expand the budget for a feature that should instead be split by responsibility or extracted into a package.
+
 Report a failure when the diff introduces or materially expands:
 
 - A new production Swift file over 400 lines without a clear single responsibility, or over 800 lines even when the responsibility is mostly coherent.
