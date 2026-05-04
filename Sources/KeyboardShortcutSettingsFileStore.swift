@@ -211,7 +211,7 @@ final class CmuxSettingsFileStore {
         }
 
         if previousShortcuts != resolved.shortcuts || previousActiveSourcePath != resolved.path {
-            KeyboardShortcutSettings.notifySettingsFileDidChange()
+            KeyboardShortcutSettings.notifySettingsFileDidChange(center: notificationCenter)
         }
     }
 
