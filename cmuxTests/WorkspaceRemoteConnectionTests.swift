@@ -1706,16 +1706,10 @@ final class CLINotifyProcessIntegrationTests: XCTestCase {
         XCTAssertTrue(pluginSource.contains("cmux-opencode-session-plugin-marker"))
         XCTAssertTrue(pluginSource.contains("\"opencode-hook\""))
 
-        let feedPluginURL = configDir
-            .appendingPathComponent("plugins", isDirectory: true)
-            .appendingPathComponent("cmux-feed.js", isDirectory: false)
-        let feedPluginSource = try String(contentsOf: feedPluginURL, encoding: .utf8)
-        XCTAssertTrue(feedPluginSource.contains("cmux-feed-plugin-marker"))
+        XCTAssertTrue(try String(contentsOf: configDir.appendingPathComponent("plugins/cmux-feed.js"), encoding: .utf8).contains("cmux-feed-plugin-marker"))
 
-        let data = try Data(contentsOf: configURL)
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data, options: []) as? [String: Any])
-        let plugins = try XCTUnwrap(json["plugin"] as? [String])
-        XCTAssertEqual(plugins, ["other-plugin", "./plugins/cmux-session.js"])
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: try Data(contentsOf: configURL), options: []) as? [String: Any])
+        XCTAssertEqual(try XCTUnwrap(json["plugin"] as? [String]), ["other-plugin", "./plugins/cmux-session.js"])
     }
 
     func testAgentHookLaunchEnvironmentDoesNotPersistPathOrShell() throws {
