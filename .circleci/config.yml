@@ -41,7 +41,12 @@ commands:
           name: Install Bun
           command: |
             BUN_VERSION="1.3.3"
-            npm install --global "bun@$BUN_VERSION"
+            NPM_GLOBAL="$HOME/.npm-global"
+            mkdir -p "$NPM_GLOBAL"
+            npm install --global --prefix "$NPM_GLOBAL" "bun@$BUN_VERSION"
+            BASH_ENV="${BASH_ENV:-$HOME/.bash_env}"
+            echo "export PATH=\"$NPM_GLOBAL/bin:\$PATH\"" >> "$BASH_ENV"
+            export PATH="$NPM_GLOBAL/bin:$PATH"
             test "$(bun --version)" = "$BUN_VERSION"
 
   install-zig:
