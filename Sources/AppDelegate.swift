@@ -8352,6 +8352,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard !didSetupGotoSplitUITest else { return }
         didSetupGotoSplitUITest = true
         let env = ProcessInfo.processInfo.environment
+        if env["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] == "1" {
+            installGotoSplitUITestFocusObserversIfNeeded()
+            startGotoSplitRecordOnlyRecorder()
+            return
+        }
         guard env["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] == "1" else { return }
         guard tabManager != nil else { return }
 
@@ -8698,6 +8703,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } ?? ""
         updates["browserFindTotal"] = browserWithFind?.searchState?.total.map(String.init) ?? ""
         updates["browserFindVisible"] = browserWithFind == nil ? "false" : "true"
+
+        let currentResponder = (NSApp.keyWindow ?? NSApp.mainWindow)?.firstResponder
+        updates["firstResponderTerminalPanelId"] =
+            cmuxOwningGhosttyView(for: currentResponder)?.terminalSurface?.id.uuidString ?? ""
+
         updates.merge(cmuxFindResponderSnapshot()) { _, new in new }
         return updates
     }
@@ -8810,6 +8820,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         timer.resume()
     }
 
+    private func startGotoSplitRecordOnlyRecorder() {
+        guard isGotoSplitUITestRecordingEnabled() else { return }
+        gotoSplitUITestRecorder?.cancel()
+        gotoSplitUITestRecorder = nil
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+        timer.setEventHandler { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, let workspace = self.tabManager?.selectedWorkspace else { return }
+                self.writeGotoSplitTestData(self.gotoSplitFindStateSnapshot(for: workspace))
+            }
+        }
+        gotoSplitUITestRecorder = timer
+        timer.resume()
+    }
+
     private func recordGotoSplitUITestState(browserPanelId: UUID) {
         guard let tabManager,
               let workspace = tabManager.selectedWorkspace,
@@ -8874,6 +8901,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.recordGotoSplitUITestWebViewFocus(panelId: panelId, key: "webViewFocusedAfterAddressBarExit")
             self.recordGotoSplitUITestActiveElement(panelId: panelId, keyPrefix: "addressBarExit")
         })
+
     }
 
     private func recordGotoSplitUITestWebViewFocus(panelId: UUID, key: String) {
@@ -11676,6 +11704,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func focusedBrowserAddressBarPanelId() -> UUID? {
         browserAddressBarFocusedPanelId
+    }
+
+    func clearBrowserAddressBarFocus(panelId: UUID, reason: String) {
+        guard browserAddressBarFocusedPanelId == panelId else { return }
+        browserAddressBarFocusedPanelId = nil
+        stopBrowserOmnibarSelectionRepeat()
+#if DEBUG
+        cmuxDebugLog("addressBar CLEAR panelId=\(panelId.uuidString.prefix(8)) reason=\(reason)")
+#endif
     }
 
     private func focusedBrowserAddressBarPanelIdForShortcutEvent(_ event: NSEvent) -> UUID? {
