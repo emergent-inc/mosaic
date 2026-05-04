@@ -11252,7 +11252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #endif
             return true
         }
-
+        if matchConfiguredShortcut(event: event, action: .equalizeSplits) { performEqualizeSplitsShortcut(); return true }
         // Configured split actions.
         if matchConfiguredShortcut(event: event, action: .splitRight) {
 #if DEBUG
@@ -11463,8 +11463,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return false
     }
 
-    private func shouldSuppressSplitShortcutForTransientTerminalFocusState(
-        direction: SplitDirection,
+    func shouldSuppressSplitShortcutForTransientTerminalFocusState(
+        direction: SplitDirection? = nil,
         tabManager preferredTabManager: TabManager? = nil
     ) -> Bool {
         let targetTabManager = preferredTabManager ?? tabManager
@@ -11492,13 +11492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         targetTabManager.reconcileFocusedPanelFromFirstResponderForKeyboard()
 
 #if DEBUG
-        let directionLabel: String
-        switch direction {
-        case .left: directionLabel = "left"
-        case .right: directionLabel = "right"
-        case .up: directionLabel = "up"
-        case .down: directionLabel = "down"
-        }
+        let directionLabel = direction.map { String(describing: $0) } ?? "splitGeometry"
         let firstResponderType = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "nil"
         cmuxDebugLog(
             "split.shortcut suppressed dir=\(directionLabel) reason=transient_focus_state " +
