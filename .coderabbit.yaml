@@ -10,6 +10,8 @@ knowledge_base:
       - ".github/review-bot-rules/*.md"
 
 reviews:
+  profile: assertive
+  request_changes_workflow: true
   path_instructions:
     - path: "**/*.swift"
       instructions: |
