@@ -19086,15 +19086,17 @@ export default CMUXSessionRestore;
         appendIfExisting(Bundle.main.resourceURL?.appendingPathComponent("opencode-plugin.js", isDirectory: false))
 
         if let executableURL = resolvedExecutableURL() {
-            var current = executableURL.deletingLastPathComponent().standardizedFileURL
-            while true {
-                appendIfExisting(current.appendingPathComponent("opencode-plugin.js", isDirectory: false))
-                appendIfExisting(current.appendingPathComponent("Resources/opencode-plugin.js", isDirectory: false))
+            let execDir = executableURL.deletingLastPathComponent().standardizedFileURL
+            for relativePath in ["opencode-plugin.js", "../opencode-plugin.js", "../../Resources/opencode-plugin.js", "../../../Contents/Resources/opencode-plugin.js"] {
+                appendIfExisting(execDir.appendingPathComponent(relativePath, isDirectory: false).standardizedFileURL)
+            }
+
+            var current = execDir
+            for _ in 0..<4 {
                 if current.pathExtension == "app" {
                     appendIfExisting(current.appendingPathComponent("Contents/Resources/opencode-plugin.js", isDirectory: false))
                     break
                 }
-
                 let projectMarker = current.appendingPathComponent("GhosttyTabs.xcodeproj/project.pbxproj")
                 let repoResource = current.appendingPathComponent("Resources/opencode-plugin.js", isDirectory: false)
                 if fileManager.fileExists(atPath: projectMarker.path),
@@ -19102,9 +19104,7 @@ export default CMUXSessionRestore;
                     appendIfExisting(repoResource)
                     break
                 }
-
-                guard let parent = parentSearchURL(for: current) else { break }
-                current = parent
+                current = current.deletingLastPathComponent().standardizedFileURL
             }
         }
 
