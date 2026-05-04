@@ -8,7 +8,7 @@ Report a failure when the diff introduces or materially expands:
 - More than 250 lines added to an existing production Swift file that is already over 800 lines, unless the PR is actively extracting code out of that file.
 - A file that mixes UI rendering, state ownership, persistence, networking, parsing, subprocess/socket protocol, and platform bridge code in one place.
 - A feature implemented directly in `Sources/` when its core logic is independent of cmux app lifecycle and can compile/test without AppKit, SwiftUI view state, Ghostty globals, or process-wide singletons.
-- Reusable domain logic used by more than one surface (mac app, CLI, daemon, tests, previews, debug tooling, future iOS/shared code) without a small SwiftPM package target.
+- Reusable domain logic used by more than one surface (Mac app, CLI, daemon, tests, previews, debug tooling, future iOS/shared code) without a small SwiftPM package target.
 - Provider, auth, protocol, parsing, persistence, logging, or workstream logic that needs isolated fakes, fixtures, or unit tests but is hidden behind app-target globals.
 
 Package-boundary signals:
