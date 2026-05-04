@@ -9,9 +9,11 @@ Report a failure when the diff introduces or materially expands:
 - A new production Swift file over 400 lines without a clear single responsibility, or over 800 lines even when the responsibility is mostly coherent.
 - More than 250 lines added to an existing production Swift file that is already over 800 lines, unless the PR is actively extracting code out of that file.
 - A file that mixes UI rendering, state ownership, persistence, networking, parsing, subprocess/socket protocol, and platform bridge code in one place.
-- A feature implemented directly in `Sources/` when its core logic is independent of cmux app lifecycle and can compile/test without AppKit, SwiftUI view state, Ghostty globals, or process-wide singletons.
+- A feature implemented directly in the app target/module's root `Sources/` path when its core logic is independent of cmux app lifecycle and can compile/test without AppKit, SwiftUI view state, Ghostty globals, or process-wide singletons.
 - Reusable domain logic used by more than one surface (Mac app, CLI, daemon, tests, previews, debug tooling, future iOS/shared code) without a small SwiftPM package target.
 - Provider, auth, protocol, parsing, persistence, logging, or workstream logic that needs isolated fakes, fixtures, or unit tests but is hidden behind app-target globals.
+
+Use physical line counts in the resulting file, matching the CI file length budget. For PR review, use the post-change file length when visible; use PR added-line count only for the "more than 250 lines added" growth check.
 
 Package-boundary signals:
 
