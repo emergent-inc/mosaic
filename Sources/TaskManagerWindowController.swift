@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Darwin
 import SwiftUI
 
 @MainActor
@@ -108,6 +109,90 @@ private final class CmuxTaskManagerModel: ObservableObject {
             self?.isRefreshing = false
             self?.refreshTask = nil
         }
+    }
+
+    func viewBestTarget(for row: CmuxTaskManagerRow) {
+        if row.canViewTerminal {
+            viewTerminal(for: row)
+        } else {
+            viewWorkspace(for: row)
+        }
+    }
+
+    func viewWorkspace(for row: CmuxTaskManagerRow) {
+        guard let workspaceId = row.workspaceId,
+              let manager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId) else { return }
+        manager.focusTab(workspaceId, suppressFlash: true)
+        flashSelection(workspaceId: workspaceId, surfaceId: row.surfaceId)
+    }
+
+    func viewTerminal(for row: CmuxTaskManagerRow) {
+        guard let workspaceId = row.workspaceId,
+              let terminalSurfaceId = row.terminalSurfaceId,
+              let manager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId) else { return }
+        manager.focusTab(workspaceId, surfaceId: terminalSurfaceId, suppressFlash: true)
+        flashSelection(workspaceId: workspaceId, surfaceId: terminalSurfaceId)
+    }
+
+    func killProcess(for row: CmuxTaskManagerRow) {
+        let processIds = row.killableProcessIds
+        guard !processIds.isEmpty else { return }
+        guard confirmKillProcess(row: row, processIds: processIds) else { return }
+
+        var failures: [(processId: Int, reason: String)] = []
+        for processId in processIds {
+            let result = Darwin.kill(pid_t(processId), SIGTERM)
+            if result != 0 {
+                let failureErrno = errno
+                failures.append((processId, String(cString: strerror(failureErrno))))
+            }
+        }
+
+        if failures.isEmpty {
+            refresh(force: true)
+        } else {
+            let detail = failures
+                .map { "\($0.processId): \($0.reason)" }
+                .joined(separator: ", ")
+            errorMessage = String(
+                localized: "taskManager.killProcess.error",
+                defaultValue: "Unable to kill process: \(detail)"
+            )
+        }
+    }
+
+    private func confirmKillProcess(row: CmuxTaskManagerRow, processIds: [Int]) -> Bool {
+        let alert = NSAlert()
+        if processIds.count == 1, let processId = processIds.first {
+            alert.messageText = String(localized: "taskManager.killProcess.title", defaultValue: "Kill process?")
+            alert.informativeText = String(
+                localized: "taskManager.killProcess.message",
+                defaultValue: "Send SIGTERM to \(row.title) (PID \(processId))."
+            )
+        } else {
+            let pidList = processIds.map(String.init).joined(separator: ", ")
+            alert.messageText = String(localized: "taskManager.killProcess.pluralTitle", defaultValue: "Kill processes?")
+            alert.informativeText = String(
+                localized: "taskManager.killProcess.pluralMessage",
+                defaultValue: "Send SIGTERM to \(row.title) processes (PIDs \(pidList))."
+            )
+        }
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "taskManager.killProcess.confirm", defaultValue: "Kill"))
+        alert.addButton(withTitle: String(localized: "taskManager.killProcess.cancel", defaultValue: "Cancel"))
+        if let cancelButton = alert.buttons.dropFirst().first {
+            cancelButton.keyEquivalent = "\u{1b}"
+        }
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func flashSelection(workspaceId: UUID, surfaceId: UUID?) {
+        guard let manager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId),
+              let workspace = manager.tabs.first(where: { $0.id == workspaceId }) else { return }
+        let targetSurfaceId = surfaceId ?? workspace.focusedPanelId
+        guard let targetSurfaceId,
+              let panel = workspace.panels[targetSurfaceId] else { return }
+        panel.triggerFlash(reason: .debug)
     }
 }
 
@@ -230,7 +315,21 @@ private struct CmuxTaskManagerView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(model.snapshot.rows) { row in
-                        CmuxTaskManagerRowView(row: row)
+                        CmuxTaskManagerRowView(
+                            row: row,
+                            onViewWorkspace: {
+                                model.viewWorkspace(for: row)
+                            },
+                            onViewTerminal: {
+                                model.viewTerminal(for: row)
+                            },
+                            onKillProcess: {
+                                model.killProcess(for: row)
+                            },
+                            onActivate: {
+                                model.viewBestTarget(for: row)
+                            }
+                        )
                         Divider()
                             .padding(.leading, 16)
                     }
@@ -261,16 +360,17 @@ private struct CmuxTaskManagerMessageView: View {
 
 private struct CmuxTaskManagerRowView: View {
     let row: CmuxTaskManagerRow
+    let onViewWorkspace: () -> Void
+    let onViewTerminal: () -> Void
+    let onKillProcess: () -> Void
+    let onActivate: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             HStack(spacing: 5) {
                 Color.clear
                     .frame(width: CGFloat(row.level) * 14)
-                Image(systemName: row.kind.systemImage)
-                    .foregroundStyle(row.kind.tint)
-                    .font(.system(size: 12))
-                    .frame(width: 14)
+                rowIcon
                 VStack(alignment: .leading, spacing: 0) {
                     Text(row.title)
                         .font(.system(size: 12.5))
@@ -297,5 +397,58 @@ private struct CmuxTaskManagerRowView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 3)
         .opacity(row.isDimmed ? 0.68 : 1)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onActivate()
+        }
+        .contextMenu {
+            if row.canViewWorkspace {
+                Button {
+                    onViewWorkspace()
+                } label: {
+                    Label(
+                        String(localized: "taskManager.contextMenu.viewWorkspace", defaultValue: "View Workspace"),
+                        systemImage: "rectangle.stack"
+                    )
+                }
+            }
+            if row.canViewTerminal {
+                Button {
+                    onViewTerminal()
+                } label: {
+                    Label(
+                        String(localized: "taskManager.contextMenu.viewTerminal", defaultValue: "View Terminal"),
+                        systemImage: "terminal"
+                    )
+                }
+            }
+            if row.canKillProcess {
+                Divider()
+                Button {
+                    onKillProcess()
+                } label: {
+                    Label(
+                        String(localized: "taskManager.contextMenu.killProcess", defaultValue: "Kill Process..."),
+                        systemImage: "xmark.octagon"
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rowIcon: some View {
+        if let agentAssetName = row.agentAssetName {
+            Image(agentAssetName)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+        } else {
+            Image(systemName: row.kind.systemImage)
+                .foregroundStyle(row.kind.tint)
+                .font(.system(size: 12))
+                .frame(width: 14)
+        }
     }
 }
