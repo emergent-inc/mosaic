@@ -19057,22 +19057,54 @@ export default CMUXSessionRestore;
 
     private func bundledOpenCodePluginSource() throws -> String {
         // The plugin JS is bundled into the .app via `Resources/opencode-plugin.js`.
-        // When running from the dev CLI binary (out of DerivedData), Bundle.main
-        // might resolve to the .app bundle or fall back to a checked-in resource
-        // copy next to the running binary.
-        if let url = Bundle.main.url(forResource: "opencode-plugin", withExtension: "js"),
-           let contents = try? String(contentsOf: url, encoding: .utf8) {
-            return contents
+        // The `cmux` CLI is often launched from `Contents/Resources/bin/cmux`,
+        // where Bundle.main can be the CLI executable rather than the containing
+        // app. Search the real executable path before falling back to repo dev
+        // paths used by `swift run`-style local builds.
+        for url in openCodePluginResourceCandidates() {
+            if let contents = try? String(contentsOf: url, encoding: .utf8) {
+                return contents
+            }
         }
-        // Fallback for `swift run`-style local dev.
+        throw CLIError(message: "bundled opencode-plugin.js not found (Bundle.main, app bundle, executable, and repo fallbacks)")
+    }
+
+    private func openCodePluginResourceCandidates() -> [URL] {
+        var candidates: [URL] = []
+        var seen: Set<String> = []
+
+        func append(_ url: URL?) {
+            guard let url else { return }
+            let standardized = url.standardizedFileURL
+            guard seen.insert(standardized.path).inserted else { return }
+            candidates.append(standardized)
+        }
+
+        append(Bundle.main.url(forResource: "opencode-plugin", withExtension: "js"))
+        append(Bundle.main.resourceURL?.appendingPathComponent("opencode-plugin.js", isDirectory: false))
+
+        if let executableURL = resolvedExecutableURL() {
+            var current = executableURL.deletingLastPathComponent().standardizedFileURL
+            while true {
+                append(current.appendingPathComponent("opencode-plugin.js", isDirectory: false))
+                append(current.appendingPathComponent("Resources/opencode-plugin.js", isDirectory: false))
+                if current.lastPathComponent == "Contents" {
+                    append(current.appendingPathComponent("Resources/opencode-plugin.js", isDirectory: false))
+                }
+                if current.pathExtension == "app" {
+                    append(current.appendingPathComponent("Contents/Resources/opencode-plugin.js", isDirectory: false))
+                }
+                guard let parent = parentSearchURL(for: current) else { break }
+                current = parent
+            }
+        }
+
         let devRelative = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Resources/opencode-plugin.js")
-        if let contents = try? String(contentsOf: devRelative, encoding: .utf8) {
-            return contents
-        }
-        throw CLIError(message: "bundled opencode-plugin.js not found (Bundle.main + fallback)")
+        append(devRelative)
+        return candidates
     }
 
     private func installOpenCodePlugin(projectLocal: Bool) throws {
