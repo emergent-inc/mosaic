@@ -9,10 +9,11 @@ enum KeyboardShortcutSettings {
     static let actionUserInfoKey = "action"
     static let settingsFileDisplayPath = "~/.config/cmux/cmux.json"
     static var settingsFileStore: KeyboardShortcutSettingsFileStore = .shared {
-        didSet {
-            notifySettingsFileDidChange()
-        }
+        didSet { notifySettingsFileDidChange() }
     }
+    #if DEBUG
+    static var shortcutLookupObserver: ((Action) -> Void)?
+    #endif
 
     enum ShortcutRecordingRejection: Equatable {
         case bareKeyNotAllowed
@@ -182,20 +183,6 @@ enum KeyboardShortcutSettings {
 
         var defaultsKey: String { "shortcut.\(rawValue)" }
 
-        private enum ConflictScope {
-            case application
-            case rightSidebarFocus
-        }
-
-        private var conflictScope: ConflictScope {
-            switch self {
-            case .switchRightSidebarToFiles, .switchRightSidebarToFind, .switchRightSidebarToSessions, .switchRightSidebarToFeed, .switchRightSidebarToDock:
-                return .rightSidebarFocus
-            default:
-                return .application
-            }
-        }
-
         var defaultShortcut: StoredShortcut {
             switch self {
             case .openSettings:
@@ -363,7 +350,7 @@ enum KeyboardShortcutSettings {
             proposedAction: Action,
             configuredShortcut: StoredShortcut
         ) -> Bool {
-            guard conflictScope == proposedAction.conflictScope else {
+            guard shortcutContext.overlaps(proposedAction.shortcutContext) else {
                 return false
             }
             return KeyboardShortcutSettings.shortcutsConflict(
@@ -389,6 +376,23 @@ enum KeyboardShortcutSettings {
             return resolvedRecordedShortcutIgnoringConflicts(shortcut)
         }
 
+        func normalizedSettingsFileShortcut(_ shortcut: StoredShortcut) -> StoredShortcut? {
+            // cmux.json can load while the global settings store is still initializing.
+            // Keep this path free of conflict and hotkey checks that consult global shortcut state.
+            if shortcut.isUnbound {
+                return .unbound
+            }
+
+            if case let .accepted(normalized) = resolvedRecordedShortcutIgnoringConflicts(
+                shortcut,
+                checkingSystemWideConflicts: false
+            ) {
+                return normalized
+            }
+
+            return usesNumberedDigitMatching ? nil : shortcut
+        }
+
         func resolvedRecordedShortcutIgnoringConflicts(_ shortcut: StoredShortcut, checkingSystemWideConflicts: Bool = true) -> RecordedShortcutResolution {
             if shortcut.isUnbound {
                 return .accepted(.unbound)
@@ -398,20 +402,26 @@ enum KeyboardShortcutSettings {
             case .showHideAllWindows:
                 return KeyboardShortcutSettings.normalizedSystemWideHotkeyShortcutResult(shortcut, checkingConflicts: checkingSystemWideConflicts)
             case .selectSurfaceByNumber, .selectWorkspaceByNumber:
-                let digitSource = shortcut.secondStroke ?? shortcut.firstStroke
-                guard let digit = Int(digitSource.key), (1...9).contains(digit) else {
-                    return .rejected(.numberedShortcutRequiresDigit)
-                }
-                var normalized = shortcut
-                if shortcut.hasChord {
-                    normalized.chordKey = "1"
-                } else {
-                    normalized.key = "1"
-                }
-                return .accepted(normalized)
+                return resolvedNumberedDigitShortcut(shortcut)
             default:
                 return .accepted(shortcut)
             }
+        }
+
+        private func resolvedNumberedDigitShortcut(
+            _ shortcut: StoredShortcut
+        ) -> RecordedShortcutResolution {
+            let digitSource = shortcut.secondStroke ?? shortcut.firstStroke
+            guard let digit = Int(digitSource.key), (1...9).contains(digit) else {
+                return .rejected(.numberedShortcutRequiresDigit)
+            }
+            var normalized = shortcut
+            if shortcut.hasChord {
+                normalized.chordKey = "1"
+            } else {
+                normalized.key = "1"
+            }
+            return .accepted(normalized)
         }
 
         func normalizedRecordedShortcut(_ shortcut: StoredShortcut) -> StoredShortcut? {
@@ -659,12 +669,12 @@ enum KeyboardShortcutSettings {
     }
 
     static func shortcut(for action: Action) -> StoredShortcut {
-        if let managedShortcut = settingsFileStore.override(for: action) {
-            return managedShortcut
-        }
+        #if DEBUG
+        shortcutLookupObserver?(action)
+        #endif
         guard let data = UserDefaults.standard.data(forKey: action.defaultsKey),
               let shortcut = try? JSONDecoder().decode(StoredShortcut.self, from: data) else {
-            return action.defaultShortcut
+            return settingsFileStore.override(for: action) ?? action.defaultShortcut
         }
         return shortcut
     }
@@ -680,14 +690,7 @@ enum KeyboardShortcutSettings {
         settingsFileStore.isManagedByFile(action)
     }
 
-    static func settingsFileManagedSubtitle(for action: Action) -> String? {
-        guard isManagedBySettingsFile(action) else { return nil }
-        return String(localized: "settings.shortcuts.managedByFile", defaultValue: "Managed in cmux.json")
-    }
-
     static func setShortcut(_ shortcut: StoredShortcut, for action: Action) {
-        guard !isManagedBySettingsFile(action) else { return }
-
         guard let storedShortcut = storedShortcutForPersistence(shortcut, action: action) else {
             return
         }
@@ -702,16 +705,16 @@ enum KeyboardShortcutSettings {
         conflictingAction: Action,
         previousShortcut: StoredShortcut
     ) {
-        guard !isManagedBySettingsFile(currentAction),
-              !isManagedBySettingsFile(conflictingAction),
-              let resolvedCurrentShortcut = storedShortcutForReplacement(
+        guard
+            let resolvedCurrentShortcut = storedShortcutForReplacement(
                 proposedShortcut,
                 action: currentAction
-              ),
-              let resolvedConflictingShortcut = storedShortcutForReplacement(
+            ),
+            let resolvedConflictingShortcut = storedShortcutForReplacement(
                 previousShortcut,
                 action: conflictingAction
-              ) else {
+            )
+        else {
             return
         }
 
@@ -721,9 +724,7 @@ enum KeyboardShortcutSettings {
         postDidChangeNotification(action: conflictingAction)
     }
 
-    static func notifySettingsFileDidChange() {
-        postDidChangeNotification()
-    }
+    static func notifySettingsFileDidChange(center: NotificationCenter = .default) { postDidChangeNotification(center: center) }
 
     static func resetShortcut(for action: Action) {
         UserDefaults.standard.removeObject(forKey: action.defaultsKey)
@@ -839,10 +840,6 @@ enum SystemWideHotkeySettings {
         KeyboardShortcutSettings.isManagedBySettingsFile(action)
     }
 
-    static func settingsFileManagedSubtitle() -> String? {
-        KeyboardShortcutSettings.settingsFileManagedSubtitle(for: action)
-    }
-
     static func reset(defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: enabledKey)
         defaults.removeObject(forKey: legacyShortcutKey)
@@ -865,12 +862,9 @@ enum SystemWideHotkeySettings {
     }
 
     private static func storedShortcut(defaults: UserDefaults = .standard) -> StoredShortcut? {
-        if let managedShortcut = KeyboardShortcutSettings.settingsFileStore.override(for: action) {
-            return managedShortcut
-        }
         guard let data = defaults.data(forKey: action.defaultsKey),
               let shortcut = try? JSONDecoder().decode(StoredShortcut.self, from: data) else {
-            return nil
+            return KeyboardShortcutSettings.settingsFileStore.override(for: action)
         }
         return shortcut
     }
@@ -2237,7 +2231,6 @@ struct ShortcutRecorderValidationPresentation: Equatable {
         attempt: ShortcutRecorderRejectedAttempt?,
         action: KeyboardShortcutSettings.Action,
         currentShortcut: StoredShortcut,
-        isManagedBySettingsFile: (KeyboardShortcutSettings.Action) -> Bool = KeyboardShortcutSettings.isManagedBySettingsFile,
         shortcutForAction: (KeyboardShortcutSettings.Action) -> StoredShortcut = KeyboardShortcutSettings.shortcut(for:)
     ) {
         guard let attempt else { return nil }
@@ -2245,8 +2238,7 @@ struct ShortcutRecorderValidationPresentation: Equatable {
         let canSwap = Self.canSwapConflict(
             attempt: attempt,
             action: action,
-            currentShortcut: currentShortcut,
-            isManagedBySettingsFile: isManagedBySettingsFile
+            currentShortcut: currentShortcut
         )
 
         self.message = Self.message(
@@ -2310,13 +2302,10 @@ struct ShortcutRecorderValidationPresentation: Equatable {
     private static func canSwapConflict(
         attempt: ShortcutRecorderRejectedAttempt,
         action: KeyboardShortcutSettings.Action,
-        currentShortcut: StoredShortcut,
-        isManagedBySettingsFile: (KeyboardShortcutSettings.Action) -> Bool
+        currentShortcut: StoredShortcut
     ) -> Bool {
         guard case let .conflictsWithAction(conflictingAction) = attempt.reason,
-              let proposedShortcut = attempt.proposedShortcut,
-              !isManagedBySettingsFile(action),
-              !isManagedBySettingsFile(conflictingAction) else {
+              let proposedShortcut = attempt.proposedShortcut else {
             return false
         }
 
