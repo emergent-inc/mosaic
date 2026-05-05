@@ -338,7 +338,7 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
         return cmuxScope(fromKernProcArgs: Array(buffer.prefix(Int(size))))
     }
 
-    private static func cmuxScope(fromKernProcArgs bytes: [UInt8]) -> CmuxTopProcessScope? {
+    static func cmuxScope(fromKernProcArgs bytes: [UInt8]) -> CmuxTopProcessScope? {
         guard bytes.count > MemoryLayout<Int32>.size else { return nil }
 
         var argcRaw: Int32 = 0

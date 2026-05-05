@@ -8,7 +8,7 @@ struct CmuxTopProcessScopeCacheKey: Hashable {
 }
 
 private struct CmuxTopProcessScopeCacheValue {
-    let scope: CmuxTopProcessScope?
+    let scope: CmuxTopProcessScope
 }
 
 private let cmuxTopScopeCacheLock = NSLock()
@@ -35,7 +35,9 @@ extension CmuxTopProcessSnapshot {
         }
         cmuxTopScopeCacheLock.unlock()
 
-        let scope = cmuxScope(for: pid)
+        guard let scope = cmuxScope(for: pid) else {
+            return nil
+        }
 
         cmuxTopScopeCacheLock.lock()
         cmuxTopScopeCache[cacheKey] = CmuxTopProcessScopeCacheValue(scope: scope)
