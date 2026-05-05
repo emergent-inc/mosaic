@@ -61,7 +61,9 @@ private final class CmuxTaskManagerModel: ObservableObject {
 
     private var refreshTimer: Timer?
     private var refreshTask: Task<Void, Never>?
+    private var terminationTimers: [UUID: Timer] = [:]
     private let refreshInterval: TimeInterval = 3.0
+    private let terminationGraceInterval: TimeInterval = 2.0
 
     func start() {
         guard refreshTimer == nil else {
@@ -139,26 +141,34 @@ private final class CmuxTaskManagerModel: ObservableObject {
         guard !processIds.isEmpty else { return }
         guard confirmKillProcess(row: row, processIds: processIds) else { return }
 
-        var failures: [(processId: Int, reason: String)] = []
-        for processId in processIds {
-            let result = Darwin.kill(pid_t(processId), SIGTERM)
-            if result != 0 {
-                let failureErrno = errno
-                failures.append((processId, String(cString: strerror(failureErrno))))
+        var failures: [(target: String, reason: String)] = []
+        let gracefulProcessGroupIds = row.gracefulProcessGroupIds
+        if gracefulProcessGroupIds.isEmpty {
+            for processId in row.gracefulProcessIds {
+                if let reason = sendSignal(SIGTERM, toProcessId: processId) {
+                    failures.append(("PID \(processId)", reason))
+                }
+            }
+        } else {
+            for processGroupId in gracefulProcessGroupIds {
+                if let reason = sendSignal(SIGTERM, toProcessGroupId: processGroupId) {
+                    failures.append(("process group \(processGroupId)", reason))
+                }
             }
         }
 
-        if failures.isEmpty {
-            refresh(force: true)
-        } else {
+        guard failures.isEmpty else {
             let detail = failures
-                .map { "\($0.processId): \($0.reason)" }
+                .map { "\($0.target): \($0.reason)" }
                 .joined(separator: ", ")
             errorMessage = String(
                 localized: "taskManager.killProcess.error",
                 defaultValue: "Unable to kill process: \(detail)"
             )
+            return
         }
+
+        scheduleForceKillIfNeeded(processIds: processIds)
     }
 
     private func confirmKillProcess(row: CmuxTaskManagerRow, processIds: [Int]) -> Bool {
@@ -167,14 +177,14 @@ private final class CmuxTaskManagerModel: ObservableObject {
             alert.messageText = String(localized: "taskManager.killProcess.title", defaultValue: "Kill process?")
             alert.informativeText = String(
                 localized: "taskManager.killProcess.message",
-                defaultValue: "Send SIGTERM to \(row.title) (PID \(processId))."
+                defaultValue: "Ask \(row.title) (PID \(processId)) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period."
             )
         } else {
             let pidList = processIds.map(String.init).joined(separator: ", ")
             alert.messageText = String(localized: "taskManager.killProcess.pluralTitle", defaultValue: "Kill processes?")
             alert.informativeText = String(
                 localized: "taskManager.killProcess.pluralMessage",
-                defaultValue: "Send SIGTERM to \(row.title) processes (PIDs \(pidList))."
+                defaultValue: "Ask \(row.title) processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: \(pidList)."
             )
         }
         alert.alertStyle = .warning
@@ -184,6 +194,73 @@ private final class CmuxTaskManagerModel: ObservableObject {
             cancelButton.keyEquivalent = "\u{1b}"
         }
         return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func sendSignal(_ signal: Int32, toProcessId processId: Int) -> String? {
+        guard processId > 1, processId != Int(getpid()) else { return nil }
+        return signalResult(Darwin.kill(pid_t(processId), signal))
+    }
+
+    private func sendSignal(_ signal: Int32, toProcessGroupId processGroupId: Int) -> String? {
+        guard processGroupId > 1, processGroupId != Int(getpgrp()) else { return nil }
+        return signalResult(Darwin.kill(pid_t(-processGroupId), signal))
+    }
+
+    private func signalResult(_ result: Int32) -> String? {
+        guard result != 0 else { return nil }
+        let failureErrno = errno
+        guard failureErrno != ESRCH else { return nil }
+        return String(cString: strerror(failureErrno))
+    }
+
+    private func scheduleForceKillIfNeeded(processIds: [Int]) {
+        let operationId = UUID()
+        let timer = Timer.scheduledTimer(withTimeInterval: terminationGraceInterval, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.terminationTimers.removeValue(forKey: operationId)
+                self?.forceKillSurvivors(processIds: processIds)
+            }
+        }
+        timer.tolerance = 0.25
+        terminationTimers[operationId] = timer
+        refresh(force: true)
+    }
+
+    private func forceKillSurvivors(processIds: [Int]) {
+        let survivors = processIds.filter(isProcessRunning)
+        guard !survivors.isEmpty else {
+            refresh(force: true)
+            return
+        }
+
+        var failures: [(target: String, reason: String)] = []
+        for processId in survivors {
+            if let reason = sendSignal(SIGKILL, toProcessId: processId) {
+                failures.append(("PID \(processId)", reason))
+            }
+        }
+
+        if failures.isEmpty {
+            refresh(force: true)
+        } else {
+            let detail = failures
+                .map { "\($0.target): \($0.reason)" }
+                .joined(separator: ", ")
+            errorMessage = String(
+                localized: "taskManager.killProcess.error",
+                defaultValue: "Unable to kill process: \(detail)"
+            )
+        }
+    }
+
+    private func isProcessRunning(_ processId: Int) -> Bool {
+        guard processId > 1, processId != Int(getpid()) else { return false }
+        errno = 0
+        let result = Darwin.kill(pid_t(processId), 0)
+        if result == 0 {
+            return true
+        }
+        return errno == EPERM
     }
 
     private func flashSelection(workspaceId: UUID, surfaceId: UUID?) {

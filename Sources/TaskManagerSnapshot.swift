@@ -243,6 +243,7 @@ struct CmuxTaskManagerSnapshot {
         let detail = pid.map {
             String(localized: "taskManager.row.pid", defaultValue: "PID \($0)")
         } ?? ""
+        let processRootIds = pid.map { [$0] } ?? []
         let processRow = row(
             process,
             kind: .process,
@@ -254,6 +255,7 @@ struct CmuxTaskManagerSnapshot {
             surfaceId: surfaceId,
             terminalSurfaceId: terminalSurfaceId,
             processId: pid,
+            rootProcessIds: processRootIds,
             agentAssetName: agentAssetName(for: [
                 nonEmptyString(process["name"]),
                 nonEmptyString(process["path"]).map { URL(fileURLWithPath: $0).lastPathComponent }
@@ -287,6 +289,8 @@ struct CmuxTaskManagerSnapshot {
         surfaceId: UUID? = nil,
         terminalSurfaceId: UUID? = nil,
         processId: Int? = nil,
+        rootProcessIds: [Int]? = nil,
+        foregroundProcessGroupIds: [Int]? = nil,
         agentAssetName: String? = nil
     ) -> CmuxTaskManagerRow {
         CmuxTaskManagerRow(
@@ -301,6 +305,8 @@ struct CmuxTaskManagerSnapshot {
             surfaceId: surfaceId,
             terminalSurfaceId: terminalSurfaceId,
             processId: processId,
+            rootProcessIds: rootProcessIds ?? intArray(payload["top_level_pids"]),
+            foregroundProcessGroupIds: foregroundProcessGroupIds ?? intArray(payload["foreground_pgids"]),
             agentAssetName: agentAssetName
         )
     }
@@ -389,5 +395,11 @@ struct CmuxTaskManagerSnapshot {
             return Int(value.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         return nil
+    }
+
+    private static func intArray(_ raw: Any?) -> [Int] {
+        if let values = raw as? [Int] { return values }
+        guard let values = raw as? [Any] else { return [] }
+        return values.compactMap(int)
     }
 }

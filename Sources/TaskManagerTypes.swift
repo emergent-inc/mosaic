@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import SwiftUI
 
@@ -50,6 +51,8 @@ struct CmuxTaskManagerRow: Identifiable {
     let surfaceId: UUID?
     let terminalSurfaceId: UUID?
     let processId: Int?
+    let rootProcessIds: [Int]
+    let foregroundProcessGroupIds: [Int]
     let agentAssetName: String?
 
     var canViewWorkspace: Bool {
@@ -69,6 +72,31 @@ struct CmuxTaskManagerRow: Identifiable {
         if let processId {
             ids.append(processId)
         }
+        let currentPID = Int(getpid())
+        return Array(Set(ids))
+            .filter { $0 > 1 && $0 != currentPID }
+            .sorted()
+    }
+
+    var gracefulProcessIds: [Int] {
+        var ids = rootProcessIds
+        if ids.isEmpty, let processId {
+            ids.append(processId)
+        }
+        if ids.isEmpty {
+            ids = resources.processIds
+        }
+        return safeProcessIds(ids)
+    }
+
+    var gracefulProcessGroupIds: [Int] {
+        let currentProcessGroupId = Int(getpgrp())
+        return Array(Set(foregroundProcessGroupIds))
+            .filter { $0 > 1 && $0 != currentProcessGroupId }
+            .sorted()
+    }
+
+    private func safeProcessIds(_ ids: [Int]) -> [Int] {
         let currentPID = Int(getpid())
         return Array(Set(ids))
             .filter { $0 > 1 && $0 != currentPID }

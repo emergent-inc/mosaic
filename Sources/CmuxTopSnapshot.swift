@@ -171,6 +171,28 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
         return roots.compactMap { processTreeNode(pid: $0, allowedPIDs: allowedPIDs, visited: &visited) }
     }
 
+    func topLevelPIDs(for pids: Set<Int>) -> Set<Int> {
+        let allowedPIDs = Set(pids.filter { processesByPID[$0] != nil })
+        return allowedPIDs.filter { pid in
+            guard let parent = processesByPID[pid]?.parentPID else { return true }
+            return !allowedPIDs.contains(parent)
+        }
+    }
+
+    func foregroundProcessGroupIDs(for pids: Set<Int>) -> Set<Int> {
+        Set(
+            pids.compactMap { pid in
+                guard let process = processesByPID[pid],
+                      let processGroupID = process.processGroupID,
+                      let foregroundGroupID = process.terminalProcessGroupID,
+                      processGroupID == foregroundGroupID else {
+                    return nil
+                }
+                return foregroundGroupID
+            }
+        )
+    }
+
     private func processTreeNode(
         pid: Int,
         allowedPIDs: Set<Int>,

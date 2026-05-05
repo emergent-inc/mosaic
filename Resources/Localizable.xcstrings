@@ -110596,8 +110596,8 @@
     "taskManager.killProcess.message": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Send SIGTERM to %@ (PID %lld)." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%@（PID %lld）に SIGTERM を送信します。" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Ask %@ (PID %lld) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%@（PID %lld）に正常終了を要求します。短い猶予時間の後も実行中の場合、cmux が強制終了します。" } }
       }
     },
     "taskManager.killProcess.pluralTitle": {
@@ -110610,8 +110610,8 @@
     "taskManager.killProcess.pluralMessage": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Send SIGTERM to %@ processes (PIDs %@)." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%@ のプロセス（PID %@）に SIGTERM を送信します。" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Ask %@ processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%@ のプロセスに正常終了を要求します。短い猶予時間の後も残っているプロセスは cmux が強制終了します。PID: %@。" } }
       }
     },
     "taskManager.killProcess.confirm": {
@@ -110631,8 +110631,8 @@
     "taskManager.killProcess.error": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Unable to kill process %lld: %@" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "プロセス %lld を終了できません: %@" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to kill process: %@" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プロセスを終了できません: %@" } }
       }
     },
     "taskManager.updated.never": {

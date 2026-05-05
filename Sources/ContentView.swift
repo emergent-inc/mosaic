@@ -7043,6 +7043,14 @@ struct ContentView: View {
         )
         contributions.append(
             CommandPaletteCommandContribution(
+                commandId: "palette.openTaskManager",
+                title: constant(String(localized: "taskManager.title", defaultValue: "Task Manager")),
+                subtitle: constant(String(localized: "command.closeWindow.subtitle", defaultValue: "Window")),
+                keywords: ["task", "manager", "process", "cpu", "memory", "kill"]
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
                 commandId: "palette.showNotifications",
                 title: constant(String(localized: "command.showNotifications.title", defaultValue: "Show Notifications")),
                 subtitle: constant(String(localized: "command.showNotifications.subtitle", defaultValue: "Notifications")),
@@ -7917,6 +7925,9 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.triggerFlash") {
             tabManager.triggerFocusFlash()
+        }
+        registry.register(commandId: "palette.openTaskManager") {
+            TaskManagerWindowController.shared.show()
         }
         registry.register(commandId: "palette.showNotifications") {
             AppDelegate.shared?.toggleNotificationsPopover(animated: false)
