@@ -110586,28 +110586,28 @@
         "ja": { "stringUnit": { "state": "translated", "value": "プロセスを終了..." } }
       }
     },
-    "taskManager.killProcess.title": {
+    "taskManager.killProcess.title.one": {
       "extractionState": "manual",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Kill process?" } },
         "ja": { "stringUnit": { "state": "translated", "value": "プロセスを終了しますか？" } }
       }
     },
-    "taskManager.killProcess.message": {
+    "taskManager.killProcess.message.one": {
       "extractionState": "manual",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Ask %@ (PID %lld) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period." } },
         "ja": { "stringUnit": { "state": "translated", "value": "%@（PID %lld）に正常終了を要求します。短い猶予時間の後も実行中の場合、cmux が強制終了します。" } }
       }
     },
-    "taskManager.killProcess.pluralTitle": {
+    "taskManager.killProcess.title.other": {
       "extractionState": "manual",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Kill processes?" } },
         "ja": { "stringUnit": { "state": "translated", "value": "プロセスを終了しますか？" } }
       }
     },
-    "taskManager.killProcess.pluralMessage": {
+    "taskManager.killProcess.message.other": {
       "extractionState": "manual",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Ask %@ processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@." } },

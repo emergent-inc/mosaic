@@ -244,6 +244,9 @@ struct CmuxTaskManagerSnapshot {
             String(localized: "taskManager.row.pid", defaultValue: "PID \($0)")
         } ?? ""
         let processRootIds = pid.map { [$0] } ?? []
+        let metadataSurfaceId = uuid(process["cmux_surface_id"])
+        let processSurfaceId = surfaceId ?? metadataSurfaceId
+        let processTerminalSurfaceId = terminalSurfaceId ?? (surfaceId == nil ? metadataSurfaceId : nil)
         let processRow = row(
             process,
             kind: .process,
@@ -252,8 +255,8 @@ struct CmuxTaskManagerSnapshot {
             detail: detail,
             context: context,
             workspaceId: workspaceId,
-            surfaceId: surfaceId,
-            terminalSurfaceId: terminalSurfaceId,
+            surfaceId: processSurfaceId,
+            terminalSurfaceId: processTerminalSurfaceId,
             processId: pid,
             rootProcessIds: processRootIds,
             agentAssetName: agentAssetName(for: [
@@ -270,8 +273,8 @@ struct CmuxTaskManagerSnapshot {
                 level: level + 1,
                 context: processRow.id,
                 workspaceId: workspaceId,
-                surfaceId: surfaceId,
-                terminalSurfaceId: terminalSurfaceId,
+                surfaceId: processSurfaceId,
+                terminalSurfaceId: processTerminalSurfaceId,
                 to: &rows
             )
         }

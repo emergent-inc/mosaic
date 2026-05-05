@@ -292,7 +292,7 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
         let path = includeProcessDetails ? processPath(pid: pid) : nil
         let rawTTY = Int64(kinfo.kp_eproc.e_tdev)
         let ttyDevice = rawTTY > 0 ? rawTTY : nil
-        let cmuxScope = ttyDevice == nil ? nil : cmuxScope(for: pid)
+        let cmuxScope = cmuxScope(for: pid)
         let rawProcessGroupID = Int(kinfo.kp_eproc.e_pgid)
         let processGroupID = rawProcessGroupID > 0 ? rawProcessGroupID : nil
         let rawTerminalProcessGroupID = Int(kinfo.kp_eproc.e_tpgid)

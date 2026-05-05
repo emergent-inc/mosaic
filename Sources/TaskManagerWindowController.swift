@@ -161,10 +161,10 @@ private final class CmuxTaskManagerModel: ObservableObject {
             let detail = failures
                 .map { "\($0.target): \($0.reason)" }
                 .joined(separator: ", ")
-            errorMessage = String(
+            errorMessage = String(format: String(
                 localized: "taskManager.killProcess.error",
-                defaultValue: "Unable to kill process: \(detail)"
-            )
+                defaultValue: "Unable to kill process: %@"
+            ), detail)
             return
         }
 
@@ -174,18 +174,18 @@ private final class CmuxTaskManagerModel: ObservableObject {
     private func confirmKillProcess(row: CmuxTaskManagerRow, processIds: [Int]) -> Bool {
         let alert = NSAlert()
         if processIds.count == 1, let processId = processIds.first {
-            alert.messageText = String(localized: "taskManager.killProcess.title", defaultValue: "Kill process?")
-            alert.informativeText = String(
-                localized: "taskManager.killProcess.message",
-                defaultValue: "Ask \(row.title) (PID \(processId)) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period."
-            )
+            alert.messageText = String(localized: "taskManager.killProcess.title.one", defaultValue: "Kill process?")
+            alert.informativeText = String(format: String(
+                localized: "taskManager.killProcess.message.one",
+                defaultValue: "Ask %@ (PID %lld) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period."
+            ), row.title, Int64(processId))
         } else {
             let pidList = processIds.map(String.init).joined(separator: ", ")
-            alert.messageText = String(localized: "taskManager.killProcess.pluralTitle", defaultValue: "Kill processes?")
-            alert.informativeText = String(
-                localized: "taskManager.killProcess.pluralMessage",
-                defaultValue: "Ask \(row.title) processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: \(pidList)."
-            )
+            alert.messageText = String(localized: "taskManager.killProcess.title.other", defaultValue: "Kill processes?")
+            alert.informativeText = String(format: String(
+                localized: "taskManager.killProcess.message.other",
+                defaultValue: "Ask %@ processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@."
+            ), row.title, pidList)
         }
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "taskManager.killProcess.confirm", defaultValue: "Kill"))
@@ -246,10 +246,10 @@ private final class CmuxTaskManagerModel: ObservableObject {
             let detail = failures
                 .map { "\($0.target): \($0.reason)" }
                 .joined(separator: ", ")
-            errorMessage = String(
+            errorMessage = String(format: String(
                 localized: "taskManager.killProcess.error",
-                defaultValue: "Unable to kill process: \(detail)"
-            )
+                defaultValue: "Unable to kill process: %@"
+            ), detail)
         }
     }
 
