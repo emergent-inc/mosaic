@@ -165,6 +165,7 @@ private final class CmuxTaskManagerModel: ObservableObject {
                 localized: "taskManager.killProcess.error",
                 defaultValue: "Unable to kill process: %@"
             ), detail)
+            refresh(force: true)
             return
         }
 
@@ -250,6 +251,7 @@ private final class CmuxTaskManagerModel: ObservableObject {
                 localized: "taskManager.killProcess.error",
                 defaultValue: "Unable to kill process: %@"
             ), detail)
+            refresh(force: true)
         }
     }
 
