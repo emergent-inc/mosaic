@@ -142,9 +142,12 @@ final class CmuxTaskManagerModel: ObservableObject {
         guard confirmKillProcess(row: row, processIds: processIds) else { return }
 
         var failures: [(target: String, reason: String)] = []
+        var sentGracefulSignal = false
         for processGroupId in row.gracefulProcessGroupIds {
             if let reason = sendSignal(SIGTERM, toProcessGroupId: processGroupId) {
                 failures.append(("process group \(processGroupId)", reason))
+            } else {
+                sentGracefulSignal = true
             }
         }
 
@@ -152,10 +155,14 @@ final class CmuxTaskManagerModel: ObservableObject {
         for processId in gracefulProcessIds {
             if let reason = sendSignal(SIGTERM, toProcessId: processId) {
                 failures.append(("PID \(processId)", reason))
+            } else {
+                sentGracefulSignal = true
             }
         }
 
-        guard failures.isEmpty else {
+        if failures.isEmpty {
+            scheduleForceKillIfNeeded(processIds: processIds)
+        } else {
             let detail = failures
                 .map { "\($0.target): \($0.reason)" }
                 .joined(separator: ", ")
@@ -163,11 +170,12 @@ final class CmuxTaskManagerModel: ObservableObject {
                 localized: "taskManager.killProcess.error",
                 defaultValue: "Unable to kill process: %@"
             ), detail)
-            refresh(force: true)
-            return
+            if sentGracefulSignal {
+                scheduleForceKillIfNeeded(processIds: processIds)
+            } else {
+                refresh(force: true)
+            }
         }
-
-        scheduleForceKillIfNeeded(processIds: processIds)
     }
 
     private func confirmKillProcess(row: CmuxTaskManagerRow, processIds: [Int]) -> Bool {
@@ -183,8 +191,8 @@ final class CmuxTaskManagerModel: ObservableObject {
             alert.messageText = String(localized: "taskManager.killProcess.title.other", defaultValue: "Kill processes?")
             alert.informativeText = String(format: String(
                 localized: "taskManager.killProcess.message.other",
-                defaultValue: "Ask %@ processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@."
-            ), row.title, pidList)
+                defaultValue: "Ask %lld processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@."
+            ), Int64(processIds.count), pidList)
         }
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "taskManager.killProcess.confirm", defaultValue: "Kill"))

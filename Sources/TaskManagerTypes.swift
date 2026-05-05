@@ -157,6 +157,7 @@ struct CmuxTaskManagerResources {
     }
 
     private static func intArray(_ raw: Any?) -> [Int] {
+        if let values = raw as? [Int] { return values }
         guard let values = raw as? [Any] else { return [] }
         return values.compactMap(int)
     }

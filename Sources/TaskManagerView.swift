@@ -170,41 +170,10 @@ private struct CmuxTaskManagerRowView: View {
     let onActivate: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 5) {
-                Color.clear
-                    .frame(width: CGFloat(row.level) * 14)
-                rowIcon
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(row.title)
-                        .font(.system(size: 12.5))
-                        .lineLimit(1)
-                    if !row.detail.isEmpty {
-                        Text(row.detail)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(CmuxTaskManagerFormat.cpu(row.resources.cpuPercent))
-                .frame(width: 82, alignment: .trailing)
-            Text(CmuxTaskManagerFormat.bytes(row.resources.residentBytes))
-                .frame(width: 96, alignment: .trailing)
-            Text("\(row.resources.processCount)")
-                .frame(width: 58, alignment: .trailing)
+        Button(action: onActivate) {
+            rowContent
         }
-        .font(.system(size: 12.5, design: .default))
-        .monospacedDigit()
-        .padding(.horizontal, 16)
-        .padding(.vertical, 3)
-        .opacity(row.isDimmed ? 0.68 : 1)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onActivate()
-        }
+        .buttonStyle(.plain)
         .contextMenu {
             if row.canViewWorkspace {
                 Button {
@@ -238,6 +207,41 @@ private struct CmuxTaskManagerRowView: View {
                 }
             }
         }
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 5) {
+                Color.clear
+                    .frame(width: CGFloat(row.level) * 14)
+                rowIcon
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(row.title)
+                        .font(.system(size: 12.5))
+                        .lineLimit(1)
+                    if !row.detail.isEmpty {
+                        Text(row.detail)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(CmuxTaskManagerFormat.cpu(row.resources.cpuPercent))
+                .frame(width: 82, alignment: .trailing)
+            Text(CmuxTaskManagerFormat.bytes(row.resources.residentBytes))
+                .frame(width: 96, alignment: .trailing)
+            Text("\(row.resources.processCount)")
+                .frame(width: 58, alignment: .trailing)
+        }
+        .font(.system(size: 12.5, design: .default))
+        .monospacedDigit()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 3)
+        .opacity(row.isDimmed ? 0.68 : 1)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder

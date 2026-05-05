@@ -110610,8 +110610,8 @@
     "taskManager.killProcess.message.other": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Ask %@ processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "%@ のプロセスに正常終了を要求します。短い猶予時間の後も残っているプロセスは cmux が強制終了します。PID: %@。" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Ask %lld processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%lld 個のプロセスに正常終了を要求します。短い猶予時間の後も残っているプロセスは cmux が強制終了します。PID: %@。" } }
       }
     },
     "taskManager.killProcess.confirm": {
