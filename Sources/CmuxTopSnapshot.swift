@@ -39,7 +39,7 @@ struct CmuxTopProcessInfo: Sendable {
     let threadCount: Int
 }
 
-private struct CmuxTopProcessScope: Sendable {
+struct CmuxTopProcessScope: Sendable {
     let workspaceID: UUID?
     let surfaceID: UUID?
 }
@@ -267,9 +267,13 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
             }
             if result == 0 {
                 let count = min(processes.count, length / stride)
-                return processes.prefix(count).compactMap {
+                let sampledProcesses = Array(processes.prefix(count))
+                let activeScopeKeys = Set(sampledProcesses.map { scopeCacheKey(from: $0) })
+                let processInfos = sampledProcesses.compactMap {
                     processInfo(from: $0, includeProcessDetails: includeProcessDetails)
                 }
+                pruneCMUXScopeCache(activeKeys: activeScopeKeys)
+                return processInfos
             }
 
             guard errno == ENOMEM else {
@@ -292,7 +296,7 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
         let path = includeProcessDetails ? processPath(pid: pid) : nil
         let rawTTY = Int64(kinfo.kp_eproc.e_tdev)
         let ttyDevice = rawTTY > 0 ? rawTTY : nil
-        let cmuxScope = cmuxScope(for: pid)
+        let cmuxScope = cachedCMUXScope(for: pid, cacheKey: scopeCacheKey(from: kinfo))
         let rawProcessGroupID = Int(kinfo.kp_eproc.e_pgid)
         let processGroupID = rawProcessGroupID > 0 ? rawProcessGroupID : nil
         let rawTerminalProcessGroupID = Int(kinfo.kp_eproc.e_tpgid)
@@ -315,7 +319,7 @@ final class CmuxTopProcessSnapshot: @unchecked Sendable {
         )
     }
 
-    private static func cmuxScope(for pid: Int) -> CmuxTopProcessScope? {
+    static func cmuxScope(for pid: Int) -> CmuxTopProcessScope? {
         guard pid > 0, pid <= Int(Int32.max) else { return nil }
 
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, Int32(pid)]

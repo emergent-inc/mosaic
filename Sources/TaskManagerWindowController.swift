@@ -257,7 +257,7 @@ final class CmuxTaskManagerModel: ObservableObject {
         var failures: [(target: String, reason: String)] = []
         for processId in survivors {
             if let reason = sendSignal(SIGKILL, toProcessId: processId) {
-                failures.append(("PID \(processId)", reason))
+                failures.append((processTargetLabel(processId), reason))
             }
         }
 
