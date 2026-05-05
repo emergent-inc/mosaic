@@ -142,18 +142,16 @@ final class CmuxTaskManagerModel: ObservableObject {
         guard confirmKillProcess(row: row, processIds: processIds) else { return }
 
         var failures: [(target: String, reason: String)] = []
-        let gracefulProcessGroupIds = row.gracefulProcessGroupIds
-        if gracefulProcessGroupIds.isEmpty {
-            for processId in row.gracefulProcessIds {
-                if let reason = sendSignal(SIGTERM, toProcessId: processId) {
-                    failures.append(("PID \(processId)", reason))
-                }
+        for processGroupId in row.gracefulProcessGroupIds {
+            if let reason = sendSignal(SIGTERM, toProcessGroupId: processGroupId) {
+                failures.append(("process group \(processGroupId)", reason))
             }
-        } else {
-            for processGroupId in gracefulProcessGroupIds {
-                if let reason = sendSignal(SIGTERM, toProcessGroupId: processGroupId) {
-                    failures.append(("process group \(processGroupId)", reason))
-                }
+        }
+
+        let gracefulProcessIds = Array(Set(row.gracefulProcessIds + processIds)).sorted()
+        for processId in gracefulProcessIds {
+            if let reason = sendSignal(SIGTERM, toProcessId: processId) {
+                failures.append(("PID \(processId)", reason))
             }
         }
 
