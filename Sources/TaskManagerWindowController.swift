@@ -114,7 +114,7 @@ private final class CmuxTaskManagerModel: ObservableObject {
     func viewBestTarget(for row: CmuxTaskManagerRow) {
         if row.canViewTerminal {
             viewTerminal(for: row)
-        } else {
+        } else if row.canViewWorkspace {
             viewWorkspace(for: row)
         }
     }
@@ -122,7 +122,13 @@ private final class CmuxTaskManagerModel: ObservableObject {
     func viewWorkspace(for row: CmuxTaskManagerRow) {
         guard let workspaceId = row.workspaceId,
               let manager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId) else { return }
-        manager.focusTab(workspaceId, suppressFlash: true)
+#if DEBUG
+        cmuxDebugLog(
+            "taskManager.focus.workspace workspace=\(workspaceId.uuidString) " +
+            "surface=\(row.surfaceId?.uuidString ?? "nil") row=\(row.id)"
+        )
+#endif
+        manager.focusTab(workspaceId, surfaceId: row.surfaceId, suppressFlash: true)
         flashSelection(workspaceId: workspaceId, surfaceId: row.surfaceId)
     }
 
@@ -130,6 +136,12 @@ private final class CmuxTaskManagerModel: ObservableObject {
         guard let workspaceId = row.workspaceId,
               let terminalSurfaceId = row.terminalSurfaceId,
               let manager = AppDelegate.shared?.tabManagerFor(tabId: workspaceId) else { return }
+#if DEBUG
+        cmuxDebugLog(
+            "taskManager.focus.terminal workspace=\(workspaceId.uuidString) " +
+            "surface=\(terminalSurfaceId.uuidString) row=\(row.id)"
+        )
+#endif
         manager.focusTab(workspaceId, surfaceId: terminalSurfaceId, suppressFlash: true)
         flashSelection(workspaceId: workspaceId, surfaceId: terminalSurfaceId)
     }
@@ -318,15 +330,42 @@ private struct CmuxTaskManagerView: View {
                         CmuxTaskManagerRowView(
                             row: row,
                             onViewWorkspace: {
+#if DEBUG
+                                cmuxDebugLog(
+                                    "taskManager.ui.viewWorkspace row=\(row.id) " +
+                                    "workspace=\(row.workspaceId?.uuidString ?? "nil") " +
+                                    "surface=\(row.surfaceId?.uuidString ?? "nil")"
+                                )
+#endif
                                 model.viewWorkspace(for: row)
                             },
                             onViewTerminal: {
+#if DEBUG
+                                cmuxDebugLog(
+                                    "taskManager.ui.viewTerminal row=\(row.id) " +
+                                    "workspace=\(row.workspaceId?.uuidString ?? "nil") " +
+                                    "surface=\(row.terminalSurfaceId?.uuidString ?? "nil")"
+                                )
+#endif
                                 model.viewTerminal(for: row)
                             },
                             onKillProcess: {
+#if DEBUG
+                                cmuxDebugLog(
+                                    "taskManager.ui.killProcess row=\(row.id) " +
+                                    "pids=\(row.killableProcessIds.map(String.init).joined(separator: ","))"
+                                )
+#endif
                                 model.killProcess(for: row)
                             },
                             onActivate: {
+#if DEBUG
+                                cmuxDebugLog(
+                                    "taskManager.ui.activate row=\(row.id) " +
+                                    "workspace=\(row.workspaceId?.uuidString ?? "nil") " +
+                                    "terminal=\(row.terminalSurfaceId?.uuidString ?? "nil")"
+                                )
+#endif
                                 model.viewBestTarget(for: row)
                             }
                         )
