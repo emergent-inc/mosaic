@@ -7057,10 +7057,11 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     // For NSTextInputClient - accumulates text during key events
-    private var keyTextAccumulator: [String]? = nil
+    private(set) var keyTextAccumulator: [String]? = nil
     private var markedText = NSMutableAttributedString()
     private var lastPerformKeyEvent: TimeInterval?
-    private var externalCommittedTextDepth = 0
+    private(set) var externalCommittedTextDepth = 0
+    var numpadIMECommitDeduplicator = NumpadIMECommitDeduplicator()
     private struct SelectionSnapshot {
         let range: NSRange
         let string: String
@@ -7640,6 +7641,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                    !suppressShiftSpaceFallbackText,
                    !suppressComposingFallbackText {
                     shouldRefreshAfterTextInput = true
+                    var handled = false
 #if DEBUG
                     let sendTimingStart = CmuxTypingTiming.start()
                     let ghosttySendStart = ProcessInfo.processInfo.systemUptime
@@ -7647,7 +7649,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     text.withCString { ptr in
                         keyEvent.text = ptr
                         #if DEBUG
-                        _ = sendTimedGhosttyKey(
+                        handled = sendTimedGhosttyKey(
                             surface,
                             keyEvent,
                             path: "terminal.keyDown.ghosttySend",
@@ -7655,8 +7657,11 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                             extra: "textBytes=\(text.utf8.count)"
                         )
                         #else
-                        _ = sendGhosttyKey(surface, keyEvent)
+                        handled = sendGhosttyKey(surface, keyEvent)
                         #endif
+                    }
+                    if handled {
+                        notePotentialDeferredNumpadIMECommit(text: text, event: event)
                     }
 #if DEBUG
                     ghosttySendMs += (ProcessInfo.processInfo.systemUptime - ghosttySendStart) * 1000.0
@@ -7664,7 +7669,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                         path: "terminal.keyDown.ghosttySend.total",
                         startedAt: sendTimingStart,
                         event: event,
-                        extra: "textBytes=\(text.utf8.count)"
+                        extra: "handled=\(handled ? 1 : 0) textBytes=\(text.utf8.count)"
                     )
 #endif
                 } else {
@@ -7947,18 +7952,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard let chars = (event.characters(byApplyingModifiers: []) ?? event.charactersIgnoringModifiers ?? event.characters),
               let scalar = chars.unicodeScalars.first else { return 0 }
         return scalar.value
-    }
-
-    private func isControlCharacterScalar(_ scalar: UnicodeScalar) -> Bool {
-        scalar.value < 0x20 || scalar.value == 0x7F
-    }
-
-    private func shouldSendText(_ text: String) -> Bool {
-        guard !text.isEmpty else { return false }
-        if text.count == 1, let scalar = text.unicodeScalars.first {
-            return !isControlCharacterScalar(scalar)
-        }
-        return true
     }
 
     /// If AppKit consumed Shift+Space for IME/input-source switching, interpretKeyEvents
@@ -12937,6 +12930,10 @@ extension GhosttyNSView: NSTextInputClient {
         // Some IME/input-method paths call insertText with an empty payload to
         // flush state. There is no terminal text to send in that case.
         guard !chars.isEmpty else { return }
+
+        if shouldSuppressDeferredNumpadIMECommit(chars) {
+            return
+        }
 
 #if DEBUG
         if NSApp.currentEvent == nil {
