@@ -11,6 +11,10 @@ private struct CmuxTopProcessScopeCacheValue {
     let scope: CmuxTopProcessScope
 }
 
+// CmuxTopProcessSnapshot.capture is intentionally synchronous because it backs
+// both async task-manager sampling and sync v2 system.top socket handling. Keep
+// this tiny lock isolated to dictionary reads/writes; procargs/sysctl work must
+// happen outside the critical section.
 private let cmuxTopScopeCacheLock = NSLock()
 private var cmuxTopScopeCache: [CmuxTopProcessScopeCacheKey: CmuxTopProcessScopeCacheValue] = [:]
 
