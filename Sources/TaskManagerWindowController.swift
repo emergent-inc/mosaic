@@ -145,23 +145,23 @@ final class CmuxTaskManagerModel: ObservableObject {
         var sentGracefulSignal = false
         for processGroupId in row.gracefulProcessGroupIds {
             if let reason = sendSignal(SIGTERM, toProcessGroupId: processGroupId) {
-                failures.append(("process group \(processGroupId)", reason))
+                failures.append((processGroupTargetLabel(processGroupId), reason))
             } else {
                 sentGracefulSignal = true
             }
         }
 
-        let gracefulProcessIds = Array(Set(row.gracefulProcessIds + processIds)).sorted()
-        for processId in gracefulProcessIds {
+        let escalationProcessIds = Array(Set(row.gracefulProcessIds + processIds)).sorted()
+        for processId in escalationProcessIds {
             if let reason = sendSignal(SIGTERM, toProcessId: processId) {
-                failures.append(("PID \(processId)", reason))
+                failures.append((processTargetLabel(processId), reason))
             } else {
                 sentGracefulSignal = true
             }
         }
 
         if failures.isEmpty {
-            scheduleForceKillIfNeeded(processIds: processIds)
+            scheduleForceKillIfNeeded(processIds: escalationProcessIds)
         } else {
             let detail = failures
                 .map { "\($0.target): \($0.reason)" }
@@ -171,7 +171,7 @@ final class CmuxTaskManagerModel: ObservableObject {
                 defaultValue: "Unable to kill process: %@"
             ), detail)
             if sentGracefulSignal {
-                scheduleForceKillIfNeeded(processIds: processIds)
+                scheduleForceKillIfNeeded(processIds: escalationProcessIds)
             } else {
                 refresh(force: true)
             }
@@ -201,6 +201,20 @@ final class CmuxTaskManagerModel: ObservableObject {
             cancelButton.keyEquivalent = "\u{1b}"
         }
         return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func processGroupTargetLabel(_ processGroupId: Int) -> String {
+        String(format: String(
+            localized: "taskManager.killProcess.target.processGroup",
+            defaultValue: "process group %lld"
+        ), Int64(processGroupId))
+    }
+
+    private func processTargetLabel(_ processId: Int) -> String {
+        String(format: String(
+            localized: "taskManager.killProcess.target.pid",
+            defaultValue: "PID %lld"
+        ), Int64(processId))
     }
 
     private func sendSignal(_ signal: Int32, toProcessId processId: Int) -> String? {

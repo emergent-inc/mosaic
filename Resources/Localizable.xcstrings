@@ -110635,6 +110635,20 @@
         "ja": { "stringUnit": { "state": "translated", "value": "プロセスを終了できません: %@" } }
       }
     },
+    "taskManager.killProcess.target.processGroup": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "process group %lld" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "プロセスグループ %lld" } }
+      }
+    },
+    "taskManager.killProcess.target.pid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "PID %lld" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "PID %lld" } }
+      }
+    },
     "taskManager.updated.never": {
       "extractionState": "manual",
       "localizations": {
