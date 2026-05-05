@@ -132,6 +132,15 @@ extension TerminalController {
         var rootPIDs: Set<Int> = []
         var surfacePIDs: Set<Int> = []
 
+        if let surfaceID = v2TopUUID(surface["id"]) {
+            let cmuxPIDs = processSnapshot.pids(forCMUXSurfaceID: surfaceID)
+            surface["cmux_process_pids"] = cmuxPIDs.sorted()
+            rootPIDs.formUnion(cmuxPIDs)
+            surfacePIDs.formUnion(processSnapshot.expandedPIDs(rootPIDs: cmuxPIDs))
+        } else {
+            surface["cmux_process_pids"] = []
+        }
+
         if let ttyName = surface["tty"] as? String {
             let ttyPIDs = processSnapshot.pids(forTTYName: ttyName)
             surface["tty_process_pids"] = ttyPIDs.sorted()
@@ -215,6 +224,16 @@ extension TerminalController {
         }
         if let value = raw as? String {
             return Int(value.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return nil
+    }
+
+    nonisolated func v2TopUUID(_ raw: Any?) -> UUID? {
+        if let value = raw as? UUID {
+            return value
+        }
+        if let value = raw as? String {
+            return UUID(uuidString: value.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         return nil
     }
