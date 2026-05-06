@@ -80,7 +80,7 @@ def main() -> int:
             if "app" not in finding["keys"] or "schemaVersion" not in finding["keys"]:
                 failures.append(f"valid JSONC keys missing: {ok_result.stdout}")
 
-        config_path.write_text("{\n", encoding="utf-8")
+        config_path.write_text('{"agent": true,,}\n', encoding="utf-8")
         bad_result = run_cli(cli_path, ["--json", "config", "doctor", "--path", str(config_path)], home)
         if bad_result.returncode == 0:
             failures.append("invalid JSON returned success")
