@@ -2070,7 +2070,7 @@ struct CMUXCLI {
            configCommandDoesNotNeedSocket(commandArgs) {
             try runConfigCommand(
                 commandArgs: commandArgs,
-                socketPath: CLISocketPathResolver.defaultSocketPath,
+                socketPath: nil,
                 explicitPassword: socketPasswordArg,
                 jsonOutput: jsonOutput
             )
@@ -19951,7 +19951,7 @@ export default CMUXSessionRestore;
           welcome
           docs [settings|shortcuts|api|browser|agents|dock]
           settings [open|path|docs|target]
-          config <doctor|path|docs|reload>
+          config <doctor|check|validate|path|paths|docs|documentation|reload>
           shortcuts
           disable-browser | enable-browser | browser-status
           restore-session

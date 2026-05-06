@@ -14,13 +14,13 @@ from typing import Any
 
 def resolve_cmux_cli() -> str:
     explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
-    if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
+    if explicit and os.path.isfile(explicit) and os.access(explicit, os.X_OK):
         return explicit
 
     candidates = [
         path
         for path in glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux"))
-        if os.path.exists(path) and os.access(path, os.X_OK)
+        if os.path.isfile(path) and os.access(path, os.X_OK)
     ]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
@@ -161,6 +161,21 @@ def main() -> int:
                     failures.append(f"invalid JSON did not report an error: {bad_result.stdout}")
             if "cmux config doctor found 1 error(s)" not in bad_result.stderr:
                 failures.append(f"invalid JSON stderr was unexpected: {bad_result.stderr}")
+
+        directory_path = home / "config-directory"
+        directory_path.mkdir()
+        directory_result = run_cli(cli_path, ["--json", "config", "doctor", "--path", str(directory_path)], home)
+        if directory_result.returncode == 0:
+            failures.append("directory path returned success")
+        else:
+            payload = parse_json_output(directory_result.stdout, "directory path", failures)
+            if payload is not None:
+                finding = first_finding(payload, "directory path", directory_result.stdout, failures)
+                if finding is not None:
+                    if payload.get("ok") is not False or finding.get("status") != "error":
+                        failures.append(f"directory path did not report an error: {directory_result.stdout}")
+                    if finding.get("message") != "path is a directory, expected a file":
+                        failures.append(f"directory path message was unexpected: {directory_result.stdout}")
 
         positional_result = run_cli(cli_path, ["config", "doctor", str(config_path)], home, cwd=workspace)
         if positional_result.returncode == 0:

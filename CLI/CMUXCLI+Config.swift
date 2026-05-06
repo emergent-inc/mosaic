@@ -3,7 +3,7 @@ import Foundation
 extension CMUXCLI {
     func runConfigCommand(
         commandArgs: [String],
-        socketPath: String,
+        socketPath: String?,
         explicitPassword: String?,
         jsonOutput: Bool
     ) throws {
@@ -40,6 +40,9 @@ extension CMUXCLI {
             guard args.count == 1 else {
                 throw CLIError(message: "Usage: cmux config reload")
             }
+            guard let socketPath else {
+                throw CLIError(message: "cmux config reload requires a socket-backed cmux command path")
+            }
             let client = try connectClient(
                 socketPath: socketPath,
                 explicitPassword: explicitPassword,
@@ -65,15 +68,15 @@ extension CMUXCLI {
 
     func configUsage() -> String {
         return """
-        Usage: cmux config <doctor|path|docs|reload>
+        Usage: cmux config <doctor|check|validate|path|paths|docs|documentation|reload>
 
         Inspect cmux.json, print configuration references, or reload the running app.
 
         Subcommands:
-          doctor [--path <path>]   Validate JSONC syntax for cmux config files.
-          path                     Print cmux.json paths, docs URL, and schema URL.
-          docs                     Print the same output as `cmux docs settings`.
-          reload                   Alias for `cmux reload-config`.
+          doctor|check|validate [--path <path>]   Validate JSONC syntax for cmux config files.
+          path|paths                              Print cmux.json paths, docs URL, and schema URL.
+          docs|documentation                      Print the same output as `cmux docs settings`.
+          reload                                  Alias for `cmux reload-config`.
 
         Config files:
           \(Self.primarySettingsDisplayPath)
@@ -312,7 +315,8 @@ extension CMUXCLI {
 
     private func configDoctorFinding(for target: ConfigDoctorTarget) -> ConfigDoctorFinding {
         let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: target.path) else {
+        var isDirectory = ObjCBool(false)
+        guard fileManager.fileExists(atPath: target.path, isDirectory: &isDirectory) else {
             let message = target.missingIsError
                 ? "file not found"
                 : "not found; cmux will use defaults until this file exists"
@@ -322,6 +326,17 @@ extension CMUXCLI {
                 path: target.path,
                 status: target.missingIsError ? "error" : "missing",
                 message: message,
+                keys: [],
+                byteCount: nil
+            )
+        }
+        if isDirectory.boolValue {
+            return ConfigDoctorFinding(
+                label: target.label,
+                displayPath: target.displayPath,
+                path: target.path,
+                status: "error",
+                message: "path is a directory, expected a file",
                 keys: [],
                 byteCount: nil
             )
@@ -436,11 +451,14 @@ extension CMUXCLI {
                 return trimmed
             }
         }
+        let described = String(describing: error).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !described.isEmpty {
+            return described
+        }
         let localized = nsError.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         if !localized.isEmpty {
             return localized
         }
-        let described = String(describing: error).trimmingCharacters(in: .whitespacesAndNewlines)
-        return described.isEmpty ? "unknown config parse error" : described
+        return "unknown config parse error"
     }
 }
