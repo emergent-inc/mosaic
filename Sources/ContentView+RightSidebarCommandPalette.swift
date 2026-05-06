@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 extension ContentView {
     static func commandPaletteShortcutAction(forCommandID commandId: String) -> KeyboardShortcutSettings.Action? {
@@ -69,6 +69,8 @@ extension ContentView {
             return .useSelectionForFind
         case "palette.toggleSplitZoom":
             return .toggleSplitZoom
+        case "palette.equalizeSplits":
+            return .equalizeSplits
         case "palette.triggerFlash":
             return .triggerFlash
         default:
@@ -81,7 +83,7 @@ extension ContentView {
             { _ in value }
         }
 
-        return RightSidebarMode.allCases.map { mode in
+        return RightSidebarMode.availableModes().map { mode in
             CommandPaletteCommandContribution(
                 commandId: Self.commandPaletteRightSidebarModeCommandID(mode),
                 title: constant(mode.shortcutAction.label),
@@ -106,10 +108,27 @@ extension ContentView {
         }
     }
 
+    func handleCommandPaletteRightSidebarMode(_ mode: RightSidebarMode, observedWindow: NSWindow?) {
+        guard mode.isAvailable() else {
+            NSSound.beep()
+            return
+        }
+        if AppDelegate.shared?.focusRightSidebarInActiveMainWindow(
+            mode: mode,
+            focusFirstItem: true,
+            preferredWindow: observedWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
+        ) != true {
+            fileExplorerState.setVisible(true)
+            if fileExplorerState.mode != mode {
+                fileExplorerState.mode = mode
+            }
+        }
+    }
+
     private static func commandPaletteRightSidebarModeShortcutAction(
         forCommandID commandID: String
     ) -> KeyboardShortcutSettings.Action? {
-        RightSidebarMode.allCases.first { mode in
+        RightSidebarMode.availableModes().first { mode in
             Self.commandPaletteRightSidebarModeCommandID(mode) == commandID
         }?.shortcutAction
     }

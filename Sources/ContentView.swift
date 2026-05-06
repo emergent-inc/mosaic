@@ -30,19 +30,24 @@ enum DragOverlayRoutingPolicy {
     }
 
     static func hasFileURL(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
-        guard let pasteboardTypes else { return false }
-        return pasteboardTypes.contains(.fileURL)
+        PasteboardFileURLReader.hasFileURLType(pasteboardTypes ?? [])
     }
 
     static func shouldCaptureFileDropDestination(
         pasteboardTypes: [NSPasteboard.PasteboardType]?,
         hasLocalDraggingSource: Bool
     ) -> Bool {
-        // File URL drops are routed at the Bonsplit pane layer so center/edge
-        // drop targets stay visible and the host can open previews or splits.
-        _ = hasLocalDraggingSource
+        // External Finder file drops need the stable root AppKit destination so
+        // terminal/browser panes receive their shared file insertion/upload path.
+        // Internal cmux drag payloads keep their dedicated pane routing.
         guard hasFileURL(pasteboardTypes) else { return false }
-        return false
+        guard !hasFilePreviewTransfer(pasteboardTypes),
+              !hasBonsplitTabTransfer(pasteboardTypes),
+              !hasSidebarTabReorder(pasteboardTypes) else {
+            return false
+        }
+        guard !hasLocalDraggingSource else { return false }
+        return true
     }
 
     static func shouldCaptureFileDropDestination(
@@ -148,7 +153,7 @@ final class FileDropOverlayView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        registerForDraggedTypes([.fileURL])
+        registerForDraggedTypes(Array(PasteboardFileURLReader.fileURLPasteboardTypes))
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) not implemented") }
@@ -493,7 +498,7 @@ final class FileDropOverlayView: NSView {
 
         let interestingTypes = types.filter { type in
             let raw = type.rawValue
-            return raw == NSPasteboard.PasteboardType.fileURL.rawValue
+            return PasteboardFileURLReader.fileURLPasteboardTypes.contains(type)
                 || raw == DragOverlayRoutingPolicy.bonsplitTabTransferType.rawValue
                 || raw == DragOverlayRoutingPolicy.sidebarTabReorderType.rawValue
                 || raw.contains("public.text")
@@ -510,7 +515,7 @@ final class FileDropOverlayView: NSView {
 
     private func hasRelevantDragTypes(_ types: [NSPasteboard.PasteboardType]?) -> Bool {
         guard let types else { return false }
-        return types.contains(.fileURL)
+        return DragOverlayRoutingPolicy.hasFileURL(types)
             || types.contains(DragOverlayRoutingPolicy.bonsplitTabTransferType)
             || types.contains(DragOverlayRoutingPolicy.sidebarTabReorderType)
     }
@@ -1692,6 +1697,7 @@ struct ContentView: View {
     private var commandPaletteRenameSelectAllOnFocus = CommandPaletteRenameSelectionSettings.defaultSelectAllOnFocus
     @AppStorage(CommandPaletteSwitcherSearchSettings.searchAllSurfacesKey)
     private var commandPaletteSearchAllSurfaces = CommandPaletteSwitcherSearchSettings.defaultSearchAllSurfaces
+    @AppStorage(AppearanceSettings.appearanceModeKey) private var appearanceMode = AppearanceSettings.defaultMode.rawValue
     @State private var commandPaletteShouldFocusWorkspaceDescriptionEditor = false
     @FocusState private var isCommandPaletteSearchFocused: Bool
     @FocusState private var isCommandPaletteRenameFocused: Bool
@@ -2798,7 +2804,7 @@ struct ContentView: View {
         _ = titlebarThemeGeneration
         return WindowAppearanceSnapshot.current(
             unifySurfaceBackdrops: sidebarMatchTerminalBackground,
-            colorScheme: colorScheme,
+            colorScheme: AppearanceSettings.colorScheme(for: appearanceMode, fallback: colorScheme),
             sidebarMaterial: sidebarMaterial,
             sidebarBlendMode: sidebarBlendMode,
             sidebarState: sidebarStateSetting,
@@ -3831,7 +3837,7 @@ struct ContentView: View {
             installFileDropOverlayWhenReady(on: window, tabManager: tabManager)
         }))
 
-        return view
+        return AnyView(view.cmuxAppearanceColorScheme(appearanceMode))
     }
 
     private func reconcileMountedWorkspaceIds(tabs: [Workspace]? = nil, selectedId: UUID? = nil) {
@@ -4459,22 +4465,18 @@ struct ContentView: View {
         let commandPaletteListMaxHeight: CGFloat = 450
         let commandPaletteRowHeight: CGFloat = 24
         let commandPaletteEmptyStateHeight: CGFloat = 44
-        let commandPaletteListContentHeight = visibleResults.isEmpty
-            ? commandPaletteEmptyStateHeight
-            : CGFloat(visibleResults.count) * commandPaletteRowHeight
+        let commandPaletteListContentHeight = visibleResults.isEmpty ? commandPaletteEmptyStateHeight : CGFloat(visibleResults.count) * commandPaletteRowHeight
         let commandPaletteListHeight = min(commandPaletteListMaxHeight, commandPaletteListContentHeight)
         return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 CommandPaletteSearchFieldRepresentable(
                     placeholder: commandPaletteSearchPlaceholder,
                     text: $commandPaletteQuery,
-                    isFocused: Binding(
-                        get: { isCommandPaletteSearchFocused },
-                        set: { isCommandPaletteSearchFocused = $0 }
-                    ),
+                    isFocused: Binding(get: { isCommandPaletteSearchFocused }, set: { isCommandPaletteSearchFocused = $0 }),
                     onSubmit: runSelectedCommandPaletteResult,
                     onEscape: { dismissCommandPalette() },
-                    onMoveSelection: moveCommandPaletteSelection(by:)
+                    onMoveSelection: moveCommandPaletteSelection(by:),
+                    onUnhandledNavigationKey: forwardCommandPaletteUnhandledNavigationKeyToFocusedTerminal
                 )
                 .frame(maxWidth: .infinity)
             }
@@ -4856,8 +4858,7 @@ struct ContentView: View {
         }
     }
 
-    // Keep navigation on the AppKit field editor so deleting the ">" prefix
-    // cannot drop the palette's arrow-key handlers during the scope switch.
+    // Keep navigation on the AppKit field editor so scope switches preserve arrow-key handlers.
     private struct CommandPaletteSearchFieldRepresentable: NSViewRepresentable {
         let placeholder: String
         @Binding var text: String
@@ -4865,22 +4866,21 @@ struct ContentView: View {
         let onSubmit: () -> Void
         let onEscape: () -> Void
         let onMoveSelection: (Int) -> Void
+        let onUnhandledNavigationKey: (NSEvent) -> Bool
 
-        final class Coordinator: NSObject, NSTextFieldDelegate {
+        @MainActor final class Coordinator: NSObject, NSTextFieldDelegate {
             var parent: CommandPaletteSearchFieldRepresentable
             var isProgrammaticMutation = false
             weak var parentField: CommandPaletteNativeTextField?
             var pendingFocusRequest: Bool?
-            var editorTextDidChangeObserver: NSObjectProtocol?
+            nonisolated(unsafe) var editorTextDidChangeObserver: NSObjectProtocol?
             weak var observedEditor: NSTextView?
 
             init(parent: CommandPaletteSearchFieldRepresentable) {
                 self.parent = parent
             }
 
-            deinit {
-                detachEditorTextDidChangeObserver()
-            }
+            deinit { editorTextDidChangeObserver.map(NotificationCenter.default.removeObserver) }
 
             func controlTextDidChange(_ obj: Notification) {
                 guard !isProgrammaticMutation else { return }
@@ -4905,13 +4905,13 @@ struct ContentView: View {
             }
 
             func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+                if let delta = commandPaletteSelectionDeltaForFieldEditorCommand(commandSelector, event: NSApp.currentEvent) {
+                    parent.onMoveSelection(delta); return true
+                }
+
                 switch commandSelector {
-                case #selector(NSResponder.moveDown(_:)):
-                    parent.onMoveSelection(1)
-                    return true
-                case #selector(NSResponder.moveUp(_:)):
-                    parent.onMoveSelection(-1)
-                    return true
+                case #selector(NSResponder.moveDown(_:)), #selector(NSResponder.moveUp(_:)):
+                    return NSApp.currentEvent.map(parent.onUnhandledNavigationKey) ?? false
                 case #selector(NSResponder.insertNewline(_:)):
                     guard !textView.hasMarkedText() else { return false }
                     parent.onSubmit()
@@ -4931,7 +4931,9 @@ struct ContentView: View {
                 if let delta = commandPaletteSelectionDeltaForKeyboardNavigation(
                     flags: event.modifierFlags,
                     chars: event.characters ?? event.charactersIgnoringModifiers ?? "",
-                    keyCode: event.keyCode
+                    keyCode: event.keyCode,
+                    nextShortcut: KeyboardShortcutSettings.shortcutIfBound(for: .commandPaletteNext),
+                    previousShortcut: KeyboardShortcutSettings.shortcutIfBound(for: .commandPalettePrevious)
                 ) {
                     parent.onMoveSelection(delta)
                     return true
@@ -4968,9 +4970,8 @@ struct ContentView: View {
                     forName: NSText.didChangeNotification,
                     object: editor,
                     queue: .main
-                ) { [weak self] _ in
-                    guard let self, !self.isProgrammaticMutation else { return }
-                    self.parent.text = editor.string
+                ) { [weak self, weak editor] _ in
+                    MainActor.assumeIsolated { if let self, !self.isProgrammaticMutation, let editor { self.parent.text = editor.string } }
                 }
             }
 
@@ -6670,11 +6671,6 @@ struct ContentView: View {
         for contribution: CommandPaletteCommandContribution,
         context: CommandPaletteContextSnapshot
     ) -> String? {
-        // Preserve browser reload semantics for Cmd+R when a browser tab is focused.
-        if contribution.commandId == "palette.renameTab",
-           context.bool(CommandPaletteContextKeys.panelIsBrowser) {
-            return nil
-        }
         if let configuredShortcut = cmuxConfigStore.resolvedAction(id: contribution.commandId)?.shortcut {
             return configuredShortcut.displayString
         }
@@ -6683,7 +6679,12 @@ struct ContentView: View {
             return configuredShortcut.displayString
         }
         if let action = Self.commandPaletteShortcutAction(forCommandID: contribution.commandId) {
-            return KeyboardShortcutSettings.shortcut(for: action).displayString
+            let shortcut = KeyboardShortcutSettings.shortcut(for: action)
+            guard !shortcut.isUnbound else { return nil }
+            guard action.shortcutContext.isAvailable(focusedBrowserPanel: context.bool(CommandPaletteContextKeys.panelIsBrowser), rightSidebarFocused: false) else {
+                return nil
+            }
+            return shortcut.displayString
         }
         if let staticShortcut = commandPaletteStaticShortcutHint(for: contribution.commandId) {
             return staticShortcut
@@ -7032,14 +7033,7 @@ struct ContentView: View {
                 when: { $0.bool(CommandPaletteContextKeys.workspaceMinimalModeEnabled) }
             )
         )
-        contributions.append(
-            CommandPaletteCommandContribution(
-                commandId: "palette.triggerFlash",
-                title: constant(String(localized: "command.triggerFlash.title", defaultValue: "Flash Focused Panel")),
-                subtitle: constant(String(localized: "command.triggerFlash.subtitle", defaultValue: "View")),
-                keywords: ["flash", "highlight", "focus", "panel"]
-            )
-        )
+        contributions.append(contentsOf: Self.commandPaletteViewCommandContributions())
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.showNotifications",
@@ -7893,16 +7887,7 @@ struct ContentView: View {
         }
         for mode in RightSidebarMode.allCases {
             registry.register(commandId: Self.commandPaletteRightSidebarModeCommandID(mode)) {
-                if AppDelegate.shared?.focusRightSidebarInActiveMainWindow(
-                    mode: mode,
-                    focusFirstItem: true,
-                    preferredWindow: observedWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
-                ) != true {
-                    fileExplorerState.setVisible(true)
-                    if fileExplorerState.mode != mode {
-                        fileExplorerState.mode = mode
-                    }
-                }
+                handleCommandPaletteRightSidebarMode(mode, observedWindow: observedWindow)
             }
         }
         registry.register(commandId: "palette.toggleMatchTerminalBackground") {
@@ -7914,9 +7899,7 @@ struct ContentView: View {
         registry.register(commandId: "palette.disableMinimalMode") {
             workspacePresentationMode = WorkspacePresentationModeSettings.Mode.standard.rawValue
         }
-        registry.register(commandId: "palette.triggerFlash") {
-            tabManager.triggerFocusFlash()
-        }
+        registerViewCommandHandlers(&registry)
         registry.register(commandId: "palette.showNotifications") {
             AppDelegate.shared?.toggleNotificationsPopover(animated: false)
         }
@@ -8223,10 +8206,10 @@ struct ContentView: View {
             }
         }
         registry.register(commandId: "palette.equalizeSplits") {
-            guard let workspace = tabManager.selectedWorkspace,
-                  tabManager.equalizeSplits(tabId: workspace.id) else {
-                NSSound.beep()
-                return
+            if let workspace = tabManager.selectedWorkspace, !tabManager.equalizeSplits(tabId: workspace.id) {
+#if DEBUG
+                cmuxDebugLog("palette.equalizeSplits result=noSplitOrFailed workspaceId=\(workspace.id)")
+#endif
             }
         }
 
@@ -8452,12 +8435,8 @@ struct ContentView: View {
         resultCount: Int
     ) -> UnitPoint? {
         guard resultCount > 0 else { return nil }
-        if selectedIndex <= 0 {
-            return UnitPoint.top
-        }
-        if selectedIndex >= resultCount - 1 {
-            return UnitPoint.bottom
-        }
+        if selectedIndex <= 0 { return UnitPoint.top }
+        if selectedIndex >= resultCount - 1 { return UnitPoint.bottom }
         return nil
     }
 
@@ -8515,6 +8494,14 @@ struct ContentView: View {
             syncCommandPaletteSelectionAnchorFromVisibleResults()
         }
         syncCommandPaletteDebugStateForObservedWindow()
+    }
+
+    private func forwardCommandPaletteUnhandledNavigationKeyToFocusedTerminal(_ event: NSEvent) -> Bool {
+        guard let target = commandPaletteRestoreFocusTarget,
+              target.intent == .terminal(.surface),
+              let workspace = tabManager.tabs.first(where: { $0.id == target.workspaceId }),
+              let terminalPanel = workspace.panels[target.panelId] as? TerminalPanel else { return false }
+        terminalPanel.hostedView.forwardKeyDownToSurface(event); return true
     }
 
     static func commandPaletteShouldPopRenameInputOnDelete(
@@ -9633,6 +9620,7 @@ private struct SidebarTabItemSettingsSnapshot: Equatable {
     let usesVerticalBranchLayout: Bool
     let showsGitBranchIcon: Bool
     let showsSSH: Bool
+    let makesPullRequestsClickable: Bool
     let openPullRequestLinksInCmuxBrowser: Bool
     let openPortLinksInCmuxBrowser: Bool
     let showsNotificationMessage: Bool
@@ -9662,6 +9650,7 @@ private struct SidebarTabItemSettingsSnapshot: Equatable {
         usesVerticalBranchLayout = SidebarBranchLayoutSettings.usesVerticalLayout(defaults: defaults)
         showsGitBranchIcon = Self.bool(defaults: defaults, key: "sidebarShowGitBranchIcon", defaultValue: false)
         showsSSH = Self.bool(defaults: defaults, key: "sidebarShowSSH", defaultValue: true)
+        makesPullRequestsClickable = SidebarPullRequestClickabilitySettings.isClickable(defaults: defaults)
         openPullRequestLinksInCmuxBrowser = BrowserLinkOpenSettings.openSidebarPullRequestLinksInCmuxBrowser(
             defaults: defaults
         )
@@ -9794,16 +9783,16 @@ struct VerticalTabsSidebar: View {
     private var sidebarMatchTerminalBackground = false
 
     private let tabRowSpacing: CGFloat = 2
-    private var workspaceScrollTopVisibilityInset: CGFloat {
-        SidebarWorkspaceListMetrics.scrollTopInset
-    }
-
     private var sidebarTitlebarInteractionHeight: CGFloat {
         MinimalModeChromeMetrics.titlebarHeight
     }
 
     private var sidebarTopScrimHeight: CGFloat {
         SidebarWorkspaceListMetrics.topScrimHeight
+    }
+
+    private var sidebarBottomScrimHeight: CGFloat {
+        SidebarWorkspaceListMetrics.bottomScrimHeight
     }
 
     private var isMinimalMode: Bool {
@@ -9906,7 +9895,7 @@ struct VerticalTabsSidebar: View {
             workspaceTerminalScrollBarHiddenById: workspaceTerminalScrollBarHiddenById
         )
 
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottomLeading) {
             workspaceScrollArea(renderContext: renderContext)
             SidebarFooter(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -9990,12 +9979,16 @@ struct VerticalTabsSidebar: View {
     }
 
     private func workspaceScrollArea(renderContext: WorkspaceListRenderContext) -> some View {
-        GeometryReader { geometryProxy in
+        let scrollInsets = SidebarWorkspaceScrollInsets.workspaceList
+        return GeometryReader { geometryProxy in
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     workspaceScrollContent(
                         renderContext: renderContext,
-                        minHeight: geometryProxy.size.height
+                        minHeight: SidebarWorkspaceScrollLayout.contentMinHeight(
+                            viewportHeight: geometryProxy.size.height,
+                            insets: scrollInsets
+                        )
                     )
                 }
                 .background(
@@ -10005,12 +9998,19 @@ struct VerticalTabsSidebar: View {
                     .frame(width: 0, height: 0)
                 )
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    Color.clear
-                        .frame(height: workspaceScrollTopVisibilityInset)
+                    Color.clear.frame(height: scrollInsets.top)
+                        .allowsHitTesting(false)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: scrollInsets.bottom)
                         .allowsHitTesting(false)
                 }
                 .overlay(alignment: .top) {
                     SidebarTopScrim(height: sidebarTopScrimHeight)
+                        .allowsHitTesting(false)
+                }
+                .overlay(alignment: .bottom) {
+                    SidebarBottomScrim(height: sidebarBottomScrimHeight)
                         .allowsHitTesting(false)
                 }
                 .overlay(alignment: .top) {
@@ -10024,7 +10024,7 @@ struct VerticalTabsSidebar: View {
                     if draggedTabId != nil, let firstWorkspaceId = renderContext.workspaceIds.first {
                         Color.clear
                             .contentShape(Rectangle())
-                            .frame(height: workspaceScrollTopVisibilityInset + 8)
+                            .frame(height: scrollInsets.top + 8)
                             .onDrop(of: SidebarTabDragPayload.dropContentTypes, delegate: SidebarTabDropDelegate(
                                 targetTabId: firstWorkspaceId,
                                 tabManager: tabManager,
@@ -12424,15 +12424,6 @@ private struct SidebarDevFooter: View {
 }
 #endif
 
-private struct SidebarTopScrim: View {
-    let height: CGFloat
-
-    var body: some View {
-        Color.clear
-            .frame(height: height)
-    }
-}
-
 private struct SidebarScrollViewResolver: NSViewRepresentable {
     let onResolve: (NSScrollView?) -> Void
 
@@ -12655,7 +12646,6 @@ struct SidebarWorkspaceSnapshotBuilder {
 }
 
 private final class SidebarTabItemContextMenuState: ObservableObject {
-    var isVisible = false
     var hasDeferredWorkspaceObservationInvalidation = false
     var pendingWorkspaceSnapshot: SidebarWorkspaceSnapshotBuilder.Snapshot?
 }
@@ -12721,7 +12711,7 @@ private struct TabItemView: View, Equatable {
     @Binding var frozenPresentation: SidebarTabItemPresentationSnapshot?
     @State private var workspaceSnapshotStorage: SidebarWorkspaceSnapshotBuilder.Snapshot?
     @StateObject private var contextMenuState = SidebarTabItemContextMenuState()
-    @State private var isHovering = false
+    @State private var rowInteractionState = SidebarWorkspaceRowInteractionState()
     @State private var rowHeight: CGFloat = 1
 
     var isMultiSelected: Bool {
@@ -12847,7 +12837,10 @@ private struct TabItemView: View, Equatable {
     }
 
     private var showCloseButton: Bool {
-        isHovering && canCloseWorkspace && !(showsModifierShortcutHints || alwaysShowShortcutHints)
+        rowInteractionState.shouldShowCloseButton(
+            canCloseWorkspace: canCloseWorkspace,
+            shortcutHintModeActive: showsModifierShortcutHints || alwaysShowShortcutHints
+        )
     }
 
     private var workspaceShortcutLabel: String? {
@@ -13164,28 +13157,24 @@ private struct TabItemView: View, Equatable {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(workspaceSnapshot.pullRequestRows) { pullRequest in
                         let pullRequestNumber = String(pullRequest.number)
-                        Button(action: {
-                            openPullRequestLink(pullRequest.url)
-                        }) {
-                            HStack(spacing: 4) {
-                                PullRequestStatusIcon(
-                                    status: pullRequest.status,
-                                    color: pullRequestForegroundColor
-                                )
-                                Text("\(pullRequest.label) #\(pullRequestNumber)")
-                                    .underline()
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Text(pullRequestStatusLabel(pullRequest.status))
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                            }
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(pullRequestForegroundColor)
-                            .opacity(pullRequest.isStale ? 0.5 : 1)
+                        let pullRequestTitle = "\(pullRequest.label) #\(pullRequestNumber)"
+                        let rowContent = HStack(spacing: 4) {
+                            PullRequestStatusIcon(status: pullRequest.status, color: pullRequestForegroundColor)
+                            Text(pullRequestTitle).underline(settings.makesPullRequestsClickable).lineLimit(1).truncationMode(.tail)
+                            Text(pullRequestStatusLabel(pullRequest.status)).lineLimit(1)
+                            Spacer(minLength: 0)
                         }
-                        .buttonStyle(.plain)
-                        .safeHelp(String(localized: "sidebar.pullRequest.openTooltip", defaultValue: "Open \(pullRequest.label) #\(pullRequestNumber)"))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(pullRequestForegroundColor)
+                        .opacity(pullRequest.isStale ? 0.5 : 1)
+                        if settings.makesPullRequestsClickable {
+                            Button(action: { openPullRequestLink(pullRequest.url) }) { rowContent }
+                                .buttonStyle(.plain)
+                                .safeHelp(String(localized: "sidebar.pullRequest.openTooltip", defaultValue: "Open \(pullRequestTitle)"))
+                                .accessibilityIdentifier("SidebarPullRequestRow")
+                        } else {
+                            rowContent.accessibilityElement(children: .combine).accessibilityIdentifier("SidebarPullRequestRow")
+                        }
                     }
                 }
             }
@@ -13249,6 +13238,9 @@ private struct TabItemView: View, Equatable {
         }
         .contentShape(Rectangle())
         .opacity(isBeingDragged ? 0.6 : 1)
+        .overlay {
+            SidebarWorkspaceRowHoverTracker(rowInteractionState: $rowInteractionState)
+        }
         .overlay {
             MiddleClickCapture {
                 #if DEBUG
@@ -13336,10 +13328,6 @@ private struct TabItemView: View, Equatable {
         .onTapGesture {
             updateSelection()
         }
-        .onHover { hovering in
-            guard !contextMenuState.isVisible else { return }
-            isHovering = hovering
-        }
         .safeHelp(workspaceSnapshot.title)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(accessibilityTitle))
@@ -13353,17 +13341,14 @@ private struct TabItemView: View, Equatable {
         .contextMenu {
             workspaceContextMenu
                 .onAppear {
-                    contextMenuState.isVisible = true
+                    rowInteractionState.contextMenuDidAppear()
                     contextMenuState.hasDeferredWorkspaceObservationInvalidation = false
                     contextMenuState.pendingWorkspaceSnapshot = nil
                     frozenPresentation = livePresentation
                 }
                 .onDisappear {
-                    contextMenuState.isVisible = false
+                    rowInteractionState.contextMenuDidDisappear()
                     frozenPresentation = nil
-                    if isHovering {
-                        isHovering = false
-                    }
                     flushDeferredWorkspaceObservationInvalidation()
                 }
         }
@@ -13375,7 +13360,7 @@ private struct TabItemView: View, Equatable {
             current: workspaceSnapshotStorage,
             next: nextSnapshot,
             force: force,
-            contextMenuVisible: contextMenuState.isVisible
+            contextMenuVisible: rowInteractionState.contextMenuVisible
         )
 
         if workspaceSnapshotStorage != decision.workspaceSnapshotStorage {
