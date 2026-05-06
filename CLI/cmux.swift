@@ -2064,6 +2064,8 @@ struct CMUXCLI {
             return
         }
 
+        // Keep no-socket config subcommands on the early path. Socket-backed
+        // config subcommands fall through to the resolved-socket dispatch below.
         if command == "config",
            configCommandDoesNotNeedSocket(commandArgs) {
             try runConfigCommand(

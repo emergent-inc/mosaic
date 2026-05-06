@@ -199,9 +199,12 @@ extension CMUXCLI {
             guard args.count == 1 else {
                 throw CLIError(message: "Usage: cmux config docs")
             }
-            if wantsJSON, let reference = docsReference(for: "settings") {
+            guard let reference = docsReference(for: "settings") else {
+                throw CLIError(message: "Settings docs reference not found.")
+            }
+            if wantsJSON {
                 print(jsonString(docsPayload(reference)))
-            } else if let reference = docsReference(for: "settings") {
+            } else {
                 printDocsReference(reference)
             }
         case "doctor", "check", "validate":
@@ -233,7 +236,8 @@ extension CMUXCLI {
     func configCommandDoesNotNeedSocket(_ commandArgs: [String]) -> Bool {
         let parsedArgs = docsSettingsArguments(commandArgs)
         let subcommand = parsedArgs.arguments.first?.lowercased() ?? "help"
-        return hasHelpRequest(beforeSeparator: parsedArgs.head) || subcommand != "reload"
+        return hasHelpRequest(beforeSeparator: parsedArgs.head) ||
+            ["help", "path", "paths", "docs", "documentation", "doctor", "check", "validate"].contains(subcommand)
     }
 
     func configUsage() -> String {
@@ -592,8 +596,7 @@ extension CMUXCLI {
             if argument.hasPrefix("-") {
                 throw CLIError(message: "Unknown config doctor option '\(argument)'")
             }
-            paths.append(argument)
-            index += 1
+            throw CLIError(message: "Unknown config doctor argument '\(argument)'. Use --path <path>.")
         }
         return ConfigDoctorOptions(paths: paths)
     }
@@ -644,16 +647,25 @@ extension CMUXCLI {
     }
 
     private func findProjectConfigPath() -> String? {
-        var current = FileManager.default.currentDirectoryPath
         let fileManager = FileManager.default
+        let rawHomePath = ProcessInfo.processInfo.environment["HOME"] ?? fileManager.homeDirectoryForCurrentUser.path
+        let homePath = URL(fileURLWithPath: rawHomePath).standardizedFileURL.path
+        var current = URL(fileURLWithPath: fileManager.currentDirectoryPath).standardizedFileURL.path
         while true {
+            if current == homePath {
+                return nil
+            }
             let candidates = [
                 ((current as NSString).appendingPathComponent(".cmux") as NSString)
                     .appendingPathComponent("cmux.json"),
                 (current as NSString).appendingPathComponent("cmux.json"),
             ]
-            for candidate in candidates where fileManager.fileExists(atPath: candidate) {
-                return URL(fileURLWithPath: candidate).standardizedFileURL.path
+            for candidate in candidates {
+                var isDirectory = ObjCBool(false)
+                if fileManager.fileExists(atPath: candidate, isDirectory: &isDirectory),
+                   !isDirectory.boolValue {
+                    return URL(fileURLWithPath: candidate).standardizedFileURL.path
+                }
             }
             let parent = (current as NSString).deletingLastPathComponent
             if parent == current {
@@ -783,11 +795,18 @@ extension CMUXCLI {
 
     private static func configDoctorErrorMessage(_ error: Error) -> String {
         let nsError = error as NSError
+        if let debug = nsError.userInfo[NSDebugDescriptionErrorKey] as? String {
+            let trimmed = debug.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
         let localized = nsError.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         if !localized.isEmpty {
             return localized
         }
-        return String(describing: error)
+        let described = String(describing: error).trimmingCharacters(in: .whitespacesAndNewlines)
+        return described.isEmpty ? "unknown config parse error" : described
     }
 
     private func settingsTargetRawValue(for rawValue: String) -> String? {

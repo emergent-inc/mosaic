@@ -292,6 +292,15 @@ Settings subcommands:
 | `settings docs` | Print the same output as `docs settings` without a socket. |
 | `settings <target>` | Open Settings to a target section. Supported aliases include `shortcuts`, `json`, `cmux-json`, `browser`, and `automation`. |
 
+Config subcommands:
+
+| Command | Contract |
+| --- | --- |
+| `config doctor [--path <file>]`, `config check`, `config validate` | Validate JSONC syntax for one or more config files. Uses default discovery when `--path` is absent. Exits 0 on success and 1 on any error. Supports `--json`. Works without a socket. |
+| `config path` | Print cmux.json paths, docs URL, schema URL, backup reminder, and reload command without a socket. |
+| `config docs` | Print the same output as `docs settings` without a socket. |
+| `config reload` | Ask the running cmux app to reload configuration. Requires a socket. |
+
 ## No-Socket Help Probes
 
 The following probes are executable contract checks. They must exit 0 and print
