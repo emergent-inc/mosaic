@@ -296,10 +296,15 @@ Config subcommands:
 
 | Command | Contract |
 | --- | --- |
-| `config doctor [--path <file>]`, `config check`, `config validate` | Validate JSONC syntax for one or more config files. Uses default discovery when `--path` is absent. Exits 0 on success and 1 on any error. Supports `--json`. Works without a socket. |
+| `config doctor [--path <file>]`, `config check`, `config validate` | Validate JSONC syntax for config files. When `--path` is absent, default discovery checks the primary config, project-level `.cmux/cmux.json` or `cmux.json`, and legacy config files. `--path <file>` may be repeated to validate multiple explicit files. Exits 0 on success and 1 on any error. Supports `--json`. Works without a socket. |
 | `config path`, `config paths` | Print cmux.json paths, docs URL, schema URL, backup reminder, and reload command without a socket. |
 | `config docs`, `config documentation` | Print the same output as `docs settings` without a socket. |
 | `config reload` | Ask the running cmux app to reload configuration. Requires a socket. |
+
+`config doctor --json` outputs an object with `ok`, `error_count`,
+`findings`, `reload_command`, `docs_url`, and `schema_url`. Each finding includes
+`label`, `display_path`, `path`, `status`, `ok`, `keys`, and, when available,
+`message` and `bytes`.
 
 ## No-Socket Help Probes
 
