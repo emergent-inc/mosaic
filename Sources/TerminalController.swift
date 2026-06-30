@@ -1149,6 +1149,78 @@ class TerminalController {
                 let payload = await CollaborationRuntime.shared.shareSelectedTerminalForAutomation()
                 return .ok(payload)
             }
+        case "agent.room.status":
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.agentRoomStatusPayload()
+                return .ok(payload)
+            }
+        case "agent.room.create":
+            let title = request.params["title"] as? String
+            let policy = request.params["delivery_policy"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.createAgentRoomForAutomation(
+                    title: title,
+                    deliveryPolicy: policy
+                )
+                return .ok(payload)
+            }
+        case "agent.room.connect_surface":
+            let roomID = request.params["room_id"] as? String
+            let surfaceID = request.params["surface_id"] as? String
+            let agentSessionID = request.params["agent_session_id"] as? String
+            let displayName = request.params["display_name"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.connectAgentRoomSurfaceForAutomation(
+                    roomID: roomID,
+                    surfaceID: surfaceID,
+                    agentSessionID: agentSessionID,
+                    displayName: displayName
+                )
+                return .ok(payload)
+            }
+        case "agent.room.disconnect_surface":
+            let roomID = request.params["room_id"] as? String
+            let surfaceID = request.params["surface_id"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.disconnectAgentRoomSurfaceForAutomation(
+                    roomID: roomID,
+                    surfaceID: surfaceID
+                )
+                return .ok(payload)
+            }
+        case "agent.room.post":
+            guard let text = request.params["text"] as? String, !text.isEmpty else {
+                return v2Result(
+                    id: request.id,
+                    .err(code: "invalid_params", message: "agent.room.post requires text", data: nil)
+                )
+            }
+            let roomID = request.params["room_id"] as? String
+            let kind = request.params["kind"] as? String
+            let fromSurfaceID = request.params["from_surface_id"] as? String
+            let targetSurfaceIDs = request.params["target_surface_ids"] as? [String] ?? []
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.postAgentRoomEventForAutomation(
+                    roomID: roomID,
+                    kind: kind,
+                    fromSurfaceID: fromSurfaceID,
+                    targetSurfaceIDs: targetSurfaceIDs,
+                    text: text
+                )
+                return .ok(payload)
+            }
+        case "agent.room.digest":
+            let roomID = request.params["room_id"] as? String
+            let surfaceID = request.params["surface_id"] as? String
+            let since = request.params["since_sequence"] as? Int
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.agentRoomDigestForAutomation(
+                    roomID: roomID,
+                    surfaceID: surfaceID,
+                    since: since
+                )
+                return .ok(payload)
+            }
         case "system.top":
             return v2Result(id: request.id, v2SystemTop(params: request.params))
         case "system.memory":
@@ -1883,6 +1955,57 @@ class TerminalController {
             return v2Ok(id: id, result: CollaborationRuntime.shared.leaveSessionForAutomation())
         case "collaboration.terminal.share_selected":
             return v2Ok(id: id, result: CollaborationRuntime.shared.shareSelectedTerminalForAutomation())
+        case "agent.room.status":
+            return v2Ok(id: id, result: CollaborationRuntime.shared.agentRoomStatusPayloadSnapshot())
+        case "agent.room.create":
+            let title = params["title"] as? String
+            let policy = params["delivery_policy"] as? String
+            return v2Result(id: id, .ok(CollaborationRuntime.shared.createAgentRoomForAutomationRequest(
+                title: title,
+                deliveryPolicy: policy
+            )))
+        case "agent.room.connect_surface":
+            let roomID = params["room_id"] as? String
+            let surfaceID = params["surface_id"] as? String
+            let agentSessionID = params["agent_session_id"] as? String
+            let displayName = params["display_name"] as? String
+            return v2Result(id: id, .ok(CollaborationRuntime.shared.connectAgentRoomSurfaceForAutomationRequest(
+                roomID: roomID,
+                surfaceID: surfaceID,
+                agentSessionID: agentSessionID,
+                displayName: displayName
+            )))
+        case "agent.room.disconnect_surface":
+            let roomID = params["room_id"] as? String
+            let surfaceID = params["surface_id"] as? String
+            return v2Result(id: id, .ok(CollaborationRuntime.shared.disconnectAgentRoomSurfaceForAutomationRequest(
+                roomID: roomID,
+                surfaceID: surfaceID
+            )))
+        case "agent.room.post":
+            guard let text = params["text"] as? String, !text.isEmpty else {
+                return v2Result(id: id, .err(code: "invalid_params", message: "agent.room.post requires text", data: nil))
+            }
+            let roomID = params["room_id"] as? String
+            let kind = params["kind"] as? String
+            let fromSurfaceID = params["from_surface_id"] as? String
+            let targetSurfaceIDs = params["target_surface_ids"] as? [String] ?? []
+            return v2Result(id: id, .ok(CollaborationRuntime.shared.postAgentRoomEventForAutomationRequest(
+                roomID: roomID,
+                kind: kind,
+                fromSurfaceID: fromSurfaceID,
+                targetSurfaceIDs: targetSurfaceIDs,
+                text: text
+            )))
+        case "agent.room.digest":
+            let roomID = params["room_id"] as? String
+            let surfaceID = params["surface_id"] as? String
+            let since = params["since_sequence"] as? Int
+            return v2Ok(id: id, result: CollaborationRuntime.shared.agentRoomDigestPayloadSnapshot(
+                roomID: roomID,
+                surfaceID: surfaceID,
+                since: since
+            ))
         // mobile.host.status/mobile.workspace.list/mobile.terminal.* (+terminal.*
         // aliases), mobile.terminal.paste/terminal.paste, and chat.sessions.dump
         // handled by ControlCommandCoordinator (bodies stay; shared with
@@ -2029,6 +2152,12 @@ class TerminalController {
             "collaboration.session.join",
             "collaboration.session.leave",
             "collaboration.terminal.share_selected",
+            "agent.room.status",
+            "agent.room.create",
+            "agent.room.connect_surface",
+            "agent.room.disconnect_surface",
+            "agent.room.post",
+            "agent.room.digest",
             "system.identify",
             "system.tree",
             "sidebar.custom.open",
