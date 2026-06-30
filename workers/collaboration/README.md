@@ -1,6 +1,6 @@
 # cmux Collaboration Relay
 
-This Worker is the Phase 1 cmux Multiplayer relay. It is deliberately small: it creates invite-token gated sessions, accepts WebSocket peers, forwards opaque collaboration frames, and drops peers that stop heartbeating.
+This Worker is the Phase 1 cmux Multiplayer relay. It is deliberately small: it creates code-gated sessions, accepts WebSocket peers, forwards opaque collaboration frames, and drops peers that stop heartbeating.
 
 ## Local Development
 
@@ -53,9 +53,8 @@ Creates an in-memory relay session and returns:
 
 ```json
 {
-  "sessionID": "ABCD-1234",
-  "sessionCode": "ABCD-1234",
-  "token": "invite-token"
+  "sessionID": "ABCDE",
+  "sessionCode": "ABCDE"
 }
 ```
 
@@ -63,7 +62,6 @@ Creates an in-memory relay session and returns:
 
 Upgrades to WebSocket. Required query parameters:
 
-- `token`: invite token returned by session creation.
 - `peerID`: stable local peer ID.
 - `displayName`: peer display name.
 - `color`: presence color.
@@ -89,6 +87,6 @@ The relay treats non-heartbeat frames as opaque JSON envelopes with a string `ty
 
 - No repository-wide file sync.
 - No Git automation.
-- No account auth or ACLs beyond the invite token.
+- No account auth or ACLs beyond the five-letter session code.
 - No NAT traversal or direct peer-to-peer transport.
 - Durable Object active memory is the session state; document content is never persisted by the relay.

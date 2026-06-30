@@ -5,7 +5,11 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.xcworkspace/xcshareddata/
+
+
 *.dmg
+workers/**/dist/
+
 # macOS
 .DS_Store
 

@@ -10,7 +10,6 @@ class FakeSessionStub {
     return {
       sessionID: sessionCode,
       sessionCode,
-      token: `token-for-${sessionCode}`,
     };
   }
 
@@ -47,11 +46,11 @@ test("join route uses session code to reach the created session object", async (
     new Request("http://relay.test/v1/collaboration/sessions", { method: "POST" }),
     env
   );
-  const created = await createResponse.json() as { sessionCode: string; token: string };
+  const created = await createResponse.json() as { sessionCode: string };
 
   const joinResponse = await collaborationFetch(
     new Request(
-      `http://relay.test/v1/collaboration/sessions/${created.sessionCode}/connect?token=${created.token}`,
+      `http://relay.test/v1/collaboration/sessions/${created.sessionCode}/connect`,
       { method: "GET" }
     ),
     env

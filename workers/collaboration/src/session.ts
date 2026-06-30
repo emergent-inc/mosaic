@@ -33,9 +33,6 @@ export class CollaborationSessionObject extends DurableObject {
       return new Response(JSON.stringify({ error: "session_not_found" }), { status: 404 });
     }
     const url = new URL(request.url);
-    if (url.searchParams.get("token") !== metadata.token) {
-      return new Response(JSON.stringify({ error: "invalid_token" }), { status: 403 });
-    }
     const peer = parsePeer({
       peerID: url.searchParams.get("peerID"),
       displayName: url.searchParams.get("displayName"),

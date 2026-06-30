@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseEnvelope, parsePeer, randomSessionCode, randomToken } from "../src/protocol";
+import { parseEnvelope, parsePeer, randomSessionCode } from "../src/protocol";
 
 test("parsePeer accepts complete peer metadata", () => {
   expect(parsePeer({ peerID: "p1", displayName: "Peer", color: "#123456" })).toEqual({
@@ -20,6 +20,5 @@ test("parseEnvelope rejects malformed or oversized frames", () => {
 });
 
 test("invite material has expected shape", () => {
-  expect(randomSessionCode()).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-  expect(randomToken()).toMatch(/^[0-9a-f]{36}$/);
+  expect(randomSessionCode()).toMatch(/^[A-Z]{5}$/);
 });

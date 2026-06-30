@@ -22,7 +22,6 @@ struct CollaborationDocumentHeaderState: Equatable {
 private struct CollaborationCreateSessionResponse: Decodable {
     let sessionID: String
     let sessionCode: String
-    let token: String
 }
 
 private struct CollaborationPeerWire: Codable {
@@ -221,7 +220,6 @@ final class CollaborationRuntime {
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
-    private(set) var inviteToken: String?
     private(set) var connectionLabel = CollaborationStrings.disconnected
     private(set) var lastErrorMessage: String?
 
@@ -255,6 +253,10 @@ final class CollaborationRuntime {
     private static func normalizedRelayURL(from value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? defaultRelayURLString : trimmed
+    }
+
+    private static func normalizedSessionCode(from value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 
     func state(for panel: any CollaborationEditablePanel) -> CollaborationDocumentHeaderState {
@@ -504,7 +506,6 @@ final class CollaborationRuntime {
             "connected": session != nil,
             "relay_url": relayURLString,
             "session_code": sessionCode ?? NSNull(),
-            "invite_token": inviteToken ?? NSNull(),
             "status": connectionLabel,
             "shared_documents": statesByDocumentID.values.filter(\.isShared).count,
             "shared_terminals": terminalStatesByID.values.filter(\.isShared).count,
@@ -524,10 +525,9 @@ final class CollaborationRuntime {
         }
         do {
             let response = try await createSession()
-            await connect(sessionID: response.sessionID, code: response.sessionCode, token: response.token)
+            await connect(sessionID: response.sessionID, code: response.sessionCode)
             var payload = statusPayload()
             payload["session_code"] = response.sessionCode
-            payload["invite_token"] = response.token
             return payload
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -550,21 +550,21 @@ final class CollaborationRuntime {
         ]
     }
 
-    func joinSessionForAutomation(relayURL: String?, code: String, token: String) async -> [String: Any] {
+    func joinSessionForAutomation(relayURL: String?, code: String) async -> [String: Any] {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
         }
-        await joinSession(code: code, token: token)
+        await joinSession(code: code)
         return statusPayload()
     }
 
-    func joinSessionForAutomationRequest(relayURL: String?, code: String, token: String) -> [String: Any] {
+    func joinSessionForAutomationRequest(relayURL: String?, code: String) -> [String: Any] {
         Task { @MainActor in
-            _ = await joinSessionForAutomation(relayURL: relayURL, code: code, token: token)
+            _ = await joinSessionForAutomation(relayURL: relayURL, code: code)
         }
         return [
             "requested": true,
-            "session_code": code,
+            "session_code": Self.normalizedSessionCode(from: code),
             "status": CollaborationStrings.connecting,
         ]
     }
@@ -592,7 +592,6 @@ final class CollaborationRuntime {
         disconnectWebSocket()
         session = nil
         sessionCode = nil
-        inviteToken = nil
         panelsByDocumentID.removeAll()
         descriptorsByDocumentID.removeAll()
         statesByDocumentID.removeAll()
@@ -645,19 +644,15 @@ final class CollaborationRuntime {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 64)
+        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
         let codeField = NSTextField(string: "")
         codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
-        let tokenField = NSTextField(string: "")
-        tokenField.placeholderString = CollaborationStrings.inviteTokenPlaceholder
         stack.addArrangedSubview(codeField)
-        stack.addArrangedSubview(tokenField)
         alert.accessoryView = stack
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let code = codeField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = tokenField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        Task { await joinSession(code: code, token: token) }
+        let code = Self.normalizedSessionCode(from: codeField.stringValue)
+        Task { await joinSession(code: code) }
     }
 
     private func presentStartDialog(thenShare panel: any CollaborationEditablePanel) {
@@ -695,20 +690,16 @@ final class CollaborationRuntime {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 64)
+        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
         let codeField = NSTextField(string: "")
         codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
-        let tokenField = NSTextField(string: "")
-        tokenField.placeholderString = CollaborationStrings.inviteTokenPlaceholder
         stack.addArrangedSubview(codeField)
-        stack.addArrangedSubview(tokenField)
         alert.accessoryView = stack
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let code = codeField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = tokenField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = Self.normalizedSessionCode(from: codeField.stringValue)
         Task {
-            await joinSession(code: code, token: token)
+            await joinSession(code: code)
             share(panel: panel)
         }
     }
@@ -716,7 +707,7 @@ final class CollaborationRuntime {
     private func createSessionAndShare(panel: any CollaborationEditablePanel) async {
         do {
             let response = try await createSession()
-            await connect(sessionID: response.sessionID, code: response.sessionCode, token: response.token)
+            await connect(sessionID: response.sessionID, code: response.sessionCode)
             share(panel: panel)
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -724,8 +715,9 @@ final class CollaborationRuntime {
         }
     }
 
-    private func joinSession(code: String, token: String) async {
-        await connect(sessionID: code, code: code, token: token)
+    private func joinSession(code: String) async {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        await connect(sessionID: normalizedCode, code: normalizedCode)
     }
 
     private func createSession() async throws -> CollaborationCreateSessionResponse {
@@ -744,10 +736,9 @@ final class CollaborationRuntime {
         return try decoder.decode(CollaborationCreateSessionResponse.self, from: data)
     }
 
-    private func connect(sessionID: String, code: String, token: String) async {
+    private func connect(sessionID: String, code: String) async {
         disconnectWebSocket()
-        sessionCode = code
-        inviteToken = token
+        sessionCode = Self.normalizedSessionCode(from: code)
         connectionLabel = CollaborationStrings.connecting
         let nextSession = CollaborationSession(
             peerID: peerIdentity.peerID,
@@ -758,7 +749,7 @@ final class CollaborationRuntime {
         session = nextSession
         observe(session: nextSession)
 
-        guard let url = connectURL(code: code, token: token) else {
+        guard let url = connectURL(code: sessionCode ?? code) else {
             connectionLabel = CollaborationStrings.connectionFailed
             await nextSession.markRelayUnavailable()
             return
@@ -774,12 +765,11 @@ final class CollaborationRuntime {
         reopenSharedTerminalsForCurrentSession()
     }
 
-    private func connectURL(code: String, token: String) -> URL? {
+    private func connectURL(code: String) -> URL? {
         guard var components = URLComponents(string: relayURLString) else { return nil }
         components.scheme = components.scheme == "https" ? "wss" : "ws"
-        components.path = "/v1/collaboration/sessions/\(code)/connect"
+        components.path = "/v1/collaboration/sessions/\(Self.normalizedSessionCode(from: code))/connect"
         components.queryItems = [
-            URLQueryItem(name: "token", value: token),
             URLQueryItem(name: "peerID", value: peerIdentity.peerID),
             URLQueryItem(name: "displayName", value: peerIdentity.displayName),
             URLQueryItem(name: "color", value: peerIdentity.color),
@@ -948,6 +938,7 @@ final class CollaborationRuntime {
             lastErrorMessage = CollaborationStrings.terminalShareFailed
             return
         }
+        panel.surface.suppressPassiveMouseInput = true
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
@@ -1475,15 +1466,11 @@ enum CollaborationStrings {
     }
 
     static var joinMessage: String {
-        String(localized: "collaboration.join.message", defaultValue: "Enter the session code and invite token from the collaborator.")
+        String(localized: "collaboration.join.message", defaultValue: "Enter the 5-letter session code from the collaborator.")
     }
 
     static var sessionCodePlaceholder: String {
-        String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "Session code")
-    }
-
-    static var inviteTokenPlaceholder: String {
-        String(localized: "collaboration.join.inviteTokenPlaceholder", defaultValue: "Invite token")
+        String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "5-letter session code")
     }
 
     static var invalidRelayURL: String {
