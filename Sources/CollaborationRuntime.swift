@@ -626,7 +626,7 @@ final class CollaborationRuntime {
         relayURLString = Self.normalizedRelayURL(from: relayField.stringValue)
         switch response {
         case .alertFirstButtonReturn:
-            Task { _ = await createSessionForAutomation(relayURL: relayURLString) }
+            Task { await createSessionAndPresentCode(relayURL: relayURLString) }
         case .alertSecondButtonReturn:
             presentJoinDialog()
         default:
@@ -704,15 +704,56 @@ final class CollaborationRuntime {
         }
     }
 
+    private func createSessionAndPresentCode(relayURL: String?) async {
+        if let relayURL {
+            relayURLString = Self.normalizedRelayURL(from: relayURL)
+        }
+        do {
+            let response = try await createSession()
+            await connect(sessionID: response.sessionID, code: response.sessionCode)
+            presentCreatedSessionDialog(code: response.sessionCode)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            connectionLabel = CollaborationStrings.connectionFailed
+        }
+    }
+
     private func createSessionAndShare(panel: any CollaborationEditablePanel) async {
         do {
             let response = try await createSession()
             await connect(sessionID: response.sessionID, code: response.sessionCode)
             share(panel: panel)
+            presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
         }
+    }
+
+    private func presentCreatedSessionDialog(code: String) {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        let alert = NSAlert()
+        alert.messageText = CollaborationStrings.sessionCreatedTitle
+        alert.informativeText = CollaborationStrings.sessionCreatedMessage(code: normalizedCode)
+        alert.addButton(withTitle: CollaborationStrings.copyCode)
+        alert.addButton(withTitle: CollaborationStrings.done)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 8
+        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 48)
+
+        let codeField = NSTextField(string: normalizedCode)
+        codeField.isEditable = false
+        codeField.isSelectable = true
+        codeField.alignment = .center
+        codeField.font = NSFont.monospacedSystemFont(ofSize: 18, weight: .semibold)
+        stack.addArrangedSubview(codeField)
+        alert.accessoryView = stack
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(normalizedCode, forType: .string)
     }
 
     private func joinSession(code: String) async {
@@ -1463,6 +1504,26 @@ enum CollaborationStrings {
 
     static var cancel: String {
         String(localized: "collaboration.action.cancel", defaultValue: "Cancel")
+    }
+
+    static var done: String {
+        String(localized: "collaboration.action.done", defaultValue: "Done")
+    }
+
+    static var copyCode: String {
+        String(localized: "collaboration.action.copyCode", defaultValue: "Copy Code")
+    }
+
+    static var sessionCreatedTitle: String {
+        String(localized: "collaboration.created.title", defaultValue: "Session Created")
+    }
+
+    static func sessionCreatedMessage(code: String) -> String {
+        let format = String(
+            localized: "collaboration.created.message",
+            defaultValue: "Share this session code with collaborators: %@"
+        )
+        return String(format: format, code)
     }
 
     static var joinMessage: String {
