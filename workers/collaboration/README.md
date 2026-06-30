@@ -53,8 +53,8 @@ Creates an in-memory relay session and returns:
 
 ```json
 {
-  "sessionID": "ABCDE",
-  "sessionCode": "ABCDE"
+  "sessionID": "5ZNHGF9P",
+  "sessionCode": "5ZNHGF9P"
 }
 ```
 
@@ -87,6 +87,6 @@ The relay treats non-heartbeat frames as opaque JSON envelopes with a string `ty
 
 - No repository-wide file sync.
 - No Git automation.
-- No account auth or ACLs beyond the five-letter session code.
+- No account auth or ACLs beyond the shareable session code.
 - No NAT traversal or direct peer-to-peer transport.
 - Durable Object active memory is the session state; document content is never persisted by the relay.

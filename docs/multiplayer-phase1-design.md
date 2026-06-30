@@ -77,7 +77,7 @@ Client to relay:
 
 ```json
 { "type": "session.create", "peer": { "peerID": "...", "displayName": "...", "color": "#7A5CFF" } }
-{ "type": "session.join", "sessionCode": "ABCD-1234", "token": "...", "peer": { "peerID": "...", "displayName": "...", "color": "#7A5CFF" } }
+{ "type": "session.join", "sessionCode": "5ZNHGF9P", "token": "...", "peer": { "peerID": "...", "displayName": "...", "color": "#7A5CFF" } }
 { "type": "peer.heartbeat" }
 { "type": "document.update", "documentID": "...", "updateID": "...", "payloadBase64": "..." }
 { "type": "document.snapshot.request", "documentID": "...", "requestID": "..." }
@@ -88,7 +88,7 @@ Client to relay:
 Relay to client:
 
 ```json
-{ "type": "session.created", "sessionID": "...", "sessionCode": "ABCD-1234", "token": "..." }
+{ "type": "session.created", "sessionID": "...", "sessionCode": "5ZNHGF9P", "token": "..." }
 { "type": "session.joined", "sessionID": "...", "peers": [...] }
 { "type": "peer.joined", "peer": {...} }
 { "type": "peer.left", "peerID": "...", "reason": "disconnect|timeout|leave" }
@@ -179,7 +179,7 @@ Phase 1 does not guarantee a peer will never see a brief revert during simultane
 
 Phase 1 does not provide durable relay persistence. Relay restart kills active sessions.
 
-Phase 1 does not provide authentication beyond the five-letter session code. Anyone with the code can join.
+Phase 1 does not provide authentication beyond the shareable session code. Anyone with the code can join.
 
 Phase 1 does not share terminal I/O, shell state, git state, diagnostics, or agent sessions.
 

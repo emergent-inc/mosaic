@@ -244,6 +244,7 @@ final class CollaborationRuntime {
     private var terminalPointerLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var terminalSelectionLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var snapshotFallbackTasks: [String: Task<Void, Never>] = [:]
+    private var isPresentingStartDialog = false
 
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
@@ -256,7 +257,21 @@ final class CollaborationRuntime {
     }
 
     private static func normalizedSessionCode(from value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let compact = value
+            .uppercased()
+            .unicodeScalars
+            .filter { scalar in
+                (65...90).contains(scalar.value) || (48...57).contains(scalar.value)
+            }
+            .map(String.init)
+            .joined()
+        if compact.count == 8 {
+            return compact
+        }
+        if compact.count == 5 {
+            return compact
+        }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 
     func state(for panel: any CollaborationEditablePanel) -> CollaborationDocumentHeaderState {
@@ -271,7 +286,7 @@ final class CollaborationRuntime {
 
     func configureOrShare(panel: any CollaborationEditablePanel) {
         if session == nil {
-            presentStartDialog(thenShare: panel)
+            scheduleStartDialog(thenShare: panel)
             return
         }
         share(panel: panel)
@@ -288,7 +303,7 @@ final class CollaborationRuntime {
 
     func configureOrShare(terminal: TerminalPanel) {
         if session == nil {
-            presentStartDialog()
+            scheduleStartDialog()
             return
         }
         if state(for: terminal).isShared {
@@ -607,6 +622,26 @@ final class CollaborationRuntime {
         terminalSelectionLastSentAtBySurfaceID.removeAll()
         connectionLabel = CollaborationStrings.disconnected
         return statusPayload()
+    }
+
+    private func scheduleStartDialog() {
+        guard !isPresentingStartDialog else { return }
+        isPresentingStartDialog = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.presentStartDialog()
+            self.isPresentingStartDialog = false
+        }
+    }
+
+    private func scheduleStartDialog(thenShare panel: any CollaborationEditablePanel) {
+        guard !isPresentingStartDialog else { return }
+        isPresentingStartDialog = true
+        DispatchQueue.main.async { [weak self, panel] in
+            guard let self else { return }
+            self.presentStartDialog(thenShare: panel)
+            self.isPresentingStartDialog = false
+        }
     }
 
     private func presentStartDialog() {
@@ -1527,11 +1562,11 @@ enum CollaborationStrings {
     }
 
     static var joinMessage: String {
-        String(localized: "collaboration.join.message", defaultValue: "Enter the 5-letter session code from the collaborator.")
+        String(localized: "collaboration.join.message", defaultValue: "Enter the session code from the collaborator.")
     }
 
     static var sessionCodePlaceholder: String {
-        String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "5-letter session code")
+        String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "Session code")
     }
 
     static var invalidRelayURL: String {
