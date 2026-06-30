@@ -445,6 +445,77 @@ CMUX_TAG=<tag> scripts/cmux-debug-cli.sh list-workspaces
 
 Do not use `/tmp/cmux-cli` for tagged dogfood.
 
+## Local Debug DMG For Trusted Sharing
+
+Use this only when a maintainer wants to hand a trusted collaborator the current tagged Debug app for quick local testing. This is not the public installable path: the DMG is unsigned and unnotarized, and macOS may still show Gatekeeper warnings on another machine.
+
+The working shape mirrors the known-openable local `v1.dmg` style:
+
+- DMG container: unsigned
+- DMG root: exactly one `.app`
+- App bundle name: keep the tagged Debug app name, for example `cmux DEV session-code-ui.app`
+- No `Applications` symlink
+- No copied app from an already-mounted DMG
+- Source app: the freshly rebuilt DerivedData product from `reload.sh`
+
+### Build The Source App
+
+Always rebuild the tag from source first:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./scripts/reload.sh --tag session-code-ui --launch
+```
+
+Use the exact `App path:` printed by `reload.sh`. Do not guess it and do not package an app copied out of `/Volumes`.
+
+### Create The DMG
+
+Stage the rebuilt `.app` as the only root entry, then create a compressed read-only image with `hdiutil`:
+
+```bash
+TAG="session-code-ui"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG}/Build/Products/Debug/cmux DEV ${TAG}.app"
+OUT_DIR="build/local-dmg"
+STAGING="$OUT_DIR/${TAG}-v1-style-staging"
+DMG="$OUT_DIR/cmux-${TAG}-v1-style.dmg"
+
+rm -rf "$STAGING" "$DMG"
+mkdir -p "$STAGING"
+ditto "$APP_PATH" "$STAGING/cmux DEV ${TAG}.app"
+hdiutil create -volname "cmux ${TAG//-/ }" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+rm -rf "$STAGING"
+shasum -a 256 "$DMG"
+```
+
+Do not run `codesign` on this local Debug DMG container. The app inside is already signed by the Xcode build; the known-compatible handoff uses an unsigned DMG container.
+
+### Verify The DMG
+
+Before sharing, detach any stale same-name volumes so Finder and LaunchServices cannot open an older mounted copy:
+
+```bash
+hdiutil info
+hdiutil detach /dev/diskXsY
+```
+
+Mount the new DMG and validate the app inside the mounted image, not just the DerivedData source app:
+
+```bash
+hdiutil attach -readonly -nobrowse "build/local-dmg/cmux-session-code-ui-v1-style.dmg"
+CMUX_INSTALLABLE_REQUIRE_NOTARIZATION=0 CMUX_INSTALLABLE_REQUIRE_SPCTL=0 \
+  ./scripts/smoke-installable-artifact.sh --channel debug \
+  "/Volumes/cmux session code ui/cmux DEV session-code-ui.app"
+open -n "/Volumes/cmux session code ui/cmux DEV session-code-ui.app"
+```
+
+The debug artifact smoke should report:
+
+```text
+installable artifact smoke OK: bundle=com.cmuxterm.app.debug.<tag> version=<version> build=<build>
+```
+
+If Finder reports `kLSNoExecutableErr`, compare the mounted app's `Info.plist` `CFBundleExecutable` with the file in `Contents/MacOS/`, verify it is executable (`0755`), detach all stale cmux volumes, and retry with a new DMG filename and volume name.
+
 ## Verification Checklist
 
 Before tagging a stable release:

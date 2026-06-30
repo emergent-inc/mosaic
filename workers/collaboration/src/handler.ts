@@ -1,4 +1,4 @@
-import { json, randomSessionCode, type SessionCreateResponse } from "./protocol";
+import { json, normalizeSessionCode, randomSessionCode, type SessionCreateResponse } from "./protocol";
 
 interface CollaborationSessionStub {
   create(sessionCode: string): Promise<SessionCreateResponse>;
@@ -27,9 +27,10 @@ export async function collaborationFetch(request: Request, env: CollaborationWor
     return json(await stub.create(sessionCode), 201);
   }
 
-  const match = url.pathname.match(/^\/v1\/collaboration\/sessions\/([A-Z]{5})\/connect$/);
+  const match = url.pathname.match(/^\/v1\/collaboration\/sessions\/([^/]+)\/connect$/);
   if (match && request.method === "GET") {
-    const sessionCode = match[1];
+    const sessionCode = normalizeSessionCode(decodeURIComponent(match[1]));
+    if (!sessionCode) return json({ error: "invalid_session_code" }, 400);
     const stub = env.COLLABORATION_SESSIONS.get(env.COLLABORATION_SESSIONS.idFromName(sessionCode));
     return stub.fetch(request);
   }

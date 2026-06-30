@@ -65,3 +65,19 @@ test("join route uses session code to reach the created session object", async (
     `/v1/collaboration/sessions/${created.sessionCode}/connect`
   );
 });
+
+test("join route normalizes pasted shareable session codes", async () => {
+  const namespace = new FakeSessionNamespace();
+  const env = {
+    COLLABORATION_SESSIONS: namespace,
+  } satisfies CollaborationWorkerEnv;
+
+  const joinResponse = await collaborationFetch(
+    new Request("http://relay.test/v1/collaboration/sessions/5znh-gf9p/connect", { method: "GET" }),
+    env
+  );
+
+  const stub = namespace.stubs.get("5ZNHGF9P");
+  expect(joinResponse.status).toBe(299);
+  expect(stub?.fetchRequests).toHaveLength(1);
+});

@@ -30,6 +30,11 @@ function webSocketURL(base: URL, sessionCode: string, peerID: string): URL {
   return url;
 }
 
+function pastedSessionCodeVariant(sessionCode: string): string {
+  if (sessionCode.length !== 8) return sessionCode.toLowerCase();
+  return `${sessionCode.slice(0, 4)}-${sessionCode.slice(4)}`.toLowerCase();
+}
+
 function fail(message: string): never {
   throw new Error(message);
 }
@@ -146,13 +151,16 @@ async function main(): Promise<void> {
   if (!created.sessionCode) {
     fail(`session create returned incomplete invite: ${JSON.stringify(created)}`);
   }
+  if (!/^[2-9A-HJ-NP-Z]{8}$/.test(created.sessionCode)) {
+    fail(`session create returned unexpected code shape: ${created.sessionCode}`);
+  }
 
   const first = new SmokePeer(webSocketURL(relayURL, created.sessionCode, "peer-a"));
   let second: SmokePeer | null = null;
   try {
     await first.open();
     await first.waitFor((frame) => frame.type === "session.joined", "first session.joined");
-    second = new SmokePeer(webSocketURL(relayURL, created.sessionCode, "peer-b"));
+    second = new SmokePeer(webSocketURL(relayURL, pastedSessionCodeVariant(created.sessionCode), "peer-b"));
     await second.open();
 
     const secondJoined = await second.waitFor((frame) => frame.type === "session.joined", "second session.joined");
