@@ -11,7 +11,7 @@ bun test
 bun run dev
 ```
 
-Downloadable cmux builds default to the production relay at `https://collaboration.cmux.dev`. For local development, override the relay URL with `http://localhost:8787` in the collaboration dialog or with `cmux collaboration create --relay-url http://localhost:8787`.
+Downloadable cmux builds default to the production relay at `https://cmux-collaboration-worker.dorsa-rohani.workers.dev`. For local development, override the relay URL with `http://localhost:8787` in the collaboration dialog or with `cmux collaboration create --relay-url http://localhost:8787`.
 
 ## Deploy
 
@@ -22,7 +22,7 @@ bun run check
 bun run deploy
 ```
 
-The deploy job requires repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. `wrangler.toml` binds the `COLLABORATION_SESSIONS` Durable Object namespace and exposes the production custom domain `collaboration.cmux.dev`; the macOS client converts `https://` relay URLs to `wss://` for WebSocket joins.
+The deploy job requires repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. `wrangler.toml` binds the `COLLABORATION_SESSIONS` Durable Object namespace and exposes the production custom domain `cmux-collaboration-worker.dorsa-rohani.workers.dev`; the macOS client converts `https://` relay URLs to `wss://` for WebSocket joins.
 
 After deployment, smoke-test the public relay:
 
@@ -34,7 +34,7 @@ The smoke test performs a real health check, session creation, two WebSocket pee
 
 ```bash
 CMUX_COLLABORATION_RELAY_URL=http://localhost:8787 bun run smoke:relay
-bun run smoke:relay https://collaboration.cmux.dev
+bun run smoke:relay https://cmux-collaboration-worker.dorsa-rohani.workers.dev
 ```
 
 ## HTTP API

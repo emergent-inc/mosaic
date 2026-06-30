@@ -217,7 +217,7 @@ struct CollaborationTerminalHeaderState: Equatable {
 @Observable
 final class CollaborationRuntime {
     static let shared = CollaborationRuntime()
-    private static let defaultRelayURLString = "https://collaboration.cmux.dev"
+    private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
