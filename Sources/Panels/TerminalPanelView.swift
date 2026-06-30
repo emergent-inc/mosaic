@@ -6,6 +6,7 @@ import CmuxAppKitSupportUI
 import CmuxTestSupport
 import CmuxTerminal
 import CmuxFoundation
+import UniformTypeIdentifiers
 
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
@@ -131,6 +132,9 @@ struct TerminalPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onDrop(of: [AgentRoomWireDragPayload.contentType], isTargeted: nil) { providers in
+            handleAgentRoomWireDrop(providers)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
             terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
         }
@@ -155,18 +159,30 @@ struct TerminalPanelView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            if agentRoomState.isConnected {
-                Text(agentRoomState.label)
-                    .cmuxFont(size: 10)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            agentRoomStatusView(state: agentRoomState)
             terminalAgentRoomButton
             terminalCollaborationButton
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
         .background(Color.clear)
+    }
+
+    @ViewBuilder
+    private func agentRoomStatusView(state: AgentRoomHeaderState) -> some View {
+        if state.isConnected {
+            HStack(spacing: 4) {
+                CmuxSystemSymbolImage(systemName: "link", pointSize: 9, weight: .semibold)
+                Text(state.label)
+                    .cmuxFont(size: 10, weight: .semibold)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.accentColor))
+            .accessibilityIdentifier("TerminalAgentRoomConnectedPill")
+        }
     }
 
     private var terminalCollaborationButton: some View {
@@ -196,6 +212,105 @@ struct TerminalPanelView: View {
         )
         .foregroundColor(state.isConnected ? .accentColor : .secondary)
         .accessibilityIdentifier("TerminalAgentRoomButton")
+        .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
+        .onDrag {
+            CollaborationRuntime.shared.beginAgentRoomWireDrag(sourcePanel: panel)
+            return AgentRoomWireDragPayload.provider(for: panel.id)
+        }
+    }
+
+    private func handleAgentRoomWireDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(AgentRoomWireDragPayload.contentType.identifier) }) else {
+            return false
+        }
+        provider.loadDataRepresentation(forTypeIdentifier: AgentRoomWireDragPayload.contentType.identifier) { data, _ in
+            guard let sourceSurfaceID = AgentRoomWireDragPayload.surfaceID(from: data) else { return }
+            Task { @MainActor in
+                CollaborationRuntime.shared.connectAgentRoomWire(
+                    sourceSurfaceID: sourceSurfaceID,
+                    targetPanel: panel
+                )
+            }
+        }
+        return true
+    }
+}
+
+private struct AgentRoomWireDragPayload {
+    static let contentType = UTType(exportedAs: CollaborationRuntime.agentRoomWirePasteboardTypeIdentifier)
+
+    static func provider(for surfaceID: UUID) -> NSItemProvider {
+        let provider = NSItemProvider()
+        let data = Data(surfaceID.uuidString.utf8)
+        provider.registerDataRepresentation(
+            forTypeIdentifier: contentType.identifier,
+            visibility: .ownProcess
+        ) { completion in
+            completion(data, nil)
+            return nil
+        }
+        return provider
+    }
+
+    static func surfaceID(from data: Data?) -> String? {
+        guard let data,
+              let raw = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return UUID(uuidString: trimmed).map { $0.uuidString }
+    }
+}
+
+private struct AgentRoomWireAnchorRepresentable: NSViewRepresentable {
+    let surfaceID: UUID
+
+    func makeNSView(context: Context) -> AgentRoomWireAnchorView {
+        let view = AgentRoomWireAnchorView(frame: .zero)
+        view.surfaceID = surfaceID
+        return view
+    }
+
+    func updateNSView(_ nsView: AgentRoomWireAnchorView, context: Context) {
+        nsView.surfaceID = surfaceID
+        nsView.noteAnchorChanged()
+    }
+}
+
+private final class AgentRoomWireAnchorView: NSView {
+    var surfaceID: UUID?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        noteAnchorChanged()
+    }
+
+    override func layout() {
+        super.layout()
+        noteAnchorChanged()
+    }
+
+    func noteAnchorChanged() {
+        guard let surfaceID else { return }
+        guard let window else {
+            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID)
+            return
+        }
+        let centerInView = NSPoint(x: bounds.midX, y: bounds.midY)
+        let centerInWindow = convert(centerInView, to: nil)
+        let centerScreenRect = window.convertToScreen(NSRect(origin: centerInWindow, size: .zero))
+        CollaborationRuntime.shared.updateAgentRoomWireAnchor(
+            surfaceID: surfaceID,
+            screenPoint: centerScreenRect.origin,
+            window: window
+        )
+    }
+
+    deinit {
+        guard let surfaceID else { return }
+        Task { @MainActor in
+            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID)
+        }
     }
 }
 
