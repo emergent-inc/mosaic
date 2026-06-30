@@ -2,6 +2,19 @@
 
 All notable changes to cmux are documented here.
 
+## [1.39.0] - 2026-06-30
+
+### Added
+- Document the complete signed, notarized DMG release path for the installable macOS app.
+- Add release-path smoke coverage for downloadable app and DMG artifacts.
+
+### Changed
+- Make collaboration invites use the shareable session code flow without a separate invite token.
+- Keep generated collaboration Worker `dist` output out of source control.
+
+### Fixed
+- Suppress passive terminal mouse movement from being forwarded through collaborative terminal input paths.
+
 ## [0.64.17] - 2026-06-23
 
 ### Added
