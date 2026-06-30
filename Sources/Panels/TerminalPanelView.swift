@@ -138,6 +138,7 @@ struct TerminalPanelView: View {
 
     private var terminalHeader: some View {
         let state = CollaborationRuntime.shared.state(for: panel)
+        let agentRoomState = CollaborationRuntime.shared.agentRoomState(for: panel)
         return HStack(spacing: 8) {
             CmuxSystemSymbolImage(systemName: panel.displayIcon ?? "terminal.fill", pointSize: 16)
                 .foregroundStyle(.secondary)
@@ -154,6 +155,13 @@ struct TerminalPanelView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            if agentRoomState.isConnected {
+                Text(agentRoomState.label)
+                    .cmuxFont(size: 10)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            terminalAgentRoomButton
             terminalCollaborationButton
         }
         .padding(.horizontal, 12)
@@ -174,6 +182,20 @@ struct TerminalPanelView: View {
         )
         .foregroundColor(state.isShared ? .accentColor : .secondary)
         .accessibilityIdentifier("TerminalCollaborationButton")
+    }
+
+    private var terminalAgentRoomButton: some View {
+        let state = CollaborationRuntime.shared.agentRoomState(for: panel)
+        return PanelHeaderIconButton(
+            systemName: state.isConnected ? "link.circle.fill" : "link.circle",
+            label: state.label,
+            isDisabled: false,
+            action: {
+                CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
+            }
+        )
+        .foregroundColor(state.isConnected ? .accentColor : .secondary)
+        .accessibilityIdentifier("TerminalAgentRoomButton")
     }
 }
 
