@@ -1,5 +1,5 @@
 <h1 align="center">cmux</h1>
-<p align="center">A Ghostty-based macOS terminal with vertical tabs and notifications for AI coding agents</p>
+<p align="center">A Ghoddtty-based macOS terminal with vertical tabs and notifications for AI coding agents</p>
 
 <p align="center">
   <a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
