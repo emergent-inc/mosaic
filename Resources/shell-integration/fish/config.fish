@@ -270,7 +270,7 @@ if test "$_cmux_integration_enabled" != 0
 
     function _cmux_reset_terminal_keyboard_protocols
         isatty stdout; or test -n "$CMUX_TEST_FORCE_KEYBOARD_RESET$CMUX_TEST_FORCE_KITTY_RESET"; or return 0
-        printf '\033[>m\033[<8u'
+        printf '\033[>m\033[<8u\033[?9l\033[?1000l\033[?1002l\033[?1003l\033[?1005l\033[?1006l\033[?1004l\033[?2004l\033[?2026l'
     end
 
     function _cmux_ports_kick --argument-names reason

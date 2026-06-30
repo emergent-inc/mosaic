@@ -12,7 +12,6 @@ export interface RelayEnvelope {
 export interface SessionCreateResponse {
   sessionID: string;
   sessionCode: string;
-  token: string;
 }
 
 export function json(body: unknown, status = 200): Response {
@@ -49,16 +48,9 @@ export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | nu
   return typeof record.type === "string" ? (record as RelayEnvelope) : null;
 }
 
-export function randomToken(bytes = 18): string {
-  const values = new Uint8Array(bytes);
-  crypto.getRandomValues(values);
-  return [...values].map((value) => value.toString(16).padStart(2, "0")).join("");
-}
-
 export function randomSessionCode(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const values = new Uint8Array(8);
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const values = new Uint8Array(5);
   crypto.getRandomValues(values);
-  const chars = [...values].map((value) => alphabet[value % alphabet.length]);
-  return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+  return [...values].map((value) => alphabet[value % alphabet.length]).join("");
 }

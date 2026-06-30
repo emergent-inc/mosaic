@@ -21,10 +21,9 @@ function withPath(base: URL, path: string): URL {
   return next;
 }
 
-function webSocketURL(base: URL, sessionCode: string, token: string, peerID: string): URL {
+function webSocketURL(base: URL, sessionCode: string, peerID: string): URL {
   const url = withPath(base, `/v1/collaboration/sessions/${sessionCode}/connect`);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.searchParams.set("token", token);
   url.searchParams.set("peerID", peerID);
   url.searchParams.set("displayName", `smoke-${peerID}`);
   url.searchParams.set("color", peerID === "peer-a" ? "#ff0000" : "#0000ff");
@@ -143,17 +142,17 @@ async function main(): Promise<void> {
   if (createResponse.status !== 201) {
     fail(`session create failed: ${createResponse.status} ${await createResponse.text()}`);
   }
-  const created = await createResponse.json() as { sessionCode?: string; token?: string };
-  if (!created.sessionCode || !created.token) {
+  const created = await createResponse.json() as { sessionCode?: string };
+  if (!created.sessionCode) {
     fail(`session create returned incomplete invite: ${JSON.stringify(created)}`);
   }
 
-  const first = new SmokePeer(webSocketURL(relayURL, created.sessionCode, created.token, "peer-a"));
+  const first = new SmokePeer(webSocketURL(relayURL, created.sessionCode, "peer-a"));
   let second: SmokePeer | null = null;
   try {
     await first.open();
     await first.waitFor((frame) => frame.type === "session.joined", "first session.joined");
-    second = new SmokePeer(webSocketURL(relayURL, created.sessionCode, created.token, "peer-b"));
+    second = new SmokePeer(webSocketURL(relayURL, created.sessionCode, "peer-b"));
     await second.open();
 
     const secondJoined = await second.waitFor((frame) => frame.type === "session.joined", "second session.joined");

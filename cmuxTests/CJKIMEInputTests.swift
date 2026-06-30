@@ -1842,8 +1842,8 @@ final class GhosttyKeyEquivalentRegressionTests: XCTestCase {
         let keyboardResetData = try cmuxZshTerminalKeyboardResetSequence()
         XCTAssertEqual(
             keyboardResetData,
-            Data("\u{1B}[>m\u{1B}[<8u".utf8),
-            "cmuxZshTerminalKeyboardResetSequence must reset modifyOtherKeys and Kitty keyboard state"
+            Data("\u{1B}[>m\u{1B}[<8u\u{1B}[?9l\u{1B}[?1000l\u{1B}[?1002l\u{1B}[?1003l\u{1B}[?1005l\u{1B}[?1006l\u{1B}[?1004l\u{1B}[?2004l\u{1B}[?2026l".utf8),
+            "cmuxZshTerminalKeyboardResetSequence must reset keyboard, mouse, and focus reporting state"
         )
         try processTerminalOutput(keyboardResetData, in: hostedTerminal)
 

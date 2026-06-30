@@ -1118,13 +1118,15 @@ class TerminalController {
                 return .ok(payload)
             }
         case "collaboration.session.join":
-            guard let code = request.params["session_code"] as? String,
-                  let token = request.params["invite_token"] as? String else {
+            guard let code = request.params["session_code"] as? String else {
                 return v2Result(
                     id: request.id,
                     .err(
                         code: "invalid_params",
-                        message: "collaboration.session.join requires session_code and invite_token",
+                        message: String(
+                            localized: "socket.error.collaborationJoinRequiresSessionCode",
+                            defaultValue: "collaboration.session.join requires session_code"
+                        ),
                         data: nil
                     )
                 )
@@ -1133,8 +1135,7 @@ class TerminalController {
             return v2AsyncResultCall(id: request.id, timeoutSeconds: 15) {
                 let payload = await CollaborationRuntime.shared.joinSessionForAutomation(
                     relayURL: relayURL,
-                    code: code,
-                    token: token
+                    code: code
                 )
                 return .ok(payload)
             }
@@ -1857,13 +1858,15 @@ class TerminalController {
                 .ok(CollaborationRuntime.shared.createSessionForAutomationRequest(relayURL: relayURL))
             )
         case "collaboration.session.join":
-            guard let code = params["session_code"] as? String,
-                  let token = params["invite_token"] as? String else {
+            guard let code = params["session_code"] as? String else {
                 return v2Result(
                     id: id,
                     .err(
                         code: "invalid_params",
-                        message: "collaboration.session.join requires session_code and invite_token",
+                        message: String(
+                            localized: "socket.error.collaborationJoinRequiresSessionCode",
+                            defaultValue: "collaboration.session.join requires session_code"
+                        ),
                         data: nil
                     )
                 )
@@ -1873,8 +1876,7 @@ class TerminalController {
                 id: id,
                 .ok(CollaborationRuntime.shared.joinSessionForAutomationRequest(
                     relayURL: relayURL,
-                    code: code,
-                    token: token
+                    code: code
                 ))
             )
         case "collaboration.session.leave":

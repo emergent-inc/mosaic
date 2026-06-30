@@ -179,7 +179,7 @@ Phase 1 does not guarantee a peer will never see a brief revert during simultane
 
 Phase 1 does not provide durable relay persistence. Relay restart kills active sessions.
 
-Phase 1 does not provide authentication beyond an invite token. Anyone with the token can join.
+Phase 1 does not provide authentication beyond the five-letter session code. Anyone with the code can join.
 
 Phase 1 does not share terminal I/O, shell state, git state, diagnostics, or agent sessions.
 

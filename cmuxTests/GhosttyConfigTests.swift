@@ -3789,6 +3789,36 @@ final class GhosttyMouseFocusTests: XCTestCase {
         )
     }
 
+    func testShouldNotForwardPassiveMousePositionWhenSuppressed() {
+        XCTAssertFalse(
+            GhosttyNSView.shouldForwardPassiveMousePositionToGhostty(
+                mouseCaptured: false,
+                pressedMouseButtons: 0,
+                modifierFlags: [],
+                suppressPassiveMouseInput: true
+            )
+        )
+        XCTAssertFalse(
+            GhosttyNSView.shouldForwardPassiveMousePositionToGhostty(
+                mouseCaptured: true,
+                pressedMouseButtons: 0,
+                modifierFlags: [.command],
+                suppressPassiveMouseInput: true
+            )
+        )
+    }
+
+    func testShouldStillForwardNonPassiveMousePositionWhenSuppressed() {
+        XCTAssertTrue(
+            GhosttyNSView.shouldForwardPassiveMousePositionToGhostty(
+                mouseCaptured: true,
+                pressedMouseButtons: 1,
+                modifierFlags: [],
+                suppressPassiveMouseInput: true
+            )
+        )
+    }
+
     // MARK: - CJK Font Fallback
 
     private func withTempConfig(
@@ -5545,7 +5575,7 @@ final class ZshShellIntegrationHandoffTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(output, "\u{1B}[>m\u{1B}[<8u")
+        XCTAssertEqual(output, "\u{1B}[>m\u{1B}[<8u\u{1B}[?9l\u{1B}[?1000l\u{1B}[?1002l\u{1B}[?1003l\u{1B}[?1005l\u{1B}[?1006l\u{1B}[?1004l\u{1B}[?2004l\u{1B}[?2026l")
     }
 
     func testBashPromptResetsTerminalKeyboardProtocols() throws {
@@ -5566,7 +5596,7 @@ final class ZshShellIntegrationHandoffTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(result.stdout, "\u{1B}[>m\u{1B}[<8u")
+        XCTAssertEqual(result.stdout, "\u{1B}[>m\u{1B}[<8u\u{1B}[?9l\u{1B}[?1000l\u{1B}[?1002l\u{1B}[?1003l\u{1B}[?1005l\u{1B}[?1006l\u{1B}[?1004l\u{1B}[?2004l\u{1B}[?2026l")
     }
 
     private func runInteractiveZsh(cmuxLoadGhosttyIntegration: Bool) throws -> String {

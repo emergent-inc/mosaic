@@ -3611,8 +3611,12 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     static func shouldForwardPassiveMousePositionToGhostty(
         mouseCaptured: Bool,
         pressedMouseButtons: Int,
-        modifierFlags: NSEvent.ModifierFlags
+        modifierFlags: NSEvent.ModifierFlags,
+        suppressPassiveMouseInput: Bool = false
     ) -> Bool {
+        if suppressPassiveMouseInput && pressedMouseButtons == 0 {
+            return false
+        }
         guard mouseCaptured else { return true }
         guard pressedMouseButtons == 0 else { return true }
         return !modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
@@ -7530,7 +7534,8 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         if Self.shouldForwardPassiveMousePositionToGhostty(
             mouseCaptured: ghostty_surface_mouse_captured(surface),
             pressedMouseButtons: NSEvent.pressedMouseButtons,
-            modifierFlags: event.modifierFlags
+            modifierFlags: event.modifierFlags,
+            suppressPassiveMouseInput: terminalSurface?.suppressPassiveMouseInput ?? false
         ) {
             ghostty_surface_mouse_pos(
                 surface,
@@ -7560,7 +7565,8 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         if Self.shouldForwardPassiveMousePositionToGhostty(
             mouseCaptured: ghostty_surface_mouse_captured(surface),
             pressedMouseButtons: NSEvent.pressedMouseButtons,
-            modifierFlags: event.modifierFlags
+            modifierFlags: event.modifierFlags,
+            suppressPassiveMouseInput: terminalSurface?.suppressPassiveMouseInput ?? false
         ) {
             ghostty_surface_mouse_pos(
                 surface,
@@ -7606,6 +7612,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             return
         }
         noteTerminalCollaboratorPointer(at: nil, visible: false)
+        if terminalSurface?.suppressPassiveMouseInput == true {
+            return
+        }
         ghostty_surface_mouse_pos(surface, -1, -1, mouseModsFromEvent(event))
     }
 

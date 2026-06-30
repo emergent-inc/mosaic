@@ -3536,9 +3536,6 @@ struct CMUXCLI {
                 if let code = response["session_code"] as? String {
                     print("  session_code: \(code)")
                 }
-                if let token = response["invite_token"] as? String {
-                    print("  invite_token:  \(token)")
-                }
                 print("  relay_url:    \((response["relay_url"] as? String) ?? "?")")
                 print("  shared_files: \((response["shared_documents"] as? Int) ?? 0)")
 
@@ -3561,21 +3558,21 @@ struct CMUXCLI {
                 print("Created collaboration session.")
                 print("  relay_url:    \((response["relay_url"] as? String) ?? "?")")
                 print("  session_code: \((response["session_code"] as? String) ?? "?")")
-                print("  invite_token:  \((response["invite_token"] as? String) ?? "?")")
 
             case "join":
                 let (relayURL, afterRelay) = parseOption(rest, name: "--relay-url")
-                let (sessionCode, afterCode) = parseOption(afterRelay, name: "--session-code")
-                let (inviteToken, remaining) = parseOption(afterCode, name: "--invite-token")
+                let (sessionCode, remaining) = parseOption(afterRelay, name: "--session-code")
                 if let extra = remaining.first {
                     throw CLIError(message: "cmux collaboration join: unexpected argument '\(extra)'")
                 }
-                guard let sessionCode, let inviteToken else {
-                    throw CLIError(message: "Usage: cmux collaboration join --session-code <code> --invite-token <token> [--relay-url <url>]")
+                guard let sessionCode else {
+                    throw CLIError(message: String(
+                        localized: "cli.collaboration.join.usage",
+                        defaultValue: "Usage: cmux collaboration join --session-code <code> [--relay-url <url>]"
+                    ))
                 }
                 var params: [String: Any] = [
                     "session_code": sessionCode,
-                    "invite_token": inviteToken,
                 ]
                 if let relayURL { params["relay_url"] = relayURL }
                 let response = try client.sendV2(method: "collaboration.session.join", params: params)

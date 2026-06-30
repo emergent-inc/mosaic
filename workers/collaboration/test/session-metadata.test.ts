@@ -16,19 +16,18 @@ class FakeMetadataStorage implements SessionMetadataStorage {
 test("created session metadata is available to a later join instance", async () => {
   const storage = new FakeMetadataStorage();
 
-  const created = await createSessionMetadata(storage, "ABCD-1234");
+  const created = await createSessionMetadata(storage, "ABCDE");
   const loadedByFreshInstance = await readSessionMetadata(storage);
 
   expect(loadedByFreshInstance).toEqual(created);
-  expect(loadedByFreshInstance?.sessionCode).toBe("ABCD-1234");
-  expect(loadedByFreshInstance?.token).toHaveLength(36);
+  expect(loadedByFreshInstance?.sessionCode).toBe("ABCDE");
 });
 
-test("creating an existing session reuses its token", async () => {
+test("creating an existing session reuses its metadata", async () => {
   const storage = new FakeMetadataStorage();
 
-  const first = await createSessionMetadata(storage, "ABCD-1234");
-  const second = await createSessionMetadata(storage, "ABCD-1234");
+  const first = await createSessionMetadata(storage, "ABCDE");
+  const second = await createSessionMetadata(storage, "ABCDE");
 
   expect(second).toEqual(first);
 });

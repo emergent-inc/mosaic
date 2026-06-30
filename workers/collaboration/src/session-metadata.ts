@@ -1,9 +1,6 @@
-import { randomToken } from "./protocol";
-
 export interface SessionMetadata {
   sessionID: string;
   sessionCode: string;
-  token: string;
 }
 
 export interface SessionMetadataStorage {
@@ -23,7 +20,6 @@ export async function createSessionMetadata(
   const metadata = {
     sessionID: sessionCode,
     sessionCode,
-    token: randomToken(),
   };
   await storage.put(METADATA_KEY, metadata);
   return metadata;

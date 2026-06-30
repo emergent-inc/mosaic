@@ -180,6 +180,8 @@ public final class TerminalSurface: Identifiable, ObservableObject {
     /// For MANUAL-I/O remote tmux display surfaces: whether to suppress
     /// ghostty primary-screen reflow on resize.
     var manualIONoReflow = true
+    /// Whether passive hover/enter/exit mouse positions should be kept out of the PTY input path.
+    public var suppressPassiveMouseInput = false
     /// Retained userdata for the MANUAL-mode `io_write_cb`; released alongside
     /// the surface.
     var manualIOContext: Unmanaged<TerminalManualIOWriteBox>?
