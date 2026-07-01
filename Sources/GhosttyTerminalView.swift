@@ -3725,6 +3725,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         row: Double?,
         column: Double?,
         contentRow: Double?,
+        contentRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -3743,6 +3744,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 row: row,
                 column: column,
                 contentRow: contentRow,
+                contentRowFromBottom: contentRowFromBottom,
                 coordinateSpace: coordinateSpace
             ) else {
                 view.fadeOut()
@@ -3772,6 +3774,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         row: Double?,
         column: Double?,
         contentRow: Double?,
+        contentRowFromBottom: Double?,
         coordinateSpace: String?
     ) -> NSPoint? {
         let x = min(max(CGFloat(normalizedX), 0), 1)
@@ -3779,6 +3782,39 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard let surface,
               let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
             return NSPoint(x: x * bounds.width, y: y * bounds.height)
+        }
+
+        if coordinateSpace == "terminalContentBottom",
+           let contentRowFromBottom,
+           let column {
+            guard let scrollbar else {
+                if let row {
+                    return terminalCollaboratorPointerAnchor(
+                        row: CGFloat(row),
+                        column: CGFloat(column),
+                        metrics: metrics
+                    )
+                }
+                return nil
+            }
+            let peerBottomRow = CGFloat(max(scrollbar.total, 1)) - 1
+            let peerContentRow = peerBottomRow - CGFloat(contentRowFromBottom)
+            let viewportRow = peerContentRow - CGFloat(scrollbar.offset)
+            if viewportRow >= 0, viewportRow < CGFloat(metrics.rows) {
+                return terminalCollaboratorPointerAnchor(
+                    row: viewportRow,
+                    column: CGFloat(column),
+                    metrics: metrics
+                )
+            }
+            if let row {
+                return terminalCollaboratorPointerAnchor(
+                    row: CGFloat(row),
+                    column: CGFloat(column),
+                    metrics: metrics
+                )
+            }
+            return nil
         }
 
         if coordinateSpace == "terminalContentRow",
@@ -7554,6 +7590,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             row: normalized.row,
             column: normalized.column,
             contentRow: normalized.contentRow,
+            contentRowFromBottom: normalized.contentRowFromBottom,
             visible: visible,
             coordinateSpace: normalized.coordinateSpace
         )
@@ -7562,16 +7599,25 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     private func terminalCollaboratorPointerNormalizedPosition(
         at point: NSPoint?,
         visible: Bool
-    ) -> (x: Double, y: Double, row: Double?, column: Double?, contentRow: Double?, coordinateSpace: String) {
+    ) -> (
+        x: Double,
+        y: Double,
+        row: Double?,
+        column: Double?,
+        contentRow: Double?,
+        contentRowFromBottom: Double?,
+        coordinateSpace: String
+    ) {
         guard visible, let point else {
-            return (0, 0, nil, nil, nil, "terminalContentRow")
+            return (0, 0, nil, nil, nil, nil, "terminalContentBottom")
         }
         guard let surface,
               let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
-            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, "view") }
+            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, nil, "view") }
             return (
                 Double(min(max(point.x / bounds.width, 0), 1)),
                 Double(min(max(point.y / bounds.height, 0), 1)),
+                nil,
                 nil,
                 nil,
                 nil,
@@ -7581,18 +7627,21 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         let gridWidth = CGFloat(metrics.columns) * metrics.cellWidth
         let gridHeight = CGFloat(metrics.rows) * metrics.cellHeight
-        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, "terminalContentRow") }
+        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, nil, "terminalContentBottom") }
         let topOriginY = bounds.height - point.y
         let column = min(max((point.x - metrics.xInset) / metrics.cellWidth, 0), CGFloat(metrics.columns))
         let row = min(max((topOriginY - metrics.yInset) / metrics.cellHeight, 0), CGFloat(metrics.rows))
         let contentRow = row + CGFloat(scrollbar?.offset ?? 0)
+        let bottomRow = CGFloat(max(scrollbar?.total ?? 0, 1)) - 1
+        let contentRowFromBottom = max(0, bottomRow - contentRow)
         return (
             Double(min(max((point.x - metrics.xInset) / gridWidth, 0), 1)),
             Double(min(max((topOriginY - metrics.yInset) / gridHeight, 0), 1)),
             Double(row),
             Double(column),
             Double(contentRow),
-            "terminalContentRow"
+            Double(contentRowFromBottom),
+            "terminalContentBottom"
         )
     }
 
@@ -8630,6 +8679,7 @@ final class GhosttySurfaceScrollView: NSView {
         row: Double?,
         column: Double?,
         contentRow: Double?,
+        contentRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -8642,6 +8692,7 @@ final class GhosttySurfaceScrollView: NSView {
             row: row,
             column: column,
             contentRow: contentRow,
+            contentRowFromBottom: contentRowFromBottom,
             visible: visible,
             coordinateSpace: coordinateSpace
         )
