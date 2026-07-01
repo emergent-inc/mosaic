@@ -1,4 +1,5 @@
 import AppKit
+import CMUXMobileCore
 import CmuxCollaboration
 import Foundation
 import Observation
@@ -93,6 +94,12 @@ private struct CollaborationTerminalOutputWire: Codable {
         self.fromPeerID = fromPeerID
         self.caretPeerID = caretPeerID
     }
+}
+
+private struct CollaborationTerminalRenderGridWire: Codable {
+    let type: String
+    let terminalID: String
+    let frame: MobileTerminalRenderGridFrame
 }
 
 private struct CollaborationTerminalInputWire: Codable {
@@ -399,6 +406,7 @@ final class CollaborationRuntime {
     private var hostedTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var hostedTerminalOutputSequencesByID: [String: UInt64] = [:]
     private var hostedTerminalOutputCaretSuppressionsByID: [String: TerminalOutputCaretSuppression] = [:]
+    private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
@@ -490,6 +498,7 @@ final class CollaborationRuntime {
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
         Task {
@@ -503,6 +512,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
         Task {
             try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data))
+            scheduleTerminalRenderGridSnapshot(terminalID: terminalID)
         }
     }
 
@@ -1151,6 +1161,8 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
+        hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
+        hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
         terminalStatesByID.removeAll()
@@ -1445,6 +1457,7 @@ final class CollaborationRuntime {
                    !replay.data.isEmpty {
                     try await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
                 }
+                try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
             } catch {
                 lastErrorMessage = error.localizedDescription
             }
@@ -1493,6 +1506,8 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
+        hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
+        hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         terminalStatesByID.removeAll()
 
         for terminal in openTerminals {
@@ -1507,6 +1522,7 @@ final class CollaborationRuntime {
             )
             Task {
                 try? await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
+                try? await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
             }
         }
     }
@@ -1571,6 +1587,11 @@ final class CollaborationRuntime {
                 colorHex: peer.color
             )
         }
+    }
+
+    private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
+        guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        panel.surface.processRemoteOutput(frame.vtPatchBytes())
     }
 
     private func handleRemoteTerminalInput(terminalID: String, data: Data, fromPeerID: String?) {
@@ -1747,6 +1768,9 @@ final class CollaborationRuntime {
             if let bytes = Data(base64Encoded: output.dataBase64) {
                 handleRemoteTerminalOutput(terminalID: output.terminalID, data: bytes, caretPeerID: output.caretPeerID)
             }
+        case "terminal.render_grid":
+            let renderGrid = try decoder.decode(CollaborationTerminalRenderGridWire.self, from: data)
+            handleRemoteTerminalRenderGrid(terminalID: renderGrid.terminalID, frame: renderGrid.frame)
         case "terminal.input":
             let input = try decoder.decode(CollaborationTerminalInputWire.self, from: data)
             if let bytes = Data(base64Encoded: input.dataBase64) {
@@ -1787,6 +1811,32 @@ final class CollaborationRuntime {
             }
         default:
             break
+        }
+    }
+
+    private func sendTerminalRenderGridSnapshotIfPossible(terminalID: String) async throws {
+        guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
+        let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
+            ?? MobileTerminalByteTee.shared.currentSequence(surfaceID: panel.id)
+            ?? 0
+        guard let snapshot = panel.surface.mobileRenderGridFrame(stateSeq: stateSeq, full: true) else { return }
+        try await send(CollaborationTerminalRenderGridWire(
+            type: "terminal.render_grid",
+            terminalID: terminalID,
+            frame: snapshot.frame
+        ))
+    }
+
+    private func scheduleTerminalRenderGridSnapshot(terminalID: String) {
+        guard hostedTerminalRenderGridSnapshotTasksByID[terminalID] == nil else { return }
+        hostedTerminalRenderGridSnapshotTasksByID[terminalID] = Task { [weak self] in
+            await Task.yield()
+            if !Task.isCancelled {
+                try? await self?.sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+            }
+            await MainActor.run {
+                self?.hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)
+            }
         }
     }
 
