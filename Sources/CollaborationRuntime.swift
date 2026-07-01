@@ -129,6 +129,7 @@ private struct CollaborationTerminalPointerWire: Codable {
     let row: Double?
     let column: Double?
     let contentRow: Double?
+    let contentRowFromBottom: Double?
 }
 
 private struct CollaborationTerminalSelectionRectWire: Codable {
@@ -546,6 +547,7 @@ final class CollaborationRuntime {
         row: Double?,
         column: Double?,
         contentRow: Double?,
+        contentRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String
     ) {
@@ -572,7 +574,8 @@ final class CollaborationRuntime {
                 coordinateSpace: coordinateSpace,
                 row: row,
                 column: column,
-                contentRow: contentRow
+                contentRow: contentRow,
+                contentRowFromBottom: contentRowFromBottom
             ))
         }
     }
@@ -1852,6 +1855,7 @@ final class CollaborationRuntime {
                 row: pointer.row,
                 column: pointer.column,
                 contentRow: pointer.contentRow,
+                contentRowFromBottom: pointer.contentRowFromBottom,
                 visible: pointer.visible,
                 coordinateSpace: pointer.coordinateSpace
             )
