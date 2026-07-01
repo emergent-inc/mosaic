@@ -140,6 +140,30 @@ private struct CollaborationTerminalCloseWire: Codable {
     let terminalID: String
 }
 
+private struct CollaborationAgentRoomEventWire: Codable {
+    let type: String
+    let event: ClaudeRoomEvent
+}
+
+private struct CollaborationAgentRoomSnapshotWire: Codable {
+    let type: String
+    let room: ClaudeRoomSnapshot
+    let requestID: String?
+}
+
+private struct CollaborationAgentRoomSnapshotRequestWire: Codable {
+    let type: String
+    let roomID: String
+    let requestID: String
+}
+
+private struct CollaborationAgentRoomCursorAckWire: Codable {
+    let type: String
+    let roomID: String
+    let memberID: String
+    let sequence: Int
+}
+
 private struct CollaborationPresenceWire: Codable {
     let type: String
     let peerID: String
@@ -212,10 +236,148 @@ struct CollaborationTerminalHeaderState: Equatable {
     var peerSummary = ""
 }
 
+struct AgentRoomHeaderState: Equatable {
+    var isConnected = false
+    var label = ""
+}
+
+private struct AgentRoomWireAnchor {
+    let screenPoint: NSPoint
+    weak var window: NSWindow?
+}
+
+@MainActor
+private final class AgentRoomWireOverlayController {
+    private var overlayWindow: NSWindow?
+    private var overlayView: AgentRoomWireOverlayView?
+    private var timer: Timer?
+
+    func start(from sourceScreenPoint: NSPoint, in sourceWindow: NSWindow?) {
+        stop()
+        guard let sourceWindow else { return }
+
+        let overlayView = AgentRoomWireOverlayView(frame: sourceWindow.frame)
+        let overlayWindow = NSWindow(
+            contentRect: sourceWindow.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        overlayWindow.isOpaque = false
+        overlayWindow.backgroundColor = .clear
+        overlayWindow.hasShadow = false
+        overlayWindow.ignoresMouseEvents = true
+        overlayWindow.level = NSWindow.Level(rawValue: sourceWindow.level.rawValue + 1)
+        overlayWindow.collectionBehavior = sourceWindow.collectionBehavior
+        overlayWindow.contentView = overlayView
+        sourceWindow.addChildWindow(overlayWindow, ordered: .above)
+
+        self.overlayWindow = overlayWindow
+        self.overlayView = overlayView
+        overlayView.sourcePoint = overlayView.viewPoint(forScreenPoint: sourceScreenPoint, in: overlayWindow)
+        updateEndPoint()
+
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if (NSEvent.pressedMouseButtons & 1) == 0 {
+                    self.stop()
+                    return
+                }
+                self.updateEndPoint()
+            }
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        if let overlayWindow, let parent = overlayWindow.parent {
+            parent.removeChildWindow(overlayWindow)
+        }
+        overlayWindow?.orderOut(nil)
+        overlayWindow = nil
+        overlayView = nil
+    }
+
+    private func updateEndPoint() {
+        guard let overlayWindow, let overlayView else { return }
+        overlayWindow.setFrame(overlayWindow.parent?.frame ?? overlayWindow.frame, display: false)
+        overlayView.frame = NSRect(origin: .zero, size: overlayWindow.frame.size)
+        overlayView.endPoint = overlayView.viewPoint(forScreenPoint: NSEvent.mouseLocation, in: overlayWindow)
+        overlayView.needsDisplay = true
+    }
+}
+
+private final class AgentRoomWireOverlayView: NSView {
+    var sourcePoint: NSPoint = .zero
+    var endPoint: NSPoint = .zero
+
+    override var isFlipped: Bool { false }
+
+    func viewPoint(forScreenPoint screenPoint: NSPoint, in window: NSWindow) -> NSPoint {
+        let windowPoint = window.convertPoint(fromScreen: screenPoint)
+        return convert(windowPoint, from: nil)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard sourcePoint != endPoint else { return }
+
+        let path = NSBezierPath()
+        path.move(to: sourcePoint)
+        let midX = (sourcePoint.x + endPoint.x) / 2
+        path.curve(
+            to: endPoint,
+            controlPoint1: NSPoint(x: midX, y: sourcePoint.y),
+            controlPoint2: NSPoint(x: midX, y: endPoint.y)
+        )
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowBlurRadius = 12
+        shadow.shadowColor = NSColor.controlAccentColor.withAlphaComponent(0.55)
+        shadow.set()
+        path.lineWidth = 9
+        NSColor.controlAccentColor.withAlphaComponent(0.35).setStroke()
+        path.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+
+        path.lineWidth = 5
+        NSColor.controlAccentColor.setStroke()
+        path.stroke()
+
+        path.lineWidth = 2
+        NSColor.white.withAlphaComponent(0.85).setStroke()
+        path.stroke()
+
+        drawEndpoint(at: sourcePoint, radius: 6)
+        drawEndpoint(at: endPoint, radius: 6)
+    }
+
+    private func drawEndpoint(at point: NSPoint, radius: CGFloat) {
+        let rect = NSRect(
+            x: point.x - radius,
+            y: point.y - radius,
+            width: radius * 2,
+            height: radius * 2
+        )
+        let oval = NSBezierPath(ovalIn: rect)
+        NSColor.controlAccentColor.setFill()
+        oval.fill()
+        NSColor.white.withAlphaComponent(0.9).setStroke()
+        oval.lineWidth = 2
+        oval.stroke()
+    }
+}
+
 @MainActor
 @Observable
 final class CollaborationRuntime {
     static let shared = CollaborationRuntime()
+    static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
     private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
@@ -245,6 +407,15 @@ final class CollaborationRuntime {
     private var terminalSelectionLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var snapshotFallbackTasks: [String: Task<Void, Never>] = [:]
     private var isPresentingStartDialog = false
+    private let agentRoomStore = ClaudeRoomStore()
+    private let agentRoomDigestBuilder = ClaudeRoomDigestBuilder()
+    private var agentRoomIDsBySurfaceID: [UUID: String] = [:]
+    private var agentRoomMemberIDsBySurfaceID: [UUID: String] = [:]
+    private var agentRoomSnapshotsByID: [String: ClaudeRoomSnapshot] = [:]
+    @ObservationIgnored private var agentRoomWireAnchorsBySurfaceID: [UUID: AgentRoomWireAnchor] = [:]
+    @ObservationIgnored private let agentRoomWireOverlay = AgentRoomWireOverlayController()
+    @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
+    private var latestAgentRoomID: String?
 
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
@@ -516,6 +687,92 @@ final class CollaborationRuntime {
         return connectionLabel
     }
 
+    func agentRoomState(for panel: TerminalPanel) -> AgentRoomHeaderState {
+        if let roomID = agentRoomIDsBySurfaceID[panel.id] {
+            return AgentRoomHeaderState(
+                isConnected: true,
+                label: String(format: CollaborationStrings.agentRoomConnectedFormat, roomID.prefix(6).description)
+            )
+        }
+        return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectClaudeRoom)
+    }
+
+    func beginAgentRoomWireDrag(sourcePanel: TerminalPanel) {
+        draggingAgentRoomSourceSurfaceID = sourcePanel.id
+        if let anchor = agentRoomWireAnchorsBySurfaceID[sourcePanel.id] {
+            agentRoomWireOverlay.start(from: anchor.screenPoint, in: anchor.window)
+        } else {
+            agentRoomWireOverlay.start(from: NSEvent.mouseLocation, in: sourcePanel.surface.uiWindow)
+        }
+    }
+
+    func endAgentRoomWireDrag() {
+        draggingAgentRoomSourceSurfaceID = nil
+        agentRoomWireOverlay.stop()
+    }
+
+    func updateAgentRoomWireAnchor(surfaceID: UUID, screenPoint: NSPoint, window: NSWindow?) {
+        guard let window else {
+            agentRoomWireAnchorsBySurfaceID.removeValue(forKey: surfaceID)
+            return
+        }
+        agentRoomWireAnchorsBySurfaceID[surfaceID] = AgentRoomWireAnchor(screenPoint: screenPoint, window: window)
+    }
+
+    func removeAgentRoomWireAnchor(surfaceID: UUID) {
+        agentRoomWireAnchorsBySurfaceID.removeValue(forKey: surfaceID)
+    }
+
+    func connectAgentRoomFromHeader(panel: TerminalPanel) {
+        Task { @MainActor in
+            if agentRoomIDsBySurfaceID[panel.id] != nil {
+                _ = await disconnectAgentRoomSurfaceForAutomation(
+                    roomID: nil,
+                    surfaceID: panel.id.uuidString
+                )
+            } else {
+                _ = await connectAgentRoomSurfaceForAutomation(
+                    roomID: latestAgentRoomID,
+                    surfaceID: panel.id.uuidString,
+                    agentSessionID: nil,
+                    displayName: panel.displayTitle
+                )
+            }
+        }
+    }
+
+    func connectAgentRoomWire(sourceSurfaceID: String, targetPanel: TerminalPanel) {
+        connectAgentRoomWire(sourceSurfaceID: sourceSurfaceID, targetSurfaceID: targetPanel.id)
+    }
+
+    func connectAgentRoomWire(sourceSurfaceID: String, targetSurfaceID: UUID) {
+        Task { @MainActor in
+            defer { endAgentRoomWireDrag() }
+            let sourceUUID = UUID(uuidString: sourceSurfaceID)
+            let targetUUID = targetSurfaceID
+            let roomID = sourceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+                ?? agentRoomIDsBySurfaceID[targetUUID]
+                ?? latestAgentRoomID
+                ?? UUID().uuidString
+
+            if let sourceUUID, sourceUUID != targetUUID {
+                _ = await connectAgentRoomSurfaceForAutomation(
+                    roomID: roomID,
+                    surfaceID: sourceUUID.uuidString,
+                    agentSessionID: nil,
+                    displayName: terminalPanel(surfaceID: sourceUUID)?.displayTitle
+                )
+            }
+
+            _ = await connectAgentRoomSurfaceForAutomation(
+                roomID: roomID,
+                surfaceID: targetUUID.uuidString,
+                agentSessionID: nil,
+                displayName: terminalPanel(surfaceID: targetUUID)?.displayTitle
+            )
+        }
+    }
+
     func statusPayload() -> [String: Any] {
         [
             "connected": session != nil,
@@ -532,6 +789,286 @@ final class CollaborationRuntime {
                 ]
             },
         ]
+    }
+
+    func agentRoomStatusPayload() async -> [String: Any] {
+        let rooms = await agentRoomStore.allRooms()
+        cacheAgentRooms(rooms)
+        return agentRoomStatusPayloadSnapshot()
+    }
+
+    func agentRoomStatusPayloadSnapshot() -> [String: Any] {
+        [
+            "rooms": agentRoomSnapshotsByID.values.sorted { $0.id < $1.id }.map(agentRoomPayload),
+            "latest_room_id": latestAgentRoomID ?? NSNull(),
+            "connected": session != nil,
+            "relay_url": relayURLString,
+            "session_code": sessionCode ?? NSNull(),
+        ]
+    }
+
+    func createAgentRoomForAutomation(title: String?, deliveryPolicy: String?) async -> [String: Any] {
+        let policy = ClaudeRoomDeliveryPolicy(rawValue: deliveryPolicy ?? "") ?? .manual
+        let room = await agentRoomStore.createRoom(title: title, deliveryPolicy: policy)
+        latestAgentRoomID = room.id
+        cacheAgentRoom(room)
+        return agentRoomPayload(room)
+    }
+
+    func createAgentRoomForAutomationRequest(title: String?, deliveryPolicy: String?) -> [String: Any] {
+        Task { @MainActor in
+            _ = await createAgentRoomForAutomation(title: title, deliveryPolicy: deliveryPolicy)
+        }
+        return ["requested": true]
+    }
+
+    func connectAgentRoomSurfaceForAutomation(
+        roomID requestedRoomID: String?,
+        surfaceID requestedSurfaceID: String?,
+        agentSessionID: String?,
+        displayName: String?
+    ) async -> [String: Any] {
+        let roomID = requestedRoomID ?? latestAgentRoomID ?? UUID().uuidString
+        if latestAgentRoomID == nil {
+            let room = await agentRoomStore.createRoom(id: roomID)
+            cacheAgentRoom(room)
+            latestAgentRoomID = roomID
+        }
+        guard let surfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID) else {
+            return ["connected": false, "error": "No terminal surface is available."]
+        }
+        let member = ClaudeRoomMember(
+            surfaceID: surfaceID.uuidString,
+            agentSessionID: agentSessionID,
+            peerID: peerIdentity.peerID,
+            displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle
+        )
+        agentRoomIDsBySurfaceID[surfaceID] = roomID
+        agentRoomMemberIDsBySurfaceID[surfaceID] = member.id
+        let room = await agentRoomStore.connect(member: member, to: roomID)
+        latestAgentRoomID = roomID
+        cacheAgentRoom(room)
+        try? await send(.agentRoomSnapshot(room))
+        return agentRoomPayload(room)
+    }
+
+    func connectAgentRoomSurfaceForAutomationRequest(
+        roomID: String?,
+        surfaceID: String?,
+        agentSessionID: String?,
+        displayName: String?
+    ) -> [String: Any] {
+        Task { @MainActor in
+            _ = await connectAgentRoomSurfaceForAutomation(
+                roomID: roomID,
+                surfaceID: surfaceID,
+                agentSessionID: agentSessionID,
+                displayName: displayName
+            )
+        }
+        return ["requested": true]
+    }
+
+    func disconnectAgentRoomSurfaceForAutomation(roomID: String?, surfaceID: String?) async -> [String: Any] {
+        let targetRoomID = roomID ?? latestAgentRoomID
+        guard let targetRoomID else { return ["disconnected": false, "error": "No Claude room is active."] }
+        let parsedSurfaceID = surfaceID.flatMap(UUID.init(uuidString:))
+        let memberID = parsedSurfaceID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        let room = await agentRoomStore.disconnect(
+            roomID: targetRoomID,
+            memberID: memberID,
+            surfaceID: surfaceID
+        )
+        if let parsedSurfaceID {
+            agentRoomIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
+            agentRoomMemberIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
+        }
+        if let room {
+            cacheAgentRoom(room)
+            try? await send(.agentRoomSnapshot(room))
+            return agentRoomPayload(room)
+        }
+        return ["disconnected": false, "error": "Claude room not found."]
+    }
+
+    func disconnectAgentRoomSurfaceForAutomationRequest(roomID: String?, surfaceID: String?) -> [String: Any] {
+        Task { @MainActor in
+            _ = await disconnectAgentRoomSurfaceForAutomation(roomID: roomID, surfaceID: surfaceID)
+        }
+        return ["requested": true]
+    }
+
+    func postAgentRoomEventForAutomation(
+        roomID requestedRoomID: String?,
+        kind rawKind: String?,
+        fromSurfaceID rawFromSurfaceID: String?,
+        targetSurfaceIDs rawTargetSurfaceIDs: [String],
+        text: String
+    ) async -> [String: Any] {
+        let fromSurfaceUUID = resolveAgentRoomSurfaceID(rawFromSurfaceID)
+        let roomID: String?
+        if let requestedRoomID {
+            roomID = requestedRoomID
+        } else if rawFromSurfaceID != nil {
+            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID else { return ["posted": false, "error": "No Claude room is active."] }
+        let kind = rawKind.flatMap(ClaudeRoomEventKind.init(rawValue:)) ?? .message
+        let fromSurfaceID = fromSurfaceUUID?.uuidString ?? rawFromSurfaceID
+        let fromMemberID = fromSurfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        let result = await agentRoomStore.appendEvent(
+            roomID: roomID,
+            kind: kind,
+            fromMemberID: fromMemberID,
+            fromSurfaceID: fromSurfaceID,
+            targetSurfaceIDs: rawTargetSurfaceIDs,
+            text: text
+        )
+        cacheAgentRoom(result.room)
+        try? await send(.agentRoomEvent(result.event))
+        return [
+            "posted": true,
+            "event": encodedJSONObject(result.event),
+            "room": agentRoomPayload(result.room),
+        ]
+    }
+
+    func postAgentRoomEventForAutomationRequest(
+        roomID: String?,
+        kind: String?,
+        fromSurfaceID: String?,
+        targetSurfaceIDs: [String],
+        text: String
+    ) -> [String: Any] {
+        let payload = postAgentRoomEventSnapshotForAutomation(
+            roomID: roomID,
+            kind: kind,
+            fromSurfaceID: fromSurfaceID,
+            targetSurfaceIDs: targetSurfaceIDs,
+            text: text
+        )
+        if let room = payload["room_snapshot"] as? ClaudeRoomSnapshot,
+           let event = payload["event_snapshot"] as? ClaudeRoomEvent {
+            Task { @MainActor in
+                await agentRoomStore.apply(snapshot: room)
+                try? await send(.agentRoomEvent(event))
+            }
+            return [
+                "posted": true,
+                "event": encodedJSONObject(event),
+                "room": agentRoomPayload(room),
+            ]
+        }
+        if let publicPayload = payload["payload"] as? [String: Any] {
+            return publicPayload
+        }
+        return ["posted": false, "error": "No Claude room is active."]
+    }
+
+    private func postAgentRoomEventSnapshotForAutomation(
+        roomID requestedRoomID: String?,
+        kind rawKind: String?,
+        fromSurfaceID rawFromSurfaceID: String?,
+        targetSurfaceIDs rawTargetSurfaceIDs: [String],
+        text: String
+    ) -> [String: Any] {
+        let fromSurfaceUUID = resolveAgentRoomSurfaceID(rawFromSurfaceID)
+        let roomID: String?
+        if let requestedRoomID {
+            roomID = requestedRoomID
+        } else if rawFromSurfaceID != nil {
+            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID else {
+            return ["payload": ["posted": false, "error": "No Claude room is active."]]
+        }
+        let kind = rawKind.flatMap(ClaudeRoomEventKind.init(rawValue:)) ?? .message
+        let fromSurfaceID = fromSurfaceUUID?.uuidString ?? rawFromSurfaceID
+        let fromMemberID = fromSurfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        var room = agentRoomSnapshotsByID[roomID] ?? ClaudeRoomSnapshot(id: roomID)
+        let event = ClaudeRoomEvent(
+            sequence: room.lastSequence + 1,
+            roomID: roomID,
+            kind: kind,
+            fromMemberID: fromMemberID,
+            fromSurfaceID: fromSurfaceID,
+            targetSurfaceIDs: rawTargetSurfaceIDs,
+            text: text
+        )
+        room.lastSequence = event.sequence
+        room.events.append(event)
+        if room.events.count > 200 {
+            room.events.removeFirst(room.events.count - 200)
+        }
+        cacheAgentRoom(room)
+        latestAgentRoomID = roomID
+        return [
+            "room_snapshot": room,
+            "event_snapshot": event,
+        ]
+    }
+
+    func agentRoomDigestForAutomation(roomID requestedRoomID: String?, surfaceID rawSurfaceID: String? = nil, since: Int?) async -> [String: Any] {
+        let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
+        let roomID: String?
+        if let requestedRoomID {
+            roomID = requestedRoomID
+        } else if rawSurfaceID != nil {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
+            return ["digest": "", "error": "Claude room not found."]
+        }
+        cacheAgentRoom(room)
+        return agentRoomDigestPayload(room: room, surfaceID: surfaceUUID?.uuidString, since: since)
+    }
+
+    func agentRoomDigestPayloadSnapshot(roomID requestedRoomID: String?, surfaceID rawSurfaceID: String? = nil, since: Int?) -> [String: Any] {
+        let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
+        let roomID: String?
+        if let requestedRoomID {
+            roomID = requestedRoomID
+        } else if rawSurfaceID != nil {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID, let room = agentRoomSnapshotsByID[roomID] else {
+            return ["digest": "", "error": "Claude room not found."]
+        }
+        return agentRoomDigestPayload(room: room, surfaceID: surfaceUUID?.uuidString, since: since)
+    }
+
+    private func agentRoomDigestPayload(room: ClaudeRoomSnapshot, surfaceID: String?, since: Int?) -> [String: Any] {
+        let digestRoom: ClaudeRoomSnapshot
+        if let surfaceID {
+            var filtered = room
+            filtered.events = room.events.filter { event in
+                event.fromSurfaceID != surfaceID &&
+                    (event.targetSurfaceIDs.isEmpty || event.targetSurfaceIDs.contains(surfaceID))
+            }
+            digestRoom = filtered
+        } else {
+            digestRoom = room
+        }
+        return [
+            "room_id": room.id,
+            "digest": agentRoomDigestBuilder.digest(for: digestRoom, since: since),
+            "last_sequence": room.lastSequence,
+        ]
+    }
+
+    func agentRoomDigestForAutomationRequest(roomID: String?, surfaceID: String? = nil, since: Int?) -> [String: Any] {
+        Task { @MainActor in
+            _ = await agentRoomDigestForAutomation(roomID: roomID, surfaceID: surfaceID, since: since)
+        }
+        return ["requested": true]
     }
 
     func createSessionForAutomation(relayURL: String?) async -> [String: Any] {
@@ -1224,6 +1761,30 @@ final class CollaborationRuntime {
         case "terminal.close":
             let close = try decoder.decode(CollaborationTerminalCloseWire.self, from: data)
             handleRemoteTerminalClose(terminalID: close.terminalID)
+        case "agent.room.event":
+            let wire = try decoder.decode(CollaborationAgentRoomEventWire.self, from: data)
+            let room = await agentRoomStore.apply(event: wire.event)
+            cacheAgentRoom(room)
+            latestAgentRoomID = wire.event.roomID
+        case "agent.room.snapshot":
+            let wire = try decoder.decode(CollaborationAgentRoomSnapshotWire.self, from: data)
+            await agentRoomStore.apply(snapshot: wire.room)
+            cacheAgentRoom(wire.room)
+            latestAgentRoomID = wire.room.id
+        case "agent.room.snapshot.request":
+            let wire = try decoder.decode(CollaborationAgentRoomSnapshotRequestWire.self, from: data)
+            if let room = await agentRoomStore.room(id: wire.roomID) {
+                try await send(CollaborationAgentRoomSnapshotWire(
+                    type: "agent.room.snapshot",
+                    room: room,
+                    requestID: wire.requestID
+                ))
+            }
+        case "agent.room.cursor_ack":
+            let wire = try decoder.decode(CollaborationAgentRoomCursorAckWire.self, from: data)
+            if let room = await agentRoomStore.acknowledge(roomID: wire.roomID, memberID: wire.memberID, sequence: wire.sequence) {
+                cacheAgentRoom(room)
+            }
         default:
             break
         }
@@ -1275,6 +1836,23 @@ final class CollaborationRuntime {
             ))
         case .terminalClose(let terminalID):
             try await send(CollaborationTerminalCloseWire(type: "terminal.close", terminalID: terminalID))
+        case .agentRoomEvent(let event):
+            try await send(CollaborationAgentRoomEventWire(type: "agent.room.event", event: event))
+        case .agentRoomSnapshot(let room):
+            try await send(CollaborationAgentRoomSnapshotWire(type: "agent.room.snapshot", room: room, requestID: nil))
+        case .agentRoomSnapshotRequest(let roomID, let requestID):
+            try await send(CollaborationAgentRoomSnapshotRequestWire(
+                type: "agent.room.snapshot.request",
+                roomID: roomID,
+                requestID: requestID
+            ))
+        case .agentRoomCursorAck(let roomID, let memberID, let sequence):
+            try await send(CollaborationAgentRoomCursorAckWire(
+                type: "agent.room.cursor_ack",
+                roomID: roomID,
+                memberID: memberID,
+                sequence: sequence
+            ))
         case .peerLeft:
             break
         }
@@ -1389,6 +1967,60 @@ final class CollaborationRuntime {
         terminalDescriptor(for: panel).terminalID(sessionID: sessionCode ?? "")
     }
 
+    private func resolveAgentRoomSurfaceID(_ raw: String?) -> UUID? {
+        if let raw, let uuid = UUID(uuidString: raw) {
+            return uuid
+        }
+        if let raw, let uuid = agentRoomIDsBySurfaceID.keys.first(where: { $0.uuidString == raw }) {
+            return uuid
+        }
+        if let focused = TerminalController.shared.tabManager?.selectedWorkspace?.focusedTerminalPanel {
+            return focused.id
+        }
+        return TerminalController.shared.tabManager?.tabs
+            .lazy
+            .flatMap { $0.panels.values }
+            .compactMap { ($0 as? TerminalPanel)?.id }
+            .first
+    }
+
+    private func terminalPanel(surfaceID: UUID) -> TerminalPanel? {
+        TerminalController.shared.tabManager?.tabs
+            .lazy
+            .flatMap { $0.panels.values }
+            .compactMap { $0 as? TerminalPanel }
+            .first { $0.id == surfaceID }
+    }
+
+    private func cacheAgentRoom(_ room: ClaudeRoomSnapshot) {
+        agentRoomSnapshotsByID[room.id] = room
+    }
+
+    private func cacheAgentRooms(_ rooms: [ClaudeRoomSnapshot]) {
+        for room in rooms {
+            cacheAgentRoom(room)
+        }
+    }
+
+    private func agentRoomPayload(_ room: ClaudeRoomSnapshot) -> [String: Any] {
+        [
+            "room_id": room.id,
+            "title": room.title ?? NSNull(),
+            "delivery_policy": room.deliveryPolicy.rawValue,
+            "last_sequence": room.lastSequence,
+            "members": room.members.map(encodedJSONObject),
+            "events": room.events.map(encodedJSONObject),
+        ]
+    }
+
+    private func encodedJSONObject<T: Encodable>(_ value: T) -> Any {
+        guard let data = try? encoder.encode(value),
+              let object = try? JSONSerialization.jsonObject(with: data) else {
+            return [:]
+        }
+        return object
+    }
+
     private func disconnectWebSocket() {
         heartbeatTask?.cancel()
         heartbeatTask = nil
@@ -1463,6 +2095,14 @@ enum CollaborationStrings {
 
     static var shareTerminal: String {
         String(localized: "collaboration.terminal.share", defaultValue: "Share Terminal")
+    }
+
+    static var connectClaudeRoom: String {
+        String(localized: "collaboration.agentRoom.connect", defaultValue: "Connect Claude Room")
+    }
+
+    static var agentRoomConnectedFormat: String {
+        String(localized: "collaboration.agentRoom.connectedFormat", defaultValue: "Claude room %@")
     }
 
     static var stopSharingTerminal: String {
