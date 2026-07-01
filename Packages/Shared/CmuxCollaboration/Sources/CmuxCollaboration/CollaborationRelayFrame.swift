@@ -20,4 +20,12 @@ public enum CollaborationRelayFrame: Codable, Equatable, Sendable {
     case terminalInput(terminalID: String, inputID: String, data: Data)
     /// A terminal share was closed.
     case terminalClose(terminalID: String)
+    /// A semantic event in a connected-Claude room.
+    case agentRoomEvent(ClaudeRoomEvent)
+    /// A full connected-Claude room snapshot.
+    case agentRoomSnapshot(ClaudeRoomSnapshot)
+    /// A request for the current connected-Claude room snapshot.
+    case agentRoomSnapshotRequest(roomID: String, requestID: String)
+    /// A participant acknowledged room events through a sequence.
+    case agentRoomCursorAck(roomID: String, memberID: String, sequence: Int)
 }

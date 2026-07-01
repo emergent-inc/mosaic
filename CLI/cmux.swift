@@ -3596,6 +3596,105 @@ struct CMUXCLI {
                 throw CLIError(message: "Usage: cmux collaboration <status|create|join|leave>")
             }
 
+        case "agent-room", "claude-room":
+            let sub = commandArgs.first?.lowercased() ?? "status"
+            let rest = Array(commandArgs.dropFirst())
+            switch sub {
+            case "status":
+                let response = try client.sendV2(method: "agent.room.status")
+                if jsonOutput {
+                    print(jsonString(response))
+                    break
+                }
+                let rooms = response["rooms"] as? [[String: Any]] ?? []
+                print("Claude rooms: \(rooms.count)")
+                if let latest = response["latest_room_id"] as? String {
+                    print("  latest_room_id: \(latest)")
+                }
+
+            case "create", "new":
+                let (title, afterTitle) = parseOption(rest, name: "--title")
+                let (policy, remaining) = parseOption(afterTitle, name: "--delivery-policy")
+                if let extra = remaining.first {
+                    throw CLIError(message: "cmux agent-room create: unexpected argument '\(extra)'")
+                }
+                var params: [String: Any] = [:]
+                if let title { params["title"] = title }
+                if let policy { params["delivery_policy"] = policy }
+                let response = try client.sendV2(method: "agent.room.create", params: params)
+                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Created Claude room \((response["room_id"] as? String) ?? "")")
+
+            case "connect":
+                let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
+                let (surfaceID, afterSurface) = parseOption(afterRoom, name: "--surface")
+                let (agentSessionID, afterSession) = parseOption(afterSurface, name: "--agent-session-id")
+                let (displayName, remaining) = parseOption(afterSession, name: "--display-name")
+                if let extra = remaining.first {
+                    throw CLIError(message: "cmux agent-room connect: unexpected argument '\(extra)'")
+                }
+                var params: [String: Any] = [:]
+                if let roomID { params["room_id"] = roomID }
+                if let surfaceID { params["surface_id"] = surfaceID }
+                if let agentSessionID { params["agent_session_id"] = agentSessionID }
+                if let displayName { params["display_name"] = displayName }
+                let response = try client.sendV2(method: "agent.room.connect_surface", params: params)
+                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Connected surface to Claude room")
+
+            case "disconnect":
+                let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
+                let (surfaceID, remaining) = parseOption(afterRoom, name: "--surface")
+                if let extra = remaining.first {
+                    throw CLIError(message: "cmux agent-room disconnect: unexpected argument '\(extra)'")
+                }
+                var params: [String: Any] = [:]
+                if let roomID { params["room_id"] = roomID }
+                if let surfaceID { params["surface_id"] = surfaceID }
+                let response = try client.sendV2(method: "agent.room.disconnect_surface", params: params)
+                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Disconnected surface from Claude room")
+
+            case "post":
+                let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
+                let (kind, afterKind) = parseOption(afterRoom, name: "--kind")
+                let (fromSurfaceID, afterFrom) = parseOption(afterKind, name: "--from-surface")
+                let (targetSurfacesRaw, afterTargets) = parseOption(afterFrom, name: "--target-surfaces")
+                let messageArgs = afterTargets.dropFirst(afterTargets.first == "--" ? 1 : 0)
+                let text = messageArgs.joined(separator: " ")
+                guard !text.isEmpty else {
+                    throw CLIError(message: "Usage: cmux agent-room post [--room-id <id>] [--kind summary|task|question|status|message] [--from-surface <uuid>] [--target-surfaces <uuid,uuid>] -- <text>")
+                }
+                var params: [String: Any] = ["text": text]
+                if let roomID { params["room_id"] = roomID }
+                if let kind { params["kind"] = kind }
+                if let fromSurfaceID { params["from_surface_id"] = fromSurfaceID }
+                if let targetSurfacesRaw {
+                    params["target_surface_ids"] = targetSurfacesRaw
+                        .split(separator: ",")
+                        .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                }
+                let response = try client.sendV2(method: "agent.room.post", params: params)
+                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Posted Claude room event")
+
+            case "digest":
+                let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
+                let (since, remaining) = parseOption(afterRoom, name: "--since-sequence")
+                if let extra = remaining.first {
+                    throw CLIError(message: "cmux agent-room digest: unexpected argument '\(extra)'")
+                }
+                var params: [String: Any] = [:]
+                if let roomID { params["room_id"] = roomID }
+                if let since, let value = Int(since) { params["since_sequence"] = value }
+                let response = try client.sendV2(method: "agent.room.digest", params: params)
+                if jsonOutput {
+                    print(jsonString(response))
+                } else {
+                    print((response["digest"] as? String) ?? "")
+                }
+
+            default:
+                throw CLIError(message: "Usage: cmux agent-room <status|create|connect|disconnect|post|digest>")
+            }
+
         case "agent-hibernation":
             try runAgentHibernation(commandArgs: commandArgs, client: client, jsonOutput: jsonOutput)
 
@@ -23459,6 +23558,85 @@ struct CMUXCLI {
             )
             print("OK")
 
+        case "room-context":
+            telemetry.breadcrumb("claude-hook.room-context")
+            didSendFeedTelemetry = true
+            do {
+                let mappedSession = parsedInput.sessionId.flatMap { try? sessionStore.lookup(sessionId: $0) }
+                let workspaceId = try resolvePreferredWorkspaceIdForClaudeHook(
+                    preferred: mappedSession?.workspaceId,
+                    fallback: workspaceArg,
+                    preferCallerTTYOverFallback: preferCallerTTYRouting,
+                    callerTerminalBinding: callerTTYBindingProvider,
+                    client: client
+                )
+                let surfaceId = try resolvePreferredSurfaceIdForClaudeHook(
+                    preferred: mappedSession?.surfaceId,
+                    fallback: surfaceArg,
+                    fallbackIsExplicit: hookSurfaceFlag != nil,
+                    workspaceId: workspaceId,
+                    callerTerminalBinding: callerTTYBindingProvider,
+                    client: client
+                )
+                let payload = try client.sendV2(
+                    method: "agent.room.digest",
+                    params: ["surface_id": surfaceId]
+                )
+                let digest = (payload["digest"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if !digest.isEmpty {
+                    let roomContextHeader = String(
+                        localized: "cli.claudeHook.roomContext.header",
+                        defaultValue: "Shared Claude room context:"
+                    )
+                    print(jsonString([
+                        "hookSpecificOutput": [
+                            "hookEventName": "UserPromptSubmit",
+                            "additionalContext": """
+                            \(roomContextHeader)
+                            \(digest)
+                            """,
+                        ],
+                    ]))
+                }
+            } catch {
+                telemetry.breadcrumb("claude-hook.room-context.error", data: ["error": String(describing: error)])
+            }
+
+        case "room-publish":
+            telemetry.breadcrumb("claude-hook.room-publish")
+            didSendFeedTelemetry = true
+            do {
+                let mappedSession = parsedInput.sessionId.flatMap { try? sessionStore.lookup(sessionId: $0) }
+                let workspaceId = try resolvePreferredWorkspaceIdForClaudeHook(
+                    preferred: mappedSession?.workspaceId,
+                    fallback: workspaceArg,
+                    preferCallerTTYOverFallback: preferCallerTTYRouting,
+                    callerTerminalBinding: callerTTYBindingProvider,
+                    client: client
+                )
+                let surfaceId = try resolvePreferredSurfaceIdForClaudeHook(
+                    preferred: mappedSession?.surfaceId,
+                    fallback: surfaceArg,
+                    fallbackIsExplicit: hookSurfaceFlag != nil,
+                    workspaceId: workspaceId,
+                    callerTerminalBinding: callerTTYBindingProvider,
+                    client: client
+                )
+                if let text = claudeRoomPublishText(parsedInput: parsedInput, sessionRecord: mappedSession) {
+                    _ = try? client.sendV2(
+                        method: "agent.room.post",
+                        params: [
+                            "from_surface_id": surfaceId,
+                            "kind": "summary",
+                            "text": text,
+                        ]
+                    )
+                }
+            } catch {
+                telemetry.breadcrumb("claude-hook.room-publish.error", data: ["error": String(describing: error)])
+            }
+            print("OK")
+
         case "auto-name":
             telemetry.breadcrumb("claude-hook.auto-name")
             // Auto-naming emits no feed events of its own; the sync Stop hook
@@ -24664,6 +24842,36 @@ struct CMUXCLI {
         return ("Completed", body)
     }
 
+    private func claudeRoomPublishText(
+        parsedInput: ClaudeHookParsedInput,
+        sessionRecord: ClaudeHookSessionRecord?
+    ) -> String? {
+        let transcriptPath = parsedInput.transcriptPath ?? sessionRecord?.transcriptPath
+        let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
+        let userMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.object)
+        let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object)
+            ?? transcript?.lastAssistantMessage
+
+        let userLabel = String(localized: "cli.claudeHook.roomPublish.peerUser", defaultValue: "Shared user message")
+        let assistantLabel = String(localized: "cli.claudeHook.roomPublish.peerAssistant", defaultValue: "Shared Claude reply")
+        let turnText = [
+            userMessage.map { "\(userLabel): \($0)" },
+            assistantMessage.map { "\(assistantLabel): \($0)" },
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+            .joined(separator: " | ")
+        if !turnText.isEmpty {
+            return truncate(turnText, maxLength: 500)
+        }
+
+        guard let completion = summarizeClaudeHookStop(parsedInput: parsedInput, sessionRecord: sessionRecord) else {
+            return nil
+        }
+        let body = completion.body.trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.isEmpty ? completion.subtitle : "\(completion.subtitle): \(body)"
+    }
+
     private func claudeAssistantMessageFromHookPayload(_ object: [String: Any]?) -> String? {
         guard let object else { return nil }
         let keys = [
@@ -24683,12 +24891,14 @@ struct CMUXCLI {
     }
 
     private struct TranscriptSummary {
+        let lastUserMessage: String?
         let lastAssistantMessage: String?
     }
 
     private func readTranscriptSummary(path: String) -> TranscriptSummary? {
         guard let lines = readRecentTextFileLines(path: path, maxBytes: 1_048_576) else { return nil }
 
+        var lastUserMessage: String?
         var lastAssistantMessage: String?
 
         for line in lines {
@@ -24697,18 +24907,23 @@ struct CMUXCLI {
                   let lineData = trimmed.data(using: .utf8),
                   let obj = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
                   let message = obj["message"] as? [String: Any],
-                  let role = message["role"] as? String,
-                  role == "assistant" else {
+                  let role = message["role"] as? String else {
                 continue
             }
 
             let text = extractMessageText(from: message)
             guard let text, !text.isEmpty else { continue }
-            lastAssistantMessage = truncate(normalizedSingleLine(text), maxLength: 120)
+            let normalized = normalizedSingleLine(text)
+            guard !normalized.isEmpty else { continue }
+            if role == "user" {
+                lastUserMessage = truncate(normalized, maxLength: 400)
+            } else if role == "assistant" {
+                lastAssistantMessage = truncate(normalized, maxLength: 120)
+            }
         }
 
-        guard lastAssistantMessage != nil else { return nil }
-        return TranscriptSummary(lastAssistantMessage: lastAssistantMessage)
+        guard lastUserMessage != nil || lastAssistantMessage != nil else { return nil }
+        return TranscriptSummary(lastUserMessage: lastUserMessage, lastAssistantMessage: lastAssistantMessage)
     }
 
     private struct CodexHookFailureSummary {
