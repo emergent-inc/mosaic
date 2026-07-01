@@ -347,6 +347,10 @@ public final class TerminalSurface: Identifiable, ObservableObject {
         let socketPath = spawnPolicyProvider.controlSocketPath()
         var environment: [String: String] = [:]
         var protectedKeys: Set<String> = []
+        Self.applyManagedClaudeCodeTerminalEnvironment(
+            to: &environment,
+            protectedKeys: &protectedKeys
+        )
         Self.applyManagedCmuxContextEnvironment(
             Self.cmuxContextEnvironment(
                 workspaceId: tabId,

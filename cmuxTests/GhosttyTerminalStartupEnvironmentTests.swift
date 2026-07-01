@@ -38,6 +38,10 @@ struct GhosttyTerminalStartupEnvironmentTests {
             "CMUX_SOCKET_PATH should be present"
         )
         expectFalse(socketPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        expectEqual(
+            surface.startupEnvironmentValue(TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey),
+            "1"
+        )
     }
 
     @Test
@@ -62,6 +66,47 @@ struct GhosttyTerminalStartupEnvironmentTests {
         expectTrue(protectedKeys.contains("TERM"))
         expectTrue(protectedKeys.contains("COLORTERM"))
         expectTrue(protectedKeys.contains("TERM_PROGRAM"))
+    }
+
+    @Test
+    func testApplyManagedClaudeCodeTerminalEnvironmentDisablesAlternateScreen() {
+        var environment = [
+            TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey: "0",
+            "CUSTOM_FLAG": "1",
+        ]
+        var protectedKeys: Set<String> = []
+
+        TerminalSurface.applyManagedClaudeCodeTerminalEnvironment(
+            to: &environment,
+            protectedKeys: &protectedKeys
+        )
+
+        expectEqual(environment[TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey], "1")
+        expectEqual(environment["CUSTOM_FLAG"], "1")
+        expectTrue(protectedKeys.contains(TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey))
+    }
+
+    @Test
+    func testMergedStartupEnvironmentProtectsManagedClaudeCodeAlternateScreenDefault() {
+        var baseEnvironment: [String: String] = [:]
+        var protectedKeys: Set<String> = []
+        TerminalSurface.applyManagedClaudeCodeTerminalEnvironment(
+            to: &baseEnvironment,
+            protectedKeys: &protectedKeys
+        )
+
+        let merged = TerminalSurface.mergedStartupEnvironment(
+            base: baseEnvironment,
+            protectedKeys: protectedKeys,
+            additionalEnvironment: [
+                TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey: "0"
+            ],
+            initialEnvironmentOverrides: [
+                TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey: ""
+            ]
+        )
+
+        expectEqual(merged[TerminalSurface.claudeCodeDisableAlternateScreenEnvironmentKey], "1")
     }
 
     @Test

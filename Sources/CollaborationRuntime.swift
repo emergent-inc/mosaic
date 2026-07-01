@@ -125,6 +125,10 @@ private struct CollaborationTerminalPointerWire: Codable {
     let x: Double
     let y: Double
     let visible: Bool
+    let coordinateSpace: String?
+    let row: Double?
+    let column: Double?
+    let contentRow: Double?
 }
 
 private struct CollaborationTerminalSelectionRectWire: Codable {
@@ -516,7 +520,6 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
         Task {
             try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data))
-            scheduleTerminalRenderGridSnapshot(terminalID: terminalID)
         }
     }
 
@@ -536,7 +539,16 @@ final class CollaborationRuntime {
         }
     }
 
-    func noteTerminalPointer(surfaceID: UUID, point: CGPoint?, bounds: CGRect, visible: Bool) {
+    func noteTerminalPointer(
+        surfaceID: UUID,
+        normalizedX: Double,
+        normalizedY: Double,
+        row: Double?,
+        column: Double?,
+        contentRow: Double?,
+        visible: Bool,
+        coordinateSpace: String
+    ) {
         let terminalID = hostedTerminalIDsBySurfaceID[surfaceID] ?? mirroredTerminalIDsBySurfaceID[surfaceID]
         guard let terminalID else { return }
 
@@ -549,24 +561,18 @@ final class CollaborationRuntime {
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
         }
 
-        let normalizedX: Double
-        let normalizedY: Double
-        if visible, let point, bounds.width > 0, bounds.height > 0 {
-            normalizedX = Double(min(max(point.x / bounds.width, 0), 1))
-            normalizedY = Double(min(max(point.y / bounds.height, 0), 1))
-        } else {
-            normalizedX = 0
-            normalizedY = 0
-        }
-
         Task {
             try? await send(CollaborationTerminalPointerWire(
                 type: "terminal.pointer",
                 terminalID: terminalID,
                 fromPeerID: peerIdentity.peerID,
-                x: normalizedX,
-                y: normalizedY,
-                visible: visible
+                x: min(max(normalizedX, 0), 1),
+                y: min(max(normalizedY, 0), 1),
+                visible: visible,
+                coordinateSpace: coordinateSpace,
+                row: row,
+                column: column,
+                contentRow: contentRow
             ))
         }
     }
@@ -1468,8 +1474,9 @@ final class CollaborationRuntime {
                 if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
                    !replay.data.isEmpty {
                     try await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
+                } else {
+                    try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
                 }
-                try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
             } catch {
                 lastErrorMessage = error.localizedDescription
             }
@@ -1536,7 +1543,12 @@ final class CollaborationRuntime {
             )
             Task {
                 try? await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
-                try? await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+                if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
+                   !replay.data.isEmpty {
+                    try? await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
+                } else {
+                    try? await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+                }
             }
         }
     }
@@ -1837,7 +1849,11 @@ final class CollaborationRuntime {
                 colorHex: peer.color,
                 normalizedX: pointer.x,
                 normalizedY: pointer.y,
-                visible: pointer.visible
+                row: pointer.row,
+                column: pointer.column,
+                contentRow: pointer.contentRow,
+                visible: pointer.visible,
+                coordinateSpace: pointer.coordinateSpace
             )
         }
     }
@@ -2024,15 +2040,23 @@ final class CollaborationRuntime {
 
     private func sendTerminalRenderGridSnapshotIfPossible(terminalID: String) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
+        guard Self.shouldSendTerminalRenderGridSnapshot(for: panel) else { return }
         let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
             ?? MobileTerminalByteTee.shared.currentSequence(surfaceID: panel.id)
             ?? 0
-        guard let snapshot = panel.surface.mobileRenderGridFrame(stateSeq: stateSeq, full: true) else { return }
+        guard let snapshot = panel.surface.mobileRenderGridFrame(
+            stateSeq: stateSeq,
+            full: true
+        ) else { return }
         try await send(CollaborationTerminalRenderGridWire(
             type: "terminal.render_grid",
             terminalID: terminalID,
             frame: snapshot.frame
         ))
+    }
+
+    private static func shouldSendTerminalRenderGridSnapshot(for panel: TerminalPanel) -> Bool {
+        panel.surface.hostedView.isAtLiveScrollbackBottom
     }
 
     private func scheduleTerminalRenderGridSnapshot(terminalID: String) {

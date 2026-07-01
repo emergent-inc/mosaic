@@ -73,6 +73,10 @@ extension TerminalSurface {
             to: &env,
             protectedKeys: &protectedStartupEnvironmentKeys
         )
+        Self.applyManagedClaudeCodeTerminalEnvironment(
+            to: &env,
+            protectedKeys: &protectedStartupEnvironmentKeys
+        )
         func setManagedEnvironmentValue(_ key: String, _ value: String) {
             env[key] = value
             protectedStartupEnvironmentKeys.insert(key)
