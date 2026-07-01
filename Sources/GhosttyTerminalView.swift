@@ -3722,7 +3722,11 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         colorHex: String?,
         normalizedX: Double,
         normalizedY: Double,
-        visible: Bool
+        row: Double?,
+        column: Double?,
+        contentRow: Double?,
+        visible: Bool,
+        coordinateSpace: String?
     ) {
         let view = terminalCollaboratorPointerViews[peerID] ?? TerminalCollaboratorPointerView(frame: .zero)
         if view.superview == nil {
@@ -3733,7 +3737,18 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         terminalCollaboratorPointerHideTasks[peerID]?.cancel()
         let color = colorHex.flatMap(NSColor.init(hex:)) ?? .controlAccentColor
         if visible {
-            let anchor = terminalCollaboratorPointerAnchor(normalizedX: normalizedX, normalizedY: normalizedY)
+            guard let anchor = terminalCollaboratorPointerAnchor(
+                normalizedX: normalizedX,
+                normalizedY: normalizedY,
+                row: row,
+                column: column,
+                contentRow: contentRow,
+                coordinateSpace: coordinateSpace
+            ) else {
+                view.fadeOut()
+                terminalCollaboratorPointerHideTasks[peerID] = nil
+                return
+            }
             view.update(displayName: displayName, color: color)
             view.frame = terminalCollaboratorPointerFrame(for: anchor, labelWidth: view.preferredLabelWidth)
             view.anchorPoint = convert(anchor, to: view)
@@ -3751,10 +3766,65 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
     }
 
-    private func terminalCollaboratorPointerAnchor(normalizedX: Double, normalizedY: Double) -> NSPoint {
-        NSPoint(
-            x: min(max(CGFloat(normalizedX), 0), 1) * bounds.width,
-            y: min(max(CGFloat(normalizedY), 0), 1) * bounds.height
+    private func terminalCollaboratorPointerAnchor(
+        normalizedX: Double,
+        normalizedY: Double,
+        row: Double?,
+        column: Double?,
+        contentRow: Double?,
+        coordinateSpace: String?
+    ) -> NSPoint? {
+        let x = min(max(CGFloat(normalizedX), 0), 1)
+        let y = min(max(CGFloat(normalizedY), 0), 1)
+        guard let surface,
+              let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
+            return NSPoint(x: x * bounds.width, y: y * bounds.height)
+        }
+
+        if coordinateSpace == "terminalContentRow",
+           let contentRow,
+           let column {
+            let viewportRow = CGFloat(contentRow) - CGFloat(scrollbar?.offset ?? 0)
+            if viewportRow >= 0, viewportRow < CGFloat(metrics.rows) {
+                return terminalCollaboratorPointerAnchor(
+                    row: viewportRow,
+                    column: CGFloat(column),
+                    metrics: metrics
+                )
+            }
+            if let row {
+                return terminalCollaboratorPointerAnchor(
+                    row: CGFloat(row),
+                    column: CGFloat(column),
+                    metrics: metrics
+                )
+            }
+            return nil
+        }
+
+        if coordinateSpace == "terminalCell",
+           let row,
+           let column {
+            return terminalCollaboratorPointerAnchor(
+                row: CGFloat(row),
+                column: CGFloat(column),
+                metrics: metrics
+            )
+        }
+
+        return NSPoint(x: x * bounds.width, y: y * bounds.height)
+    }
+
+    private func terminalCollaboratorPointerAnchor(
+        row: CGFloat,
+        column: CGFloat,
+        metrics: KeyboardCopyModeGridMetrics
+    ) -> NSPoint {
+        let clampedColumn = min(max(column, 0), CGFloat(metrics.columns))
+        let clampedRow = min(max(row, 0), CGFloat(metrics.rows))
+        return NSPoint(
+            x: metrics.xInset + (clampedColumn * metrics.cellWidth),
+            y: bounds.height - metrics.yInset - (clampedRow * metrics.cellHeight)
         )
     }
 
@@ -7476,11 +7546,53 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     private func noteTerminalCollaboratorPointer(at point: NSPoint?, visible: Bool) {
         guard let surfaceID = terminalSurface?.id else { return }
+        let normalized = terminalCollaboratorPointerNormalizedPosition(at: point, visible: visible)
         CollaborationRuntime.shared.noteTerminalPointer(
             surfaceID: surfaceID,
-            point: point,
-            bounds: bounds,
-            visible: visible
+            normalizedX: normalized.x,
+            normalizedY: normalized.y,
+            row: normalized.row,
+            column: normalized.column,
+            contentRow: normalized.contentRow,
+            visible: visible,
+            coordinateSpace: normalized.coordinateSpace
+        )
+    }
+
+    private func terminalCollaboratorPointerNormalizedPosition(
+        at point: NSPoint?,
+        visible: Bool
+    ) -> (x: Double, y: Double, row: Double?, column: Double?, contentRow: Double?, coordinateSpace: String) {
+        guard visible, let point else {
+            return (0, 0, nil, nil, nil, "terminalContentRow")
+        }
+        guard let surface,
+              let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
+            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, "view") }
+            return (
+                Double(min(max(point.x / bounds.width, 0), 1)),
+                Double(min(max(point.y / bounds.height, 0), 1)),
+                nil,
+                nil,
+                nil,
+                "view"
+            )
+        }
+
+        let gridWidth = CGFloat(metrics.columns) * metrics.cellWidth
+        let gridHeight = CGFloat(metrics.rows) * metrics.cellHeight
+        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, "terminalContentRow") }
+        let topOriginY = bounds.height - point.y
+        let column = min(max((point.x - metrics.xInset) / metrics.cellWidth, 0), CGFloat(metrics.columns))
+        let row = min(max((topOriginY - metrics.yInset) / metrics.cellHeight, 0), CGFloat(metrics.rows))
+        let contentRow = row + CGFloat(scrollbar?.offset ?? 0)
+        return (
+            Double(min(max((point.x - metrics.xInset) / gridWidth, 0), 1)),
+            Double(min(max((topOriginY - metrics.yInset) / gridHeight, 0), 1)),
+            Double(row),
+            Double(column),
+            Double(contentRow),
+            "terminalContentRow"
         )
     }
 
@@ -8484,6 +8596,12 @@ final class GhosttySurfaceScrollView: NSView {
     private let notificationRingLayer: CAShapeLayer
     private let flashOverlayView: GhosttyFlashOverlayView
     private let flashLayer: CAShapeLayer
+
+    var isAtLiveScrollbackBottom: Bool {
+        guard let scrollbar = surfaceView.scrollbar else { return true }
+        return scrollbar.offset + scrollbar.len >= scrollbar.total
+    }
+
     var isRightSidebarDockSurface: Bool {
         surfaceView.terminalSurface?.focusPlacement == .rightSidebarDock
     }
@@ -8509,7 +8627,11 @@ final class GhosttySurfaceScrollView: NSView {
         colorHex: String?,
         normalizedX: Double,
         normalizedY: Double,
-        visible: Bool
+        row: Double?,
+        column: Double?,
+        contentRow: Double?,
+        visible: Bool,
+        coordinateSpace: String?
     ) {
         surfaceView.showTerminalCollaboratorPointer(
             peerID: peerID,
@@ -8517,7 +8639,11 @@ final class GhosttySurfaceScrollView: NSView {
             colorHex: colorHex,
             normalizedX: normalizedX,
             normalizedY: normalizedY,
-            visible: visible
+            row: row,
+            column: column,
+            contentRow: contentRow,
+            visible: visible,
+            coordinateSpace: coordinateSpace
         )
     }
 
