@@ -19,6 +19,9 @@ extension TerminalSurface {
     /// The managed `COLORTERM` value exported to spawned shells.
     public static let managedColorTerm = "truecolor"
 
+    /// The Claude Code key that keeps interactive sessions off the alternate screen.
+    public static let claudeCodeDisableAlternateScreenEnvironmentKey = "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN"
+
     private static let inheritedClaudeAuthSelectionEnvironmentKeys: Set<String> = [
         "ANTHROPIC_API_KEY",
         "ANTHROPIC_MODEL",
@@ -39,6 +42,15 @@ extension TerminalSurface {
         protectedKeys.insert("COLORTERM")
         environment["TERM_PROGRAM"] = managedTerminalProgram
         protectedKeys.insert("TERM_PROGRAM")
+    }
+
+    /// Applies terminal-app defaults for Claude Code rendering and protects them.
+    public static func applyManagedClaudeCodeTerminalEnvironment(
+        to environment: inout [String: String],
+        protectedKeys: inout Set<String>
+    ) {
+        environment[claudeCodeDisableAlternateScreenEnvironmentKey] = "1"
+        protectedKeys.insert(claudeCodeDisableAlternateScreenEnvironmentKey)
     }
 
     /// Applies the managed cmux context identity keys and protects them.
