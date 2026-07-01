@@ -20,6 +20,7 @@ final class PaneDropTargetView: NSView {
         super.init(frame: frameRect)
         registerForDraggedTypes(Array(Set([
             DragOverlayRoutingPolicy.bonsplitTabTransferType,
+            Self.agentRoomWirePasteboardType,
         ]).union(PasteboardFileURLReader.fileURLPasteboardTypes)))
         setupDropZoneOverlayView()
     }
@@ -30,6 +31,23 @@ final class PaneDropTargetView: NSView {
     }
 
     deinit {}
+
+    private static let agentRoomWirePasteboardType = NSPasteboard.PasteboardType(
+        CollaborationRuntime.agentRoomWirePasteboardTypeIdentifier
+    )
+
+    private static func hasAgentRoomWire(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
+        pasteboardTypes?.contains(agentRoomWirePasteboardType) == true
+    }
+
+    private static func agentRoomWireSurfaceID(from pasteboard: NSPasteboard) -> String? {
+        guard let data = pasteboard.data(forType: agentRoomWirePasteboardType),
+              let raw = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return UUID(uuidString: trimmed)?.uuidString
+    }
 
     override func layout() {
         super.layout()
@@ -42,6 +60,10 @@ final class PaneDropTargetView: NSView {
     ) -> Bool {
         let routingContext = WindowInputRoutingContext(eventType: eventType)
         guard routingContext.allowsPaneDropHitTesting else { return false }
+
+        if hasAgentRoomWire(pasteboardTypes) {
+            return true
+        }
 
         let hasTabTransfer = DragOverlayRoutingPolicy.hasBonsplitTabTransfer(pasteboardTypes)
         let hasFileDropPayload = DragOverlayRoutingPolicy.hasFileDropPayload(pasteboardTypes)
@@ -98,6 +120,20 @@ final class PaneDropTargetView: NSView {
             cmuxDebugLog("terminal.paneDrop.perform allowed=0 reason=missingContext")
 #endif
             return false
+        }
+
+        if let sourceSurfaceID = Self.agentRoomWireSurfaceID(from: sender.draggingPasteboard) {
+            CollaborationRuntime.shared.connectAgentRoomWire(
+                sourceSurfaceID: sourceSurfaceID,
+                targetSurfaceID: dropContext.panelId
+            )
+#if DEBUG
+            cmuxDebugLog(
+                "terminal.paneDrop.agentRoomWire source=\(sourceSurfaceID.prefix(5)) " +
+                "target=\(dropContext.panelId.uuidString.prefix(5))"
+            )
+#endif
+            return true
         }
 
         // A Bonsplit tab dropped on a Dock pane routes to the Dock's own
@@ -226,6 +262,11 @@ final class PaneDropTargetView: NSView {
         guard let dropContext else {
             clearDragState(phase: "\(phase).reject")
             return []
+        }
+
+        if Self.hasAgentRoomWire(sender.draggingPasteboard.types) {
+            clearDragState(phase: "\(phase).agentRoomWire")
+            return .copy
         }
 
         // Dock pane target: show the Dock's own drop zone and accept the move so
