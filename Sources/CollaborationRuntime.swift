@@ -409,6 +409,8 @@ final class CollaborationRuntime {
     private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
+    private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
+    private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
     private var peersByID: [String: CollaborationPeerWire] = [:]
     private var terminalPointerLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
@@ -500,6 +502,8 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
         hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalsByID.removeValue(forKey: terminalID)
+        mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
+        hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
         Task {
             try? await send(.terminalClose(terminalID: terminalID))
@@ -517,11 +521,17 @@ final class CollaborationRuntime {
     }
 
     func noteTerminalInput(terminalID: String, data: Data) {
+        guard let filteredData = Self.filteredTerminalCollaborationInput(
+            data,
+            pendingPrefix: &mirroredTerminalInputReportPrefixesByID[terminalID, default: Data()],
+            direction: "mirror-to-host",
+            terminalID: terminalID
+        ) else { return }
         Task {
             try? await send(.terminalInput(
                 terminalID: terminalID,
                 inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
-                data: data
+                data: filteredData
             ))
         }
     }
@@ -1165,6 +1175,8 @@ final class CollaborationRuntime {
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
+        mirroredTerminalInputReportPrefixesByID.removeAll()
+        hostedTerminalInputReportPrefixesByID.removeAll()
         terminalStatesByID.removeAll()
         peersByID.removeAll()
         terminalPointerLastSentAtBySurfaceID.removeAll()
@@ -1508,6 +1520,8 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
         hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
+        mirroredTerminalInputReportPrefixesByID.removeAll()
+        hostedTerminalInputReportPrefixesByID.removeAll()
         terminalStatesByID.removeAll()
 
         for terminal in openTerminals {
@@ -1591,10 +1605,20 @@ final class CollaborationRuntime {
 
     private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
-        panel.surface.processRemoteOutput(frame.vtPatchBytes())
+        var mirrorFrame = frame
+        mirrorFrame.modes.removeAll { mode in
+            !mode.ansi && mode.code == 1004
+        }
+        panel.surface.processRemoteOutput(mirrorFrame.vtPatchBytes())
     }
 
     private func handleRemoteTerminalInput(terminalID: String, data: Data, fromPeerID: String?) {
+        guard let filteredData = Self.filteredTerminalCollaborationInput(
+            data,
+            pendingPrefix: &hostedTerminalInputReportPrefixesByID[terminalID, default: Data()],
+            direction: "peer-to-host",
+            terminalID: terminalID
+        ) else { return }
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
         if let peer = peerVisibleToThisClient(fromPeerID) {
             hostedTerminalOutputCaretSuppressionsByID[terminalID] = TerminalOutputCaretSuppression(
@@ -1606,7 +1630,7 @@ final class CollaborationRuntime {
                 colorHex: peer.color
             )
         }
-        let text = String(decoding: data, as: UTF8.self)
+        let text = String(decoding: filteredData, as: UTF8.self)
         switch panel.sendInputResult(text) {
         case .sent:
             panel.surface.forceRefresh(reason: "collaboration.terminalInput")
@@ -1614,6 +1638,190 @@ final class CollaborationRuntime {
             break
         }
     }
+
+    private static func filteredTerminalCollaborationInput(
+        _ data: Data,
+        pendingPrefix: inout Data,
+        direction: String,
+        terminalID: String
+    ) -> Data? {
+        guard !data.isEmpty || !pendingPrefix.isEmpty else { return nil }
+        #if DEBUG
+        let originalPendingCount = pendingPrefix.count
+        cmuxDebugLog(
+            "collab.terminal.input.raw direction=\(direction) terminal=\(terminalID) " +
+            "pending=\(originalPendingCount) data=\(debugByteSummary(data))"
+        )
+        #endif
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(pendingPrefix.count + data.count)
+        bytes.append(contentsOf: pendingPrefix)
+        bytes.append(contentsOf: data)
+        pendingPrefix = Data()
+        var filtered: [UInt8] = []
+        filtered.reserveCapacity(bytes.count)
+        var index = 0
+        while index < bytes.count {
+            if let prefixLength = incompleteTerminalGeneratedReportPrefixLength(bytes, from: index) {
+                pendingPrefix = Data(bytes[index..<(index + prefixLength)])
+                #if DEBUG
+                cmuxDebugLog(
+                    "collab.terminal.input.buffer direction=\(direction) terminal=\(terminalID) " +
+                    "prefix=\(debugByteSummary(pendingPrefix))"
+                )
+                #endif
+                break
+            } else if let reportLength = terminalGeneratedReportLength(bytes, from: index) {
+                #if DEBUG
+                let report = Data(bytes[index..<(index + reportLength)])
+                cmuxDebugLog(
+                    "collab.terminal.input.drop direction=\(direction) terminal=\(terminalID) " +
+                    "report=\(debugByteSummary(report))"
+                )
+                #endif
+                index += reportLength
+                continue
+            }
+            filtered.append(bytes[index])
+            index += 1
+        }
+        let filteredData = filtered.isEmpty ? nil : Data(filtered)
+        #if DEBUG
+        cmuxDebugLog(
+            "collab.terminal.input.forward direction=\(direction) terminal=\(terminalID) " +
+            "data=\(debugByteSummary(filteredData ?? Data())) pending=\(pendingPrefix.count)"
+        )
+        #endif
+        return filteredData
+    }
+
+    private static func incompleteTerminalGeneratedReportPrefixLength(_ bytes: [UInt8], from start: Int) -> Int? {
+        guard start < bytes.count, bytes[start] == 0x1B else { return nil }
+        if start + 1 == bytes.count { return 1 }
+        let second = bytes[start + 1]
+        if second == 0x5D || second == 0x50 || second == 0x5E || second == 0x5F {
+            return stringControlSequenceLength(bytes, from: start) == nil ? (bytes.count - start) : nil
+        }
+        guard second == 0x5B else { return nil }
+        if start + 2 == bytes.count { return 2 }
+
+        var index = start + 2
+        if bytes[index] == 0x3F {
+            index += 1
+            if index == bytes.count { return bytes.count - start }
+        }
+        while index < bytes.count {
+            let byte = bytes[index]
+            if (0x20...0x3F).contains(byte) {
+                index += 1
+                continue
+            }
+            return nil
+        }
+        return bytes.count - start
+    }
+
+    private static func terminalGeneratedReportLength(_ bytes: [UInt8], from start: Int) -> Int? {
+        guard start + 1 < bytes.count,
+              bytes[start] == 0x1B else {
+            return nil
+        }
+        switch bytes[start + 1] {
+        case 0x63:
+            return 2
+        case 0x5D, 0x50, 0x5E, 0x5F:
+            return stringControlSequenceLength(bytes, from: start)
+        case 0x5B:
+            break
+        default:
+            return nil
+        }
+        guard start + 2 < bytes.count else { return nil }
+
+        let first = bytes[start + 2]
+        if first == 0x49 || first == 0x4F {
+            return 3
+        }
+
+        var index = start + 2
+        let parameterStart = index
+        while index < bytes.count {
+            let byte = bytes[index]
+            if (0x30...0x3F).contains(byte) {
+                index += 1
+                continue
+            }
+            break
+        }
+        let intermediateStart = index
+        while index < bytes.count {
+            let byte = bytes[index]
+            if (0x20...0x2F).contains(byte) {
+                index += 1
+                continue
+            }
+            break
+        }
+        if index < bytes.count {
+            let final = bytes[index]
+            guard (0x40...0x7E).contains(final) else { return nil }
+            let hasParameters = intermediateStart > parameterStart
+            let intermediates = bytes[intermediateStart..<index]
+            switch final {
+            case 0x52, 0x63, 0x6E:
+                return hasParameters ? (index - start + 1) : nil
+            case 0x79:
+                return intermediates.contains(0x24) ? (index - start + 1) : nil
+            default:
+                return nil
+            }
+        } else {
+            return nil
+        }
+    }
+
+    private static func stringControlSequenceLength(_ bytes: [UInt8], from start: Int) -> Int? {
+        guard start + 1 < bytes.count else { return nil }
+        var index = start + 2
+        while index < bytes.count {
+            if bytes[index] == 0x07 {
+                return index - start + 1
+            }
+            if index + 1 < bytes.count,
+               bytes[index] == 0x1B,
+               bytes[index + 1] == 0x5C {
+                return index - start + 2
+            }
+            index += 1
+        }
+        return nil
+    }
+
+    #if DEBUG
+    private static func debugByteSummary(_ data: Data) -> String {
+        guard !data.isEmpty else { return "empty" }
+        let bytes = [UInt8](data.prefix(96))
+        let hex = bytes.map { String(format: "%02X", $0) }.joined(separator: " ")
+        let escaped = bytes.map { byte -> String in
+            switch byte {
+            case 0x1B:
+                return "ESC"
+            case 0x0D:
+                return "CR"
+            case 0x0A:
+                return "LF"
+            case 0x09:
+                return "TAB"
+            case 0x20...0x7E:
+                return String(UnicodeScalar(byte))
+            default:
+                return String(format: "\\x%02X", byte)
+            }
+        }.joined()
+        let suffix = data.count > bytes.count ? "..." : ""
+        return "len=\(data.count) hex=[\(hex)\(suffix)] text='\(escaped)\(suffix)'"
+    }
+    #endif
 
     private func handleRemoteTerminalPointer(_ pointer: CollaborationTerminalPointerWire) {
         guard let peer = peerVisibleToThisClient(pointer.fromPeerID) else { return }
