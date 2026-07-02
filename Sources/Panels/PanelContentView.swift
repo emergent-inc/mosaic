@@ -200,10 +200,19 @@ struct PanelHeaderIconButton: View {
     let label: String
     var isDisabled: Bool = false
     let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
             PanelHeaderIconGlyph(systemName: systemName)
+                .background {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.primary.opacity(isEnabled ? 0.08 : 0.04))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(Color.primary.opacity(isEnabled ? 0.14 : 0.06), lineWidth: 0.5)
+                }
         }
         .buttonStyle(.plain)
         .foregroundColor(.secondary)

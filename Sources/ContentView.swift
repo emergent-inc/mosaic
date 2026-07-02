@@ -10033,6 +10033,7 @@ struct VerticalTabsSidebar: View {
     @StateObject private var tabItemSettingsStore = SidebarTabItemSettingsStore(
         initialSidebarFontSize: GhosttyConfig.load().sidebarFontSize
     )
+    @State private var collaborationRuntime = CollaborationRuntime.shared
     @ObservedObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
     @State var dragState = SidebarDragState()
     // Bonsplit tab drags arrive through AppKit pasteboard callbacks, not
@@ -12361,6 +12362,7 @@ struct VerticalTabsSidebar: View {
         let liveLatestNotificationText: String? = showsSidebarNotificationMessage
             ? sidebarUnread.latestNotificationText(forWorkspaceId: tab.id)
             : nil
+        let participantSnapshots = collaborationRuntime.participantSnapshots(forWorkspaceID: tab.id)
         let liveShowsModifierShortcutHints = showModifierHoldHints && modifierKeyMonitor.isModifierPressed
         let resolvedShowsModifierShortcutHints = SidebarShortcutHintFreezePolicy().resolved(
             live: liveShowsModifierShortcutHints,
@@ -12439,6 +12441,7 @@ struct VerticalTabsSidebar: View {
             accessibilityWorkspaceCount: renderContext.workspaceCount,
             unreadCount: liveUnreadCount,
             latestNotificationText: liveLatestNotificationText,
+            participantSnapshots: participantSnapshots,
             rowSpacing: tabRowSpacing,
             setSelectionToTabs: { selection = .tabs },
             selectedTabIds: $selectedTabIds,
@@ -13262,6 +13265,93 @@ struct SidebarWorkspaceSnapshotBuilder {
     }
 }
 
+struct SidebarParticipantAvatarStack: View, Equatable {
+    let participants: [CollaborationWorkspaceParticipantSnapshot]
+    let fontScale: CGFloat
+
+    static func == (lhs: SidebarParticipantAvatarStack, rhs: SidebarParticipantAvatarStack) -> Bool {
+        lhs.participants == rhs.participants &&
+            lhs.fontScale == rhs.fontScale
+    }
+
+    private var displayedParticipants: [CollaborationWorkspaceParticipantSnapshot] {
+        Array(participants.prefix(2))
+    }
+
+    private var avatarSize: CGFloat {
+        max(16, 18 * fontScale)
+    }
+
+    private var stackWidth: CGFloat {
+        guard !displayedParticipants.isEmpty else { return 0 }
+        return avatarSize + CGFloat(displayedParticipants.count - 1) * avatarSize * 0.62
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            ForEach(Array(displayedParticipants.enumerated()), id: \.element.id) { index, participant in
+                SidebarParticipantAvatar(participant: participant, size: avatarSize)
+                    .offset(x: CGFloat(index) * avatarSize * 0.62)
+                    .zIndex(Double(index))
+            }
+        }
+        .frame(width: stackWidth, height: avatarSize, alignment: .leading)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct SidebarParticipantAvatar: View, Equatable {
+    let participant: CollaborationWorkspaceParticipantSnapshot
+    let size: CGFloat
+
+    private var diceBearURL: URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.dicebear.com"
+        components.path = "/9.x/initials/png"
+        components.queryItems = [
+            URLQueryItem(name: "seed", value: participant.avatarSeed),
+            URLQueryItem(name: "chars", value: "2"),
+            URLQueryItem(name: "fontSize", value: "42"),
+        ]
+        return components.url
+    }
+
+    var body: some View {
+        AsyncImage(url: diceBearURL) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+            case .empty, .failure:
+                fallbackAvatar
+            @unknown default:
+                fallbackAvatar
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay {
+            Circle()
+                .stroke(Color(nsColor: .controlBackgroundColor), lineWidth: max(1.5, size * 0.1))
+        }
+        .shadow(color: .black.opacity(0.12), radius: 1, x: 0, y: 0.5)
+    }
+
+    private var fallbackAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
+            Text(participant.initials)
+                .font(.system(size: max(7, size * 0.38), weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+    }
+}
+
 private struct SidebarTabItemContextMenuState {
     var hasDeferredWorkspaceObservationInvalidation = false
     var pendingWorkspaceSnapshot: SidebarWorkspaceSnapshotBuilder.Snapshot?
@@ -13282,6 +13372,7 @@ struct TabItemView: View, Equatable {
         lhs.accessibilityWorkspaceCount == rhs.accessibilityWorkspaceCount &&
         lhs.unreadCount == rhs.unreadCount &&
         lhs.latestNotificationText == rhs.latestNotificationText &&
+        lhs.participantSnapshots == rhs.participantSnapshots &&
         lhs.rowSpacing == rhs.rowSpacing &&
         lhs.showsModifierShortcutHints == rhs.showsModifierShortcutHints &&
         lhs.contextMenuWorkspaceIds == rhs.contextMenuWorkspaceIds &&
@@ -13320,6 +13411,7 @@ struct TabItemView: View, Equatable {
     let accessibilityWorkspaceCount: Int
     let unreadCount: Int
     let latestNotificationText: String?
+    let participantSnapshots: [CollaborationWorkspaceParticipantSnapshot]
     let rowSpacing: CGFloat
     let setSelectionToTabs: () -> Void
     @Binding var selectedTabIds: Set<UUID>
@@ -13774,6 +13866,14 @@ struct TabItemView: View, Equatable {
                         .foregroundColor(.green)
                         .safeHelp(cameraInUseTooltip)
                         .accessibilityLabel(cameraInUseTooltip)
+                }
+
+                if !participantSnapshots.isEmpty {
+                    SidebarParticipantAvatarStack(
+                        participants: participantSnapshots,
+                        fontScale: fontScale
+                    )
+                    .padding(.trailing, -2)
                 }
 
                 Text(displayedTitle)
