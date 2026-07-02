@@ -472,6 +472,7 @@ final class CollaborationRuntime {
     @ObservationIgnored private let agentRoomWireOverlay = AgentRoomWireOverlayController()
     @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
     private var latestAgentRoomID: String?
+    private let agentRoomActiveDispatchPromptBuilder = AgentRoomActiveDispatchPromptBuilder()
 
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
@@ -1044,10 +1045,12 @@ final class CollaborationRuntime {
         )
         cacheAgentRoom(result.room)
         try? await send(.agentRoomEvent(result.event))
+        let dispatch = dispatchAgentRoomEventIfNeeded(result.event)
         return [
             "posted": true,
             "event": encodedJSONObject(result.event),
             "room": agentRoomPayload(result.room),
+            "dispatch": dispatch,
         ]
     }
 
@@ -1070,6 +1073,7 @@ final class CollaborationRuntime {
             Task { @MainActor in
                 await agentRoomStore.apply(snapshot: room)
                 try? await send(.agentRoomEvent(event))
+                _ = dispatchAgentRoomEventIfNeeded(event)
             }
             return [
                 "posted": true,
@@ -1177,6 +1181,20 @@ final class CollaborationRuntime {
             "room_id": room.id,
             "digest": agentRoomDigestBuilder.digest(for: digestRoom, since: since),
             "last_sequence": room.lastSequence,
+            "current_surface_id": surfaceID ?? NSNull(),
+            "reachable_surfaces": room.members
+                .filter { member in
+                    guard let surfaceID else { return true }
+                    return member.surfaceID != surfaceID
+                }
+                .map { member in
+                    [
+                        "member_id": member.id,
+                        "surface_id": member.surfaceID,
+                        "display_name": member.displayName ?? NSNull(),
+                        "agent_session_id": member.agentSessionID ?? NSNull(),
+                    ] as [String: Any]
+                },
         ]
     }
 
@@ -2752,6 +2770,43 @@ final class CollaborationRuntime {
             "last_sequence": room.lastSequence,
             "members": room.members.map(encodedJSONObject),
             "events": room.events.map(encodedJSONObject),
+        ]
+    }
+
+    private func dispatchAgentRoomEventIfNeeded(_ event: ClaudeRoomEvent) -> [String: Any] {
+        guard let prompt = agentRoomActiveDispatchPromptBuilder.prompt(for: event) else {
+            return ["attempted": false]
+        }
+        let targetSurfaceIDs = Array(Set(event.targetSurfaceIDs)).sorted()
+        var sent: [[String: Any]] = []
+        var failed: [[String: Any]] = []
+        for rawSurfaceID in targetSurfaceIDs {
+            guard let surfaceID = UUID(uuidString: rawSurfaceID) else {
+                failed.append(["surface_id": rawSurfaceID, "reason": "invalid_surface_id"])
+                continue
+            }
+            guard let panel = terminalPanel(surfaceID: surfaceID) else {
+                failed.append(["surface_id": rawSurfaceID, "reason": "surface_not_found"])
+                continue
+            }
+            switch panel.sendInputResult(prompt + "\r") {
+            case .sent:
+                panel.surface.forceRefresh(reason: "collaboration.agentRoomDispatch")
+                sent.append(["surface_id": rawSurfaceID, "queued": false])
+            case .queued:
+                sent.append(["surface_id": rawSurfaceID, "queued": true])
+            case .inputQueueFull:
+                failed.append(["surface_id": rawSurfaceID, "reason": "input_queue_full"])
+            case .surfaceUnavailable:
+                failed.append(["surface_id": rawSurfaceID, "reason": "surface_unavailable"])
+            case .processExited:
+                failed.append(["surface_id": rawSurfaceID, "reason": "process_exited"])
+            }
+        }
+        return [
+            "attempted": true,
+            "sent": sent,
+            "failed": failed,
         ]
     }
 
