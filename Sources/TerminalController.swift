@@ -1698,6 +1698,15 @@ class TerminalController {
             if let coordinatorV1 = controlCommandCoordinator.handleSidebarV1(command: cmd, args: args)
                 ?? controlCommandCoordinator.handleBrowserPanelV1(command: cmd, args: args)
                 ?? controlCommandCoordinator.handleDebugV1(command: cmd, args: args) {
+                PostHogAnalytics.shared.capture(
+                    .socketCommandPerformed,
+                    properties: [
+                        "action_id": cmd,
+                        "surface": "control_socket",
+                        "entrypoint": "v1",
+                        "source": "ControlCommandCoordinator",
+                    ]
+                )
                 return coordinatorV1
             }
             switch cmd {
@@ -1913,6 +1922,15 @@ class TerminalController {
             // switch below. processV2Command already runs on main, so the
             // coordinator's bodies need no per-read v2MainSync hop.
             if let coordinatorResult = controlCommandCoordinator.handle(request) {
+                PostHogAnalytics.shared.capture(
+                    .socketCommandPerformed,
+                    properties: [
+                        "action_id": request.method,
+                        "surface": "control_socket",
+                        "entrypoint": "v2",
+                        "source": "ControlCommandCoordinator",
+                    ]
+                )
                 return Self.v2Encoder.response(id: request.id, coordinatorResult)
             }
 

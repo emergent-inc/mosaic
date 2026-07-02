@@ -85,11 +85,15 @@ func runCmuxModalAlert(
 
     let hostWindow = presentingWindow ?? cmuxMainWindowForModalPresentation()
     guard let hostWindow, hostWindow.attachedSheet == nil else {
-        willPresent?(.appModal(hostWindowHadAttachedSheet: hostWindow?.attachedSheet != nil))
+        let presentation = CmuxModalAlertPresentation.appModal(hostWindowHadAttachedSheet: hostWindow?.attachedSheet != nil)
+        CmuxModalAlertAnalytics.track(alert, presentation: presentation)
+        willPresent?(presentation)
         return alert.runModal()
     }
 
-    willPresent?(.sheet(hostWindow))
+    let presentation = CmuxModalAlertPresentation.sheet(hostWindow)
+    CmuxModalAlertAnalytics.track(alert, presentation: presentation)
+    willPresent?(presentation)
     alert.beginSheetModal(for: hostWindow) { result in
         NSApp.stopModal(withCode: result)
     }

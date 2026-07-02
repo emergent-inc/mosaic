@@ -1,9 +1,10 @@
-// Server-to-server proxy for iOS product analytics. The native app posts a batch
-// of validated, `ios_`-prefixed events here; the route authenticates the Stack
-// user, enforces an event-name allowlist + size bounds, stamps the authenticated
-// user id as the distinct id, and forwards the batch to PostHog with the project
-// key held server-side. This decouples the app from the PostHog wire format and
-// SDK version and lets us resample/drop server-side without an app update.
+// Server-to-server proxy for native product analytics. Native apps post batches
+// of validated `ios_` / `mac_` events here; the route authenticates the Stack
+// user when present, enforces an event-name allowlist + size bounds, stamps the
+// authenticated user id as the distinct id, and forwards the batch to PostHog
+// with the project key held server-side. This decouples apps from the PostHog
+// wire format and SDK version and lets us resample/drop server-side without an
+// app update.
 //
 // Auth + bounded-body shape mirrors the proven `web/app/api/device-tokens/route.ts`
 // (plain async/await), deliberately not the Effect pattern used elsewhere under

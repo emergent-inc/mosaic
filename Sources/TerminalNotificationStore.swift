@@ -1127,6 +1127,12 @@ final class TerminalNotificationStore: ObservableObject {
             "notification.store.effectsOnly workspace=\(notification.tabId.uuidString.prefix(8)) surface=\(notification.surfaceId?.uuidString.prefix(8) ?? "nil") desktop=\(effects.desktop ? 1 : 0) sound=\(effects.sound ? 1 : 0) command=\(effects.command ? 1 : 0) suppressExternal=\(shouldSuppressExternalDelivery ? 1 : 0)"
         )
 #endif
+        trackNotificationApplied(
+            notification,
+            effects: effects,
+            shouldSuppressExternalDelivery: shouldSuppressExternalDelivery,
+            record: false
+        )
         if effects.reorderWorkspace,
            UserDefaultsSettingsClient(defaults: .standard).value(for: SettingCatalog().app.reorderOnNotification) {
             AppDelegate.shared?.tabManagerFor(tabId: notification.tabId)?
@@ -1142,6 +1148,70 @@ final class TerminalNotificationStore: ObservableObject {
             shouldSuppressExternalDelivery: shouldSuppressExternalDelivery,
             effects: effects
         )
+    }
+
+    private func trackNotificationApplied(
+        _ notification: TerminalNotification,
+        effects: TerminalNotificationPolicyEffects,
+        shouldSuppressExternalDelivery: Bool,
+        record: Bool
+    ) {
+        let properties: [String: Any] = [
+            "surface": "terminal_notification",
+            "entrypoint": "TerminalNotificationStore",
+            "record": record,
+            "desktop": effects.desktop,
+            "sound": effects.sound,
+            "command": effects.command,
+            "mark_unread": effects.markUnread,
+            "suppress_external": shouldSuppressExternalDelivery,
+            "has_surface": notification.surfaceId != nil,
+            "has_panel": notification.panelId != nil,
+            "has_click_action": notification.clickAction != nil,
+        ]
+        PostHogAnalytics.shared.capture(.notificationShown, properties: properties)
+        guard Self.isErrorNotification(notification) else { return }
+        PostHogAnalytics.shared.trackError(
+            errorKind: Self.errorKind(for: notification),
+            severity: Self.errorSeverity(for: notification),
+            source: "TerminalNotificationStore",
+            event: .errorNotificationShown,
+            properties: properties
+        )
+    }
+
+    private static func isErrorNotification(_ notification: TerminalNotification) -> Bool {
+        let haystack = "\(notification.title) \(notification.subtitle) \(notification.body)".lowercased()
+        return haystack.contains("error") ||
+            haystack.contains("failed") ||
+            haystack.contains("failure") ||
+            haystack.contains("crash") ||
+            haystack.contains("exception")
+    }
+
+    private static func errorKind(for notification: TerminalNotification) -> String {
+        let haystack = "\(notification.title) \(notification.subtitle) \(notification.body)".lowercased()
+        if haystack.contains("crash") {
+            return "notification.crash"
+        }
+        if haystack.contains("permission") {
+            return "notification.permission"
+        }
+        if haystack.contains("memory") {
+            return "notification.memory"
+        }
+        return "notification.error"
+    }
+
+    private static func errorSeverity(for notification: TerminalNotification) -> MacAnalyticsSeverity {
+        let haystack = "\(notification.title) \(notification.subtitle) \(notification.body)".lowercased()
+        if haystack.contains("crash") {
+            return .critical
+        }
+        if haystack.contains("failed") || haystack.contains("error") {
+            return .error
+        }
+        return .warning
     }
 
     private func recordNotification(
@@ -1183,6 +1253,12 @@ final class TerminalNotificationStore: ObservableObject {
             "notification.store.record workspace=\(notification.tabId.uuidString.prefix(8)) surface=\(notification.surfaceId?.uuidString.prefix(8) ?? "nil") removed=\(idsToClear.count) unread=\(!notification.isRead ? 1 : 0) paneFlash=\(notification.paneFlash ? 1 : 0) suppressExternal=\(shouldSuppressExternalDelivery ? 1 : 0) total=\(notifications.count)"
         )
 #endif
+        trackNotificationApplied(
+            notification,
+            effects: effects,
+            shouldSuppressExternalDelivery: shouldSuppressExternalDelivery,
+            record: true
+        )
         if !idsToClear.isEmpty {
             center.removeDeliveredNotificationsOffMain(withIdentifiers: idsToClear)
             center.removePendingNotificationRequestsOffMain(withIdentifiers: idsToClear)

@@ -41,6 +41,12 @@ struct CmuxConfigExecutor {
                     tabManager: tabManager,
                     baseCwd: baseCwd
                 ) else { return }
+                PostHogAnalytics.shared.trackAction(
+                    actionID: actionID ?? command.id,
+                    surface: "cmux_config",
+                    entrypoint: "workspace_command",
+                    source: "CmuxConfigExecutor.execute"
+                )
                 onExecuted?()
             }
         } else if let rawCommand = command.command {
@@ -59,6 +65,13 @@ struct CmuxConfigExecutor {
                 presentingWindow: presentingWindow
             ) { shellInput in
                 targetTerminal.sendInput(shellInput)
+                PostHogAnalytics.shared.trackAction(
+                    actionID: actionID ?? command.id,
+                    surface: "cmux_config",
+                    entrypoint: "terminal_command",
+                    source: "CmuxConfigExecutor.execute",
+                    properties: ["target": "current_terminal"]
+                )
                 onExecuted?()
             }
         }
@@ -117,6 +130,13 @@ struct CmuxConfigExecutor {
                 targetWorkspace?.clearSplitZoom()
                 targetWorkspace?.newTerminalSurfaceInFocusedPane(focus: true, initialInput: shellInput)
             }
+            PostHogAnalytics.shared.trackAction(
+                actionID: action.id,
+                surface: "cmux_config",
+                entrypoint: "terminal_command",
+                source: "CmuxConfigExecutor.execute",
+                properties: ["target": target.rawValue]
+            )
             onExecuted?()
         }
     }
