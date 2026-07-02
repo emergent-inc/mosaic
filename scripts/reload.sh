@@ -621,6 +621,13 @@ trap reload_finalize EXIT
 # Tell the user we're starting (visible even though body output is redirected).
 echo "==> reload starting (tag: ${TAG}, log: ${RELOAD_LOG})" >&3
 
+if [[ "${CMUX_DEV_FAST_RELOAD:-}" == "1" ]]; then
+  echo "==> fast reload path enabled (CMUX_DEV_FAST_RELOAD=1)"
+  export CMUX_SKIP_ZIG_BUILD=1
+  export CMUX_SKIP_CMUXD_BUILD=1
+  export CMUX_RETAG_IN_PLACE=1
+fi
+
 "$PWD/scripts/ensure-ghosttykit.sh"
 
 if should_skip_ghostty_cli_helper_zig_build; then
@@ -895,9 +902,19 @@ fi
 if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
   TAG_APP_FINAL_PATH="$(dirname "$APP_PATH")/${APP_NAME}.app"
   TAG_APP_STAGING_PATH="$(dirname "$APP_PATH")/.${APP_NAME}.reload-$$.app"
-  rm -rf "$TAG_APP_STAGING_PATH"
-  cp -R "$APP_PATH" "$TAG_APP_STAGING_PATH"
+  if [[ "${CMUX_RETAG_IN_PLACE:-}" == "1" ]]; then
+    echo "==> retagging Xcode-built app in place (CMUX_RETAG_IN_PLACE=1)"
+    TAG_APP_FINAL_PATH="$APP_PATH"
+    TAG_APP_STAGING_PATH=""
+  else
+    rm -rf "$TAG_APP_STAGING_PATH"
+    cp -R "$APP_PATH" "$TAG_APP_STAGING_PATH"
+    APP_PATH="$TAG_APP_STAGING_PATH"
+  fi
   INFO_PLIST="$TAG_APP_STAGING_PATH/Contents/Info.plist"
+  if [[ "${CMUX_RETAG_IN_PLACE:-}" == "1" ]]; then
+    INFO_PLIST="$APP_PATH/Contents/Info.plist"
+  fi
   if [[ -f "$INFO_PLIST" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_NAME" "$INFO_PLIST" 2>/dev/null \
       || /usr/libexec/PlistBuddy -c "Add :CFBundleName string $APP_NAME" "$INFO_PLIST"
@@ -945,7 +962,6 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
       fi
     fi
   fi
-  APP_PATH="$TAG_APP_STAGING_PATH"
 fi
 
 CLI_PATH="$(dirname "$APP_PATH")/cmux"
@@ -966,7 +982,14 @@ fi
 # Build cmuxd and ensure helper binaries are present (needed for both launch and no-launch).
 CMUXD_SRC="$PWD/cmuxd/zig-out/bin/cmuxd"
 if [[ -d "$PWD/cmuxd" ]]; then
-  (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
+  if [[ "${CMUX_SKIP_CMUXD_BUILD:-}" == "1" && -x "$CMUXD_SRC" ]]; then
+    echo "Reusing existing cmuxd at $CMUXD_SRC (CMUX_SKIP_CMUXD_BUILD=1)"
+  else
+    if [[ "${CMUX_SKIP_CMUXD_BUILD:-}" == "1" ]]; then
+      echo "cmuxd output missing; building once despite CMUX_SKIP_CMUXD_BUILD=1"
+    fi
+    (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
+  fi
 fi
 if [[ -d "$PWD/ghostty" ]]; then
   BIN_DIR="$APP_PATH/Contents/Resources/bin"

@@ -41,7 +41,7 @@ enum CmuxSurfaceTabBarBuiltInAction: String, Codable, Sendable, CaseIterable, Ha
         case .cloudVM:
             return "cloud"
         case .newTerminal:
-            return "terminal"
+            return "plus"
         case .newBrowser:
             return "globe"
         case .splitRight:
