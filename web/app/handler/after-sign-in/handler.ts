@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Locale } from "../../../i18n/routing";
 import { locales, routing } from "../../../i18n/routing";
+import { mintNativeSessionTokenPair } from "../../../services/auth/nativeSession";
 
 const NATIVE_SCHEME = "cmux://";
 const NATIVE_SCHEMES = new Set(["cmux", "cmux-nightly"]);
@@ -23,24 +24,28 @@ type CookieStore = {
   getAll: () => { name: string; value: string }[];
 };
 
-type StackAuthSessionLike = {
-  getTokens: () => Promise<{
-    refreshToken?: string | null;
-    accessToken?: string | null;
-  }>;
+type ClerkAuthLike = {
+  userId: string | null;
+  orgId?: string | null;
 };
 
-type StackAuthUserLike = {
-  createSession: (options: { expiresInMillis: number }) => Promise<StackAuthSessionLike>;
+type ClerkUserLike = {
+  id: string;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  primaryEmailAddress?: { emailAddress?: string | null } | null;
+  emailAddresses?: readonly { emailAddress?: string | null }[];
 };
 
-type StackServerAppLike = {
-  getUser: (options: { or: "return-null" }) => Promise<StackAuthUserLike | null>;
-} | null;
+type ClerkOrganizationMembershipLike = {
+  organization?: { id?: string | null } | null;
+};
 
 type AfterSignInHandlerDependencies = {
-  projectId: string | undefined;
-  stackServerApp: StackServerAppLike;
+  getAuth: () => Promise<ClerkAuthLike>;
+  getUser: (userId: string) => Promise<ClerkUserLike | null>;
+  listMemberships?: (userId: string) => Promise<readonly ClerkOrganizationMembershipLike[]>;
   getCookieStore: () => Promise<CookieStore>;
 };
 
@@ -80,72 +85,20 @@ function isAllowedNativeReturnTo(href: string, request: NextRequest): boolean {
   }
 }
 
-function findStackCookie(
-  cookieStore: { getAll: () => { name: string; value: string }[] },
-  baseName: string
-): string | undefined {
-  const all = cookieStore.getAll();
-  for (const prefix of ["__Host-", "__Secure-", ""]) {
-    const withBranch = all.find(
-      (c) => c.name.startsWith(`${prefix}${baseName}--`) && c.value
-    );
-    if (withBranch) return withBranch.value;
-    const exact = all.find(
-      (c) => c.name === `${prefix}${baseName}` && c.value
-    );
-    if (exact) return exact.value;
-  }
-  return undefined;
-}
-
-function decodeCookieValue(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  if (!value.includes("%")) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return undefined;
-  }
-}
-
-function decodeAccessCookie(value: string | undefined): { refreshToken?: string; accessToken?: string } {
-  const decoded = decodeCookieValue(value);
-  if (!decoded) return {};
-  if (!decoded.startsWith("[")) return { accessToken: decoded };
-  try {
-    const arr = JSON.parse(decoded) as unknown[];
-    if (Array.isArray(arr) && arr.length >= 2) {
-      return { refreshToken: arr[0] as string, accessToken: arr[1] as string };
-    }
-  } catch {}
-  return {};
-}
-
-function decodeRefreshCookie(value: string | undefined): string | undefined {
-  const decoded = decodeCookieValue(value);
-  if (!decoded) return undefined;
-  if (!decoded.startsWith("{")) return decoded;
-  try {
-    const obj = JSON.parse(decoded) as Record<string, unknown>;
-    if (typeof obj.refresh_token === "string") return obj.refresh_token;
-  } catch {}
-  return undefined;
-}
-
 function buildNativeHref(
   baseHref: string | null,
   refreshToken: string | undefined,
-  accessCookie: string | undefined
+  accessToken: string | undefined
 ): string | null {
-  if (!refreshToken || !accessCookie) return baseHref;
+  if (!refreshToken || !accessToken) return baseHref;
   const href = baseHref ?? `${NATIVE_SCHEME}auth-callback`;
   try {
     const url = new URL(href);
-    url.searchParams.set("stack_refresh", refreshToken);
-    url.searchParams.set("stack_access", accessCookie);
+    url.searchParams.set("cmux_refresh", refreshToken);
+    url.searchParams.set("cmux_access", accessToken);
     return url.toString();
   } catch {
-    return `${NATIVE_SCHEME}auth-callback?stack_refresh=${encodeURIComponent(refreshToken)}&stack_access=${encodeURIComponent(accessCookie)}`;
+    return `${NATIVE_SCHEME}auth-callback?cmux_refresh=${encodeURIComponent(refreshToken)}&cmux_access=${encodeURIComponent(accessToken)}`;
   }
 }
 
@@ -300,47 +253,36 @@ function requestIsSecure(): boolean {
 
 export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependencies) {
   return async function GET(request: NextRequest) {
-    const projectId = dependencies.projectId;
-    const authApp = dependencies.stackServerApp;
-    if (!authApp || !projectId) return NextResponse.redirect(new URL("/", request.url));
     const localizedMessages = await afterSignInMessages(request);
-
-    const stackCookies = await dependencies.getCookieStore();
-    const refreshBaseName = `stack-refresh-${projectId}`;
-    const rawRefreshCookie = findStackCookie(stackCookies, refreshBaseName);
-    const rawAccessCookie = findStackCookie(stackCookies, "stack-access");
-    const parsedAccess = decodeAccessCookie(rawAccessCookie);
-    const parsedRefresh = decodeRefreshCookie(rawRefreshCookie);
-
-    let refreshToken = parsedAccess.refreshToken ?? parsedRefresh;
-    let accessToken = parsedAccess.accessToken;
-    let accessCookie = decodeCookieValue(rawAccessCookie);
-
-    try {
-      const user = await authApp.getUser({ or: "return-null" });
-      if (user) {
-        const session = await user.createSession({ expiresInMillis: 30 * 24 * 60 * 60 * 1000 });
-        const tokens = await session.getTokens();
-        if (tokens.refreshToken) refreshToken = tokens.refreshToken;
-        if (tokens.accessToken) accessToken = tokens.accessToken;
-      }
-    } catch (error) {
-      console.error("[After Sign In] Failed to create fresh session", error);
+    const cookieStore = await dependencies.getCookieStore();
+    const auth = await dependencies.getAuth();
+    if (!auth.userId) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    if (refreshToken && accessToken) {
-      accessCookie = JSON.stringify([refreshToken, accessToken]);
-    }
+    const user = await dependencies.getUser(auth.userId);
+    const memberships = dependencies.listMemberships
+      ? await dependencies.listMemberships(auth.userId)
+      : [];
+    const teamIds = uniqueStrings([
+      auth.orgId ?? undefined,
+      ...memberships.map((membership) => membership.organization?.id ?? undefined),
+    ]);
+    const tokens = mintNativeSessionTokenPair({
+      userId: auth.userId,
+      displayName: displayNameFor(user),
+      primaryEmail: primaryEmailFor(user),
+      selectedTeamId: auth.orgId ?? teamIds[0] ?? null,
+      teamIds,
+    });
 
     const nativeReturnTo = request.nextUrl.searchParams.get("native_app_return_to");
     if (
-      refreshToken &&
-      accessCookie &&
       nativeReturnTo !== null
     ) {
       if (isAllowedNativeReturnTo(nativeReturnTo, request)) {
-        const href = buildNativeHref(nativeReturnTo, refreshToken, accessCookie);
-        const autoOpen = verifiedAutoOpen(request, stackCookies, nativeReturnTo);
+        const href = buildNativeHref(nativeReturnTo, tokens.refreshToken, tokens.accessToken);
+        const autoOpen = verifiedAutoOpen(request, cookieStore, nativeReturnTo);
         if (href) {
           return nativeReturnResponse(href, localizedMessages, autoOpen);
         }
@@ -353,11 +295,29 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
       return NextResponse.redirect(new URL(afterAuth, request.url));
     }
 
-    if (refreshToken && accessCookie) {
-      const fallback = buildNativeHref(null, refreshToken, accessCookie);
-      if (fallback) return nativeReturnResponse(fallback, localizedMessages, false);
-    }
+    const fallback = buildNativeHref(null, tokens.refreshToken, tokens.accessToken);
+    if (fallback) return nativeReturnResponse(fallback, localizedMessages, false);
 
     return NextResponse.redirect(new URL("/", request.url));
   };
+}
+
+function displayNameFor(user: ClerkUserLike | null): string | null {
+  if (!user) return null;
+  if (user.fullName?.trim()) return user.fullName.trim();
+  const joined = [user.firstName, user.lastName]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return joined || null;
+}
+
+function primaryEmailFor(user: ClerkUserLike | null): string | null {
+  return user?.primaryEmailAddress?.emailAddress
+    ?? user?.emailAddresses?.find((email) => email.emailAddress)?.emailAddress
+    ?? null;
+}
+
+function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {
+  return [...new Set(values.filter((value): value is string => typeof value === "string" && value.length > 0))];
 }

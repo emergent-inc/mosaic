@@ -11386,7 +11386,7 @@ struct VerticalTabsSidebar: View {
                 CmuxSystemSymbolImage(magnified: "folder.fill", pointSize: 14, weight: .regular)
                     .foregroundColor(.secondary)
                 Text(extensionSidebarTreeSectionTitle(section.treeSection))
-                    .cmuxFont(size: 13, weight: .semibold)
+                    .cmuxFont(size: 13, weight: .medium)
                     .foregroundColor(.primary.opacity(0.86))
                     .lineLimit(1)
                 CmuxSystemSymbolImage(magnified: "chevron.down", pointSize: 11, weight: .medium)
@@ -13470,7 +13470,7 @@ struct TabItemView: View, Equatable {
     }
 
     private var titleFontWeight: Font.Weight {
-        .semibold
+        .medium
     }
 
     private var fontScale: CGFloat {

@@ -127,10 +127,19 @@ final class BonsplitTests: XCTestCase {
     private final class NewTabRequestDelegateSpy: BonsplitDelegate {
         var requestedKind: String?
         var requestedPaneId: PaneID?
+        var splitOriginalPaneId: PaneID?
+        var splitNewPaneId: PaneID?
+        var splitOrientation: SplitOrientation?
 
         func splitTabBar(_ controller: BonsplitController, didRequestNewTab kind: String, inPane pane: PaneID) {
             requestedKind = kind
             requestedPaneId = pane
+        }
+
+        func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
+            splitOriginalPaneId = originalPane
+            splitNewPaneId = newPane
+            splitOrientation = orientation
         }
     }
 
@@ -1972,6 +1981,67 @@ final class BonsplitTests: XCTestCase {
     }
 
     @MainActor
+    func testRenderedTrailingActionLaneDoesNotRouteButtonClicksThroughDragZone() throws {
+        let harness = renderedSplitActionButtonHarness()
+        defer { harness.window.orderOut(nil) }
+
+        for action in RenderedTrailingSplitAction.allCases {
+            let pointInWindow = action.windowPoint(in: harness.hostingView)
+            let pointInContent = harness.contentView.convert(pointInWindow, from: nil)
+            let hitView = try XCTUnwrap(
+                harness.contentView.hitTest(pointInContent),
+                "Expected a hit-test target for \(action.accessibilityIdentifier)"
+            )
+
+            XCTAssertFalse(
+                hitView is TabBarDragZoneView.DragNSView,
+                "\(action.accessibilityIdentifier) must not be owned by tab-bar empty-chrome drag zones"
+            )
+        }
+    }
+
+    @MainActor
+    func testRenderedNewBrowserActionButtonRequestsBrowserTab() throws {
+        let spy = NewTabRequestDelegateSpy()
+        let harness = renderedSplitActionButtonHarness(delegate: spy)
+        defer { harness.window.orderOut(nil) }
+
+        try pressRenderedSplitActionButton(.newBrowser, in: harness)
+
+        XCTAssertEqual(spy.requestedKind, "browser")
+        XCTAssertEqual(spy.requestedPaneId, harness.pane.id)
+        XCTAssertEqual(harness.controller.internalController.rootNode.allPaneIds.count, 1)
+    }
+
+    @MainActor
+    func testRenderedSplitRightActionButtonSplitsPaneHorizontally() throws {
+        let spy = NewTabRequestDelegateSpy()
+        let harness = renderedSplitActionButtonHarness(delegate: spy)
+        defer { harness.window.orderOut(nil) }
+
+        try pressRenderedSplitActionButton(.splitRight, in: harness)
+
+        XCTAssertEqual(spy.splitOriginalPaneId, harness.pane.id)
+        XCTAssertNotNil(spy.splitNewPaneId)
+        XCTAssertEqual(spy.splitOrientation, .horizontal)
+        XCTAssertEqual(harness.controller.internalController.rootNode.allPaneIds.count, 2)
+    }
+
+    @MainActor
+    func testRenderedSplitDownActionButtonSplitsPaneVertically() throws {
+        let spy = NewTabRequestDelegateSpy()
+        let harness = renderedSplitActionButtonHarness(delegate: spy)
+        defer { harness.window.orderOut(nil) }
+
+        try pressRenderedSplitActionButton(.splitDown, in: harness)
+
+        XCTAssertEqual(spy.splitOriginalPaneId, harness.pane.id)
+        XCTAssertNotNil(spy.splitNewPaneId)
+        XCTAssertEqual(spy.splitOrientation, .vertical)
+        XCTAssertEqual(harness.controller.internalController.rootNode.allPaneIds.count, 2)
+    }
+
+    @MainActor
     func testShortConfiguredTabKeepsCompactChromeWithExpandedHitSlop() {
         let appearance = BonsplitConfiguration.Appearance(
             tabMinWidth: 140,
@@ -3555,6 +3625,126 @@ final class BonsplitTests: XCTestCase {
             "control": control
         ]
         return try! JSONSerialization.data(withJSONObject: payload, options: [])
+    }
+
+    @MainActor
+    private enum RenderedTrailingSplitAction: CaseIterable {
+        case newBrowser
+        case splitRight
+        case splitDown
+
+        var accessibilityIdentifier: String {
+            switch self {
+            case .newBrowser:
+                return "paneTabBarControl.newBrowser"
+            case .splitRight:
+                return "paneTabBarControl.splitRight"
+            case .splitDown:
+                return "paneTabBarControl.splitDown"
+            }
+        }
+
+        var trailingButtonIndex: Int {
+            switch self {
+            case .newBrowser:
+                return 0
+            case .splitRight:
+                return 1
+            case .splitDown:
+                return 2
+            }
+        }
+
+        func point(in size: NSSize) -> NSPoint {
+            let trailingButtonCount = 3
+            let laneWidth = TabBarStyling.splitButtonsBackdropWidth(buttonCount: trailingButtonCount)
+            let laneMinX = size.width - laneWidth
+            let x = laneMinX
+                + TabBarStyling.splitButtonsLeadingPadding
+                + (CGFloat(trailingButtonIndex) * (TabBarStyling.splitActionButtonReservedWidth + TabBarStyling.splitButtonsSpacing))
+                + (TabBarStyling.splitActionButtonReservedWidth / 2.0)
+            return NSPoint(x: x, y: size.height / 2.0)
+        }
+
+        func windowPoint(in hostingView: NSView) -> NSPoint {
+            hostingView.convert(point(in: hostingView.bounds.size), to: nil)
+        }
+    }
+
+    @MainActor
+    private struct RenderedSplitActionButtonHarness {
+        let controller: BonsplitController
+        let pane: PaneState
+        let window: NSWindow
+        let contentView: NSView
+        let hostingView: NSView
+    }
+
+    @MainActor
+    private func renderedSplitActionButtonHarness(
+        delegate: NewTabRequestDelegateSpy? = nil,
+        size: NSSize = NSSize(width: 480, height: TabBarMetrics.barHeight)
+    ) -> RenderedSplitActionButtonHarness {
+        let appearance = BonsplitConfiguration.Appearance()
+        let controller = BonsplitController(configuration: BonsplitConfiguration(appearance: appearance))
+        controller.tabShortcutHintsEnabled = false
+        controller.delegate = delegate
+        let pane = controller.internalController.rootNode.allPanes.first!
+        let tab = TabItem(title: "Selected", icon: nil)
+        pane.tabs = [tab]
+        pane.selectedTabId = tab.id
+
+        let hostingView = NSHostingView(
+            rootView: TabBarView(pane: pane, isFocused: true, showSplitButtons: true)
+                .environment(controller)
+                .environment(controller.internalController)
+        )
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        let contentView = window.contentView!
+        hostingView.frame = NSRect(origin: .zero, size: size)
+        hostingView.autoresizingMask = [.width, .height]
+        contentView.addSubview(hostingView)
+
+        window.makeKeyAndOrderFront(nil)
+        contentView.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        contentView.layoutSubtreeIfNeeded()
+
+        return RenderedSplitActionButtonHarness(
+            controller: controller,
+            pane: pane,
+            window: window,
+            contentView: contentView,
+            hostingView: hostingView
+        )
+    }
+
+    @MainActor
+    private func pressRenderedSplitActionButton(
+        _ action: RenderedTrailingSplitAction,
+        in harness: RenderedSplitActionButtonHarness
+    ) throws {
+        let pointInWindow = action.windowPoint(in: harness.hostingView)
+        let pointInContent = harness.contentView.convert(pointInWindow, from: nil)
+        let hitView = try XCTUnwrap(
+            harness.contentView.hitTest(pointInContent),
+            "Expected a hit-test target for \(action.accessibilityIdentifier)"
+        )
+        XCTAssertFalse(
+            hitView is TabBarDragZoneView.DragNSView,
+            "\(action.accessibilityIdentifier) should hit the action button, not the empty-chrome drag zone"
+        )
+
+        let mouseDown = try makeMouseEvent(type: .leftMouseDown, in: harness.contentView, at: pointInContent, clickCount: 1)
+        let mouseUp = try makeMouseEvent(type: .leftMouseUp, in: harness.contentView, at: pointInContent, clickCount: 1)
+        harness.window.sendEvent(mouseDown)
+        harness.window.sendEvent(mouseUp)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.02))
     }
 
     private func firstDescendant<T: NSView>(ofType type: T.Type, in root: NSView) -> T? {
