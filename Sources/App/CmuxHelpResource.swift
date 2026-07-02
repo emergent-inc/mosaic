@@ -1,5 +1,16 @@
 import Foundation
 
+enum MosaicBranding {
+    static let docsBaseURL = URL(string: "https://mosaic.com/docs")!
+    static let githubRepositoryURL = URL(string: "https://github.com/manaflow-ai/mosaic")!
+    static let githubIssuesURL = URL(string: "https://github.com/manaflow-ai/mosaic/issues")!
+
+    static func docsURL(_ path: String = "") -> URL {
+        guard !path.isEmpty else { return docsBaseURL }
+        return docsBaseURL.appendingPathComponent(path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+    }
+}
+
 enum CmuxHelpResource {
     case gettingStarted
     case concepts
@@ -64,41 +75,41 @@ enum CmuxHelpResource {
     var url: URL {
         switch self {
         case .gettingStarted:
-            return URL(string: "https://cmux.com/docs/getting-started")!
+            return MosaicBranding.docsURL("getting-started")
         case .concepts:
-            return URL(string: "https://cmux.com/docs/concepts")!
+            return MosaicBranding.docsURL("concepts")
         case .configuration:
-            return URL(string: "https://cmux.com/docs/configuration")!
+            return MosaicBranding.docsURL("configuration")
         case .customCommands:
-            return URL(string: "https://cmux.com/docs/custom-commands")!
+            return MosaicBranding.docsURL("custom-commands")
         case .dock:
-            return URL(string: "https://cmux.com/docs/dock")!
+            return MosaicBranding.docsURL("dock")
         case .keyboardShortcuts:
-            return URL(string: "https://cmux.com/docs/keyboard-shortcuts")!
+            return MosaicBranding.docsURL("keyboard-shortcuts")
         case .apiReference:
-            return URL(string: "https://cmux.com/docs/api")!
+            return MosaicBranding.docsURL("api")
         case .browserAutomation:
-            return URL(string: "https://cmux.com/docs/browser-automation")!
+            return MosaicBranding.docsURL("browser-automation")
         case .notifications:
-            return URL(string: "https://cmux.com/docs/notifications")!
+            return MosaicBranding.docsURL("notifications")
         case .ssh:
-            return URL(string: "https://cmux.com/docs/ssh")!
+            return MosaicBranding.docsURL("ssh")
         case .skills:
-            return URL(string: "https://cmux.com/docs/skills")!
+            return MosaicBranding.docsURL("skills")
         case .claudeCodeTeams:
-            return URL(string: "https://cmux.com/docs/agent-integrations/claude-code-teams")!
+            return MosaicBranding.docsURL("agent-integrations/claude-code-teams")
         case .ohMyOpenCode:
-            return URL(string: "https://cmux.com/docs/agent-integrations/oh-my-opencode")!
+            return MosaicBranding.docsURL("agent-integrations/oh-my-opencode")
         case .ohMyCodex:
-            return URL(string: "https://cmux.com/docs/agent-integrations/oh-my-codex")!
+            return MosaicBranding.docsURL("agent-integrations/oh-my-codex")
         case .ohMyClaudeCode:
-            return URL(string: "https://cmux.com/docs/agent-integrations/oh-my-claudecode")!
+            return MosaicBranding.docsURL("agent-integrations/oh-my-claudecode")
         case .changelog:
-            return URL(string: "https://cmux.com/docs/changelog")!
+            return MosaicBranding.docsURL("changelog")
         case .githubIssues:
-            return URL(string: "https://github.com/manaflow-ai/cmux/issues")!
+            return MosaicBranding.githubIssuesURL
         case .discord:
-            return URL(string: "https://discord.gg/xsgFEVrWCZ")!
+            return URL(string: "https://discord.gg/zmWHDeZffZ")!
         }
     }
 }

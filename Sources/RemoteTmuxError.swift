@@ -64,7 +64,7 @@ extension RemoteTmuxError {
         case let .unsupportedTmux(detected):
             let format = String(
                 localized: "remoteTmux.error.unsupportedVersion",
-                defaultValue: "remote session server is too old (found %@; cmux needs version %@ or newer)"
+                defaultValue: "remote session server is too old (found %@; mosaic needs version %@ or newer)"
             )
             return String(
                 format: format,

@@ -243,14 +243,14 @@ final class CmuxTaskManagerModel {
             alert.messageText = String(localized: "taskManager.killProcess.title.one", defaultValue: "Kill process?")
             alert.informativeText = String(format: String(
                 localized: "taskManager.killProcess.message.one",
-                defaultValue: "Ask %@ (PID %lld) to terminate gracefully. cmux will force-kill it if it is still running after a short grace period."
+                defaultValue: "Ask %@ (PID %lld) to terminate gracefully. mosaic will force-kill it if it is still running after a short grace period."
             ), row.title, Int64(processId))
         } else {
             let pidList = processIds.map(String.init).joined(separator: ", ")
             alert.messageText = String(localized: "taskManager.killProcess.title.other", defaultValue: "Kill processes?")
             alert.informativeText = String(format: String(
                 localized: "taskManager.killProcess.message.other",
-                defaultValue: "Ask %lld processes to terminate gracefully. cmux will force-kill remaining processes after a short grace period. PIDs: %@."
+                defaultValue: "Ask %lld processes to terminate gracefully. mosaic will force-kill remaining processes after a short grace period. PIDs: %@."
             ), Int64(processIds.count), pidList)
         }
         alert.alertStyle = .warning

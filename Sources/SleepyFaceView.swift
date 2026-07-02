@@ -410,22 +410,22 @@ struct SleepyFaceView: View {
         }
     }
 
-    /// logoFace: cmux chevron `>` as the left eye, a `-` dash as the (winking)
+    /// logoFace: cmux cube as the left eye, a `-` dash as the (winking)
     /// right eye, blush, and a small sleepy mouth.
     private func drawLogoFace(in ctx: inout GraphicsContext, center: CGPoint, pixel: CGFloat, breath: Double, time t: Double, palette: [Character: Color], ink: Color) {
         let eyePixel = max(2, (pixel * 0.6).rounded())
-        let chevW = SleepyArt.cmuxLogo.first?.count ?? 11
-        let chevH = SleepyArt.cmuxLogo.count
+        let logoW = SleepyArt.cmuxLogo.first?.count ?? 11
+        let logoH = SleepyArt.cmuxLogo.count
         let gap = 3 * eyePixel
 
-        // Left eye: cmux chevron.
+        // Left eye: cmux cube.
         let leftOrigin = CGPoint(
-            x: (center.x - gap - CGFloat(chevW) * eyePixel).rounded(),
-            y: (center.y - CGFloat(chevH) / 2 * eyePixel).rounded()
+            x: (center.x - gap - CGFloat(logoW) * eyePixel).rounded(),
+            y: (center.y - CGFloat(logoH) / 2 * eyePixel).rounded()
         )
         drawSprite(in: &ctx, rows: SleepyArt.cmuxLogo, palette: palette, origin: leftOrigin, pixel: eyePixel)
 
-        // Right eye: a sleepy `-` dash, vertically centred to the chevron.
+        // Right eye: a sleepy `-` dash, vertically centred to the cube.
         let dashW = 5, dashY = (center.y - eyePixel).rounded()
         for i in 0..<dashW {
             let rect = CGRect(x: center.x + gap + CGFloat(i) * eyePixel, y: dashY, width: eyePixel, height: eyePixel * 2)
@@ -434,7 +434,7 @@ struct SleepyFaceView: View {
 
         // Blush under each eye.
         if let blush = palette["B"] {
-            for cx in [center.x - gap - CGFloat(chevW) / 2 * eyePixel, center.x + gap + CGFloat(dashW) / 2 * eyePixel] {
+            for cx in [center.x - gap - CGFloat(logoW) / 2 * eyePixel, center.x + gap + CGFloat(dashW) / 2 * eyePixel] {
                 let rect = CGRect(x: (cx - 1.5 * eyePixel).rounded(), y: (center.y + 4 * eyePixel).rounded(), width: eyePixel * 3, height: eyePixel * 2)
                 ctx.fill(Path(rect), with: .color(blush.opacity(0.85)))
             }

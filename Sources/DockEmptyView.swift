@@ -87,7 +87,7 @@ struct DockEmptyView: View {
     }
 
     private func openDockDocs() {
-        guard let url = URL(string: "https://cmux.com/docs/dock") else { return }
+        guard let url = URL(string: "https://mosaic.com/docs/dock") else { return }
         NSWorkspace.shared.open(url)
     }
 

@@ -169,7 +169,7 @@ struct SetupHelpView: View {
         } footer: {
             Text(L10n.string(
                 "mobile.setupHelp.sameAccountFooter",
-                defaultValue: "The computer and this phone must be signed in to the same cmux account, and on the same tailnet (or the same Wi-Fi for a manual local connection)."
+                defaultValue: "The computer and this phone must be signed in to the same mosaic account, and on the same tailnet (or the same Wi-Fi for a manual local connection)."
             ))
         }
         .accessibilityIdentifier("MobileSetupHelpNetworkSection")
