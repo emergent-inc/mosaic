@@ -211,12 +211,12 @@ Theme subcommands:
 
 | Command | Contract |
 | --- | --- |
-| `themes` | In a TTY, open the interactive picker. Outside a TTY, list themes. |
-| `themes list` | List available themes and current light/dark defaults. |
-| `themes set <theme>` | Set the same theme for light and dark appearance. |
-| `themes set --light <theme>` | Set the light appearance theme. |
-| `themes set --dark <theme>` | Set the dark appearance theme. |
-| `themes clear` | Remove the cmux theme override. |
+| `themes` | List available themes and report the managed current theme. |
+| `themes list` | List available themes and mark `Cursor Dark` as the managed terminal theme. |
+| `themes set <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
+| `themes set --light <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
+| `themes set --dark <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
+| `themes clear` | Disabled; terminal colors are fixed to `Cursor Dark`. |
 
 Workspace and tab action names:
 

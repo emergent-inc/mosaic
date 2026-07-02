@@ -4,8 +4,8 @@ public enum CollaborationTerminalShareAction: Equatable, Sendable {
     case presentSessionChooser
     /// Rejoin the collaboration session already assigned to this workspace.
     case rejoinWorkspaceSession
-    /// Stop sharing the terminal that is already connected to a session.
-    case leaveSharedTerminal
+    /// Show the recipient picker for the terminal that is already connected to a session.
+    case presentParticipantPicker
 
     /// Resolves the action for the current terminal state.
     /// - Parameters:
@@ -17,7 +17,7 @@ public enum CollaborationTerminalShareAction: Equatable, Sendable {
         workspaceHasSession: Bool = false
     ) -> CollaborationTerminalShareAction {
         if isShared {
-            return .leaveSharedTerminal
+            return .presentParticipantPicker
         }
         return workspaceHasSession ? .rejoinWorkspaceSession : .presentSessionChooser
     }

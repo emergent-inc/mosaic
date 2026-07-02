@@ -41,6 +41,7 @@ export class CollaborationSessionObject extends DurableObject {
     const url = new URL(request.url);
     const peer = parsePeer({
       peerID: url.searchParams.get("peerID"),
+      participantID: url.searchParams.get("participantID"),
       displayName: url.searchParams.get("displayName"),
       color: url.searchParams.get("color"),
     });
