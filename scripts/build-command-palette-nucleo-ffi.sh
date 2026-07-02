@@ -82,7 +82,7 @@ for target in ${requested_targets}; do
   esac
   seen_targets="${seen_targets} ${target}"
   ensure_rust_target "$target"
-  cargo build --manifest-path "${CRATE_DIR}/Cargo.toml" --release --target "$target"
+  CARGO_TARGET_DIR="${CRATE_DIR}/target" cargo build --manifest-path "${CRATE_DIR}/Cargo.toml" --release --target "$target"
   source_lib="${CRATE_DIR}/target/${target}/release/${LIB_NAME}"
   if [ ! -f "${source_lib}" ]; then
     echo "error: expected nucleo FFI library at ${source_lib}" >&2

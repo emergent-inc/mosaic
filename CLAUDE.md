@@ -16,6 +16,14 @@ After making code changes, always run the reload script with a tag to build the 
 ./scripts/reload.sh --tag fix-zsh-autosuggestions
 ```
 
+For fast Swift/UI iteration on a tag that already has warmed DerivedData, use the opt-in fast path:
+
+```bash
+CMUX_DEV_FAST_RELOAD=1 ./scripts/reload.sh --tag fix-zsh-autosuggestions
+```
+
+`CMUX_DEV_FAST_RELOAD=1` keeps the same Xcode compile graph but skips slow dev packaging work: it skips the Ghostty CLI helper Zig rebuild, reuses an existing `cmuxd` binary when present, and retags the Xcode-built app in place instead of copying the whole `.app` bundle. In local timing, a warmed normal tagged reload took 226s, while warmed fast reloads took 26-36s. Use the normal `reload.sh --tag` path when changing Ghostty, `cmuxd`, helper binaries, signing/bundle packaging, or tag/socket isolation behavior.
+
 By default, `reload.sh` builds but does **not** launch the app. The script prints the `.app` path so the user can cmd-click to open it. After a successful build, it always terminates any running app with the same tag (so cmd-clicking launches the freshly-built binary instead of foregrounding the stale instance). Pass `--launch` to open the app automatically after the build:
 
 ```bash
