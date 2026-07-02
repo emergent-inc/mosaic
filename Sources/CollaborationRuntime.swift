@@ -27,8 +27,13 @@ private struct CollaborationCreateSessionResponse: Decodable {
 
 private struct CollaborationPeerWire: Codable {
     let peerID: String
+    let participantID: String?
     let displayName: String
     let color: String
+
+    var stableParticipantID: String {
+        participantID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? peerID
+    }
 }
 
 private struct CollaborationJoinedWire: Decodable {
@@ -69,6 +74,22 @@ private struct CollaborationTerminalOpenWire: Codable {
     let type: String
     let terminalID: String
     let descriptor: SharedTerminalDescriptor
+    let fromPeerID: String?
+    let recipientParticipantIDs: [String]?
+
+    init(
+        type: String,
+        terminalID: String,
+        descriptor: SharedTerminalDescriptor,
+        fromPeerID: String? = nil,
+        recipientParticipantIDs: [String]? = nil
+    ) {
+        self.type = type
+        self.terminalID = terminalID
+        self.descriptor = descriptor
+        self.fromPeerID = fromPeerID
+        self.recipientParticipantIDs = recipientParticipantIDs
+    }
 }
 
 private struct CollaborationTerminalOutputWire: Codable {
@@ -78,6 +99,7 @@ private struct CollaborationTerminalOutputWire: Codable {
     let dataBase64: String
     let fromPeerID: String?
     let caretPeerID: String?
+    let recipientParticipantIDs: [String]?
 
     init(
         type: String,
@@ -85,7 +107,8 @@ private struct CollaborationTerminalOutputWire: Codable {
         sequence: UInt64,
         dataBase64: String,
         fromPeerID: String? = nil,
-        caretPeerID: String? = nil
+        caretPeerID: String? = nil,
+        recipientParticipantIDs: [String]? = nil
     ) {
         self.type = type
         self.terminalID = terminalID
@@ -93,6 +116,7 @@ private struct CollaborationTerminalOutputWire: Codable {
         self.dataBase64 = dataBase64
         self.fromPeerID = fromPeerID
         self.caretPeerID = caretPeerID
+        self.recipientParticipantIDs = recipientParticipantIDs
     }
 }
 
@@ -100,6 +124,19 @@ private struct CollaborationTerminalRenderGridWire: Codable {
     let type: String
     let terminalID: String
     let frame: MobileTerminalRenderGridFrame
+    let recipientParticipantIDs: [String]?
+
+    init(
+        type: String,
+        terminalID: String,
+        frame: MobileTerminalRenderGridFrame,
+        recipientParticipantIDs: [String]? = nil
+    ) {
+        self.type = type
+        self.terminalID = terminalID
+        self.frame = frame
+        self.recipientParticipantIDs = recipientParticipantIDs
+    }
 }
 
 private struct CollaborationTerminalInputWire: Codable {
@@ -108,13 +145,22 @@ private struct CollaborationTerminalInputWire: Codable {
     let inputID: String
     let dataBase64: String
     let fromPeerID: String?
+    let recipientParticipantIDs: [String]?
 
-    init(type: String, terminalID: String, inputID: String, dataBase64: String, fromPeerID: String? = nil) {
+    init(
+        type: String,
+        terminalID: String,
+        inputID: String,
+        dataBase64: String,
+        fromPeerID: String? = nil,
+        recipientParticipantIDs: [String]? = nil
+    ) {
         self.type = type
         self.terminalID = terminalID
         self.inputID = inputID
         self.dataBase64 = dataBase64
         self.fromPeerID = fromPeerID
+        self.recipientParticipantIDs = recipientParticipantIDs
     }
 }
 
@@ -122,6 +168,7 @@ private struct CollaborationTerminalPointerWire: Codable {
     let type: String
     let terminalID: String
     let fromPeerID: String
+    let recipientParticipantIDs: [String]?
     let x: Double
     let y: Double
     let visible: Bool
@@ -148,6 +195,7 @@ private struct CollaborationTerminalSelectionWire: Codable {
     let type: String
     let terminalID: String
     let fromPeerID: String
+    let recipientParticipantIDs: [String]?
     let rects: [CollaborationTerminalSelectionRectWire]
     let visible: Bool
 }
@@ -155,6 +203,13 @@ private struct CollaborationTerminalSelectionWire: Codable {
 private struct CollaborationTerminalCloseWire: Codable {
     let type: String
     let terminalID: String
+    let recipientParticipantIDs: [String]?
+
+    init(type: String, terminalID: String, recipientParticipantIDs: [String]? = nil) {
+        self.type = type
+        self.terminalID = terminalID
+        self.recipientParticipantIDs = recipientParticipantIDs
+    }
 }
 
 private struct CollaborationAgentRoomEventWire: Codable {
@@ -284,6 +339,14 @@ struct CollaborationTerminalHeaderState: Equatable {
     var isShared = false
     var statusText = ""
     var peerSummary = ""
+}
+
+struct CollaborationTerminalRecipientSnapshot: Equatable, Identifiable {
+    let participantID: String
+    let displayName: String
+    let isSelected: Bool
+
+    var id: String { participantID }
 }
 
 typealias CollaborationWorkspaceParticipantSnapshot = CollaborationParticipantAvatarSnapshot
@@ -437,6 +500,9 @@ final class CollaborationRuntime {
     private static let workspaceSessionStore = CollaborationWorkspaceSessionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
     )
+    private static let terminalRecipientSelectionStore = CollaborationTerminalRecipientSelectionStore(
+        inviteCodeStore: CollaborationRuntime.inviteCodeStore
+    )
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
@@ -463,6 +529,7 @@ final class CollaborationRuntime {
     private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
+    private var terminalOwnerParticipantIDsByID: [String: String] = [:]
     private var mirroredTerminalRenderGridPatchSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
@@ -485,7 +552,7 @@ final class CollaborationRuntime {
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
         localAvatarSeed = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? displayName
-        peerIdentity = CollaborationPeerIdentity.ephemeral(displayName: displayName)
+        peerIdentity = CollaborationPeerIdentity.persistedParticipant(displayName: displayName)
     }
 
     private static func normalizedRelayURL(from value: String) -> String {
@@ -541,6 +608,53 @@ final class CollaborationRuntime {
         terminalSessionRouter.sessionCode(forTerminalID: terminalID).flatMap { connectionsBySessionCode[$0] }
     }
 
+    private func terminalSelectionKey(for terminal: TerminalPanel) -> String {
+        "\(terminal.workspaceId.uuidString):\(terminal.id.uuidString)"
+    }
+
+    private func participantID(for peerID: String?, in connection: CollaborationRelayConnection?) -> String? {
+        guard let peerID else { return nil }
+        if peerID == peerIdentity.peerID { return peerIdentity.participantID }
+        return connection?.peersByID[peerID]?.stableParticipantID ?? peerID
+    }
+
+    private func currentRemoteParticipantIDs(in connection: CollaborationRelayConnection) -> Set<String> {
+        Set(connection.peersByID.values.map(\.stableParticipantID))
+    }
+
+    private func selectedRecipientParticipantIDs(
+        for terminalID: String,
+        connection: CollaborationRelayConnection
+    ) -> Set<String> {
+        guard let panel = hostedTerminalsByID[terminalID]?.panel else { return [] }
+        return Self.terminalRecipientSelectionStore.selectedParticipantIDs(
+            sessionCode: connection.sessionCode,
+            terminalKey: terminalSelectionKey(for: panel),
+            currentParticipantIDs: Array(currentRemoteParticipantIDs(in: connection))
+        )
+    }
+
+    private func recipientParticipantIDsForSending(
+        terminalID: String,
+        connection: CollaborationRelayConnection
+    ) -> [String]? {
+        guard hostedTerminalsByID[terminalID]?.panel != nil else {
+            guard let ownerID = terminalOwnerParticipantIDsByID[terminalID] else { return nil }
+            return [ownerID]
+        }
+        return Array(selectedRecipientParticipantIDs(for: terminalID, connection: connection)).sorted()
+    }
+
+    private func peerIsSelectedForHostedTerminal(
+        terminalID: String,
+        peerID: String?,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        guard hostedTerminalsByID[terminalID]?.panel != nil else { return true }
+        guard let participantID = participantID(for: peerID, in: connection) else { return false }
+        return selectedRecipientParticipantIDs(for: terminalID, connection: connection).contains(participantID)
+    }
+
     func state(for panel: any CollaborationEditablePanel) -> CollaborationDocumentHeaderState {
         let descriptor = descriptor(for: panel)
         let documentID = descriptor.documentID(sessionID: sessionCode ?? "")
@@ -569,14 +683,20 @@ final class CollaborationRuntime {
         )
     }
 
+    func canManageRecipients(for terminal: TerminalPanel) -> Bool {
+        hostedTerminalIDsBySurfaceID[terminal.id] != nil
+    }
+
     func configureOrShare(terminal: TerminalPanel) {
         let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
         switch CollaborationTerminalShareAction.action(
             isShared: state(for: terminal).isShared,
             workspaceHasSession: workspaceSessionCode != nil
         ) {
-        case .leaveSharedTerminal:
-            leave(terminal: terminal)
+        case .presentParticipantPicker:
+            if !canManageRecipients(for: terminal) {
+                leave(terminal: terminal)
+            }
         case .rejoinWorkspaceSession:
             guard let workspaceSessionCode else {
                 scheduleStartDialog(thenShare: terminal)
@@ -589,6 +709,71 @@ final class CollaborationRuntime {
             }
         case .presentSessionChooser:
             scheduleStartDialog(thenShare: terminal)
+        }
+    }
+
+    func recipientSnapshots(for terminal: TerminalPanel) -> [CollaborationTerminalRecipientSnapshot] {
+        let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
+        guard let terminalID, let connection = connection(forTerminalID: terminalID) else { return [] }
+        let selectedIDs = selectedRecipientParticipantIDs(for: terminalID, connection: connection)
+        return connection.peersByID.values
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            .map { peer in
+                CollaborationTerminalRecipientSnapshot(
+                    participantID: peer.stableParticipantID,
+                    displayName: peer.displayName,
+                    isSelected: selectedIDs.contains(peer.stableParticipantID)
+                )
+            }
+    }
+
+    func applyRecipientSelection(_ selectedParticipantIDs: Set<String>, for terminal: TerminalPanel) {
+        guard let terminalID = hostedTerminalIDsBySurfaceID[terminal.id], let connection = connection(forTerminalID: terminalID) else {
+            return
+        }
+        let previousIDs = selectedRecipientParticipantIDs(for: terminalID, connection: connection)
+        let knownIDs = currentRemoteParticipantIDs(in: connection)
+        let nextIDs = selectedParticipantIDs.intersection(knownIDs)
+        Self.terminalRecipientSelectionStore.record(
+            selectedParticipantIDs: nextIDs,
+            knownParticipantIDs: knownIDs,
+            sessionCode: connection.sessionCode,
+            terminalKey: terminalSelectionKey(for: terminal)
+        )
+        let removedIDs = previousIDs.subtracting(nextIDs)
+        let addedIDs = nextIDs.subtracting(previousIDs)
+        Task {
+            if !removedIDs.isEmpty {
+                try? await send(
+                    CollaborationTerminalCloseWire(
+                        type: "terminal.close",
+                        terminalID: terminalID,
+                        recipientParticipantIDs: Array(removedIDs).sorted()
+                    ),
+                    via: connection
+                )
+            }
+            if !addedIDs.isEmpty {
+                let descriptor = terminalDescriptor(for: terminal)
+                let recipients = Array(addedIDs).sorted()
+                try? await send(
+                    CollaborationTerminalOpenWire(
+                        type: "terminal.open",
+                        terminalID: terminalID,
+                        descriptor: descriptor,
+                        recipientParticipantIDs: recipients
+                    ),
+                    via: connection
+                )
+                try? await sendTerminalRenderGridSnapshotIfPossible(
+                    terminalID: terminalID,
+                    scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    full: true,
+                    requireLiveScrollbackBottom: false,
+                    recipientParticipantIDs: recipients,
+                    via: connection
+                )
+            }
         }
     }
 
@@ -675,6 +860,10 @@ final class CollaborationRuntime {
                     type: "terminal.pointer",
                     terminalID: terminalID,
                     fromPeerID: peerIdentity.peerID,
+                    recipientParticipantIDs: recipientParticipantIDsForSending(
+                        terminalID: terminalID,
+                        connection: connection
+                    ),
                     x: min(max(normalizedX, 0), 1),
                     y: min(max(normalizedY, 0), 1),
                     visible: visible,
@@ -743,6 +932,10 @@ final class CollaborationRuntime {
                     type: "terminal.selection",
                     terminalID: terminalID,
                     fromPeerID: peerIdentity.peerID,
+                    recipientParticipantIDs: recipientParticipantIDsForSending(
+                        terminalID: terminalID,
+                        connection: connection
+                    ),
                     rects: normalizedRects,
                     visible: visible && !normalizedRects.isEmpty
                 ), via: connection)
@@ -757,6 +950,7 @@ final class CollaborationRuntime {
         guard let peerID, peerID != peerIdentity.peerID else { return nil }
         return connection?.peersByID[peerID] ?? CollaborationPeerWire(
             peerID: peerID,
+            participantID: nil,
             displayName: peerID,
             color: peerIdentity.color
         )
@@ -783,6 +977,7 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID = hostedTerminalIDsBySurfaceID.filter { $0.value != terminalID }
         mirroredTerminalIDsBySurfaceID = mirroredTerminalIDsBySurfaceID.filter { $0.value != terminalID }
         terminalSessionRouter.remove(terminalID: terminalID)
+        terminalOwnerParticipantIDsByID.removeValue(forKey: terminalID)
         for surfaceID in hostedSurfaceIDs + mirroredSurfaceIDs {
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
             terminalSelectionLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
@@ -1330,6 +1525,7 @@ final class CollaborationRuntime {
         mirroredTerminalRenderGridSequencesByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
+        terminalOwnerParticipantIDsByID.removeAll()
         terminalStatesByID.removeAll()
         terminalPointerLastSentAtBySurfaceID.removeAll()
         terminalSelectionLastSentAtBySurfaceID.removeAll()
@@ -1657,6 +1853,7 @@ final class CollaborationRuntime {
         components.path = "/v1/collaboration/sessions/\(Self.normalizedSessionCode(from: code))/connect"
         components.queryItems = [
             URLQueryItem(name: "peerID", value: peerIdentity.peerID),
+            URLQueryItem(name: "participantID", value: peerIdentity.participantID),
             URLQueryItem(name: "displayName", value: peerIdentity.displayName),
             URLQueryItem(name: "color", value: peerIdentity.color),
         ]
@@ -1714,6 +1911,7 @@ final class CollaborationRuntime {
         recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
         hostedTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(terminal)
         hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
+        terminalOwnerParticipantIDsByID[terminalID] = peerIdentity.participantID
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
@@ -1792,6 +1990,7 @@ final class CollaborationRuntime {
     private func handleRemoteTerminalOpen(
         terminalID: String,
         descriptor: SharedTerminalDescriptor,
+        ownerPeerID: String?,
         connection: CollaborationRelayConnection
     ) {
         if mirroredTerminalsByID[terminalID]?.panel != nil { return }
@@ -1818,6 +2017,7 @@ final class CollaborationRuntime {
         panel.surface.suppressPassiveMouseInput = true
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
+        terminalOwnerParticipantIDsByID[terminalID] = participantID(for: ownerPeerID, in: connection)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
@@ -1895,6 +2095,11 @@ final class CollaborationRuntime {
         fromPeerID: String?,
         connection: CollaborationRelayConnection
     ) {
+        guard peerIsSelectedForHostedTerminal(
+            terminalID: terminalID,
+            peerID: fromPeerID,
+            connection: connection
+        ) else { return }
         guard let filteredData = Self.filteredTerminalCollaborationInput(
             data,
             pendingPrefix: &hostedTerminalInputReportPrefixesByID[terminalID, default: Data()],
@@ -2323,7 +2528,7 @@ final class CollaborationRuntime {
             if peer.peerID != peerIdentity.peerID {
                 connection.peersByID[peer.peerID] = peer
                 refreshPeerSummaries(for: connection)
-                sendHostedTerminalSeedsForNewPeer(via: connection)
+                sendHostedTerminalSeedsForNewPeer(peer, via: connection)
             }
         case "peer.left":
             let left = try decoder.decode(CollaborationPeerLeftWire.self, from: data)
@@ -2360,7 +2565,12 @@ final class CollaborationRuntime {
             try await connection.session.applyRemoteFrame(.presence(presence.presenceState))
         case "terminal.open":
             let open = try decoder.decode(CollaborationTerminalOpenWire.self, from: data)
-            handleRemoteTerminalOpen(terminalID: open.terminalID, descriptor: open.descriptor, connection: connection)
+            handleRemoteTerminalOpen(
+                terminalID: open.terminalID,
+                descriptor: open.descriptor,
+                ownerPeerID: open.fromPeerID,
+                connection: connection
+            )
         case "terminal.output":
             let output = try decoder.decode(CollaborationTerminalOutputWire.self, from: data)
             if let bytes = Data(base64Encoded: output.dataBase64) {
@@ -2428,6 +2638,7 @@ final class CollaborationRuntime {
         scrollbackLines: Int,
         full: Bool,
         requireLiveScrollbackBottom: Bool,
+        recipientParticipantIDs: [String]? = nil,
         via connection: CollaborationRelayConnection
     ) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
@@ -2443,11 +2654,18 @@ final class CollaborationRuntime {
         try await send(CollaborationTerminalRenderGridWire(
             type: "terminal.render_grid",
             terminalID: terminalID,
-            frame: snapshot.frame
+            frame: snapshot.frame,
+            recipientParticipantIDs: recipientParticipantIDs ?? recipientParticipantIDsForSending(
+                terminalID: terminalID,
+                connection: connection
+            )
         ), via: connection)
     }
 
-    private func sendHostedTerminalSeedsForNewPeer(via connection: CollaborationRelayConnection) {
+    private func sendHostedTerminalSeedsForNewPeer(
+        _ peer: CollaborationPeerWire,
+        via connection: CollaborationRelayConnection
+    ) {
         let terminals = hostedTerminalsByID.compactMap { terminalID, weakPanel -> (String, TerminalPanel)? in
             guard let panel = weakPanel.panel else { return nil }
             return (terminalID, panel)
@@ -2458,12 +2676,23 @@ final class CollaborationRuntime {
                 guard terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else {
                     continue
                 }
-                try? await send(.terminalOpen(terminalID: terminalID, descriptor: terminalDescriptor(for: panel)), via: connection)
+                let recipientID = peer.stableParticipantID
+                guard selectedRecipientParticipantIDs(for: terminalID, connection: connection).contains(recipientID) else {
+                    continue
+                }
+                let recipients = [recipientID]
+                try? await send(CollaborationTerminalOpenWire(
+                    type: "terminal.open",
+                    terminalID: terminalID,
+                    descriptor: terminalDescriptor(for: panel),
+                    recipientParticipantIDs: recipients
+                ), via: connection)
                 try? await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
                     full: true,
                     requireLiveScrollbackBottom: false,
+                    recipientParticipantIDs: recipients,
                     via: connection
                 )
             }
@@ -2525,7 +2754,11 @@ final class CollaborationRuntime {
             try await send(CollaborationTerminalOpenWire(
                 type: "terminal.open",
                 terminalID: terminalID,
-                descriptor: descriptor
+                descriptor: descriptor,
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
             ), via: connection)
         case .terminalOutput(let terminalID, let sequence, let data):
             let caretPeerID = terminalOutputPeerID(for: terminalID)
@@ -2534,7 +2767,11 @@ final class CollaborationRuntime {
                 terminalID: terminalID,
                 sequence: sequence,
                 dataBase64: data.base64EncodedString(),
-                caretPeerID: caretPeerID
+                caretPeerID: caretPeerID,
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
             ), via: connection)
         case .terminalInput(let terminalID, let inputID, let data):
             try await send(CollaborationTerminalInputWire(
@@ -2542,10 +2779,21 @@ final class CollaborationRuntime {
                 terminalID: terminalID,
                 inputID: inputID,
                 dataBase64: data.base64EncodedString(),
-                fromPeerID: peerIdentity.peerID
+                fromPeerID: peerIdentity.peerID,
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
             ), via: connection)
         case .terminalClose(let terminalID):
-            try await send(CollaborationTerminalCloseWire(type: "terminal.close", terminalID: terminalID), via: connection)
+            try await send(CollaborationTerminalCloseWire(
+                type: "terminal.close",
+                terminalID: terminalID,
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
+            ), via: connection)
         case .agentRoomEvent(let event):
             try await send(CollaborationAgentRoomEventWire(type: "agent.room.event", event: event), via: connection)
         case .agentRoomSnapshot(let room):
@@ -2821,6 +3069,22 @@ enum CollaborationStrings {
 
     static var shareTerminal: String {
         String(localized: "collaboration.terminal.share", defaultValue: "Share Terminal")
+    }
+
+    static var manageTerminalSharing: String {
+        String(localized: "collaboration.terminal.manageSharing", defaultValue: "Manage Terminal Sharing")
+    }
+
+    static var terminalRecipientsTitle: String {
+        String(localized: "collaboration.terminal.recipients.title", defaultValue: "Share with")
+    }
+
+    static var terminalRecipientsEmpty: String {
+        String(localized: "collaboration.terminal.recipients.empty", defaultValue: "No other people are in this session.")
+    }
+
+    static var share: String {
+        String(localized: "collaboration.action.share", defaultValue: "Share")
     }
 
     static var connectClaudeRoom: String {

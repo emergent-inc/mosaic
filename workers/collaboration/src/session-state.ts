@@ -1,4 +1,4 @@
-import { parseEnvelope, type PeerInfo } from "./protocol";
+import { parseEnvelope, type PeerInfo, type RelayEnvelope } from "./protocol";
 
 export interface RelaySocket {
   send(data: string): void;
@@ -42,7 +42,7 @@ export class CollaborationRelaySessionState {
       this.peers.set(peerID, entry);
       return;
     }
-    this.broadcast(peerID, { ...envelope, fromPeerID: peerID, receivedAt: now });
+    this.broadcast(peerID, { ...envelope, fromPeerID: peerID, receivedAt: now }, this.recipientParticipantIDs(envelope));
   }
 
   expire(now: number, timeoutMs: number): void {
@@ -59,16 +59,25 @@ export class CollaborationRelaySessionState {
     this.broadcast(peerID, { type: "peer.left", peerID, reason });
   }
 
-  private broadcast(fromPeerID: string, body: unknown): void {
+  private broadcast(fromPeerID: string, body: unknown, recipientParticipantIDs: Set<string> | null = null): void {
     const encoded = JSON.stringify(body);
     for (const [peerID, entry] of this.peers) {
       if (peerID === fromPeerID) continue;
+      if (recipientParticipantIDs !== null && !recipientParticipantIDs.has(entry.peer.participantID)) continue;
       try {
         entry.socket.send(encoded);
       } catch {
         this.dropPeer(peerID, "disconnect");
       }
     }
+  }
+
+  private recipientParticipantIDs(envelope: RelayEnvelope): Set<string> | null {
+    if (!envelope.type.startsWith("terminal.")) return null;
+    const raw = envelope.recipientParticipantIDs;
+    if (raw === undefined) return null;
+    if (!Array.isArray(raw)) return new Set();
+    return new Set(raw.filter((id): id is string => typeof id === "string" && id.trim() !== ""));
   }
 
   private closePeer(peerID: string, code: number, reason: string): void {
