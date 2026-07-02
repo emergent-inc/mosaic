@@ -36,29 +36,21 @@ final class PortalTabDragRoutingTests: XCTestCase {
         }
     }
 
-    func testCompactPaneTabChromeStaysBelowDragHitMinimum() throws {
+    func testSelectedPaneTabDoesNotRenderTopAccentIndicator() throws {
         let appearance = BonsplitConfiguration.Appearance(
             tabMinWidth: 140,
             tabMaxWidth: 220,
             splitButtons: []
         )
-        let measuredWidth = try XCTUnwrap(
-            renderedSelectedPaneTabIndicatorWidth(
-                title: "~",
-                icon: "terminal.fill",
-                appearance: appearance
-            )
+        let measuredWidth = renderedSelectedPaneTabIndicatorWidth(
+            title: "~",
+            icon: "terminal.fill",
+            appearance: appearance
         )
 
-        XCTAssertGreaterThan(
+        XCTAssertNil(
             measuredWidth,
-            40,
-            "The regression measurement must prove the selected tab indicator actually rendered"
-        )
-        XCTAssertLessThanOrEqual(
-            measuredWidth,
-            80,
-            "Short pane-tab visible chrome should stay compact; drag affordance must come from hit testing, not a wider rendered tab"
+            "Selected pane tabs should not render a colored top accent indicator"
         )
     }
 

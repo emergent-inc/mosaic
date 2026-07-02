@@ -14536,34 +14536,21 @@ struct CMUXCLI {
               cmux hooks uninstall
             """
         case "themes":
-            return """
+            return String(localized: "cli.themes.usage", defaultValue: """
             Usage: cmux themes
                    cmux themes list
-                   cmux themes set <theme>
-                   cmux themes set --light <theme> [--dark <theme>]
-                   cmux themes set --dark <theme> [--light <theme>]
-                   cmux themes clear
 
-            When run in a TTY, `cmux themes` opens an interactive theme picker with
-            live app preview. Use `cmux themes list` for a plain listing.
-
-            The picker previews the selected theme across the running cmux app and
-            lets you apply it to the light theme, dark theme, or both defaults.
+            Terminal colors are fixed to Cursor Dark and cannot be changed.
+            Use `cmux themes list` to inspect bundled themes and the managed
+            current theme.
 
             Commands:
-              list                      List available themes and mark the current light/dark defaults
-              set <theme>               Set the same theme for both light and dark appearance
-              set --light <theme>       Set the light appearance theme
-              set --dark <theme>        Set the dark appearance theme
-              clear                     Remove the cmux theme override and fall back to other config
+              list                      List available themes and mark Cursor Dark as managed
 
             Examples:
               cmux themes
               cmux themes list
-              cmux themes set "Catppuccin Mocha"
-              cmux themes set --light "Catppuccin Latte" --dark "Catppuccin Mocha"
-              cmux themes clear
-            """
+            """)
         case "claude-teams":
             return String(localized: "cli.claude-teams.usage", defaultValue: """
             Usage: cmux claude-teams [claude-args...]
