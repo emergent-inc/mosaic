@@ -247,6 +247,39 @@ private struct TerminalOutputCaretSuppression {
     let expiresAt: Date
 }
 
+@MainActor
+private final class CollaborationRelayConnection {
+    let sessionID: String
+    let sessionCode: String
+    let session: CollaborationSession
+    var webSocketTask: URLSessionWebSocketTask?
+    var eventsTask: Task<Void, Never>?
+    var heartbeatTask: Task<Void, Never>?
+    var peersByID: [String: CollaborationPeerWire] = [:]
+    var connectionLabel = CollaborationStrings.connecting
+
+    init(sessionID: String, sessionCode: String, session: CollaborationSession) {
+        self.sessionID = sessionID
+        self.sessionCode = sessionCode
+        self.session = session
+    }
+
+    var peerSummary: String {
+        if peersByID.isEmpty { return CollaborationStrings.noPeers }
+        if peersByID.count == 1 { return CollaborationStrings.onePeer }
+        return String(format: CollaborationStrings.peerCountFormat, peersByID.count)
+    }
+
+    func disconnect() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
+        eventsTask?.cancel()
+        eventsTask = nil
+    }
+}
+
 struct CollaborationTerminalHeaderState: Equatable {
     var isShared = false
     var statusText = ""
@@ -406,15 +439,14 @@ final class CollaborationRuntime {
     private let peerIdentity: CollaborationPeerIdentity
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-    private var session: CollaborationSession?
-    private var webSocketTask: URLSessionWebSocketTask?
-    private var sessionEventsTask: Task<Void, Never>?
-    private var heartbeatTask: Task<Void, Never>?
+    private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
     private var panelsByDocumentID: [String: WeakCollaborationPanel] = [:]
     private var descriptorsByDocumentID: [String: SharedFileDescriptor] = [:]
+    private var sessionCodesByDocumentID: [String: String] = [:]
     private var statesByDocumentID: [String: CollaborationDocumentHeaderState] = [:]
     private var hostedTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var hostedTerminalIDsBySurfaceID: [UUID: String] = [:]
+    private var terminalSessionRouter = CollaborationTerminalSessionRouter()
     private var hostedTerminalOutputSequencesByID: [String: UInt64] = [:]
     private var hostedTerminalOutputCaretSuppressionsByID: [String: TerminalOutputCaretSuppression] = [:]
     private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
@@ -423,7 +455,6 @@ final class CollaborationRuntime {
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
-    private var peersByID: [String: CollaborationPeerWire] = [:]
     private var terminalPointerLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var terminalSelectionLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var snapshotFallbackTasks: [String: Task<Void, Never>] = [:]
@@ -460,47 +491,56 @@ final class CollaborationRuntime {
         inviteCodeStore.rememberSessionCode(code)
     }
 
+    private var activeConnection: CollaborationRelayConnection? {
+        sessionCode.flatMap { connectionsBySessionCode[$0] }
+    }
+
+    private func connection(forTerminalID terminalID: String) -> CollaborationRelayConnection? {
+        terminalSessionRouter.sessionCode(forTerminalID: terminalID).flatMap { connectionsBySessionCode[$0] }
+    }
+
     func state(for panel: any CollaborationEditablePanel) -> CollaborationDocumentHeaderState {
         let descriptor = descriptor(for: panel)
         let documentID = descriptor.documentID(sessionID: sessionCode ?? "")
+        let connection = activeConnection
         return statesByDocumentID[documentID] ?? CollaborationDocumentHeaderState(
             isShared: false,
-            statusText: connectionLabel,
-            peerSummary: peerSummary
+            statusText: connection?.connectionLabel ?? connectionLabel,
+            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers
         )
     }
 
     func configureOrShare(panel: any CollaborationEditablePanel) {
-        if session == nil {
-            scheduleStartDialog(thenShare: panel)
-            return
-        }
-        share(panel: panel)
+        scheduleStartDialog(thenShare: panel)
     }
 
     func state(for terminal: TerminalPanel) -> CollaborationTerminalHeaderState {
-        let terminalID = terminalID(for: terminal)
-        return terminalStatesByID[terminalID] ?? CollaborationTerminalHeaderState(
+        let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
+        if let terminalID, let state = terminalStatesByID[terminalID] {
+            return state
+        }
+        let connection = activeConnection
+        return CollaborationTerminalHeaderState(
             isShared: false,
-            statusText: connectionLabel,
-            peerSummary: peerSummary
+            statusText: connection?.connectionLabel ?? connectionLabel,
+            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers
         )
     }
 
     func configureOrShare(terminal: TerminalPanel) {
-        if session == nil {
-            scheduleStartDialog()
-            return
-        }
-        if state(for: terminal).isShared {
+        switch CollaborationTerminalShareAction.action(isShared: state(for: terminal).isShared) {
+        case .leaveSharedTerminal:
             leave(terminal: terminal)
-            return
+        case .presentSessionChooser:
+            scheduleStartDialog(thenShare: terminal)
         }
-        share(terminal: terminal)
     }
 
     func leave(terminal: TerminalPanel) {
-        let terminalID = terminalID(for: terminal)
+        let terminalID = hostedTerminalIDsBySurfaceID[terminal.id]
+            ?? mirroredTerminalIDsBySurfaceID[terminal.id]
+            ?? terminalID(for: terminal)
+        let connection = connection(forTerminalID: terminalID)
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
@@ -510,8 +550,11 @@ final class CollaborationRuntime {
         mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
+        terminalSessionRouter.remove(terminalID: terminalID)
         Task {
-            try? await send(.terminalClose(terminalID: terminalID))
+            if let connection {
+                try? await send(.terminalClose(terminalID: terminalID), via: connection)
+            }
         }
     }
 
@@ -520,7 +563,9 @@ final class CollaborationRuntime {
         let sequence = hostedTerminalOutputSequencesByID[terminalID] ?? 0
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
         Task {
-            try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data))
+            if let connection = connection(forTerminalID: terminalID) {
+                try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data), via: connection)
+            }
         }
     }
 
@@ -532,11 +577,13 @@ final class CollaborationRuntime {
             terminalID: terminalID
         ) else { return }
         Task {
-            try? await send(.terminalInput(
-                terminalID: terminalID,
-                inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
-                data: filteredData
-            ))
+            if let connection = connection(forTerminalID: terminalID) {
+                try? await send(.terminalInput(
+                    terminalID: terminalID,
+                    inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
+                    data: filteredData
+                ), via: connection)
+            }
         }
     }
 
@@ -564,19 +611,21 @@ final class CollaborationRuntime {
         }
 
         Task {
-            try? await send(CollaborationTerminalPointerWire(
-                type: "terminal.pointer",
-                terminalID: terminalID,
-                fromPeerID: peerIdentity.peerID,
-                x: min(max(normalizedX, 0), 1),
-                y: min(max(normalizedY, 0), 1),
-                visible: visible,
-                coordinateSpace: coordinateSpace,
-                row: row,
-                column: column,
-                contentRow: contentRow,
-                contentRowFromBottom: contentRowFromBottom
-            ))
+            if let connection = connection(forTerminalID: terminalID) {
+                try? await send(CollaborationTerminalPointerWire(
+                    type: "terminal.pointer",
+                    terminalID: terminalID,
+                    fromPeerID: peerIdentity.peerID,
+                    x: min(max(normalizedX, 0), 1),
+                    y: min(max(normalizedY, 0), 1),
+                    visible: visible,
+                    coordinateSpace: coordinateSpace,
+                    row: row,
+                    column: column,
+                    contentRow: contentRow,
+                    contentRowFromBottom: contentRowFromBottom
+                ), via: connection)
+            }
         }
     }
 
@@ -630,19 +679,24 @@ final class CollaborationRuntime {
         }
 
         Task {
-            try? await send(CollaborationTerminalSelectionWire(
-                type: "terminal.selection",
-                terminalID: terminalID,
-                fromPeerID: peerIdentity.peerID,
-                rects: normalizedRects,
-                visible: visible && !normalizedRects.isEmpty
-            ))
+            if let connection = connection(forTerminalID: terminalID) {
+                try? await send(CollaborationTerminalSelectionWire(
+                    type: "terminal.selection",
+                    terminalID: terminalID,
+                    fromPeerID: peerIdentity.peerID,
+                    rects: normalizedRects,
+                    visible: visible && !normalizedRects.isEmpty
+                ), via: connection)
+            }
         }
     }
 
-    private func peerVisibleToThisClient(_ peerID: String?) -> CollaborationPeerWire? {
+    private func peerVisibleToThisClient(
+        _ peerID: String?,
+        in connection: CollaborationRelayConnection?
+    ) -> CollaborationPeerWire? {
         guard let peerID, peerID != peerIdentity.peerID else { return nil }
-        return peersByID[peerID] ?? CollaborationPeerWire(
+        return connection?.peersByID[peerID] ?? CollaborationPeerWire(
             peerID: peerID,
             displayName: peerID,
             color: peerIdentity.color
@@ -669,6 +723,7 @@ final class CollaborationRuntime {
 
         hostedTerminalIDsBySurfaceID = hostedTerminalIDsBySurfaceID.filter { $0.value != terminalID }
         mirroredTerminalIDsBySurfaceID = mirroredTerminalIDsBySurfaceID.filter { $0.value != terminalID }
+        terminalSessionRouter.remove(terminalID: terminalID)
         for surfaceID in hostedSurfaceIDs + mirroredSurfaceIDs {
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
             terminalSelectionLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
@@ -676,33 +731,34 @@ final class CollaborationRuntime {
     }
 
     func leave(panel: any CollaborationEditablePanel) {
-        guard let session else { return }
+        guard let connection = activeConnection else { return }
         let descriptor = descriptor(for: panel)
-        let documentID = descriptor.documentID(sessionID: sessionCode ?? "")
+        let documentID = descriptor.documentID(sessionID: connection.sessionCode)
         panelsByDocumentID.removeValue(forKey: documentID)
         descriptorsByDocumentID.removeValue(forKey: documentID)
+        sessionCodesByDocumentID.removeValue(forKey: documentID)
         statesByDocumentID.removeValue(forKey: documentID)
         snapshotFallbackTasks[documentID]?.cancel()
         snapshotFallbackTasks.removeValue(forKey: documentID)
         Task {
-            _ = try? await session.close(file: descriptor)
+            _ = try? await connection.session.close(file: descriptor)
         }
     }
 
     func noteLocalTextChange(panel: any CollaborationEditablePanel, previousText: String, nextText: String) {
-        guard let session else { return }
+        guard let connection = activeConnection else { return }
         let descriptor = descriptor(for: panel)
-        let documentID = descriptor.documentID(sessionID: sessionCode ?? "")
+        let documentID = descriptor.documentID(sessionID: connection.sessionCode)
         guard panelsByDocumentID[documentID]?.panel != nil else { return }
         let edit = CollaborationTextDiff.diff(previous: previousText, next: nextText)
         Task {
             do {
-                let frame = try await session.applyLocalEdit(
+                let frame = try await connection.session.applyLocalEdit(
                     file: descriptor,
                     range: edit.range,
                     replacement: edit.replacement
                 )
-                try await send(frame)
+                try await send(frame, via: connection)
             } catch {
                 lastErrorMessage = error.localizedDescription
             }
@@ -710,7 +766,7 @@ final class CollaborationRuntime {
     }
 
     func noteLocalSelection(panel: any CollaborationEditablePanel, textView: NSTextView) {
-        guard let session else { return }
+        guard let connection = activeConnection else { return }
         let selectedRange = textView.selectedRange()
         let selection: Range<Int>?
         if selectedRange.length > 0 {
@@ -720,12 +776,12 @@ final class CollaborationRuntime {
         }
         let descriptor = descriptor(for: panel)
         Task {
-            let frame = await session.setLocalSelection(
+            let frame = await connection.session.setLocalSelection(
                 file: descriptor,
                 cursor: selectedRange.location,
                 selection: selection
             )
-            try? await send(frame)
+            try? await send(frame, via: connection)
         }
     }
 
@@ -823,14 +879,17 @@ final class CollaborationRuntime {
     }
 
     func statusPayload() -> [String: Any] {
-        [
-            "connected": session != nil,
+        let connection = activeConnection
+        let peers = connection.map { Array($0.peersByID.values) } ?? []
+        let payload: [String: Any] = [
+            "connected": connection != nil,
             "relay_url": relayURLString,
             "session_code": sessionCode ?? NSNull(),
-            "status": connectionLabel,
+            "status": connection?.connectionLabel ?? connectionLabel,
+            "session_count": connectionsBySessionCode.count,
             "shared_documents": statesByDocumentID.values.filter(\.isShared).count,
             "shared_terminals": terminalStatesByID.values.filter(\.isShared).count,
-            "peers": peersByID.values.map { peer in
+            "peers": peers.map { peer in
                 [
                     "peer_id": peer.peerID,
                     "display_name": peer.displayName,
@@ -838,6 +897,7 @@ final class CollaborationRuntime {
                 ]
             },
         ]
+        return payload
     }
 
     func agentRoomStatusPayload() async -> [String: Any] {
@@ -850,7 +910,7 @@ final class CollaborationRuntime {
         [
             "rooms": agentRoomSnapshotsByID.values.sorted { $0.id < $1.id }.map(agentRoomPayload),
             "latest_room_id": latestAgentRoomID ?? NSNull(),
-            "connected": session != nil,
+            "connected": activeConnection != nil,
             "relay_url": relayURLString,
             "session_code": sessionCode ?? NSNull(),
         ]
@@ -1190,14 +1250,15 @@ final class CollaborationRuntime {
     }
 
     func leaveSessionForAutomation() -> [String: Any] {
-        disconnectWebSocket()
-        session = nil
+        disconnectAllConnections()
         sessionCode = nil
         panelsByDocumentID.removeAll()
         descriptorsByDocumentID.removeAll()
+        sessionCodesByDocumentID.removeAll()
         statesByDocumentID.removeAll()
         hostedTerminalsByID.removeAll()
         hostedTerminalIDsBySurfaceID.removeAll()
+        terminalSessionRouter.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
         hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
@@ -1207,7 +1268,6 @@ final class CollaborationRuntime {
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
         terminalStatesByID.removeAll()
-        peersByID.removeAll()
         terminalPointerLastSentAtBySurfaceID.removeAll()
         terminalSelectionLastSentAtBySurfaceID.removeAll()
         connectionLabel = CollaborationStrings.disconnected
@@ -1220,6 +1280,16 @@ final class CollaborationRuntime {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.presentStartDialog()
+            self.isPresentingStartDialog = false
+        }
+    }
+
+    private func scheduleStartDialog(thenShare terminal: TerminalPanel) {
+        guard !isPresentingStartDialog else { return }
+        isPresentingStartDialog = true
+        DispatchQueue.main.async { [weak self, terminal] in
+            guard let self else { return }
+            self.presentStartDialog(thenShare: terminal)
             self.isPresentingStartDialog = false
         }
     }
@@ -1308,6 +1378,32 @@ final class CollaborationRuntime {
         }
     }
 
+    private func presentStartDialog(thenShare terminal: TerminalPanel) {
+        let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
+        alert.messageText = CollaborationStrings.startTitle
+        alert.informativeText = CollaborationStrings.startMessage
+        alert.addButton(withTitle: CollaborationStrings.createSession)
+        alert.addButton(withTitle: CollaborationStrings.joinSession)
+        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
+        alert.addButton(withTitle: CollaborationStrings.cancel)
+
+        let rejoinField = makeRejoinField()
+        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
+
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn:
+            Task { await createSessionAndShare(terminal: terminal) }
+        case .alertSecondButtonReturn:
+            presentJoinDialog(thenShare: terminal)
+        case .alertThirdButtonReturn:
+            rejoinSession(code: rejoinField.stringValue, thenShare: terminal)
+        default:
+            break
+        }
+    }
+
     private func presentJoinDialog(thenShare panel: any CollaborationEditablePanel) {
         let alert = NSAlert()
         configureCollaborationAlertChrome(alert)
@@ -1330,6 +1426,32 @@ final class CollaborationRuntime {
         Task {
             await joinSession(code: code)
             share(panel: panel)
+        }
+    }
+
+    private func presentJoinDialog(thenShare terminal: TerminalPanel) {
+        let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
+        alert.messageText = CollaborationStrings.joinSession
+        alert.informativeText = CollaborationStrings.joinMessage
+        alert.addButton(withTitle: CollaborationStrings.joinSession)
+        alert.addButton(withTitle: CollaborationStrings.cancel)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 8
+        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
+        let codeField = NSTextField(string: "")
+        codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
+        stack.addArrangedSubview(codeField)
+        alert.accessoryView = stack
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let code = Self.normalizedSessionCode(from: codeField.stringValue)
+        Task {
+            if let connection = await joinSession(code: code) {
+                share(terminal: terminal, via: connection)
+            }
         }
     }
 
@@ -1390,6 +1512,19 @@ final class CollaborationRuntime {
         }
     }
 
+    private func rejoinSession(code: String, thenShare terminal: TerminalPanel) {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        guard !normalizedCode.isEmpty else {
+            presentJoinDialog(thenShare: terminal)
+            return
+        }
+        Task {
+            if let connection = await joinSession(code: normalizedCode) {
+                share(terminal: terminal, via: connection)
+            }
+        }
+    }
+
     private func createSessionAndPresentCode(relayURL: String?) async {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
@@ -1409,6 +1544,19 @@ final class CollaborationRuntime {
             let response = try await createSession()
             await connect(sessionID: response.sessionID, code: response.sessionCode)
             share(panel: panel)
+            presentCreatedSessionDialog(code: response.sessionCode)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            connectionLabel = CollaborationStrings.connectionFailed
+        }
+    }
+
+    private func createSessionAndShare(terminal: TerminalPanel) async {
+        do {
+            let response = try await createSession()
+            if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
+                share(terminal: terminal, via: connection)
+            }
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -1443,9 +1591,10 @@ final class CollaborationRuntime {
         NSPasteboard.general.setString(normalizedCode, forType: .string)
     }
 
-    private func joinSession(code: String) async {
+    @discardableResult
+    private func joinSession(code: String) async -> CollaborationRelayConnection? {
         let normalizedCode = Self.normalizedSessionCode(from: code)
-        await connect(sessionID: normalizedCode, code: normalizedCode)
+        return await connect(sessionID: normalizedCode, code: normalizedCode)
     }
 
     private func createSession() async throws -> CollaborationCreateSessionResponse {
@@ -1464,9 +1613,17 @@ final class CollaborationRuntime {
         return try decoder.decode(CollaborationCreateSessionResponse.self, from: data)
     }
 
-    private func connect(sessionID: String, code: String) async {
-        disconnectWebSocket()
-        sessionCode = Self.normalizedSessionCode(from: code)
+    private func connect(sessionID: String, code: String) async -> CollaborationRelayConnection? {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        if let existing = connectionsBySessionCode[normalizedCode] {
+            sessionCode = normalizedCode
+            connectionLabel = existing.connectionLabel
+            Self.rememberSessionCode(normalizedCode)
+            reopenSharedDocumentsForCurrentSession()
+            return existing
+        }
+
+        sessionCode = normalizedCode
         connectionLabel = CollaborationStrings.connecting
         let nextSession = CollaborationSession(
             peerID: peerIdentity.peerID,
@@ -1474,24 +1631,31 @@ final class CollaborationRuntime {
             color: peerIdentity.color,
             sessionID: sessionID
         )
-        session = nextSession
-        observe(session: nextSession)
+        let connection = CollaborationRelayConnection(
+            sessionID: sessionID,
+            sessionCode: normalizedCode,
+            session: nextSession
+        )
+        connectionsBySessionCode[normalizedCode] = connection
+        observe(connection: connection)
 
-        guard let url = connectURL(code: sessionCode ?? code) else {
+        guard let url = connectURL(code: normalizedCode) else {
             connectionLabel = CollaborationStrings.connectionFailed
+            connection.connectionLabel = CollaborationStrings.connectionFailed
             await nextSession.markRelayUnavailable()
-            return
+            return nil
         }
         let task = URLSession.shared.webSocketTask(with: url)
-        webSocketTask = task
+        connection.webSocketTask = task
         task.resume()
-        receiveNextMessage()
-        startHeartbeatLoop()
+        receiveNextMessage(for: connection)
+        startHeartbeatLoop(for: connection)
         await nextSession.markConnected()
-        Self.rememberSessionCode(sessionCode ?? code)
+        Self.rememberSessionCode(normalizedCode)
+        connection.connectionLabel = CollaborationStrings.connected
         connectionLabel = CollaborationStrings.connected
         reopenSharedDocumentsForCurrentSession()
-        reopenSharedTerminalsForCurrentSession()
+        return connection
     }
 
     private func connectURL(code: String) -> URL? {
@@ -1506,35 +1670,38 @@ final class CollaborationRuntime {
         return components.url
     }
 
-    private func observe(session: CollaborationSession) {
-        sessionEventsTask?.cancel()
-        sessionEventsTask = Task { [weak self] in
-            let events = await session.events
+    private func observe(connection: CollaborationRelayConnection) {
+        connection.eventsTask?.cancel()
+        let sessionCode = connection.sessionCode
+        connection.eventsTask = Task { [weak self, weak connection] in
+            guard let connection else { return }
+            let events = await connection.session.events
             for await event in events {
-                await self?.handle(event: event)
+                await self?.handle(event: event, sessionCode: sessionCode)
             }
         }
     }
 
     private func share(panel: any CollaborationEditablePanel) {
-        guard let session, let sessionCode else { return }
+        guard let connection = activeConnection else { return }
         let descriptor = descriptor(for: panel)
-        let documentID = descriptor.documentID(sessionID: sessionCode)
+        let documentID = descriptor.documentID(sessionID: connection.sessionCode)
         panelsByDocumentID[documentID] = WeakCollaborationPanel(panel)
         descriptorsByDocumentID[documentID] = descriptor
+        sessionCodesByDocumentID[documentID] = connection.sessionCode
         statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: peerSummary
+            peerSummary: connection.peerSummary
         )
         Task {
             do {
-                _ = try await session.open(file: descriptor)
-                if peersByID.isEmpty {
-                    try await send(try await session.snapshotFrame(for: descriptor))
+                _ = try await connection.session.open(file: descriptor)
+                if connection.peersByID.isEmpty {
+                    try await send(try await connection.session.snapshotFrame(for: descriptor), via: connection)
                 } else {
                     let requestID = UUID().uuidString
-                    try await sendSnapshotRequest(documentID: documentID, requestID: requestID)
+                    try await sendSnapshotRequest(documentID: documentID, requestID: requestID, via: connection)
                     scheduleSnapshotFallback(descriptor: descriptor, documentID: documentID)
                 }
             } catch {
@@ -1544,24 +1711,29 @@ final class CollaborationRuntime {
     }
 
     private func share(terminal: TerminalPanel) {
-        guard session != nil, let sessionCode else { return }
+        guard let connection = activeConnection else { return }
+        share(terminal: terminal, via: connection)
+    }
+
+    private func share(terminal: TerminalPanel, via connection: CollaborationRelayConnection) {
         let descriptor = terminalDescriptor(for: terminal)
-        let terminalID = descriptor.terminalID(sessionID: sessionCode)
+        let terminalID = descriptor.terminalID(sessionID: connection.sessionCode)
         hostedTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(terminal)
         hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
+        terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: peerSummary
+            peerSummary: connection.peerSummary
         )
         Task {
             do {
-                try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
+                try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor), via: connection)
                 if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
                    !replay.data.isEmpty {
-                    try await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
+                    try await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data), via: connection)
                 } else {
-                    try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+                    try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID, via: connection)
                 }
             } catch {
                 lastErrorMessage = error.localizedDescription
@@ -1570,7 +1742,7 @@ final class CollaborationRuntime {
     }
 
     private func reopenSharedDocumentsForCurrentSession() {
-        guard let session, let sessionCode else { return }
+        guard let connection = activeConnection else { return }
         let openPanels = panelsByDocumentID.values.compactMap(\.panel)
         guard !openPanels.isEmpty else { return }
 
@@ -1579,61 +1751,26 @@ final class CollaborationRuntime {
 
         panelsByDocumentID.removeAll()
         descriptorsByDocumentID.removeAll()
+        sessionCodesByDocumentID.removeAll()
         statesByDocumentID.removeAll()
 
         for panel in openPanels {
             let descriptor = descriptor(for: panel)
-            let documentID = descriptor.documentID(sessionID: sessionCode)
+            let documentID = descriptor.documentID(sessionID: connection.sessionCode)
             panelsByDocumentID[documentID] = WeakCollaborationPanel(panel)
             descriptorsByDocumentID[documentID] = descriptor
+            sessionCodesByDocumentID[documentID] = connection.sessionCode
             statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
                 isShared: true,
                 statusText: CollaborationStrings.shared,
-                peerSummary: peerSummary
+                peerSummary: connection.peerSummary
             )
             Task {
                 do {
-                    _ = try await session.open(file: descriptor)
-                    try await send(try await session.snapshotFrame(for: descriptor))
+                    _ = try await connection.session.open(file: descriptor)
+                    try await send(try await connection.session.snapshotFrame(for: descriptor), via: connection)
                 } catch {
                     lastErrorMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    private func reopenSharedTerminalsForCurrentSession() {
-        guard let sessionCode else { return }
-        let openTerminals = hostedTerminalsByID.values.compactMap(\.panel)
-        guard !openTerminals.isEmpty else { return }
-
-        hostedTerminalsByID.removeAll()
-        hostedTerminalIDsBySurfaceID.removeAll()
-        hostedTerminalOutputSequencesByID.removeAll()
-        hostedTerminalOutputCaretSuppressionsByID.removeAll()
-        hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
-        hostedTerminalRenderGridSnapshotTasksByID.removeAll()
-        mirroredTerminalInputReportPrefixesByID.removeAll()
-        hostedTerminalInputReportPrefixesByID.removeAll()
-        terminalStatesByID.removeAll()
-
-        for terminal in openTerminals {
-            let descriptor = terminalDescriptor(for: terminal)
-            let terminalID = descriptor.terminalID(sessionID: sessionCode)
-            hostedTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(terminal)
-            hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
-            terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
-                isShared: true,
-                statusText: CollaborationStrings.shared,
-                peerSummary: peerSummary
-            )
-            Task {
-                try? await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
-                if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
-                   !replay.data.isEmpty {
-                    try? await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
-                } else {
-                    try? await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
                 }
             }
         }
@@ -1649,15 +1786,19 @@ final class CollaborationRuntime {
     }
 
     private func sendLocalSnapshotIfOpen(descriptor: SharedFileDescriptor) async {
-        guard let session else { return }
+        guard let connection = activeConnection else { return }
         do {
-            try await send(try await session.snapshotFrame(for: descriptor))
+            try await send(try await connection.session.snapshotFrame(for: descriptor), via: connection)
         } catch {
             lastErrorMessage = error.localizedDescription
         }
     }
 
-    private func handleRemoteTerminalOpen(terminalID: String, descriptor: SharedTerminalDescriptor) {
+    private func handleRemoteTerminalOpen(
+        terminalID: String,
+        descriptor: SharedTerminalDescriptor,
+        connection: CollaborationRelayConnection
+    ) {
         if mirroredTerminalsByID[terminalID]?.panel != nil { return }
         let title = descriptor.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayTitle = title.isEmpty ? CollaborationStrings.sharedTerminalTitle : title
@@ -1682,17 +1823,23 @@ final class CollaborationRuntime {
         panel.surface.suppressPassiveMouseInput = true
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
+        terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: peerSummary
+            peerSummary: connection.peerSummary
         )
     }
 
-    private func handleRemoteTerminalOutput(terminalID: String, data: Data, caretPeerID: String?) {
+    private func handleRemoteTerminalOutput(
+        terminalID: String,
+        data: Data,
+        caretPeerID: String?,
+        connection: CollaborationRelayConnection
+    ) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
         panel.surface.processRemoteOutput(data)
-        if let peer = peerVisibleToThisClient(caretPeerID) {
+        if let peer = peerVisibleToThisClient(caretPeerID, in: connection) {
             panel.surface.hostedView.showTerminalCollaboratorCaret(
                 peerID: peer.peerID,
                 displayName: peer.displayName,
@@ -1710,7 +1857,12 @@ final class CollaborationRuntime {
         panel.surface.processRemoteOutput(mirrorFrame.vtPatchBytes())
     }
 
-    private func handleRemoteTerminalInput(terminalID: String, data: Data, fromPeerID: String?) {
+    private func handleRemoteTerminalInput(
+        terminalID: String,
+        data: Data,
+        fromPeerID: String?,
+        connection: CollaborationRelayConnection
+    ) {
         guard let filteredData = Self.filteredTerminalCollaborationInput(
             data,
             pendingPrefix: &hostedTerminalInputReportPrefixesByID[terminalID, default: Data()],
@@ -1718,7 +1870,7 @@ final class CollaborationRuntime {
             terminalID: terminalID
         ) else { return }
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
-        if let peer = peerVisibleToThisClient(fromPeerID) {
+        if let peer = peerVisibleToThisClient(fromPeerID, in: connection) {
             hostedTerminalOutputCaretSuppressionsByID[terminalID] = TerminalOutputCaretSuppression(
                 expiresAt: Date().addingTimeInterval(1.5)
             )
@@ -1921,8 +2073,11 @@ final class CollaborationRuntime {
     }
     #endif
 
-    private func handleRemoteTerminalPointer(_ pointer: CollaborationTerminalPointerWire) {
-        guard let peer = peerVisibleToThisClient(pointer.fromPeerID) else { return }
+    private func handleRemoteTerminalPointer(
+        _ pointer: CollaborationTerminalPointerWire,
+        connection: CollaborationRelayConnection
+    ) {
+        guard let peer = peerVisibleToThisClient(pointer.fromPeerID, in: connection) else { return }
         let panels = [
             hostedTerminalsByID[pointer.terminalID]?.panel,
             mirroredTerminalsByID[pointer.terminalID]?.panel
@@ -1945,8 +2100,11 @@ final class CollaborationRuntime {
         }
     }
 
-    private func handleRemoteTerminalSelection(_ selection: CollaborationTerminalSelectionWire) {
-        guard let peer = peerVisibleToThisClient(selection.fromPeerID) else { return }
+    private func handleRemoteTerminalSelection(
+        _ selection: CollaborationTerminalSelectionWire,
+        connection: CollaborationRelayConnection
+    ) {
+        guard let peer = peerVisibleToThisClient(selection.fromPeerID, in: connection) else { return }
         let panels = [
             hostedTerminalsByID[selection.terminalID]?.panel,
             mirroredTerminalsByID[selection.terminalID]?.panel
@@ -1979,41 +2137,54 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
+        terminalSessionRouter.remove(terminalID: terminalID)
     }
 
-    private func handle(event: CollaborationEvent) async {
+    private func handle(event: CollaborationEvent, sessionCode: String) async {
+        guard let connection = connectionsBySessionCode[sessionCode] else { return }
         switch event {
         case .documentChanged(let snapshot):
             guard let panel = panelsByDocumentID[snapshot.documentID]?.panel else { return }
             panel.applyCollaborationText(snapshot.text)
-            updateState(documentID: snapshot.documentID, isShared: true)
+            updateState(documentID: snapshot.documentID, isShared: true, connection: connection)
         case .presenceChanged:
-            refreshPeerSummaries()
+            refreshPeerSummaries(for: connection)
         case .presenceCleared(let peerID):
-            peersByID.removeValue(forKey: peerID)
-            refreshPeerSummaries()
+            connection.peersByID.removeValue(forKey: peerID)
+            refreshPeerSummaries(for: connection)
         case .connectionChanged(let state):
-            connectionLabel = label(for: state)
+            connection.connectionLabel = label(for: state)
+            if self.sessionCode == sessionCode {
+                connectionLabel = connection.connectionLabel
+            }
         case .diskReconciled:
             break
         }
     }
 
-    private func receiveNextMessage() {
-        guard let task = webSocketTask else { return }
+    private func receiveNextMessage(for connection: CollaborationRelayConnection) {
+        guard let task = connection.webSocketTask else { return }
+        let sessionCode = connection.sessionCode
         task.receive { [weak self] result in
             Task { @MainActor in
-                await self?.handleReceive(result)
+                await self?.handleReceive(result, sessionCode: sessionCode)
             }
         }
     }
 
-    private func handleReceive(_ result: Result<URLSessionWebSocketTask.Message, Error>) async {
+    private func handleReceive(
+        _ result: Result<URLSessionWebSocketTask.Message, Error>,
+        sessionCode: String
+    ) async {
+        guard let connection = connectionsBySessionCode[sessionCode] else { return }
         switch result {
         case .failure(let error):
             lastErrorMessage = error.localizedDescription
-            connectionLabel = CollaborationStrings.disconnected
-            await session?.markDisconnected()
+            connection.connectionLabel = CollaborationStrings.disconnected
+            if self.sessionCode == sessionCode {
+                connectionLabel = CollaborationStrings.disconnected
+            }
+            await connection.session.markDisconnected()
         case .success(let message):
             do {
                 let data: Data
@@ -2023,38 +2194,41 @@ final class CollaborationRuntime {
                 case .data(let frameData):
                     data = frameData
                 @unknown default:
-                    receiveNextMessage()
+                    receiveNextMessage(for: connection)
                     return
                 }
-                try await handleFrameData(data)
+                try await handleFrameData(data, connection: connection)
             } catch {
                 lastErrorMessage = error.localizedDescription
             }
-            receiveNextMessage()
+            receiveNextMessage(for: connection)
         }
     }
 
-    private func handleFrameData(_ data: Data) async throws {
+    private func handleFrameData(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) async throws {
         let frameType = try decoder.decode(CollaborationFrameType.self, from: data)
         switch frameType.type {
         case "session.joined":
             let joined = try decoder.decode(CollaborationJoinedWire.self, from: data)
-            peersByID = Dictionary(uniqueKeysWithValues: joined.peers.filter { $0.peerID != peerIdentity.peerID }.map { ($0.peerID, $0) })
-            refreshPeerSummaries()
+            connection.peersByID = Dictionary(uniqueKeysWithValues: joined.peers.filter { $0.peerID != peerIdentity.peerID }.map { ($0.peerID, $0) })
+            refreshPeerSummaries(for: connection)
         case "peer.joined":
             let peer = try decoder.decode(CollaborationPeerJoinedWire.self, from: data).peer
             if peer.peerID != peerIdentity.peerID {
-                peersByID[peer.peerID] = peer
-                refreshPeerSummaries()
+                connection.peersByID[peer.peerID] = peer
+                refreshPeerSummaries(for: connection)
             }
         case "peer.left":
             let left = try decoder.decode(CollaborationPeerLeftWire.self, from: data)
-            peersByID.removeValue(forKey: left.peerID)
-            refreshPeerSummaries()
-            try await session?.applyRemoteFrame(.peerLeft(peerID: left.peerID))
+            connection.peersByID.removeValue(forKey: left.peerID)
+            refreshPeerSummaries(for: connection)
+            try await connection.session.applyRemoteFrame(.peerLeft(peerID: left.peerID))
         case "document.update":
             let update = try decoder.decode(CollaborationDocumentUpdateWire.self, from: data)
-            try await session?.applyRemoteFrame(.documentUpdate(
+            try await connection.session.applyRemoteFrame(.documentUpdate(
                 documentID: update.documentID,
                 updateID: update.updateID,
                 operations: update.operations
@@ -2063,7 +2237,7 @@ final class CollaborationRuntime {
             let snapshot = try decoder.decode(CollaborationDocumentSnapshotWire.self, from: data)
             snapshotFallbackTasks[snapshot.documentID]?.cancel()
             snapshotFallbackTasks.removeValue(forKey: snapshot.documentID)
-            try await session?.applyRemoteFrame(.documentSnapshot(
+            try await connection.session.applyRemoteFrame(.documentSnapshot(
                 documentID: snapshot.documentID,
                 requestID: snapshot.requestID,
                 operations: snapshot.operations,
@@ -2071,20 +2245,27 @@ final class CollaborationRuntime {
             ))
         case "document.snapshot.request":
             let request = try decoder.decode(CollaborationDocumentSnapshotRequestWire.self, from: data)
-            if let descriptor = descriptorsByDocumentID[request.documentID],
-               let session {
-                try await send(try await session.snapshotFrame(for: descriptor, requestID: request.requestID))
+            if let descriptor = descriptorsByDocumentID[request.documentID] {
+                try await send(
+                    try await connection.session.snapshotFrame(for: descriptor, requestID: request.requestID),
+                    via: connection
+                )
             }
         case "presence.update":
             let presence = try decoder.decode(CollaborationPresenceWire.self, from: data)
-            try await session?.applyRemoteFrame(.presence(presence.presenceState))
+            try await connection.session.applyRemoteFrame(.presence(presence.presenceState))
         case "terminal.open":
             let open = try decoder.decode(CollaborationTerminalOpenWire.self, from: data)
-            handleRemoteTerminalOpen(terminalID: open.terminalID, descriptor: open.descriptor)
+            handleRemoteTerminalOpen(terminalID: open.terminalID, descriptor: open.descriptor, connection: connection)
         case "terminal.output":
             let output = try decoder.decode(CollaborationTerminalOutputWire.self, from: data)
             if let bytes = Data(base64Encoded: output.dataBase64) {
-                handleRemoteTerminalOutput(terminalID: output.terminalID, data: bytes, caretPeerID: output.caretPeerID)
+                handleRemoteTerminalOutput(
+                    terminalID: output.terminalID,
+                    data: bytes,
+                    caretPeerID: output.caretPeerID,
+                    connection: connection
+                )
             }
         case "terminal.render_grid":
             let renderGrid = try decoder.decode(CollaborationTerminalRenderGridWire.self, from: data)
@@ -2092,14 +2273,19 @@ final class CollaborationRuntime {
         case "terminal.input":
             let input = try decoder.decode(CollaborationTerminalInputWire.self, from: data)
             if let bytes = Data(base64Encoded: input.dataBase64) {
-                handleRemoteTerminalInput(terminalID: input.terminalID, data: bytes, fromPeerID: input.fromPeerID)
+                handleRemoteTerminalInput(
+                    terminalID: input.terminalID,
+                    data: bytes,
+                    fromPeerID: input.fromPeerID,
+                    connection: connection
+                )
             }
         case "terminal.pointer":
             let pointer = try decoder.decode(CollaborationTerminalPointerWire.self, from: data)
-            handleRemoteTerminalPointer(pointer)
+            handleRemoteTerminalPointer(pointer, connection: connection)
         case "terminal.selection":
             let selection = try decoder.decode(CollaborationTerminalSelectionWire.self, from: data)
-            handleRemoteTerminalSelection(selection)
+            handleRemoteTerminalSelection(selection, connection: connection)
         case "terminal.close":
             let close = try decoder.decode(CollaborationTerminalCloseWire.self, from: data)
             handleRemoteTerminalClose(terminalID: close.terminalID)
@@ -2120,7 +2306,7 @@ final class CollaborationRuntime {
                     type: "agent.room.snapshot",
                     room: room,
                     requestID: wire.requestID
-                ))
+                ), via: connection)
             }
         case "agent.room.cursor_ack":
             let wire = try decoder.decode(CollaborationAgentRoomCursorAckWire.self, from: data)
@@ -2132,7 +2318,10 @@ final class CollaborationRuntime {
         }
     }
 
-    private func sendTerminalRenderGridSnapshotIfPossible(terminalID: String) async throws {
+    private func sendTerminalRenderGridSnapshotIfPossible(
+        terminalID: String,
+        via connection: CollaborationRelayConnection
+    ) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
         guard Self.shouldSendTerminalRenderGridSnapshot(for: panel) else { return }
         let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
@@ -2146,7 +2335,7 @@ final class CollaborationRuntime {
             type: "terminal.render_grid",
             terminalID: terminalID,
             frame: snapshot.frame
-        ))
+        ), via: connection)
     }
 
     private static func shouldSendTerminalRenderGridSnapshot(for panel: TerminalPanel) -> Bool {
@@ -2158,7 +2347,9 @@ final class CollaborationRuntime {
         hostedTerminalRenderGridSnapshotTasksByID[terminalID] = Task { [weak self] in
             await Task.yield()
             if !Task.isCancelled {
-                try? await self?.sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+                if let connection = await self?.connection(forTerminalID: terminalID) {
+                    try? await self?.sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID, via: connection)
+                }
             }
             await MainActor.run {
                 self?.hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)
@@ -2167,6 +2358,11 @@ final class CollaborationRuntime {
     }
 
     private func send(_ frame: CollaborationRelayFrame) async throws {
+        guard let connection = activeConnection else { throw CollaborationRuntimeError.notConnected }
+        try await send(frame, via: connection)
+    }
+
+    private func send(_ frame: CollaborationRelayFrame, via connection: CollaborationRelayConnection) async throws {
         switch frame {
         case .documentUpdate(let documentID, let updateID, let operations):
             try await send(CollaborationDocumentUpdateWire(
@@ -2174,7 +2370,7 @@ final class CollaborationRuntime {
                 documentID: documentID,
                 updateID: updateID,
                 operations: operations
-            ))
+            ), via: connection)
         case .documentSnapshot(let documentID, let requestID, let operations, let textHash):
             try await send(CollaborationDocumentSnapshotWire(
                 type: "document.snapshot",
@@ -2182,17 +2378,17 @@ final class CollaborationRuntime {
                 requestID: requestID,
                 operations: operations,
                 textHash: textHash
-            ))
+            ), via: connection)
         case .documentSnapshotRequest(let documentID, let requestID):
-            try await sendSnapshotRequest(documentID: documentID, requestID: requestID)
+            try await sendSnapshotRequest(documentID: documentID, requestID: requestID, via: connection)
         case .presence(let state):
-            try await send(CollaborationPresenceWire(state: state))
+            try await send(CollaborationPresenceWire(state: state), via: connection)
         case .terminalOpen(let terminalID, let descriptor):
             try await send(CollaborationTerminalOpenWire(
                 type: "terminal.open",
                 terminalID: terminalID,
                 descriptor: descriptor
-            ))
+            ), via: connection)
         case .terminalOutput(let terminalID, let sequence, let data):
             let caretPeerID = terminalOutputPeerID(for: terminalID)
             try await send(CollaborationTerminalOutputWire(
@@ -2201,7 +2397,7 @@ final class CollaborationRuntime {
                 sequence: sequence,
                 dataBase64: data.base64EncodedString(),
                 caretPeerID: caretPeerID
-            ))
+            ), via: connection)
         case .terminalInput(let terminalID, let inputID, let data):
             try await send(CollaborationTerminalInputWire(
                 type: "terminal.input",
@@ -2209,52 +2405,62 @@ final class CollaborationRuntime {
                 inputID: inputID,
                 dataBase64: data.base64EncodedString(),
                 fromPeerID: peerIdentity.peerID
-            ))
+            ), via: connection)
         case .terminalClose(let terminalID):
-            try await send(CollaborationTerminalCloseWire(type: "terminal.close", terminalID: terminalID))
+            try await send(CollaborationTerminalCloseWire(type: "terminal.close", terminalID: terminalID), via: connection)
         case .agentRoomEvent(let event):
-            try await send(CollaborationAgentRoomEventWire(type: "agent.room.event", event: event))
+            try await send(CollaborationAgentRoomEventWire(type: "agent.room.event", event: event), via: connection)
         case .agentRoomSnapshot(let room):
-            try await send(CollaborationAgentRoomSnapshotWire(type: "agent.room.snapshot", room: room, requestID: nil))
+            try await send(CollaborationAgentRoomSnapshotWire(type: "agent.room.snapshot", room: room, requestID: nil), via: connection)
         case .agentRoomSnapshotRequest(let roomID, let requestID):
             try await send(CollaborationAgentRoomSnapshotRequestWire(
                 type: "agent.room.snapshot.request",
                 roomID: roomID,
                 requestID: requestID
-            ))
+            ), via: connection)
         case .agentRoomCursorAck(let roomID, let memberID, let sequence):
             try await send(CollaborationAgentRoomCursorAckWire(
                 type: "agent.room.cursor_ack",
                 roomID: roomID,
                 memberID: memberID,
                 sequence: sequence
-            ))
+            ), via: connection)
         case .peerLeft:
             break
         }
     }
 
-    private func sendSnapshotRequest(documentID: String, requestID: String) async throws {
+    private func sendSnapshotRequest(
+        documentID: String,
+        requestID: String,
+        via connection: CollaborationRelayConnection
+    ) async throws {
         try await send(CollaborationDocumentSnapshotRequestWire(
             type: "document.snapshot.request",
             documentID: documentID,
             requestID: requestID
-        ))
+        ), via: connection)
     }
 
     private func send<T: Encodable>(_ frame: T) async throws {
-        guard let webSocketTask else { throw CollaborationRuntimeError.notConnected }
+        guard let connection = activeConnection else { throw CollaborationRuntimeError.notConnected }
+        try await send(frame, via: connection)
+    }
+
+    private func send<T: Encodable>(_ frame: T, via connection: CollaborationRelayConnection) async throws {
+        guard let webSocketTask = connection.webSocketTask else { throw CollaborationRuntimeError.notConnected }
         let data = try encoder.encode(frame)
         let text = String(decoding: data, as: UTF8.self)
         try await webSocketTask.send(.string(text))
     }
 
-    private func startHeartbeatLoop() {
-        heartbeatTask?.cancel()
-        heartbeatTask = Task { [weak self] in
+    private func startHeartbeatLoop(for connection: CollaborationRelayConnection) {
+        connection.heartbeatTask?.cancel()
+        connection.heartbeatTask = Task { [weak self, weak connection] in
             while !Task.isCancelled {
+                guard let connection else { return }
                 do {
-                    try await self?.send(CollaborationHeartbeatWire())
+                    try await self?.send(CollaborationHeartbeatWire(), via: connection)
                     // Collaboration relay expires peers after 30 seconds; 10 seconds tolerates missed beats.
                     try await Task.sleep(for: .seconds(10))
                 } catch is CancellationError {
@@ -2271,31 +2477,35 @@ final class CollaborationRuntime {
         lastErrorMessage = error.localizedDescription
     }
 
-    private func updateState(documentID: String, isShared: Bool) {
+    private func updateState(
+        documentID: String,
+        isShared: Bool,
+        connection: CollaborationRelayConnection
+    ) {
         statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
             isShared: isShared,
-            statusText: isShared ? CollaborationStrings.shared : connectionLabel,
-            peerSummary: peerSummary
+            statusText: isShared ? CollaborationStrings.shared : connection.connectionLabel,
+            peerSummary: connection.peerSummary
         )
     }
 
-    private func refreshPeerSummaries() {
+    private func refreshPeerSummaries(for connection: CollaborationRelayConnection) {
         for documentID in statesByDocumentID.keys {
-            updateState(documentID: documentID, isShared: statesByDocumentID[documentID]?.isShared ?? false)
-        }
-        for terminalID in terminalStatesByID.keys {
-            terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
-                isShared: terminalStatesByID[terminalID]?.isShared ?? false,
-                statusText: terminalStatesByID[terminalID]?.isShared == true ? CollaborationStrings.shared : connectionLabel,
-                peerSummary: peerSummary
+            guard sessionCodesByDocumentID[documentID] == connection.sessionCode else { continue }
+            updateState(
+                documentID: documentID,
+                isShared: statesByDocumentID[documentID]?.isShared ?? false,
+                connection: connection
             )
         }
-    }
-
-    private var peerSummary: String {
-        if peersByID.isEmpty { return CollaborationStrings.noPeers }
-        if peersByID.count == 1 { return CollaborationStrings.onePeer }
-        return String(format: CollaborationStrings.peerCountFormat, peersByID.count)
+        for terminalID in terminalStatesByID.keys {
+            guard terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else { continue }
+            terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
+                isShared: terminalStatesByID[terminalID]?.isShared ?? false,
+                statusText: terminalStatesByID[terminalID]?.isShared == true ? CollaborationStrings.shared : connection.connectionLabel,
+                peerSummary: connection.peerSummary
+            )
+        }
     }
 
     private func label(for state: CollaborationConnectionState) -> String {
@@ -2340,7 +2550,10 @@ final class CollaborationRuntime {
     }
 
     private func terminalID(for panel: TerminalPanel) -> String {
-        terminalDescriptor(for: panel).terminalID(sessionID: sessionCode ?? "")
+        if let terminalID = hostedTerminalIDsBySurfaceID[panel.id] ?? mirroredTerminalIDsBySurfaceID[panel.id] {
+            return terminalID
+        }
+        return terminalDescriptor(for: panel).terminalID(sessionID: sessionCode ?? "")
     }
 
     private func resolveAgentRoomSurfaceID(_ raw: String?) -> UUID? {
@@ -2397,13 +2610,11 @@ final class CollaborationRuntime {
         return object
     }
 
-    private func disconnectWebSocket() {
-        heartbeatTask?.cancel()
-        heartbeatTask = nil
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        sessionEventsTask?.cancel()
-        sessionEventsTask = nil
+    private func disconnectAllConnections() {
+        for connection in connectionsBySessionCode.values {
+            connection.disconnect()
+        }
+        connectionsBySessionCode.removeAll()
     }
 }
 

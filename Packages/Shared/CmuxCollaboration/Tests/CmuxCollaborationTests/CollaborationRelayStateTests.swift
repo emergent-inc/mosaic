@@ -54,4 +54,25 @@ struct CollaborationRelayStateTests {
 
         #expect(decoded == frames)
     }
+
+    @Test
+    func terminalIDsAreScopedBySession() throws {
+        let workspaceID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
+        let surfaceID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
+        let descriptor = SharedTerminalDescriptor(
+            workspaceID: workspaceID,
+            surfaceID: surfaceID,
+            title: "Terminal"
+        )
+
+        #expect(
+            descriptor.terminalID(sessionID: "AAAA") ==
+                "AAAA:terminal:00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002"
+        )
+        #expect(
+            descriptor.terminalID(sessionID: "BBBB") ==
+                "BBBB:terminal:00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002"
+        )
+        #expect(descriptor.terminalID(sessionID: "AAAA") != descriptor.terminalID(sessionID: "BBBB"))
+    }
 }
