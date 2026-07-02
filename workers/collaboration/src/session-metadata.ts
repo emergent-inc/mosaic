@@ -8,21 +8,33 @@ export interface SessionMetadataStorage {
   put<T>(key: string, value: T): Promise<void>;
 }
 
+export interface SessionMetadataCreateResult {
+  metadata: SessionMetadata;
+  created: boolean;
+}
+
 const METADATA_KEY = "metadata";
 
 export async function createSessionMetadata(
   storage: SessionMetadataStorage,
   sessionCode: string
 ): Promise<SessionMetadata> {
+  return (await createSessionMetadataIfAbsent(storage, sessionCode)).metadata;
+}
+
+export async function createSessionMetadataIfAbsent(
+  storage: SessionMetadataStorage,
+  sessionCode: string
+): Promise<SessionMetadataCreateResult> {
   const existing = await readSessionMetadata(storage);
-  if (existing) return existing;
+  if (existing) return { metadata: existing, created: false };
 
   const metadata = {
     sessionID: sessionCode,
     sessionCode,
   };
   await storage.put(METADATA_KEY, metadata);
-  return metadata;
+  return { metadata, created: true };
 }
 
 export async function readSessionMetadata(storage: SessionMetadataStorage): Promise<SessionMetadata | null> {
