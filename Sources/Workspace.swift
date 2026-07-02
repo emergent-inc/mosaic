@@ -2758,7 +2758,7 @@ final class Workspace: Identifiable, ObservableObject {
         alert.informativeText = String(
             format: String(
                 localized: "surfaceResumeApproval.runPrompt.message",
-                defaultValue: "cmux is restoring a terminal with this resume command:\n\n%@\n\nWorking directory: %@"
+                defaultValue: "mosaic is restoring a terminal with this resume command:\n\n%@\n\nWorking directory: %@"
             ),
             binding.command,
             binding.cwd ?? String(localized: "surfaceResumeApproval.cwd.none", defaultValue: "None")
@@ -9827,15 +9827,15 @@ final class Workspace: Identifiable, ObservableObject {
         // POSIX printf inside the shell wrapper, not by Swift's String(format:).
         let endedLineFormat = String(
             localized: "remote.disconnectBanner.sessionEnded",
-            defaultValue: "[cmux] remote session disconnected: %s"
+            defaultValue: "[mosaic] remote session disconnected: %s"
         )
         let reconnectLine = String(
             localized: "remote.disconnectBanner.reconnectHint",
-            defaultValue: "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
+            defaultValue: "[mosaic] Press Enter to reconnect. This terminal will stay disconnected until then."
         )
         let reconnectUnavailableLine = String(
             localized: "remote.disconnectBanner.reconnectUnavailableHint",
-            defaultValue: "[cmux] Reconnect this workspace from the sidebar or by running the original cmux remote command again."
+            defaultValue: "[mosaic] Reconnect this workspace from the sidebar or by running the original remote command again."
         )
         // Encode the localized lines the same way as the target, so a translator using
         // backticks or $(…) in a translation string can't unexpectedly execute in the
@@ -10859,7 +10859,7 @@ final class Workspace: Identifiable, ObservableObject {
         let failure = NSAlert()
         failure.alertStyle = .warning
         failure.messageText = String(localized: "alert.moveTab.failed.title", defaultValue: "Move Failed")
-        failure.informativeText = String(localized: "alert.moveTab.failed.message", defaultValue: "cmux could not move this tab to the selected destination.")
+        failure.informativeText = String(localized: "alert.moveTab.failed.message", defaultValue: "mosaic could not move this tab to the selected destination.")
         failure.addButton(withTitle: String(localized: "alert.ok", defaultValue: "OK"))
         _ = failure.runModal()
     }

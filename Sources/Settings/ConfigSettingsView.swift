@@ -26,18 +26,18 @@ struct ConfigSettingsView: View {
         case .cmux:
             return String(
                 localized: "settings.config.banner.cmux",
-                defaultValue: "This is the cmux Ghostty config selected for this build. Edit it here, then Save to reload cmux."
+                defaultValue: "This is the mosaic Ghostty config selected for this build. Edit it here, then Save to reload mosaic."
             )
         case .synced:
             if currentSnapshot.hasStandaloneGhosttyConfig {
                 return String(
                     localized: "settings.config.banner.synced",
-                    defaultValue: "This is a generated preview of the effective config. Edit the cmux tab to change what cmux reads."
+                    defaultValue: "This is a generated preview of the effective config. Edit the mosaic tab to change what mosaic reads."
                 )
             }
             return String(
                 localized: "settings.config.banner.syncedNoGhostty",
-                defaultValue: "This is a generated preview of the effective config. No base Ghostty config file was found, so only cmux overrides are shown."
+                defaultValue: "This is a generated preview of the effective config. No base Ghostty config file was found, so only mosaic overrides are shown."
             )
         }
     }
@@ -233,14 +233,14 @@ struct ConfigSettingsView: View {
             }
             statusMessage = String(
                 localized: "settings.config.status.saved",
-                defaultValue: "Saved to cmux config and reloaded."
+                defaultValue: "Saved to mosaic config and reloaded."
             )
             statusIsError = false
         } catch {
             NSSound.beep()
             statusMessage = String(
                 localized: "settings.config.status.saveFailed",
-                defaultValue: "Couldn't save the cmux config."
+                defaultValue: "Couldn't save the mosaic config."
             )
             statusIsError = true
         }
@@ -268,7 +268,7 @@ struct ConfigSettingsView: View {
             NSSound.beep()
             statusMessage = String(
                 localized: "settings.config.status.openFailed",
-                defaultValue: "Couldn't open the cmux config."
+                defaultValue: "Couldn't open the mosaic config."
             )
             statusIsError = true
             return nil
@@ -386,7 +386,7 @@ private extension ConfigSource {
     var localizedTitle: String {
         switch self {
         case .cmux:
-            return String(localized: "settings.config.source.cmux", defaultValue: "cmux")
+            return String(localized: "settings.config.source.cmux", defaultValue: "mosaic")
         case .synced:
             return String(localized: "settings.config.source.synced", defaultValue: "synced")
         }
