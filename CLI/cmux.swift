@@ -23556,6 +23556,11 @@ struct CMUXCLI {
                 icon: "bolt.fill",
                 color: "#4C8DFF"
             )
+            publishClaudeRoomUserPrompt(
+                client: client,
+                surfaceId: surfaceId,
+                parsedInput: parsedInput
+            )
             print("OK")
 
         case "room-context":
@@ -23583,7 +23588,11 @@ struct CMUXCLI {
                     params: ["surface_id": surfaceId]
                 )
                 let digest = (payload["digest"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                if !digest.isEmpty {
+                let activeInstructions = agentRoomActiveInstructions(from: payload)
+                let contextSections = [digest, activeInstructions]
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                if !contextSections.isEmpty {
                     let roomContextHeader = String(
                         localized: "cli.claudeHook.roomContext.header",
                         defaultValue: "Shared Claude room context:"
@@ -23593,7 +23602,7 @@ struct CMUXCLI {
                             "hookEventName": "UserPromptSubmit",
                             "additionalContext": """
                             \(roomContextHeader)
-                            \(digest)
+                            \(contextSections.joined(separator: "\n\n"))
                             """,
                         ],
                     ]))
@@ -24870,6 +24879,57 @@ struct CMUXCLI {
         }
         let body = completion.body.trimmingCharacters(in: .whitespacesAndNewlines)
         return body.isEmpty ? completion.subtitle : "\(completion.subtitle): \(body)"
+    }
+
+    private func publishClaudeRoomUserPrompt(
+        client: SocketClient,
+        surfaceId: String,
+        parsedInput: ClaudeHookParsedInput
+    ) {
+        guard let prompt = feedPromptText(from: parsedInput.object)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !prompt.isEmpty else { return }
+        let userLabel = String(localized: "cli.claudeHook.roomPublish.peerUser", defaultValue: "Shared user message")
+        _ = try? client.sendV2(
+            method: "agent.room.post",
+            params: [
+                "from_surface_id": surfaceId,
+                "kind": "message",
+                "text": truncate("\(userLabel): \(prompt)", maxLength: 500),
+            ]
+        )
+    }
+
+    private func agentRoomActiveInstructions(from payload: [String: Any]) -> String {
+        let surfaces = (payload["reachable_surfaces"] as? [[String: Any]] ?? [])
+            .compactMap { surface -> (label: String, surfaceID: String)? in
+                guard let surfaceID = surface["surface_id"] as? String,
+                      !surfaceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return nil
+                }
+                let rawLabel = (surface["display_name"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let label = rawLabel?.isEmpty == false ? rawLabel! : "surface \(surfaceID)"
+                return (label, surfaceID)
+            }
+        guard !surfaces.isEmpty else { return "" }
+        let intro = String(
+            localized: "cli.claudeHook.roomContext.activeIntro",
+            defaultValue: "Reachable cmux room peers:"
+        )
+        let commandIntro = String(
+            localized: "cli.claudeHook.roomContext.activeCommandIntro",
+            defaultValue: "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging:"
+        )
+        let peerLines = surfaces.map { "- \($0.label): target surface \($0.surfaceID)" }
+        let exampleSurface = surfaces[0].surfaceID
+        return """
+        \(intro)
+        \(peerLines.joined(separator: "\n"))
+
+        \(commandIntro)
+        cmux agent-room post --kind handoff --target-surfaces \(exampleSurface) -- "<handoff or question for that peer>"
+        Use --kind question for a question and --kind blocker for an urgent blocker.
+        """
     }
 
     private func claudeAssistantMessageFromHookPayload(_ object: [String: Any]?) -> String? {
