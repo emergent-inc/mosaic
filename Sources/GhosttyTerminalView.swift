@@ -1120,6 +1120,25 @@ class GhosttyApp {
         )
     }
 
+    private func loadCmuxEnforcedAppearanceConfig(
+        _ config: ghostty_config_t,
+        preferredColorScheme: GhosttyConfig.ColorSchemePreference
+    ) {
+        if let url = GhosttyConfig.cmuxDefaultThemeConfigURL(preferredColorScheme: preferredColorScheme) {
+            url.path.withCString { path in
+                ghostty_config_load_file(config, path)
+            }
+            return
+        }
+
+        loadInlineGhosttyConfig(
+            GhosttyConfig.cmuxDefaultThemeConfigContents(preferredColorScheme: preferredColorScheme),
+            into: config,
+            prefix: "cmux-enforced-appearance",
+            logLabel: "enforced appearance fallback"
+        )
+    }
+
     private func loadCmuxManagedTerminalSettingsConfig(_ config: ghostty_config_t) {
         guard let contents = TerminalManagedGhosttySettings.ghosttyConfigContents(emitsCopyOnSelectFalse: false) else { return }
         loadInlineGhosttyConfig(
@@ -1196,10 +1215,18 @@ class GhosttyApp {
                     preferredColorScheme: preferredColorScheme
                 )
             }
+            loadCmuxEnforcedAppearanceConfig(
+                config,
+                preferredColorScheme: preferredColorScheme
+            )
         } else {
             loadStartupPreviewProfile(
                 startupPreviewProfile,
                 into: config,
+                preferredColorScheme: preferredColorScheme
+            )
+            loadCmuxEnforcedAppearanceConfig(
+                config,
                 preferredColorScheme: preferredColorScheme
             )
         }
@@ -1218,6 +1245,10 @@ class GhosttyApp {
                 preferredColorScheme: preferredColorScheme
             )
         }
+        loadCmuxEnforcedAppearanceConfig(
+            config,
+            preferredColorScheme: preferredColorScheme
+        )
         #endif
         loadCJKFontFallbackIfNeeded(config)
         let renderingModeChanged = setUsesHostLayerBackground(

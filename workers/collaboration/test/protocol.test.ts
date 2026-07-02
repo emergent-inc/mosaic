@@ -2,8 +2,18 @@ import { expect, test } from "bun:test";
 import { normalizeSessionCode, parseEnvelope, parsePeer, randomSessionCode } from "../src/protocol";
 
 test("parsePeer accepts complete peer metadata", () => {
+  expect(parsePeer({ peerID: "p1", participantID: "person-1", displayName: "Peer", color: "#123456" })).toEqual({
+    peerID: "p1",
+    participantID: "person-1",
+    displayName: "Peer",
+    color: "#123456",
+  });
+});
+
+test("parsePeer falls back to peerID for older clients without participant metadata", () => {
   expect(parsePeer({ peerID: "p1", displayName: "Peer", color: "#123456" })).toEqual({
     peerID: "p1",
+    participantID: "p1",
     displayName: "Peer",
     color: "#123456",
   });
