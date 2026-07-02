@@ -15,6 +15,23 @@ final class PostHogAnalytics: @unchecked Sendable {
 
     private let dailyActiveEvent = "cmux_daily_active"
     private let hourlyActiveEvent = "cmux_hourly_active"
+    private let maxCapturedProperties = 64
+    private let maxPropertyKeyLength = 64
+    private let maxPropertyStringLength = 160
+    private let blockedPropertyKeyFragments: Set<String> = [
+        "body",
+        "command",
+        "email",
+        "file",
+        "path",
+        "prompt",
+        "secret",
+        "subtitle",
+        "text",
+        "title",
+        "token",
+        "url",
+    ]
 
     private let lastActiveDayUTCKey = "posthog.lastActiveDayUTC"
     private let lastActiveHourUTCKey = "posthog.lastActiveHourUTC"
@@ -27,6 +44,8 @@ final class PostHogAnalytics: @unchecked Sendable {
     private let now: @Sendable () -> Date
     private let capturePostHog: @Sendable (String, [String: Any]) -> Void
     private let flushPostHog: @Sendable () -> Void
+    private let bugAlertClient: MacBugAlertClient?
+    private let analyticsProxyClient: MacAnalyticsProxyClient?
 
     private var didStart: Bool
     private var activeCheckTimer: Timer?
@@ -39,7 +58,9 @@ final class PostHogAnalytics: @unchecked Sendable {
         capturePostHog: @escaping @Sendable (String, [String: Any]) -> Void = { event, properties in
             PostHogSDK.shared.capture(event, properties: properties)
         },
-        flushPostHog: @escaping @Sendable () -> Void = { PostHogSDK.shared.flush() }
+        flushPostHog: @escaping @Sendable () -> Void = { PostHogSDK.shared.flush() },
+        bugAlertClient: MacBugAlertClient? = MacBugAlertClient(),
+        analyticsProxyClient: MacAnalyticsProxyClient? = MacAnalyticsProxyClient()
     ) {
         self.workQueue = workQueue
         self.didStart = didStart
@@ -47,6 +68,8 @@ final class PostHogAnalytics: @unchecked Sendable {
         self.now = now
         self.capturePostHog = capturePostHog
         self.flushPostHog = flushPostHog
+        self.bugAlertClient = bugAlertClient
+        self.analyticsProxyClient = analyticsProxyClient
         utcHourFormatter = Self.makeUTCFormatter("yyyy-MM-dd'T'HH")
         utcDayFormatter = Self.makeUTCFormatter("yyyy-MM-dd")
         workQueue.setSpecific(key: workQueueSpecificKey, value: ())
@@ -59,7 +82,9 @@ final class PostHogAnalytics: @unchecked Sendable {
         userDefaults: UserDefaults,
         now: @escaping @Sendable () -> Date,
         capturePostHog: @escaping @Sendable (String, [String: Any]) -> Void,
-        flushPostHog: @escaping @Sendable () -> Void
+        flushPostHog: @escaping @Sendable () -> Void,
+        bugAlertClient: MacBugAlertClient? = nil,
+        analyticsProxyClient: MacAnalyticsProxyClient? = nil
     ) -> PostHogAnalytics {
         PostHogAnalytics(
             workQueue: workQueue,
@@ -67,7 +92,9 @@ final class PostHogAnalytics: @unchecked Sendable {
             userDefaults: userDefaults,
             now: now,
             capturePostHog: capturePostHog,
-            flushPostHog: flushPostHog
+            flushPostHog: flushPostHog,
+            bugAlertClient: bugAlertClient,
+            analyticsProxyClient: analyticsProxyClient
         )
     }
 #endif
@@ -110,6 +137,71 @@ final class PostHogAnalytics: @unchecked Sendable {
     func trackHourlyActive(reason: String) {
         dispatchAsyncOnWorkQueue { [weak self] in
             self?.trackHourlyActiveOnWorkQueue(reason: reason, flush: true)
+        }
+    }
+
+    func capture(
+        _ event: MacAnalyticsEvent,
+        properties: [String: Any] = [:],
+        flush: Bool = false
+    ) {
+        dispatchAsyncOnWorkQueue { [weak self] in
+            self?.captureOnWorkQueue(
+                event: event.rawValue,
+                properties: properties,
+                flush: flush
+            )
+        }
+    }
+
+    func trackAction(
+        actionID: String,
+        surface: String,
+        entrypoint: String,
+        source: String? = nil,
+        result: String? = nil,
+        properties: [String: Any] = [:]
+    ) {
+        var eventProperties: [String: Any] = [
+            "action_id": actionID,
+            "surface": surface,
+            "entrypoint": entrypoint,
+        ]
+        if let source { eventProperties["source"] = source }
+        if let result { eventProperties["result"] = result }
+        eventProperties.merge(properties) { current, _ in current }
+        capture(.actionPerformed, properties: eventProperties)
+        sentryBreadcrumb(
+            "mac action performed",
+            category: "analytics.action",
+            data: Self.sentryContext(from: eventProperties)
+        )
+    }
+
+    func trackError(
+        errorKind: String,
+        severity: MacAnalyticsSeverity,
+        source: String,
+        event: MacAnalyticsEvent = .errorCaptured,
+        properties: [String: Any] = [:],
+        flush: Bool = true
+    ) {
+        var eventProperties: [String: Any] = [
+            "error_kind": errorKind,
+            "severity": severity.rawValue,
+            "source": source,
+        ]
+        eventProperties.merge(properties) { current, _ in current }
+        capture(event, properties: eventProperties, flush: flush)
+        let alertProperties = Self.bugAlertProperties(from: eventProperties)
+        Task.detached(priority: .utility) { [bugAlertClient] in
+            await bugAlertClient?.send(
+                event: event,
+                severity: severity,
+                source: source,
+                errorKind: errorKind,
+                properties: alertProperties
+            )
         }
     }
 
@@ -213,6 +305,35 @@ final class PostHogAnalytics: @unchecked Sendable {
         return true
     }
 
+    private func captureOnWorkQueue(
+        event: String,
+        properties: [String: Any],
+        flush: Bool
+    ) {
+        startIfNeededOnWorkQueue()
+        guard didStart else { return }
+
+        let sanitizedProperties = Self.sanitizedProperties(
+            properties,
+            infoDictionary: Bundle.main.infoDictionary ?? [:],
+            maxProperties: maxCapturedProperties,
+            maxKeyLength: maxPropertyKeyLength,
+            maxStringLength: maxPropertyStringLength,
+            blockedKeyFragments: blockedPropertyKeyFragments
+        )
+        capturePostHog(event, sanitizedProperties)
+        if event.hasPrefix("mac_") {
+            let proxyProperties = Self.proxyProperties(from: sanitizedProperties)
+            Task.detached(priority: .utility) { [analyticsProxyClient] in
+                await analyticsProxyClient?.send(event: event, properties: proxyProperties)
+            }
+        }
+
+        if flush || Self.shouldFlushAfterCapture(event: event) {
+            flushPostHog()
+        }
+    }
+
     private func dispatchAsyncOnWorkQueue(_ block: @escaping @Sendable () -> Void) {
         if DispatchQueue.getSpecific(key: workQueueSpecificKey) != nil {
             block()
@@ -272,10 +393,135 @@ final class PostHogAnalytics: @unchecked Sendable {
 
     nonisolated static func shouldFlushAfterCapture(event: String) -> Bool {
         switch event {
-        case "cmux_daily_active", "cmux_hourly_active":
+        case "cmux_daily_active", "cmux_hourly_active", "mac_error_captured", "mac_error_notification_shown":
             return true
         default:
             return false
+        }
+    }
+
+    nonisolated static func sanitizedProperties(
+        _ input: [String: Any],
+        infoDictionary: [String: Any],
+        maxProperties: Int = 64,
+        maxKeyLength: Int = 64,
+        maxStringLength: Int = 160,
+        blockedKeyFragments: Set<String> = [
+            "body",
+            "command",
+            "email",
+            "file",
+            "path",
+            "prompt",
+            "secret",
+            "subtitle",
+            "text",
+            "title",
+            "token",
+            "url",
+        ]
+    ) -> [String: Any] {
+        var output: [String: Any] = [:]
+        var count = 0
+
+        for key in input.keys.sorted() {
+            guard count < maxProperties else { break }
+            guard isSafePropertyKey(key, maxKeyLength: maxKeyLength, blockedKeyFragments: blockedKeyFragments) else {
+                continue
+            }
+            guard let value = sanitizedPropertyValue(input[key], maxStringLength: maxStringLength) else {
+                continue
+            }
+            output[key] = value
+            count += 1
+        }
+
+        let versionProperties = versionProperties(infoDictionary: infoDictionary)
+        for (key, value) in versionProperties where output[key] == nil {
+            output[key] = value
+        }
+        output["platform"] = output["platform"] ?? "cmuxterm"
+#if DEBUG
+        output["debug_build"] = true
+#else
+        output["debug_build"] = false
+#endif
+        return output
+    }
+
+    nonisolated static func sentryContext(from properties: [String: Any]) -> [String: Any] {
+        sanitizedProperties(properties, infoDictionary: [:], maxProperties: 24)
+    }
+
+    nonisolated static func bugAlertProperties(from properties: [String: Any]) -> [String: String] {
+        let sanitized = sanitizedProperties(properties, infoDictionary: [:], maxProperties: 24)
+        return proxyProperties(from: sanitized)
+    }
+
+    nonisolated static func proxyProperties(from properties: [String: Any]) -> [String: String] {
+        var output: [String: String] = [:]
+        for (key, value) in properties {
+            switch value {
+            case let value as String:
+                output[key] = value
+            case let value as Bool:
+                output[key] = value ? "true" : "false"
+            case let value as Int:
+                output[key] = String(value)
+            case let value as Int64:
+                output[key] = String(value)
+            case let value as Double:
+                output[key] = String(value)
+            default:
+                continue
+            }
+        }
+        return output
+    }
+
+    nonisolated private static func isSafePropertyKey(
+        _ key: String,
+        maxKeyLength: Int,
+        blockedKeyFragments: Set<String>
+    ) -> Bool {
+        guard !key.isEmpty, key.count <= maxKeyLength else { return false }
+        let lowercased = key.lowercased()
+        guard !blockedKeyFragments.contains(where: { lowercased.contains($0) }) else {
+            return false
+        }
+        return key.unicodeScalars.allSatisfy { scalar in
+            CharacterSet.alphanumerics.contains(scalar) ||
+                scalar == "_" ||
+                scalar == "-" ||
+                scalar == "." ||
+                scalar == "$"
+        }
+    }
+
+    nonisolated private static func sanitizedPropertyValue(
+        _ value: Any?,
+        maxStringLength: Int
+    ) -> Any? {
+        switch value {
+        case let value as String:
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            if trimmed.count <= maxStringLength {
+                return trimmed
+            }
+            return String(trimmed.prefix(maxStringLength))
+        case let value as Bool:
+            return value
+        case let value as Int:
+            return value
+        case let value as Int64:
+            return value
+        case let value as Double where value.isFinite:
+            return value
+        case let value as Float where value.isFinite:
+            return Double(value)
+        default:
+            return nil
         }
     }
 

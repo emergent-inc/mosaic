@@ -90,7 +90,193 @@ struct PostHogAnalyticsPropertiesTests {
     func flushPolicyIncludesDailyAndHourlyActiveEvents() {
         #expect(PostHogAnalytics.shouldFlushAfterCapture(event: "cmux_daily_active"))
         #expect(PostHogAnalytics.shouldFlushAfterCapture(event: "cmux_hourly_active"))
+        #expect(PostHogAnalytics.shouldFlushAfterCapture(event: "mac_error_captured"))
         #expect(!PostHogAnalytics.shouldFlushAfterCapture(event: "cmux_other_event"))
+    }
+
+    @Test
+    func sanitizedPropertiesDropUnsafeKeysAndUnsupportedValues() {
+        let properties = PostHogAnalytics.sanitizedProperties(
+            [
+                "action_id": "palette.newWorkspace",
+                "body": "terminal output should never ship",
+                "path": "/Users/someone/private",
+                "count": 3,
+                "enabled": true,
+                "nested": ["not": "allowed"],
+                "too long key with spaces": "bad",
+            ],
+            infoDictionary: [
+                "CFBundleShortVersionString": "0.31.0",
+                "CFBundleVersion": "230",
+            ]
+        )
+
+        #expect(properties["action_id"] as? String == "palette.newWorkspace")
+        #expect(properties["count"] as? Int == 3)
+        #expect(properties["enabled"] as? Bool == true)
+        #expect(properties["body"] == nil)
+        #expect(properties["path"] == nil)
+        #expect(properties["nested"] == nil)
+        #expect(properties["too long key with spaces"] == nil)
+        #expect(properties["platform"] as? String == "cmuxterm")
+        #expect(properties["app_version"] as? String == "0.31.0")
+        #expect(properties["app_build"] as? String == "230")
+    }
+
+    @Test
+    func bugAlertPropertiesAreSendableStringsOnly() {
+        let properties = PostHogAnalytics.bugAlertProperties(from: [
+            "action_id": "settings.clearHistory",
+            "count": 2,
+            "enabled": false,
+            "path": "/private",
+        ])
+
+        #expect(properties["action_id"] == "settings.clearHistory")
+        #expect(properties["count"] == "2")
+        #expect(properties["enabled"] == "false")
+        #expect(properties["path"] == nil)
+    }
+
+    @Test
+    func macAnalyticsProxyClientSendsExpectedBatchPayloadWhenEnabled() async throws {
+        AnalyticsURLProtocolStub.state.reset(statusCode: 200)
+        let session = Self.stubbedSession()
+        let client = MacAnalyticsProxyClient(
+            endpoint: try #require(URL(string: "https://cmux.test/api/analytics/events")),
+            session: session,
+            isEnabled: { true }
+        )
+
+        await client.send(event: "mac_button_clicked", properties: [
+            "action_id": "settings.send_feedback",
+            "surface": "settings",
+        ])
+
+        let request = try #require(AnalyticsURLProtocolStub.state.nextRequest())
+        #expect(request.request.url?.absoluteString == "https://cmux.test/api/analytics/events")
+        #expect(request.request.httpMethod == "POST")
+        #expect(request.request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        let payload = try Self.jsonObject(from: request.body)
+        let batch = try #require(payload["batch"] as? [[String: Any]])
+        #expect(batch.count == 1)
+        let event = try #require(batch.first)
+        #expect(event["event"] as? String == "mac_button_clicked")
+        let properties = try #require(event["properties"] as? [String: Any])
+        #expect(properties["action_id"] as? String == "settings.send_feedback")
+        #expect(properties["surface"] as? String == "settings")
+    }
+
+    @Test
+    func macAnalyticsProxyClientDoesNotSendWhenDisabled() async throws {
+        AnalyticsURLProtocolStub.state.reset(statusCode: 200)
+        let client = MacAnalyticsProxyClient(
+            endpoint: try #require(URL(string: "https://cmux.test/api/analytics/events")),
+            session: Self.stubbedSession(),
+            isEnabled: { false }
+        )
+
+        await client.send(event: "mac_button_clicked", properties: ["action_id": "settings.send_feedback"])
+
+        #expect(AnalyticsURLProtocolStub.state.nextRequest(timeout: .now() + .milliseconds(100)) == nil)
+    }
+
+    @Test
+    func macBugAlertClientSendsSafeSummaryPayloadWhenEnabled() async throws {
+        AnalyticsURLProtocolStub.state.reset(statusCode: 200)
+        let client = MacBugAlertClient(
+            endpoint: try #require(URL(string: "https://cmux.test/api/bug-alerts")),
+            session: Self.stubbedSession(),
+            isEnabled: { true }
+        )
+
+        await client.send(
+            event: .errorNotificationShown,
+            severity: .error,
+            source: "TerminalNotificationStore",
+            errorKind: "notification.error",
+            properties: [
+                "app_version": "0.31.0",
+                "has_surface": "true",
+            ]
+        )
+
+        let request = try #require(AnalyticsURLProtocolStub.state.nextRequest())
+        #expect(request.request.url?.absoluteString == "https://cmux.test/api/bug-alerts")
+        #expect(request.request.httpMethod == "POST")
+        let payload = try Self.jsonObject(from: request.body)
+        #expect(payload["event"] as? String == "mac_error_notification_shown")
+        #expect(payload["severity"] as? String == "error")
+        #expect(payload["source"] as? String == "TerminalNotificationStore")
+        #expect(payload["error_kind"] as? String == "notification.error")
+        let properties = try #require(payload["properties"] as? [String: Any])
+        #expect(properties["app_version"] as? String == "0.31.0")
+        #expect(properties["has_surface"] as? String == "true")
+    }
+
+    @Test
+    func genericCaptureScrubsAndMirrorsMacEventsToProxy() async throws {
+        AnalyticsURLProtocolStub.state.reset(statusCode: 200)
+        let suiteName = "cmux.posthog.analytics.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let capturedQueue = DispatchQueue(label: "com.cmux.tests.posthog.generic.capture")
+        var capturedEvents: [(event: String, properties: [String: Any])] = []
+        let eventCaptured = DispatchSemaphore(value: 0)
+        let analytics = PostHogAnalytics.makeForTesting(
+            workQueue: DispatchQueue(label: "com.cmux.tests.posthog.generic.analytics"),
+            didStart: true,
+            userDefaults: defaults,
+            now: { Date() },
+            capturePostHog: { event, properties in
+                capturedQueue.sync {
+                    capturedEvents.append((event: event, properties: properties))
+                    eventCaptured.signal()
+                }
+            },
+            flushPostHog: {},
+            analyticsProxyClient: MacAnalyticsProxyClient(
+                endpoint: try #require(URL(string: "https://cmux.test/api/analytics/events")),
+                session: Self.stubbedSession(),
+                isEnabled: { true }
+            )
+        )
+
+        analytics.capture(
+            .buttonClicked,
+            properties: [
+                "action_id": "menu.open_settings",
+                "surface": "main_menu",
+                "path": "/Users/private",
+                "body": "private text",
+                "count": 4,
+            ]
+        )
+
+        #expect(eventCaptured.wait(timeout: .now() + .seconds(1)) == .success)
+        let captured = try #require(capturedQueue.sync { capturedEvents.first })
+        #expect(captured.event == "mac_button_clicked")
+        #expect(captured.properties["action_id"] as? String == "menu.open_settings")
+        #expect(captured.properties["surface"] as? String == "main_menu")
+        #expect(captured.properties["count"] as? Int == 4)
+        #expect(captured.properties["path"] == nil)
+        #expect(captured.properties["body"] == nil)
+        #expect(captured.properties["platform"] as? String == "cmuxterm")
+
+        let proxyRequest = try #require(AnalyticsURLProtocolStub.state.nextRequest())
+        let proxyPayload = try Self.jsonObject(from: proxyRequest.body)
+        let batch = try #require(proxyPayload["batch"] as? [[String: Any]])
+        let event = try #require(batch.first)
+        #expect(event["event"] as? String == "mac_button_clicked")
+        let proxyProperties = try #require(event["properties"] as? [String: Any])
+        #expect(proxyProperties["action_id"] as? String == "menu.open_settings")
+        #expect(proxyProperties["count"] as? String == "4")
+        #expect(proxyProperties["path"] == nil)
+        #expect(proxyProperties["body"] == nil)
     }
 
     @Test
@@ -200,6 +386,95 @@ struct PostHogAnalyticsPropertiesTests {
         #expect(flushReturned.wait(timeout: .now() + .milliseconds(50)) == .timedOut)
         flushCanReturn.signal()
         #expect(flushReturned.wait(timeout: .now() + .seconds(1)) == .success)
+    }
+
+    private static func stubbedSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AnalyticsURLProtocolStub.self]
+        return URLSession(configuration: configuration)
+    }
+
+    private static func jsonObject(from data: Data) throws -> [String: Any] {
+        try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+}
+
+private final class AnalyticsURLProtocolStubState: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.cmux.tests.analytics.urlprotocol")
+    private var statusCode = 200
+    private var capturedRequests: [(request: URLRequest, body: Data)] = []
+    private var semaphore = DispatchSemaphore(value: 0)
+
+    func reset(statusCode: Int) {
+        queue.sync {
+            self.statusCode = statusCode
+            capturedRequests.removeAll()
+            semaphore = DispatchSemaphore(value: 0)
+        }
+    }
+
+    func record(request: URLRequest, body: Data) {
+        queue.sync {
+            capturedRequests.append((request: request, body: body))
+            semaphore.signal()
+        }
+    }
+
+    func nextRequest(timeout: DispatchTime = .now() + .seconds(1)) -> (request: URLRequest, body: Data)? {
+        guard semaphore.wait(timeout: timeout) == .success else { return nil }
+        return queue.sync {
+            guard !capturedRequests.isEmpty else { return nil }
+            return capturedRequests.removeFirst()
+        }
+    }
+
+    func currentStatusCode() -> Int {
+        queue.sync { statusCode }
+    }
+}
+
+private final class AnalyticsURLProtocolStub: URLProtocol {
+    static let state = AnalyticsURLProtocolStubState()
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        let body = Self.bodyData(from: request)
+        Self.state.record(request: request, body: body)
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://cmux.test")!,
+            statusCode: Self.state.currentStatusCode(),
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(#"{"ok":true}"#.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func bodyData(from request: URLRequest) -> Data {
+        if let httpBody = request.httpBody {
+            return httpBody
+        }
+        guard let stream = request.httpBodyStream else { return Data() }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count <= 0 { break }
+            data.append(buffer, count: count)
+        }
+        return data
     }
 }
 #endif
