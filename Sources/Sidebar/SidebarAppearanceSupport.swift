@@ -79,16 +79,16 @@ func cmuxAccentNSColor(for colorScheme: ColorScheme) -> NSColor {
     switch colorScheme {
     case .dark:
         return NSColor(
-            srgbRed: 0,
-            green: 145.0 / 255.0,
-            blue: 1.0,
+            srgbRed: 161.0 / 255.0,
+            green: 161.0 / 255.0,
+            blue: 170.0 / 255.0,
             alpha: 1.0
         )
     default:
         return NSColor(
-            srgbRed: 0,
-            green: 136.0 / 255.0,
-            blue: 1.0,
+            srgbRed: 82.0 / 255.0,
+            green: 82.0 / 255.0,
+            blue: 82.0 / 255.0,
             alpha: 1.0
         )
     }

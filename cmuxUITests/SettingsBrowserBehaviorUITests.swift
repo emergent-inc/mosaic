@@ -111,7 +111,7 @@ final class SettingsBrowserBehaviorUITests: SettingsUITestCase {
 
     // MARK: - TIER 2 (needs runtime seam): effects live in the browser/WebKit surface or in a key mismatch
 
-    // TIER 2 (needs runtime seam): Enable cmux Browser (BrowserEnabledToggle) —
+    // TIER 2 (needs runtime seam): Enable mosaic Browser (BrowserEnabledToggle) —
     //   The SPM `BrowserSection` toggle writes only the catalog key
     //   `browserDisabled`. The runtime gate that decides browser
     //   availability — `BrowserAvailabilitySettings.isDisabled()`, which
@@ -119,9 +119,9 @@ final class SettingsBrowserBehaviorUITests: SettingsUITestCase {
     //   command-palette context key and WebView creation — reads a
     //   *different* key, `browserDisabledOverride`, which the SPM section
     //   never writes (only the legacy `cmuxApp.browserEnabledBinding`
-    //   mirrors both keys). So toggling Enable cmux Browser in the new
+    //   mirrors both keys). So toggling Enable mosaic Browser in the new
     //   Settings UI produces no XCUITest-observable change (the command
-    //   palette still shows "Disable cmux Browser"). Verifying this
+    //   palette still shows "Disable mosaic Browser"). Verifying this
     //   behaviorally requires the host to bind both keys (a real product
     //   fix) before a palette-flip assertion would pass; asserting it now
     //   would be a test against a known seam gap, not against intended

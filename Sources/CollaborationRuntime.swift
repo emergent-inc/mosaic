@@ -727,6 +727,20 @@ final class CollaborationRuntime {
             }
     }
 
+    func copyTerminalSessionInviteCode(for terminal: TerminalPanel) {
+        let resolver = CollaborationTerminalInviteCodeResolver(
+            hostedTerminalIDsBySurfaceID: hostedTerminalIDsBySurfaceID,
+            terminalSessionRouter: terminalSessionRouter
+        )
+        guard let sessionCode = resolver.inviteCode(forHostedSurfaceID: terminal.id) else {
+            return
+        }
+        let normalizedCode = Self.normalizedSessionCode(from: sessionCode)
+        guard !normalizedCode.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(normalizedCode, forType: .string)
+    }
+
     func applyRecipientSelection(_ selectedParticipantIDs: Set<String>, for terminal: TerminalPanel) {
         guard let terminalID = hostedTerminalIDsBySurfaceID[terminal.id], let connection = connection(forTerminalID: terminalID) else {
             return
@@ -3080,7 +3094,14 @@ enum CollaborationStrings {
     }
 
     static var terminalRecipientsEmpty: String {
-        String(localized: "collaboration.terminal.recipients.empty", defaultValue: "No other people are in this session.")
+        String(
+            localized: "collaboration.terminal.recipients.empty",
+            defaultValue: "Invite someone to this session, then choose who can view this terminal."
+        )
+    }
+
+    static var copyInviteCode: String {
+        String(localized: "collaboration.action.copyInviteCode", defaultValue: "Copy Invite Code")
     }
 
     static var share: String {
