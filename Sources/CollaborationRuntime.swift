@@ -137,6 +137,11 @@ private struct CollaborationTerminalSelectionRectWire: Codable {
     let y: Double
     let width: Double
     let height: Double
+    let row: Double?
+    let column: Double?
+    let rowFromBottom: Double?
+    let widthColumns: Double?
+    let heightRows: Double?
 }
 
 private struct CollaborationTerminalSelectionWire: Codable {
@@ -580,7 +585,21 @@ final class CollaborationRuntime {
         }
     }
 
-    func noteTerminalSelection(surfaceID: UUID, rects: [CGRect], bounds: CGRect, visible: Bool) {
+    struct TerminalSelectionGridRect {
+        let row: Double
+        let column: Double
+        let rowFromBottom: Double?
+        let widthColumns: Double
+        let heightRows: Double
+    }
+
+    func noteTerminalSelection(
+        surfaceID: UUID,
+        rects: [CGRect],
+        gridRects: [TerminalSelectionGridRect],
+        bounds: CGRect,
+        visible: Bool
+    ) {
         let terminalID = hostedTerminalIDsBySurfaceID[surfaceID] ?? mirroredTerminalIDsBySurfaceID[surfaceID]
         guard let terminalID else { return }
 
@@ -595,14 +614,20 @@ final class CollaborationRuntime {
 
         let normalizedRects: [CollaborationTerminalSelectionRectWire]
         if visible, bounds.width > 0, bounds.height > 0 {
-            normalizedRects = rects.compactMap { rect in
+            normalizedRects = rects.enumerated().compactMap { index, rect in
                 let clipped = rect.intersection(bounds)
                 guard !clipped.isNull, clipped.width > 0, clipped.height > 0 else { return nil }
+                let gridRect = gridRects.indices.contains(index) ? gridRects[index] : nil
                 return CollaborationTerminalSelectionRectWire(
                     x: Double(clipped.minX / bounds.width),
                     y: Double(clipped.minY / bounds.height),
                     width: Double(clipped.width / bounds.width),
-                    height: Double(clipped.height / bounds.height)
+                    height: Double(clipped.height / bounds.height),
+                    row: gridRect?.row,
+                    column: gridRect?.column,
+                    rowFromBottom: gridRect?.rowFromBottom,
+                    widthColumns: gridRect?.widthColumns,
+                    heightRows: gridRect?.heightRows
                 )
             }
         } else {
@@ -1870,13 +1895,20 @@ final class CollaborationRuntime {
         ].compactMap { $0 }
 
         let rects = selection.rects.map {
-            CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
+            TerminalCollaboratorSelectionRect(
+                normalizedRect: CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height),
+                row: $0.row,
+                column: $0.column,
+                rowFromBottom: $0.rowFromBottom,
+                widthColumns: $0.widthColumns,
+                heightRows: $0.heightRows
+            )
         }
         for panel in panels {
             panel.surface.hostedView.showTerminalCollaboratorSelection(
                 peerID: peer.peerID,
                 colorHex: peer.color,
-                normalizedRects: rects,
+                selectionRects: rects,
                 visible: selection.visible
             )
         }

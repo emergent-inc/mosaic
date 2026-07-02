@@ -23,6 +23,21 @@ import CMUXMobileCore
 import IOSurface
 import UniformTypeIdentifiers
 
+struct TerminalCollaboratorSelectionRect {
+    let normalizedRect: CGRect
+    let row: Double?
+    let column: Double?
+    let rowFromBottom: Double?
+    let widthColumns: Double?
+    let heightRows: Double?
+}
+
+private struct TerminalCollaboratorSelectionCell {
+    let row: Int
+    let column: Int
+    let rowFromBottom: Int
+}
+
 enum GhosttyStartupAppearancePreviewProfile: String, CaseIterable, Identifiable {
     case realUserConfig
     case freshInstall
@@ -3422,6 +3437,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     private var terminalCollaboratorPointerViews: [String: TerminalCollaboratorPointerView] = [:]
     private var terminalCollaboratorPointerHideTasks: [String: Task<Void, Never>] = [:]
     private var terminalCollaboratorSelectionViews: [String: TerminalCollaboratorSelectionView] = [:]
+    private var terminalCollaboratorSelections: [String: [TerminalCollaboratorSelectionRect]] = [:]
+    private var terminalCollaboratorSelectionAnchorCell: TerminalCollaboratorSelectionCell?
+    private var terminalCollaboratorSelectionCurrentCell: TerminalCollaboratorSelectionCell?
 
     static func retainRenderedFrameNotifications() -> () -> Void {
         // See GhosttyApp.retainTickNotifications() on the idempotent release.
@@ -3895,7 +3913,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     func showTerminalCollaboratorSelection(
         peerID: String,
         colorHex: String?,
-        normalizedRects: [CGRect],
+        selectionRects: [TerminalCollaboratorSelectionRect],
         visible: Bool
     ) {
         let view = terminalCollaboratorSelectionViews[peerID] ?? TerminalCollaboratorSelectionView(frame: bounds)
@@ -3904,20 +3922,69 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
         terminalCollaboratorSelectionViews[peerID] = view
 
-        if visible, !normalizedRects.isEmpty {
+        if visible, !selectionRects.isEmpty {
             let color = colorHex.flatMap(NSColor.init(hex:)) ?? .controlAccentColor
+            let overlayRects = terminalCollaboratorSelectionOverlayRects(selectionRects)
+            guard !overlayRects.isEmpty else {
+                terminalCollaboratorSelections.removeValue(forKey: peerID)
+                view.isHidden = true
+                return
+            }
+            terminalCollaboratorSelections[peerID] = selectionRects
             view.frame = bounds
-            view.update(normalizedRects: normalizedRects, color: color)
+            view.update(rects: overlayRects, color: color)
             view.isHidden = false
             view.alphaValue = 1
         } else {
+            terminalCollaboratorSelections.removeValue(forKey: peerID)
             view.isHidden = true
         }
     }
 
+    private func terminalCollaboratorSelectionOverlayRects(
+        _ selectionRects: [TerminalCollaboratorSelectionRect]
+    ) -> [CGRect] {
+        guard let surface,
+              let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
+            return []
+        }
+
+        return selectionRects.compactMap { selection in
+            guard let column = selection.column,
+                  let widthColumns = selection.widthColumns,
+                  let heightRows = selection.heightRows else {
+                return nil
+            }
+
+            let row: CGFloat
+            if let rowFromBottom = selection.rowFromBottom,
+               let scrollbar {
+                let peerBottomRow = CGFloat(max(scrollbar.total, 1)) - 1
+                row = peerBottomRow - CGFloat(rowFromBottom) - CGFloat(scrollbar.offset)
+            } else if let fallbackRow = selection.row {
+                row = CGFloat(fallbackRow)
+            } else {
+                return nil
+            }
+            guard row + CGFloat(heightRows) > 0, row < CGFloat(metrics.rows) else { return nil }
+            let clampedRow = max(row, 0)
+            let visibleRows = min(row + CGFloat(heightRows), CGFloat(metrics.rows)) - clampedRow
+            let rect = CGRect(
+                x: metrics.xInset + (CGFloat(column) * metrics.cellWidth),
+                y: bounds.height - metrics.yInset - ((clampedRow + visibleRows) * metrics.cellHeight),
+                width: max(CGFloat(widthColumns) * metrics.cellWidth, metrics.cellWidth),
+                height: max(visibleRows * metrics.cellHeight, metrics.cellHeight)
+            )
+            return rect.intersection(bounds)
+        }
+    }
+
     private func syncTerminalCollaboratorSelectionOverlays() {
-        for view in terminalCollaboratorSelectionViews.values where !view.isHidden {
+        for (peerID, view) in terminalCollaboratorSelectionViews where !view.isHidden {
             view.frame = bounds
+            if let selectionRects = terminalCollaboratorSelections[peerID] {
+                view.update(rects: terminalCollaboratorSelectionOverlayRects(selectionRects), color: view.color)
+            }
             view.needsDisplay = true
         }
     }
@@ -6727,6 +6794,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard let surface = surface else { return }
         let eventPoint = convert(event.locationInWindow, from: nil)
         trackMousePointIfUsable(eventPoint)
+        let selectionCell = terminalCollaboratorSelectionCell(at: eventPoint)
+        terminalCollaboratorSelectionAnchorCell = selectionCell
+        terminalCollaboratorSelectionCurrentCell = selectionCell
         // Only update mouse position on the first click to prevent unwanted cursor
         // movement during double-click selection (issue #1698)
         if event.clickCount == 1 {
@@ -6748,6 +6818,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard hasPendingLeftMouseRelease, let surface else { return false }
         let eventPoint = convert(event.locationInWindow, from: nil)
         trackMousePointIfUsable(eventPoint)
+        terminalCollaboratorSelectionCurrentCell = terminalCollaboratorSelectionCell(at: eventPoint)
         ghostty_surface_mouse_pos(surface, eventPoint.x, bounds.height - eventPoint.y, mouseModsFromEvent(event))
         noteTerminalCollaboratorSelection()
         return true
@@ -6759,6 +6830,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         hasPendingLeftMouseRelease = false
         guard let surface else { return false }
         let point = convert(event.locationInWindow, from: nil)
+        terminalCollaboratorSelectionCurrentCell = terminalCollaboratorSelectionCell(at: point)
         let consumed = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_LEFT, mouseModsFromEvent(event))
         _ = handleCommandClickRelease(at: point, modifierFlags: event.modifierFlags, ghosttyConsumed: consumed)
         noteTerminalCollaboratorSelection()
@@ -7645,43 +7717,92 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         )
     }
 
-    private func terminalCollaboratorSelectionRects() -> [CGRect] {
-        guard let snapshot = readSelectionSnapshot(),
-              !snapshot.string.isEmpty else {
-            return []
+    private func terminalCollaboratorSelectionCell(at point: NSPoint) -> TerminalCollaboratorSelectionCell? {
+        guard let surface,
+              let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
+            return nil
         }
 
-        let cellWidth = max(cellSize.width, 1)
-        let cellHeight = max(cellSize.height, 1)
-        let gridLeft = surface.flatMap { keyboardCopyModeGridMetrics(surface: $0)?.xInset } ?? 0
-        let lines = snapshot.string.components(separatedBy: "\n")
-        var rects: [CGRect] = []
+        let columns = max(metrics.columns, 1)
+        let rows = max(metrics.rows, 1)
+        let topOriginY = bounds.height - point.y
+        let column = min(max(Int((point.x - metrics.xInset) / metrics.cellWidth), 0), columns)
+        let row = min(max(Int((topOriginY - metrics.yInset) / metrics.cellHeight), 0), rows - 1)
+        let contentRow = row + Int(scrollbar?.offset ?? 0)
+        let bottomRow = Int(scrollbar?.total ?? 1) - 1
+        return TerminalCollaboratorSelectionCell(
+            row: row,
+            column: column,
+            rowFromBottom: max(0, bottomRow - contentRow)
+        )
+    }
 
-        for (index, line) in lines.enumerated() {
-            if line.isEmpty, index == lines.count - 1 { continue }
-            let characterCount = max(line.utf16.count, line.isEmpty ? 1 : 0)
-            let width = CGFloat(characterCount) * cellWidth
-            let topOriginY = snapshot.topLeft.y + (CGFloat(index) * cellHeight)
+    private func terminalCollaboratorSelectionRects() -> (
+        rects: [CGRect],
+        gridRects: [CollaborationRuntime.TerminalSelectionGridRect]
+    ) {
+        guard let surface,
+              ghostty_surface_has_selection(surface),
+              let metrics = keyboardCopyModeGridMetrics(surface: surface),
+              let anchor = terminalCollaboratorSelectionAnchorCell,
+              let current = terminalCollaboratorSelectionCurrentCell else {
+            return ([], [])
+        }
+
+        var rects: [CGRect] = []
+        var gridRects: [CollaborationRuntime.TerminalSelectionGridRect] = []
+
+        let columns = max(metrics.columns, 1)
+        let topCell: TerminalCollaboratorSelectionCell
+        let bottomCell: TerminalCollaboratorSelectionCell
+        if anchor.rowFromBottom > current.rowFromBottom ||
+            (anchor.rowFromBottom == current.rowFromBottom && anchor.column <= current.column) {
+            topCell = anchor
+            bottomCell = current
+        } else {
+            topCell = current
+            bottomCell = anchor
+        }
+
+        for rowFromBottom in stride(from: topCell.rowFromBottom, through: bottomCell.rowFromBottom, by: -1) {
+            let isTopRow = rowFromBottom == topCell.rowFromBottom
+            let isBottomRow = rowFromBottom == bottomCell.rowFromBottom
+            let startColumn = isTopRow ? topCell.column : 0
+            let endColumn = isBottomRow ? bottomCell.column : columns
+            let column = min(max(min(startColumn, endColumn), 0), columns - 1)
+            let widthColumns = max(abs(endColumn - startColumn), 1)
+            let totalRows = Int(scrollbar?.total ?? 1)
+            let scrollOffset = Int(scrollbar?.offset ?? 0)
+            let row = max(CGFloat(totalRows - 1 - rowFromBottom - scrollOffset), 0)
+            guard row < CGFloat(metrics.rows) else { continue }
             let rect = CGRect(
-                x: index == 0 ? snapshot.topLeft.x : gridLeft,
-                y: bounds.height - topOriginY - cellHeight,
-                width: max(width, cellWidth),
-                height: cellHeight
+                x: metrics.xInset + (CGFloat(column) * metrics.cellWidth),
+                y: bounds.height - metrics.yInset - ((row + 1) * metrics.cellHeight),
+                width: CGFloat(widthColumns) * metrics.cellWidth,
+                height: metrics.cellHeight
             )
             rects.append(rect)
+            gridRects.append(CollaborationRuntime.TerminalSelectionGridRect(
+                row: Double(row),
+                column: Double(column),
+                rowFromBottom: Double(rowFromBottom),
+                widthColumns: Double(widthColumns),
+                heightRows: 1
+            ))
         }
 
-        return rects
+        return (rects, gridRects)
     }
 
     private func noteTerminalCollaboratorSelection() {
         guard let surfaceID = terminalSurface?.id else { return }
-        let rects = terminalCollaboratorSelectionRects()
+        let selection = terminalCollaboratorSelectionRects()
         CollaborationRuntime.shared.noteTerminalSelection(
             surfaceID: surfaceID,
-            rects: rects,
+            rects: selection.rects,
+            gridRects: selection.gridRects,
             bounds: bounds,
-            visible: !rects.isEmpty
+            visible: !selection.rects.isEmpty
         )
     }
 
@@ -7784,6 +7905,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         let eventPoint = convert(event.locationInWindow, from: nil)
         trackMousePointIfUsable(eventPoint)
         noteTerminalCollaboratorPointer(at: eventPoint, visible: true)
+        terminalCollaboratorSelectionCurrentCell = terminalCollaboratorSelectionCell(at: eventPoint)
         // Forward the raw drag coordinates, including out-of-bounds positions.
         // Selection auto-scroll depends on libghostty observing the pointer leave
         // the viewport rather than a cached in-bounds hover point.
@@ -8493,8 +8615,8 @@ private final class TerminalCollaboratorPointerView: NSView {
 }
 
 private final class TerminalCollaboratorSelectionView: NSView {
-    private var normalizedRects: [CGRect] = []
-    private var color = NSColor.controlAccentColor
+    private var rects: [CGRect] = []
+    private(set) var color = NSColor.controlAccentColor
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -8514,8 +8636,8 @@ private final class TerminalCollaboratorSelectionView: NSView {
         nil
     }
 
-    func update(normalizedRects: [CGRect], color: NSColor) {
-        self.normalizedRects = normalizedRects
+    func update(rects: [CGRect], color: NSColor) {
+        self.rects = rects
         self.color = color
         needsDisplay = true
     }
@@ -8526,13 +8648,8 @@ private final class TerminalCollaboratorSelectionView: NSView {
 
         color.withAlphaComponent(0.28).setFill()
         color.withAlphaComponent(0.55).setStroke()
-        for normalized in normalizedRects {
-            let rect = CGRect(
-                x: normalized.minX * bounds.width,
-                y: normalized.minY * bounds.height,
-                width: normalized.width * bounds.width,
-                height: normalized.height * bounds.height
-            ).intersection(bounds)
+        for candidate in rects {
+            let rect = candidate.intersection(bounds)
             guard !rect.isNull, rect.width > 0, rect.height > 0 else { continue }
             let path = NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2)
             path.fill()
@@ -8701,13 +8818,13 @@ final class GhosttySurfaceScrollView: NSView {
     func showTerminalCollaboratorSelection(
         peerID: String,
         colorHex: String?,
-        normalizedRects: [CGRect],
+        selectionRects: [TerminalCollaboratorSelectionRect],
         visible: Bool
     ) {
         surfaceView.showTerminalCollaboratorSelection(
             peerID: peerID,
             colorHex: colorHex,
-            normalizedRects: normalizedRects,
+            selectionRects: selectionRects,
             visible: visible
         )
     }
