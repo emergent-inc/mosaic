@@ -286,6 +286,8 @@ struct CollaborationTerminalHeaderState: Equatable {
     var peerSummary = ""
 }
 
+typealias CollaborationWorkspaceParticipantSnapshot = CollaborationParticipantAvatarSnapshot
+
 struct AgentRoomHeaderState: Equatable {
     var isConnected = false
     var label = ""
@@ -432,13 +434,18 @@ final class CollaborationRuntime {
     private static let terminalInitialRenderGridScrollbackLines = 10_000
     private static let terminalLiveRenderGridScrollbackLines = 0
     private static let inviteCodeStore = CollaborationInviteCodeStore()
+    private static let workspaceSessionStore = CollaborationWorkspaceSessionStore(
+        inviteCodeStore: CollaborationRuntime.inviteCodeStore
+    )
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
     private(set) var connectionLabel = CollaborationStrings.disconnected
     private(set) var lastErrorMessage: String?
+    private(set) var workspaceParticipantSnapshotRevision = 0
 
     private let peerIdentity: CollaborationPeerIdentity
+    private let localAvatarSeed: String
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
@@ -446,6 +453,8 @@ final class CollaborationRuntime {
     private var descriptorsByDocumentID: [String: SharedFileDescriptor] = [:]
     private var sessionCodesByDocumentID: [String: String] = [:]
     private var statesByDocumentID: [String: CollaborationDocumentHeaderState] = [:]
+    private var sessionCodesByWorkspaceID = CollaborationRuntime.workspaceSessionStore.bindingsByWorkspaceID()
+        .mapValues(\.sessionCode)
     private var hostedTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var hostedTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalSessionRouter = CollaborationTerminalSessionRouter()
@@ -475,6 +484,7 @@ final class CollaborationRuntime {
 
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
+        localAvatarSeed = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? displayName
         peerIdentity = CollaborationPeerIdentity.ephemeral(displayName: displayName)
     }
 
@@ -487,16 +497,44 @@ final class CollaborationRuntime {
         inviteCodeStore.normalizedSessionCode(from: value)
     }
 
-    private static func recentSessionCodes() -> [String] {
-        inviteCodeStore.recentSessionCodes()
-    }
-
-    private static func rememberSessionCode(_ code: String) {
-        inviteCodeStore.rememberSessionCode(code)
-    }
-
     private var activeConnection: CollaborationRelayConnection? {
         sessionCode.flatMap { connectionsBySessionCode[$0] }
+    }
+
+    private func sessionCode(forWorkspaceID workspaceID: UUID) -> String? {
+        sessionCodesByWorkspaceID[workspaceID]
+    }
+
+    private func recordWorkspaceSession(_ sessionCode: String, workspaceID: UUID) {
+        let normalizedCode = Self.normalizedSessionCode(from: sessionCode)
+        guard !normalizedCode.isEmpty else { return }
+        sessionCodesByWorkspaceID[workspaceID] = normalizedCode
+        Self.workspaceSessionStore.record(sessionCode: normalizedCode, forWorkspaceID: workspaceID)
+        workspaceParticipantSnapshotRevision &+= 1
+    }
+
+    func participantSnapshots(forWorkspaceID workspaceID: UUID) -> [CollaborationWorkspaceParticipantSnapshot] {
+        _ = workspaceParticipantSnapshotRevision
+        guard let sessionCode = sessionCode(forWorkspaceID: workspaceID) else {
+            return []
+        }
+        let local = CollaborationWorkspaceParticipantSnapshot.local(
+            identity: peerIdentity,
+            avatarSeed: localAvatarSeed
+        )
+        guard let connection = connectionsBySessionCode[sessionCode] else {
+            return [local]
+        }
+        let peers = connection.peersByID.values
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            .map { peer in
+                CollaborationWorkspaceParticipantSnapshot.remote(
+                    peerID: peer.peerID,
+                    displayName: peer.displayName,
+                    colorHex: peer.color
+                )
+            }
+        return [local] + peers
     }
 
     private func connection(forTerminalID terminalID: String) -> CollaborationRelayConnection? {
@@ -532,9 +570,23 @@ final class CollaborationRuntime {
     }
 
     func configureOrShare(terminal: TerminalPanel) {
-        switch CollaborationTerminalShareAction.action(isShared: state(for: terminal).isShared) {
+        let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
+        switch CollaborationTerminalShareAction.action(
+            isShared: state(for: terminal).isShared,
+            workspaceHasSession: workspaceSessionCode != nil
+        ) {
         case .leaveSharedTerminal:
             leave(terminal: terminal)
+        case .rejoinWorkspaceSession:
+            guard let workspaceSessionCode else {
+                scheduleStartDialog(thenShare: terminal)
+                return
+            }
+            Task {
+                if let connection = await joinSession(code: workspaceSessionCode) {
+                    share(terminal: terminal, via: connection)
+                }
+            }
         case .presentSessionChooser:
             scheduleStartDialog(thenShare: terminal)
         }
@@ -1263,6 +1315,8 @@ final class CollaborationRuntime {
         descriptorsByDocumentID.removeAll()
         sessionCodesByDocumentID.removeAll()
         statesByDocumentID.removeAll()
+        sessionCodesByWorkspaceID.removeAll()
+        Self.workspaceSessionStore.removeAll()
         hostedTerminalsByID.removeAll()
         hostedTerminalIDsBySurfaceID.removeAll()
         terminalSessionRouter.removeAll()
@@ -1280,6 +1334,7 @@ final class CollaborationRuntime {
         terminalPointerLastSentAtBySurfaceID.removeAll()
         terminalSelectionLastSentAtBySurfaceID.removeAll()
         connectionLabel = CollaborationStrings.disconnected
+        workspaceParticipantSnapshotRevision &+= 1
         return statusPayload()
     }
 
@@ -1320,11 +1375,7 @@ final class CollaborationRuntime {
         alert.informativeText = CollaborationStrings.startMessage
         alert.addButton(withTitle: CollaborationStrings.createSession)
         alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let rejoinField = makeRejoinField()
-        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
 
         let response = alert.runModal()
         switch response {
@@ -1332,8 +1383,6 @@ final class CollaborationRuntime {
             Task { await createSessionAndPresentCode(relayURL: nil) }
         case .alertSecondButtonReturn:
             presentJoinDialog()
-        case .alertThirdButtonReturn:
-            rejoinSession(code: rejoinField.stringValue)
         default:
             break
         }
@@ -1368,11 +1417,7 @@ final class CollaborationRuntime {
         alert.informativeText = CollaborationStrings.startMessage
         alert.addButton(withTitle: CollaborationStrings.createSession)
         alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let rejoinField = makeRejoinField()
-        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
 
         let response = alert.runModal()
         switch response {
@@ -1380,8 +1425,6 @@ final class CollaborationRuntime {
             Task { await createSessionAndShare(panel: panel) }
         case .alertSecondButtonReturn:
             presentJoinDialog(thenShare: panel)
-        case .alertThirdButtonReturn:
-            rejoinSession(code: rejoinField.stringValue, thenShare: panel)
         default:
             break
         }
@@ -1394,22 +1437,31 @@ final class CollaborationRuntime {
         alert.informativeText = CollaborationStrings.startMessage
         alert.addButton(withTitle: CollaborationStrings.createSession)
         alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
 
-        let rejoinField = makeRejoinField()
-        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
-
         let response = alert.runModal()
+        switch CollaborationTerminalStartDialogAction.action(
+            buttonIndex: Self.alertButtonIndex(for: response)
+        ) {
+        case .createSessionAndShareTerminal:
+            Task { await createSessionAndShare(terminal: terminal) }
+        case .joinSessionAndBindWorkspace:
+            presentJoinDialog(thenBindWorkspaceFor: terminal)
+        case .cancel:
+            break
+        }
+    }
+
+    private static func alertButtonIndex(for response: NSApplication.ModalResponse) -> Int {
         switch response {
         case .alertFirstButtonReturn:
-            Task { await createSessionAndShare(terminal: terminal) }
+            return 1
         case .alertSecondButtonReturn:
-            presentJoinDialog(thenShare: terminal)
+            return 2
         case .alertThirdButtonReturn:
-            rejoinSession(code: rejoinField.stringValue, thenShare: terminal)
+            return 3
         default:
-            break
+            return 0
         }
     }
 
@@ -1438,7 +1490,7 @@ final class CollaborationRuntime {
         }
     }
 
-    private func presentJoinDialog(thenShare terminal: TerminalPanel) {
+    private func presentJoinDialog(thenBindWorkspaceFor terminal: TerminalPanel) {
         let alert = NSAlert()
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.joinSession
@@ -1459,79 +1511,13 @@ final class CollaborationRuntime {
         let code = Self.normalizedSessionCode(from: codeField.stringValue)
         Task {
             if let connection = await joinSession(code: code) {
-                share(terminal: terminal, via: connection)
+                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
             }
         }
     }
 
     private func configureCollaborationAlertChrome(_ alert: NSAlert) {
         alert.icon = NSImage(size: NSSize(width: 1, height: 1))
-    }
-
-    private func makeRejoinField() -> NSComboBox {
-        let codes = Self.recentSessionCodes()
-        let field = NSComboBox(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        field.addItems(withObjectValues: codes)
-        field.placeholderString = CollaborationStrings.rejoinSessionCodePlaceholder
-        field.completes = true
-        if let code = codes.first {
-            field.stringValue = code
-        }
-        return field
-    }
-
-    private func makeRejoinAccessoryView(rejoinField: NSComboBox) -> NSView {
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 8
-
-        let label = NSTextField(labelWithString: CollaborationStrings.rejoinSession)
-        label.alignment = .right
-        label.setContentHuggingPriority(.required, for: .horizontal)
-        row.addArrangedSubview(label)
-        row.addArrangedSubview(rejoinField)
-
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        stack.addArrangedSubview(row)
-        return stack
-    }
-
-    private func rejoinSession(code: String) {
-        let normalizedCode = Self.normalizedSessionCode(from: code)
-        guard !normalizedCode.isEmpty else {
-            presentJoinDialog()
-            return
-        }
-        Task { await joinSession(code: normalizedCode) }
-    }
-
-    private func rejoinSession(code: String, thenShare panel: any CollaborationEditablePanel) {
-        let normalizedCode = Self.normalizedSessionCode(from: code)
-        guard !normalizedCode.isEmpty else {
-            presentJoinDialog(thenShare: panel)
-            return
-        }
-        Task {
-            await joinSession(code: normalizedCode)
-            share(panel: panel)
-        }
-    }
-
-    private func rejoinSession(code: String, thenShare terminal: TerminalPanel) {
-        let normalizedCode = Self.normalizedSessionCode(from: code)
-        guard !normalizedCode.isEmpty else {
-            presentJoinDialog(thenShare: terminal)
-            return
-        }
-        Task {
-            if let connection = await joinSession(code: normalizedCode) {
-                share(terminal: terminal, via: connection)
-            }
-        }
     }
 
     private func createSessionAndPresentCode(relayURL: String?) async {
@@ -1627,7 +1613,6 @@ final class CollaborationRuntime {
         if let existing = connectionsBySessionCode[normalizedCode] {
             sessionCode = normalizedCode
             connectionLabel = existing.connectionLabel
-            Self.rememberSessionCode(normalizedCode)
             reopenSharedDocumentsForCurrentSession()
             return existing
         }
@@ -1660,7 +1645,6 @@ final class CollaborationRuntime {
         receiveNextMessage(for: connection)
         startHeartbeatLoop(for: connection)
         await nextSession.markConnected()
-        Self.rememberSessionCode(normalizedCode)
         connection.connectionLabel = CollaborationStrings.connected
         connectionLabel = CollaborationStrings.connected
         reopenSharedDocumentsForCurrentSession()
@@ -1727,6 +1711,7 @@ final class CollaborationRuntime {
     private func share(terminal: TerminalPanel, via connection: CollaborationRelayConnection) {
         let descriptor = terminalDescriptor(for: terminal)
         let terminalID = descriptor.terminalID(sessionID: connection.sessionCode)
+        recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
         hostedTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(terminal)
         hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
@@ -2643,6 +2628,7 @@ final class CollaborationRuntime {
     }
 
     private func refreshPeerSummaries(for connection: CollaborationRelayConnection) {
+        workspaceParticipantSnapshotRevision &+= 1
         for documentID in statesByDocumentID.keys {
             guard sessionCodesByDocumentID[documentID] == connection.sessionCode else { continue }
             updateState(
@@ -2902,7 +2888,7 @@ enum CollaborationStrings {
     }
 
     static var startMessage: String {
-        String(localized: "collaboration.start.message", defaultValue: "Create a new invite, join one, or rejoin a recent session.")
+        String(localized: "collaboration.start.message", defaultValue: "Create a new invite or join one with a session code.")
     }
 
     static var relayURLPlaceholder: String {
@@ -2915,10 +2901,6 @@ enum CollaborationStrings {
 
     static var joinSession: String {
         String(localized: "collaboration.action.joinSession", defaultValue: "Join Session")
-    }
-
-    static var rejoinSession: String {
-        String(localized: "collaboration.action.rejoinSession", defaultValue: "Rejoin")
     }
 
     static var cancel: String {
@@ -2951,10 +2933,6 @@ enum CollaborationStrings {
 
     static var sessionCodePlaceholder: String {
         String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "Session code")
-    }
-
-    static var rejoinSessionCodePlaceholder: String {
-        String(localized: "collaboration.rejoin.sessionCodePlaceholder", defaultValue: "Recent session code")
     }
 
     static var invalidRelayURL: String {
