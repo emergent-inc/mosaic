@@ -139,7 +139,7 @@ struct FakeTokenProvider: TokenProviding {
             await Task.yield()
         }
         #expect(request?.httpMethod == "DELETE")
-        #expect(request?.value(forHTTPHeaderField: "X-Stack-Refresh-Token") == "captured-refresh")
+        #expect(request?.value(forHTTPHeaderField: "X-Cmux-Refresh-Token") == "captured-refresh")
     }
 
     @Test func signOutUnregisterNeverFallsBackToLiveProvider() async {

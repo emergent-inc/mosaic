@@ -123,6 +123,15 @@ final class PaneDropTargetView: NSView {
         }
 
         if let sourceSurfaceID = Self.agentRoomWireSurfaceID(from: sender.draggingPasteboard) {
+            guard UUID(uuidString: sourceSurfaceID) != dropContext.panelId else {
+#if DEBUG
+                cmuxDebugLog(
+                    "terminal.paneDrop.agentRoomWire allowed=0 reason=sourceIsTarget " +
+                    "surface=\(dropContext.panelId.uuidString.prefix(5))"
+                )
+#endif
+                return false
+            }
             CollaborationRuntime.shared.connectAgentRoomWire(
                 sourceSurfaceID: sourceSurfaceID,
                 targetSurfaceID: dropContext.panelId
@@ -265,7 +274,18 @@ final class PaneDropTargetView: NSView {
         }
 
         if Self.hasAgentRoomWire(sender.draggingPasteboard.types) {
-            clearDragState(phase: "\(phase).agentRoomWire")
+            guard let sourceSurfaceID = Self.agentRoomWireSurfaceID(from: sender.draggingPasteboard),
+                  UUID(uuidString: sourceSurfaceID) != dropContext.panelId else {
+                clearDragState(phase: "\(phase).agentRoomWire.reject")
+                return []
+            }
+            setActiveDropZone(.center)
+#if DEBUG
+            cmuxDebugLog(
+                "terminal.paneDrop.\(phase).agentRoomWire source=\(sourceSurfaceID.prefix(5)) " +
+                "target=\(dropContext.panelId.uuidString.prefix(5)) zone=center"
+            )
+#endif
             return .copy
         }
 

@@ -22,12 +22,23 @@ const stackEnv = (
   return allowPreviewStackPlaceholders ? fallback : undefined;
 };
 
+const clerkEnv = (
+  value: string | undefined,
+  fallback: string
+): string | undefined => {
+  const trimmed = trimEnv(value);
+  if (trimmed) return trimmed;
+  return allowPreviewStackPlaceholders ? fallback : undefined;
+};
+
 export const env = createEnv({
   server: {
     RESEND_API_KEY: z.string().min(1),
     CMUX_FEEDBACK_FROM_EMAIL: z.string().email(),
     CMUX_FEEDBACK_RATE_LIMIT_ID: z.string().min(1),
-    STACK_SECRET_SERVER_KEY: z.string().min(1),
+    STACK_SECRET_SERVER_KEY: z.string().min(1).optional(),
+    CLERK_SECRET_KEY: z.string().min(1),
+    CMUX_NATIVE_AUTH_SECRET: z.string().min(32).optional(),
     // APNs push (iOS notifications). Optional: the app boots without them; the
     // push route returns a clear "not configured" error until they are set.
     // CMUX_APNS_KEY_P8 holds the .p8 PEM (literal "\n" escapes are normalized
@@ -48,8 +59,9 @@ export const env = createEnv({
     SLACK_WAITLIST_WEBHOOK_URL: z.string().url().optional(),
   },
   client: {
-    NEXT_PUBLIC_STACK_PROJECT_ID: z.string().min(1),
-    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: z.string().min(1),
+    NEXT_PUBLIC_STACK_PROJECT_ID: z.string().min(1).optional(),
+    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
   },
   runtimeEnv: {
     RESEND_API_KEY: trimEnv(process.env.RESEND_API_KEY),
@@ -59,6 +71,11 @@ export const env = createEnv({
     CMUX_APNS_KEY_ID: trimEnv(process.env.CMUX_APNS_KEY_ID),
     CMUX_APNS_TEAM_ID: trimEnv(process.env.CMUX_APNS_TEAM_ID),
     CMUX_PUSH_RATE_LIMIT_ID: trimEnv(process.env.CMUX_PUSH_RATE_LIMIT_ID),
+    CLERK_SECRET_KEY: clerkEnv(
+      process.env.CLERK_SECRET_KEY,
+      "sk_test_preview_clerk_secret_key"
+    ),
+    CMUX_NATIVE_AUTH_SECRET: trimEnv(process.env.CMUX_NATIVE_AUTH_SECRET),
     STRIPE_FOUNDERS_WEBHOOK_SECRET: trimEnv(process.env.STRIPE_FOUNDERS_WEBHOOK_SECRET),
     CMUX_FOUNDERS_FROM_EMAIL: trimEnv(process.env.CMUX_FOUNDERS_FROM_EMAIL),
     SLACK_WAITLIST_WEBHOOK_URL: trimEnv(process.env.SLACK_WAITLIST_WEBHOOK_URL),
@@ -73,6 +90,10 @@ export const env = createEnv({
     STACK_SECRET_SERVER_KEY: stackEnv(
       process.env.STACK_SECRET_SERVER_KEY,
       "preview-secret-server-key"
+    ),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkEnv(
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      "pk_test_preview_clerk_publishable_key"
     ),
   },
   skipValidation: skipEnvValidation,

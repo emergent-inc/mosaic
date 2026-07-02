@@ -331,7 +331,7 @@ public actor DeviceRegistryService: DeviceRegistryRefreshing {
         request.httpMethod = method
         request.timeoutInterval = requestTimeout
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(refreshToken, forHTTPHeaderField: "X-Stack-Refresh-Token")
+        request.setValue(refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
         if let teamID = await teamIDProvider(), !teamID.isEmpty {
             request.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
         }

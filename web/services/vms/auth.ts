@@ -1,4 +1,8 @@
-import { getStackServerApp, isStackConfigured } from "../../app/lib/stack";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import {
+  type NativeSessionClaims,
+  verifyNativeAuthToken,
+} from "../auth/nativeSession";
 
 export type AuthedUser = {
   id: string;
@@ -19,9 +23,9 @@ export type AuthedTeam = {
 };
 
 /**
- * Verify the caller's Stack Auth session. Accepts either a cookie (browser path) or a
- * `Authorization: Bearer <access>` + `X-Stack-Refresh-Token: <refresh>` pair from the
- * native macOS client.
+ * Verify the caller's Clerk session. Accepts either a cmux native bearer token
+ * minted from a Clerk browser session or a Clerk cookie session for browser
+ * routes.
  *
  * Returns the resolved user or null if unauthenticated.
  */
@@ -29,24 +33,17 @@ export async function verifyRequest(
   request: Request,
   options: { readonly requestedTeamId?: string | null; readonly allowCookie?: boolean } = {},
 ): Promise<AuthedUser | null> {
-  if (!isStackConfigured()) {
-    return null;
-  }
-
-  const stackServerApp = getStackServerApp();
   const authHeader = request.headers.get("authorization");
-  const refreshHeader = request.headers.get("x-stack-refresh-token");
 
-  if (authHeader?.toLowerCase().startsWith("bearer ") && refreshHeader) {
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
     const accessToken = authHeader.slice("bearer ".length).trim();
-    const refreshToken = refreshHeader.trim();
-    if (accessToken && refreshToken) {
-      const user = await stackServerApp.getUser({
-        tokenStore: { accessToken, refreshToken },
-      });
-      if (user) {
-        return await authedUserFromStackUser(user, options);
-      }
+    const claims = accessToken ? verifyNativeAuthToken(accessToken) : null;
+    if (claims?.kind === "access") {
+      return authedUserFromNativeClaims(claims, options);
+    }
+    const legacyStackUser = await legacyStackUserFromRequest(request, accessToken);
+    if (legacyStackUser) {
+      return await authedUserFromStackUser(legacyStackUser, options);
     }
   }
 
@@ -54,12 +51,50 @@ export async function verifyRequest(
     return null;
   }
 
-  // Fall back to the Next.js cookie flow (when browser hits the route).
-  const user = await stackServerApp.getUser({ tokenStore: request as unknown as { headers: { get(name: string): string | null } } });
-  if (user) {
-    return await authedUserFromStackUser(user, options);
+  const legacyCookieUser = await legacyStackCookieUserFromRequest(request);
+  if (legacyCookieUser) {
+    return await authedUserFromStackUser(legacyCookieUser, options);
   }
-  return null;
+
+  // Fall back to Clerk's Next.js cookie flow when a browser hits the route.
+  try {
+    const clerkAuth = await auth();
+    if (!clerkAuth.userId) return null;
+    return authedUserFromClerkCookie(
+      clerkAuth.userId,
+      clerkAuth.orgId ?? null,
+      await currentUser(),
+      options
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function legacyStackCookieUserFromRequest(request: Request): Promise<StackUserLike | null> {
+  try {
+    const { getStackServerApp, isStackConfigured } = await import("../../app/lib/stack");
+    if (!isStackConfigured()) return null;
+    return await getStackServerApp().getUser({
+      tokenStore: request as unknown as { headers: { get(name: string): string | null } },
+    }) as StackUserLike | null;
+  } catch {
+    return null;
+  }
+}
+
+async function legacyStackUserFromRequest(request: Request, accessToken: string): Promise<StackUserLike | null> {
+  const refreshToken = request.headers.get("x-stack-refresh-token")?.trim();
+  if (!accessToken || !refreshToken) return null;
+  try {
+    const { getStackServerApp, isStackConfigured } = await import("../../app/lib/stack");
+    if (!isStackConfigured()) return null;
+    return await getStackServerApp().getUser({
+      tokenStore: { accessToken, refreshToken },
+    }) as StackUserLike | null;
+  } catch {
+    return null;
+  }
 }
 
 async function authedUserFromStackUser(
@@ -68,37 +103,108 @@ async function authedUserFromStackUser(
 ): Promise<AuthedUser> {
   const selectedTeam = teamLike(user.selectedTeam);
   const requestedTeamId = normalizedOptionalString(options.requestedTeamId);
-  // When the selected team is enough, entitlements resolve from it before any
-  // multi-team guard needs a full team list.
   const needsListedTeams = !selectedTeam || (!!requestedTeamId && requestedTeamId !== selectedTeam.id);
   const listedTeams = needsListedTeams && typeof user.listTeams === "function"
     ? (await user.listTeams()).map(teamLike).filter((team): team is TeamLike => !!team)
     : [];
-  const teamIds = uniqueStrings([
-    selectedTeam?.id,
-    ...listedTeams.map((team) => team.id),
-  ]);
   const teams = uniqueTeams([selectedTeam, ...listedTeams]);
-  const billingTeam = selectedTeam ?? (teams.length === 1 ? teams[0] : null);
-  const userBillingPlanId = planIdFromMetadata(user.clientReadOnlyMetadata) ?? null;
-  const billingPlanId = planIdFromMetadata(billingTeam?.clientReadOnlyMetadata) ?? userBillingPlanId;
-
-  return {
-    id: user.id,
+  return authedUserFromParts({
+    userId: user.id,
     displayName: user.displayName,
     primaryEmail: user.primaryEmail,
+    selectedTeam,
+    teams,
+    userBillingPlanId: planIdFromMetadata(user.clientReadOnlyMetadata) ?? null,
+    requestedTeamId,
+  });
+}
+
+function authedUserFromNativeClaims(
+  claims: NativeSessionClaims,
+  options: { readonly requestedTeamId?: string | null },
+): AuthedUser {
+  const requestedTeamId = normalizedOptionalString(options.requestedTeamId);
+  const selectedTeam = claims.selectedTeamId ? { id: claims.selectedTeamId, clientReadOnlyMetadata: undefined } : null;
+  const teamIds = uniqueStrings([
+    selectedTeam?.id,
+    ...claims.teamIds,
+  ]);
+  return authedUserFromParts({
+    userId: claims.userId,
+    displayName: claims.displayName,
+    primaryEmail: claims.primaryEmail,
+    selectedTeam,
+    teams: teamIds.map((id) => ({ id, clientReadOnlyMetadata: undefined })),
+    userBillingPlanId: null,
+    requestedTeamId,
+  });
+}
+
+function authedUserFromClerkCookie(
+  userId: string,
+  orgId: string | null,
+  user: ClerkUserLike | null,
+  options: { readonly requestedTeamId?: string | null },
+): AuthedUser {
+  const requestedTeamId = normalizedOptionalString(options.requestedTeamId);
+  const selectedTeam = orgId ? { id: orgId, clientReadOnlyMetadata: undefined } : null;
+  const teams = uniqueTeams([selectedTeam]);
+  return authedUserFromParts({
+    userId,
+    displayName: displayNameFor(user),
+    primaryEmail: primaryEmailFor(user),
+    selectedTeam,
+    teams,
+    userBillingPlanId: null,
+    requestedTeamId,
+  });
+}
+
+function authedUserFromParts(input: {
+  userId: string;
+  displayName: string | null;
+  primaryEmail: string | null;
+  selectedTeam: TeamLike | null;
+  teams: readonly TeamLike[];
+  userBillingPlanId: string | null;
+  requestedTeamId: string | null;
+}): AuthedUser {
+  const teamIds = uniqueStrings([
+    input.selectedTeam?.id,
+    ...input.teams.map((team) => team.id),
+  ]);
+  const requestedTeam = input.requestedTeamId
+    ? input.teams.find((team) => team.id === input.requestedTeamId) ?? null
+    : null;
+  const billingTeam = requestedTeam ?? input.selectedTeam ?? (input.teams.length === 1 ? input.teams[0] : null);
+  const billingPlanId = planIdFromMetadata(billingTeam?.clientReadOnlyMetadata) ?? input.userBillingPlanId;
+
+  return {
+    id: input.userId,
+    displayName: input.displayName,
+    primaryEmail: input.primaryEmail,
     billingCustomerType: billingTeam ? "team" : "user",
-    billingTeamId: billingTeam?.id ?? user.id,
-    selectedTeamId: selectedTeam?.id ?? null,
-    teams: teams.map((team) => ({
+    billingTeamId: billingTeam?.id ?? input.userId,
+    selectedTeamId: input.selectedTeam?.id ?? null,
+    teams: input.teams.map((team) => ({
       id: team.id,
       billingPlanId: planIdFromMetadata(team.clientReadOnlyMetadata),
     })),
     teamIds,
-    userBillingPlanId,
+    userBillingPlanId: input.userBillingPlanId,
     billingPlanId,
   };
 }
+
+type ClerkUserLike = {
+  readonly id: string;
+  readonly fullName?: string | null;
+  readonly firstName?: string | null;
+  readonly lastName?: string | null;
+  readonly primaryEmailAddress?: { emailAddress?: string | null } | null;
+  readonly emailAddresses?: readonly { emailAddress?: string | null }[];
+  readonly clientReadOnlyMetadata?: unknown;
+};
 
 type StackUserLike = {
   readonly id: string;
@@ -144,6 +250,22 @@ function uniqueTeams(values: readonly (TeamLike | null | undefined)[]): readonly
     teams.push(team);
   }
   return teams;
+}
+
+function displayNameFor(user: ClerkUserLike | null): string | null {
+  if (!user) return null;
+  if (user.fullName?.trim()) return user.fullName.trim();
+  const joined = [user.firstName, user.lastName]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return joined || null;
+}
+
+function primaryEmailFor(user: ClerkUserLike | null): string | null {
+  return user?.primaryEmailAddress?.emailAddress
+    ?? user?.emailAddresses?.find((email) => email.emailAddress)?.emailAddress
+    ?? null;
 }
 
 function normalizedOptionalString(value: string | null | undefined): string | null {

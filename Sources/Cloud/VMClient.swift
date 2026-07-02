@@ -452,7 +452,7 @@ actor VMClient {
             req.timeoutInterval = timeoutSeconds
         }
         req.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Stack-Refresh-Token")
+        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
         if let teamID, !teamID.isEmpty {
             req.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
         }

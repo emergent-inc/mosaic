@@ -1,11 +1,11 @@
 import Foundation
 
 /// The token pair carried by a cmux auth callback URL
-/// (`cmux://auth-callback?stack_refresh=…&stack_access=…`).
+/// (`cmux://auth-callback?cmux_refresh=…&cmux_access=…`).
 public struct AuthCallbackPayload: Equatable, Sendable {
-    /// The Stack refresh token from the callback.
+    /// The cmux-native refresh token from the callback.
     public let refreshToken: String
-    /// The Stack access token from the callback.
+    /// The cmux-native access token from the callback.
     public let accessToken: String
 
     /// Creates a payload from its parts.

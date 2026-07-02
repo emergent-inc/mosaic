@@ -1,15 +1,20 @@
 import Foundation
-public import StackAuth
 
-/// The token-store seam for hosts that seed tokens out-of-band: StackAuth's
-/// `TokenStoreProtocol` plus the seeding/snapshot operations the macOS
-/// hosted-browser sign-in flow needs.
+/// The token-store seam for hosts that seed tokens out-of-band.
 ///
-/// The browser callback delivers tokens out-of-band (not through a Stack SDK
-/// sign-in call), so the flow seeds them directly into the store the
-/// `StackClientApp` was built over, and clears them with a compare-style guard
-/// so a racing sign-in's fresh tokens are never wiped by a stale sign-out.
-public protocol StackAuthTokenStoreProtocol: TokenStoreProtocol, Sendable {
+/// The browser callback delivers cmux-native tokens after the website verifies
+/// a Clerk session, so the flow seeds them directly into the store used by the
+/// native API client and clears them with a compare-style guard so a racing
+/// sign-in's fresh tokens are never wiped by a stale sign-out.
+public protocol StackAuthTokenStoreProtocol: Sendable {
+    /// The currently stored access token, without refreshing it.
+    func getStoredAccessToken() async -> String?
+    /// The currently stored refresh token, if any.
+    func getStoredRefreshToken() async -> String?
+    /// Replace both stored tokens.
+    func setTokens(accessToken: String?, refreshToken: String?) async
+    /// Clear both stored tokens.
+    func clearTokens() async
     /// Store a freshly delivered token pair.
     func seed(accessToken: String, refreshToken: String) async
     /// Clear both tokens unconditionally.

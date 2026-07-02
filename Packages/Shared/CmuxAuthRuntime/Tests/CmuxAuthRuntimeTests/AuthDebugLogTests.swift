@@ -15,14 +15,14 @@ import Testing
 
     @Test func redactionCoversCallbackTokenQueryValues() {
         let redacted = AuthDebugLog.redacted(
-            "auth.callback.complete url=cmux-dev://auth-callback?stack_refresh=refresh-secret&stack_access=access-secret&cmux_auth_state=state-secret"
+            "auth.callback.complete url=cmux-dev://auth-callback?cmux_refresh=refresh-secret&cmux_access=access-secret&cmux_auth_state=state-secret"
         )
 
         #expect(redacted.contains("refresh-secret") == false)
         #expect(redacted.contains("access-secret") == false)
         #expect(redacted.contains("state-secret") == false)
-        #expect(redacted.contains("stack_refresh=<redacted>"))
-        #expect(redacted.contains("stack_access=<redacted>"))
+        #expect(redacted.contains("cmux_refresh=<redacted>"))
+        #expect(redacted.contains("cmux_access=<redacted>"))
         #expect(redacted.contains("cmux_auth_state=<redacted>"))
     }
 

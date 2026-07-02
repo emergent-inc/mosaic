@@ -8,17 +8,15 @@ import {
 } from "./errors";
 import { recordSpanTiming } from "./timings";
 
-/** Bearer + refresh token pair the mac app stashes in keychain. */
-export type StackBearer = { accessToken: string; refreshToken: string };
+/** Native bearer token the mac app stashes in keychain. */
+export type NativeBearer = { accessToken: string };
 
-export function parseBearer(request: Request): StackBearer | null {
+export function parseBearer(request: Request): NativeBearer | null {
   const auth = request.headers.get("authorization");
-  const refresh = request.headers.get("x-stack-refresh-token");
-  if (!auth?.toLowerCase().startsWith("bearer ") || !refresh) return null;
+  if (!auth?.toLowerCase().startsWith("bearer ")) return null;
   const accessToken = auth.slice("bearer ".length).trim();
-  const refreshToken = refresh.trim();
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken };
+  if (!accessToken) return null;
+  return { accessToken };
 }
 
 export type AuthedVmRouteContext = {
@@ -200,7 +198,7 @@ export function requestedVmTeamIdFromRequest(request: Request): string | null {
   );
 }
 
-function requiresBrowserMutationProtection(method: string, bearer: StackBearer | null): boolean {
+function requiresBrowserMutationProtection(method: string, bearer: NativeBearer | null): boolean {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase())) {
     return false;
   }

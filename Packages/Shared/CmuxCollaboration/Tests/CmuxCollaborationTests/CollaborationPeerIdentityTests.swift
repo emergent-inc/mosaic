@@ -70,4 +70,27 @@ struct CollaborationPeerIdentityTests {
 
         #expect(CollaborationPeerIdentity.defaultColorPalette.contains(identity.color))
     }
+
+    @Test
+    func authenticatedParticipantUsesClerkUserIDAsStableParticipantID() {
+        let identity = CollaborationPeerIdentity.authenticatedParticipant(
+            peerID: "peer-live-session-1",
+            userID: "user_2abc",
+            displayName: "Dorsa",
+            colorPalette: ["#111111", "#222222", "#333333"]
+        )
+        let nextProcessIdentity = CollaborationPeerIdentity.authenticatedParticipant(
+            peerID: "peer-live-session-2",
+            userID: "user_2abc",
+            displayName: "Dorsa",
+            colorPalette: ["#111111", "#222222", "#333333"]
+        )
+
+        #expect(identity.peerID == "peer-live-session-1")
+        #expect(nextProcessIdentity.peerID == "peer-live-session-2")
+        #expect(identity.participantID == "user_2abc")
+        #expect(nextProcessIdentity.participantID == "user_2abc")
+        #expect(identity.color == nextProcessIdentity.color)
+        #expect(identity.displayName == "Dorsa")
+    }
 }

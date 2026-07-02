@@ -49,11 +49,11 @@ struct HostBrowserSignInFlowHarness {
     }
 
     func callbackURL(state: String) -> URL {
-        URL(string: "cmux-dev://auth-callback?stack_refresh=refresh-1&stack_access=access-1&cmux_auth_state=\(state)")!
+        URL(string: "cmux-dev://auth-callback?cmux_refresh=refresh-1&cmux_access=access-1&cmux_auth_state=\(state)")!
     }
 
     func fallbackCallbackURL() -> URL {
-        URL(string: "cmux-dev://auth-callback?stack_refresh=refresh-1&stack_access=access-1")!
+        URL(string: "cmux-dev://auth-callback?cmux_refresh=refresh-1&cmux_access=access-1")!
     }
 
     func callbackState(_ session: FakeBrowserAuthSession) -> String {
