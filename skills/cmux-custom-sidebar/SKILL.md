@@ -15,7 +15,7 @@ This skill is the workflow summary. The complete authoring contract (every suppo
 
 ```bash
 cmux docs sidebars
-curl -fsSL https://raw.githubusercontent.com/manaflow-ai/cmux/main/docs/custom-sidebars.md
+curl -fsSL https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/custom-sidebars.md
 ```
 
 ## Workflow

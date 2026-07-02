@@ -38,7 +38,7 @@ Manual release steps if not using the command:
 ./scripts/release-pretag-guard.sh
 git tag vX.Y.Z
 git push origin vX.Y.Z
-gh run watch --repo manaflow-ai/cmux
+gh run watch --repo emergent-inc/cmux
 ```
 
 ## Notes

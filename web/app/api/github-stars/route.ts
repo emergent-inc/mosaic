@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     async (span) => {
       try {
         const res = await fetch(
-          "https://api.github.com/repos/manaflow-ai/cmux",
+          "https://api.github.com/repos/emergent-inc/cmux",
           {
             headers: { Accept: "application/vnd.github.v3+json" },
             next: { revalidate: 300 },

@@ -31,4 +31,4 @@ Allowed cases:
 
 When reporting, name the heavy loader or large agent file, the interactive path it now runs on, and the cached/off-main accessor or background parser that should replace it.
 
-Background: this rule exists because a synchronous `RestorableAgentSessionIndex.load()` added to the workspace/tab close paths froze the UI 350ms-1.8s on every close (https://github.com/manaflow-ai/cmux/pull/5669).
+Background: this rule exists because a synchronous `RestorableAgentSessionIndex.load()` added to the workspace/tab close paths froze the UI 350ms-1.8s on every close (https://github.com/emergent-inc/cmux/pull/5669).

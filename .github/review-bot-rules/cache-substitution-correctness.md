@@ -21,4 +21,4 @@ Allowed cases:
 
 When reporting, name the authoritative source that was replaced, the persistence/undo consumer that now trusts the cache, and which of cold or stale is unhandled.
 
-Background: substituting an opportunistic cache for a fresh load in the close-history snapshot introduced a stale-undo edge (https://github.com/manaflow-ai/cmux/pull/5669); the durable fix made the cache event-driven so it is always current.
+Background: substituting an opportunistic cache for a fresh load in the close-history snapshot introduced a stale-undo edge (https://github.com/emergent-inc/cmux/pull/5669); the durable fix made the cache event-driven so it is always current.

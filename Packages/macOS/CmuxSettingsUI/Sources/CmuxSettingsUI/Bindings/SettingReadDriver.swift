@@ -14,7 +14,7 @@ import SwiftUI
 /// `NotificationCenter.notifications(named:)` sequence. Relying on `weak self`
 /// inside the loop is **not** sufficient: the task is suspended at the `await`
 /// and never re-evaluates `self` for an idle key, so the subscription would
-/// leak (see https://github.com/manaflow-ai/cmux/issues/5302).
+/// leak (see https://github.com/emergent-inc/cmux/issues/5302).
 ///
 /// The driver is store-agnostic — it only needs an `AsyncStream<Value>` — so
 /// the same path works for every key kind (UserDefaults, JSON, secret) and

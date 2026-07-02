@@ -18,11 +18,11 @@ Prepare a new release for cmux. This command updates the changelog, bumps the ve
    - Categorize changes into: Added, Changed, Fixed, Removed
    - **Collect contributors:** For each PR referenced in the commits, get the author:
      ```bash
-     gh pr view <N> --repo manaflow-ai/cmux --json author --jq '.author.login'
+     gh pr view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
      ```
    - Also check for linked issue reporters (the person who filed the bug):
      ```bash
-     gh issue view <N> --repo manaflow-ai/cmux --json author --jq '.author.login'
+     gh issue view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
      ```
    - Build a deduplicated list of all contributor `@handle`s for the release
 
@@ -63,8 +63,8 @@ Prepare a new release for cmux. This command updates the changelog, bumps the ve
     - Push tag: `git push origin vX.Y.Z`
 
 11. **Monitor the release workflow**
-    - Watch: `gh run watch --repo manaflow-ai/cmux`
-    - Verify the release appears at: https://github.com/manaflow-ai/cmux/releases
+    - Watch: `gh run watch --repo emergent-inc/cmux`
+    - Verify the release appears at: https://github.com/emergent-inc/cmux/releases
     - Check that the DMG is attached to the release
 
 12. **Verify homebrew cask update**
@@ -129,14 +129,14 @@ Credit the people who made each release happen. This builds community and encour
 ## [0.13.0] - 2025-01-30
 
 ### Added
-- New keyboard shortcut for quick tab switching ([#42](https://github.com/manaflow-ai/cmux/pull/42)) — thanks @contributor!
+- New keyboard shortcut for quick tab switching ([#42](https://github.com/emergent-inc/cmux/pull/42)) — thanks @contributor!
 
 ### Fixed
-- Memory leak when closing split panes ([#38](https://github.com/manaflow-ai/cmux/pull/38)) — thanks @fixer!
-- Notification badges not clearing properly ([#35](https://github.com/manaflow-ai/cmux/pull/35)) — thanks @reporter for the report!
+- Memory leak when closing split panes ([#38](https://github.com/emergent-inc/cmux/pull/38)) — thanks @fixer!
+- Notification badges not clearing properly ([#35](https://github.com/emergent-inc/cmux/pull/35)) — thanks @reporter for the report!
 
 ### Changed
-- Improved terminal rendering performance ([#40](https://github.com/manaflow-ai/cmux/pull/40))
+- Improved terminal rendering performance ([#40](https://github.com/emergent-inc/cmux/pull/40))
 
 ### Thanks to 4 contributors!
 

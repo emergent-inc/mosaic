@@ -79,7 +79,7 @@ function vercelCurlFetch(url, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
       "--deployment",
       parsed.origin,
       "--scope",
-      "manaflow",
+      "emergent.inc",
       "--",
       "--config",
       configPath,
@@ -115,7 +115,7 @@ try {
   const app = new StackServerApp({ projectId, publishableClientKey, secretServerKey });
   const suffix = `${Date.now()}-${randomBytes(3).toString("hex")}`;
   user = await app.createUser({
-    primaryEmail: `cmux-${project.stackLabel}-smoke+${suffix}@manaflow.dev`,
+    primaryEmail: `cmux-${project.stackLabel}-smoke+${suffix}@emergent.inc.dev`,
     primaryEmailVerified: true,
     primaryEmailAuthEnabled: true,
     password: randomBytes(24).toString("base64url"),

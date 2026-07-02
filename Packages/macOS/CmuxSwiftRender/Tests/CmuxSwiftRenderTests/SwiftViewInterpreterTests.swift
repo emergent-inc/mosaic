@@ -783,7 +783,7 @@ import Testing
 
     /// Authored source must never trap the interpreter: a non-finite or
     /// out-of-range double passed to `Int(...)` evaluates to nil instead of
-    /// crashing the process (https://github.com/manaflow-ai/cmux/pull/5275
+    /// crashing the process (https://github.com/emergent-inc/cmux/pull/5275
     /// review finding).
     @Test func intConversionOfNonFiniteDoubleDoesNotTrap() {
         let node = interp.evaluate("""

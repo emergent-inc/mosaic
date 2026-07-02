@@ -197,7 +197,7 @@ describe("agent page variants", () => {
                 <a href="?tab=cli">CLI tab</a>
                 <a href="#install">Install</a>
                 <a href="/download">Download</a>
-                <a href="https://github.com/manaflow-ai/cmux">GitHub</a>
+                <a href="https://github.com/emergent-inc/cmux">GitHub</a>
                 <img src="images/logo.png" alt="Logo" />
               </p>
             </main>
@@ -215,7 +215,7 @@ describe("agent page variants", () => {
       "[Install](https://cmux.com/docs/getting-started#install)",
     );
     expect(markdown).toContain("[Download](https://cmux.com/download)");
-    expect(markdown).toContain("[GitHub](https://github.com/manaflow-ai/cmux)");
+    expect(markdown).toContain("[GitHub](https://github.com/emergent-inc/cmux)");
     expect(markdown).toContain("![Logo](https://cmux.com/docs/images/logo.png)");
   });
 

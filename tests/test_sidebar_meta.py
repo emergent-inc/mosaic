@@ -55,7 +55,7 @@ def main() -> int:
     if not tag:
         print("Tip: set CMUX_TAG=<tag> when running this test to avoid socket conflicts.")
 
-    pr_url = "https://github.com/manaflow-ai/cmux/pull/337"
+    pr_url = "https://github.com/emergent-inc/cmux/pull/337"
 
     try:
         with cmux() as client:

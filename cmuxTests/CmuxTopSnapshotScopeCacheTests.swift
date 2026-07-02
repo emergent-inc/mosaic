@@ -8,7 +8,7 @@ import Foundation
 #endif
 
 // Regression coverage for the cmux-scope attribution cache used by system.top.
-// See https://github.com/manaflow-ai/cmux/issues/5756.
+// See https://github.com/emergent-inc/cmux/issues/5756.
 //
 // `.serialized` because these tests share the process-global cmux-top scope
 // cache (`CmuxTopProcessSnapshot.cachedCMUXScope` / `pruneCMUXScopeCache`); they
@@ -116,7 +116,7 @@ struct CmuxTopSnapshotScopeCacheTests {
     // The cache key is (pid, process start time), which an `exec` does not change.
     // A process first sampled in its fork-before-exec window, or one that execs
     // into a cmux-scoped command later, must be re-probed once the negative TTL
-    // elapses so it is eventually attributed (https://github.com/manaflow-ai/cmux/issues/5756).
+    // elapses so it is eventually attributed (https://github.com/emergent-inc/cmux/issues/5756).
     @Test func negativeScopeIsReprobedAfterTTLExpiry() {
         CmuxTopProcessSnapshot.pruneCMUXScopeCache(activeKeys: [])
         let cacheKey = CmuxTopProcessScopeCacheKey(

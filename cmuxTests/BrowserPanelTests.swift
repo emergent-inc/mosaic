@@ -145,7 +145,7 @@ private func withHiddenWebViewDiscardPolicyEnabled(_ body: () -> Void) {
 @MainActor
 @Suite(.serialized)
 struct BrowserHiddenWebViewDiscardMediaPlaybackTests {
-    /// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5409:
+    /// Regression coverage for https://github.com/emergent-inc/cmux/issues/5409:
     /// a hidden pane that is actively playing media (e.g. a backgrounded YouTube
     /// video) must be exempted from memory discard so switching workspaces does
     /// not stop playback or reload the page. The media_capture blocker only
@@ -167,7 +167,7 @@ struct BrowserHiddenWebViewDiscardMediaPlaybackTests {
     }
 
     /// An idle hidden pane (no playing media) must still be eligible for discard
-    /// so the memory bound from https://github.com/manaflow-ai/cmux/issues/4539
+    /// so the memory bound from https://github.com/emergent-inc/cmux/issues/4539
     /// is preserved.
     @Test func idlePaneWithoutMediaPlaybackStillSchedulesHiddenWebViewDiscard() {
         withHiddenWebViewDiscardPolicyEnabled {
@@ -236,7 +236,7 @@ final class BrowserHiddenWebViewDiscardManagerTests: XCTestCase {
         XCTAssertEqual(delegate.discardRequestCount, 0)
     }
 
-    // Regression coverage for https://github.com/manaflow-ai/cmux/issues/5261:
+    // Regression coverage for https://github.com/emergent-inc/cmux/issues/5261:
     // a main-frame provisional navigation (e.g. a cross-origin process swap in
     // flight) must block a hidden-webview discard from replacing the WKWebView.
     func testMainFrameProvisionalNavigationBlocksHiddenWebViewDiscardScheduling() {
@@ -255,7 +255,7 @@ final class BrowserHiddenWebViewDiscardManagerTests: XCTestCase {
         XCTAssertEqual(delegate.discardRequestCount, 0)
     }
 
-    // Regression coverage for https://github.com/manaflow-ai/cmux/issues/5261:
+    // Regression coverage for https://github.com/emergent-inc/cmux/issues/5261:
     // a discard countdown that elapsed across system sleep must restart from
     // wake instead of discarding the webview immediately after wake, while
     // WebKit pages are still reconnecting/renavigating.
@@ -275,7 +275,7 @@ final class BrowserHiddenWebViewDiscardManagerTests: XCTestCase {
         XCTAssertTrue(manager.hasScheduledDiscard)
     }
 
-    // Regression coverage for https://github.com/manaflow-ai/cmux/issues/5261:
+    // Regression coverage for https://github.com/emergent-inc/cmux/issues/5261:
     // sleep cancels an armed discard countdown and blocks re-arming until wake,
     // and wake re-arms a fresh countdown without discarding.
     func testSystemSleepCancelsArmedHiddenWebViewDiscard() {
@@ -2967,7 +2967,7 @@ final class BrowserWindowPortalLifecycleTests: XCTestCase {
         )
     }
 
-    // Regression guard for https://github.com/manaflow-ai/cmux/issues/5733.
+    // Regression guard for https://github.com/emergent-inc/cmux/issues/5733.
     // The per-keystroke find-overlay lookup (`searchOverlayPanelId`) used to scan
     // `entriesByWebViewId.values`, copying each `Entry` struct. Every copy
     // performs 3 `objc_copyWeak` ops (weak webView/containerView/anchorView)
@@ -3052,7 +3052,7 @@ final class BrowserWindowPortalLifecycleTests: XCTestCase {
         XCTAssertNil(portal.searchOverlayPanelId(for: window))
     }
 
-    // Crash regression for https://github.com/manaflow-ai/cmux/issues/5733.
+    // Crash regression for https://github.com/emergent-inc/cmux/issues/5733.
     //
     // The production crash was a main-thread stack-exhaustion SIGSEGV
     // (KERN_PROTECTION_FAILURE, "Could not determine thread index for stack guard
@@ -4202,7 +4202,7 @@ final class OmnibarNativeTextFieldCaretTests: XCTestCase {
 
     private func installOmnibarField(
         in window: NSWindow,
-        stringValue: String = "https://github.com/manaflow-ai/cmux"
+        stringValue: String = "https://github.com/emergent-inc/cmux"
     ) -> OmnibarNativeTextField {
         let field = OmnibarNativeTextField(frame: NSRect(x: 12, y: 80, width: 360, height: 24))
         field.font = .systemFont(ofSize: 12)
@@ -4227,7 +4227,7 @@ final class OmnibarNativeTextFieldCaretTests: XCTestCase {
         field.mouseUp(with: makeMouseEvent(type: .leftMouseUp, location: pointInWindow, window: window))
     }
 
-    /// Regression for https://github.com/manaflow-ai/cmux/issues/5268: a single,
+    /// Regression for https://github.com/emergent-inc/cmux/issues/5268: a single,
     /// unmodified click that focuses the omnibar must leave a caret (zero-length
     /// selection) at the click position, not select the entire URL.
     func testSingleClickFocusPlacesCaretInsteadOfSelectingAll() {

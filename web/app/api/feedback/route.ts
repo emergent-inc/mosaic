@@ -9,7 +9,7 @@ import { recordSpanError, setSpanAttributes, withApiRouteSpan } from "../../../s
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const feedbackRecipient = "feedback@manaflow.com";
+const feedbackRecipient = "contact@emergent.inc";
 const maxAttachmentCount = 10;
 const maxAttachmentBytes = 4 * 1024 * 1024;
 // Keep multipart requests below Vercel Functions' 4.5 MB request-body limit.
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       const resend = new Resend(feedbackConfig.resendApiKey);
 
       const { error } = await resend.emails.send({
-        from: `Manaflow <${feedbackConfig.fromEmail}>`,
+        from: `emergent.inc <${feedbackConfig.fromEmail}>`,
         to: [feedbackRecipient],
         replyTo: email,
         subject,

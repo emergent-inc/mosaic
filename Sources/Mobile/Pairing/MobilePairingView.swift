@@ -26,7 +26,7 @@ struct MobilePairingView: View {
 
     private static let tailscaleDownloadURL = URL(string: "https://tailscale.com/download")!
     /// Where a Mac user goes to get mosaic for iPhone while the beta is invite-only.
-    private static let iphoneAppURL = URL(string: "https://github.com/manaflow-ai/mosaic#founders-edition")!
+    private static let iphoneAppURL = URL(string: "https://github.com/emergent-inc/mosaic#founders-edition")!
 
     var body: some View {
         ScrollView {

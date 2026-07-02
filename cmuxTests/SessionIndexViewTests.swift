@@ -138,7 +138,7 @@ final class SessionIndexViewTests: XCTestCase {
         )
     }
 
-    // Regression for https://github.com/manaflow-ai/cmux/issues/5262.
+    // Regression for https://github.com/emergent-inc/cmux/issues/5262.
     // cmux captures Codex's *internal* sandbox-policy `type`, which is a superset of
     // the values the `--sandbox` CLI flag accepts. A
     // `--dangerously-bypass-approvals-and-sandbox` launch round-trips to a captured
@@ -368,7 +368,7 @@ final class SessionIndexViewTests: XCTestCase {
         XCTAssertEqual(outcome.entries.map(\.sessionId), ["codex-transcript-match"])
     }
 
-    // Regression for https://github.com/manaflow-ai/cmux/issues/6302.
+    // Regression for https://github.com/emergent-inc/cmux/issues/6302.
     // The always-visible sidebar list is built from `scanAll()`, which loads
     // only each agent's 30 most-recent sessions across ALL folders and then
     // groups that already-capped pool by folder. A folder can therefore
@@ -642,7 +642,7 @@ final class SessionIndexViewTests: XCTestCase {
 
     /// Mirrors `AgentResumeArgv.portableClaudeResumeShellCommand`: the rendered claude
     /// resume command is wrapped as `/bin/sh -c '…'` so it parses in non-POSIX shells
-    /// (fish/csh/tcsh). https://github.com/manaflow-ai/cmux/issues/5639
+    /// (fish/csh/tcsh). https://github.com/emergent-inc/cmux/issues/5639
     private func posixShWrappedForTest(_ posixCommand: String) -> String {
         "/bin/sh -c '" + posixCommand.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }

@@ -156,7 +156,7 @@ private final class LockTouchingGitRunner: CommandRunning, @unchecked Sendable {
         }
         if arguments == ["remote", "-v"] {
             return CommandResult(
-                stdout: "origin\thttps://github.com/manaflow-ai/cmux.git (fetch)\n",
+                stdout: "origin\thttps://github.com/emergent-inc/cmux.git (fetch)\n",
                 stderr: "",
                 exitStatus: 0,
                 timedOut: false,
@@ -232,7 +232,7 @@ private func writeMinimalGitRepository(
     try indexData.write(to: gitURL.appendingPathComponent("index"))
     try """
     [remote "origin"]
-        url = https://github.com/manaflow-ai/cmux.git
+        url = https://github.com/emergent-inc/cmux.git
     """.write(
         to: gitURL.appendingPathComponent("config"),
         atomically: true,
@@ -470,7 +470,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
     func testSidebarPullRequestsIgnoreStaleWorkspaceLevelCacheWithoutPanelState() throws {
         let workspace = Workspace(title: "Test")
         let panelId = UUID()
-        let staleURL = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/1640"))
+        let staleURL = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/1640"))
 
         workspace.pullRequest = SidebarPullRequestState(
             number: 1640,
@@ -487,7 +487,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
     func testSidebarPullRequestsFilterBranchMismatchPerPanel() throws {
         let workspace = Workspace(title: "Test")
         let panelId = UUID()
-        let staleURL = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/1640"))
+        let staleURL = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/1640"))
 
         workspace.panelGitBranches[panelId] = SidebarGitBranchState(branch: "main", isDirty: false)
         workspace.panelPullRequests[panelId] = SidebarPullRequestState(
@@ -505,7 +505,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
         let workspace = Workspace(title: "Test")
         let firstPanelId = UUID()
         let secondPanelId = UUID()
-        let url = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/1640"))
+        let url = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/1640"))
 
         workspace.panelGitBranches[firstPanelId] = SidebarGitBranchState(branch: "feature/work", isDirty: false)
         workspace.panelGitBranches[secondPanelId] = SidebarGitBranchState(branch: "feature/work", isDirty: false)
@@ -793,7 +793,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
         let manager = TabManager()
         let workspace = try XCTUnwrap(manager.selectedWorkspace)
         let panelId = try XCTUnwrap(workspace.focusedPanelId)
-        let url = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/2722"))
+        let url = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/2722"))
 
         workspace.updatePanelGitBranch(
             panelId: panelId,
@@ -825,7 +825,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
             TerminalController.shared.setActiveTabManager(nil)
         }
         let response = TerminalController.shared.handleSocketLine(
-            "report_pr 2722 https://github.com/manaflow-ai/cmux/pull/2722 --label=PR --state=open --branch=issue-2722-git-index-lock-poll --tab=\(workspace.id.uuidString) --panel=\(panelId.uuidString)"
+            "report_pr 2722 https://github.com/emergent-inc/cmux/pull/2722 --label=PR --state=open --branch=issue-2722-git-index-lock-poll --tab=\(workspace.id.uuidString) --panel=\(panelId.uuidString)"
         )
         XCTAssertEqual(response, "OK")
         TerminalMutationBus.shared.drainForTesting()
@@ -900,7 +900,7 @@ final class WorkspacePullRequestSidebarTests: XCTestCase {
         let manager = TabManager()
         let workspace = try XCTUnwrap(manager.selectedWorkspace)
         let panelId = try XCTUnwrap(workspace.focusedPanelId)
-        let url = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/2746"))
+        let url = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/2746"))
 
         workspace.updatePanelGitBranch(
             panelId: panelId,

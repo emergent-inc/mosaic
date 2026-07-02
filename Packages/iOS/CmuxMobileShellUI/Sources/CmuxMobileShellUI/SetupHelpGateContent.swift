@@ -14,7 +14,7 @@ struct SetupHelpGateContent {
 
     /// Founders Edition page: cmux for Mac download plus TestFlight enrollment,
     /// used by the "Run cmux on your Mac" gate.
-    private static let setupHelpMacDownloadURL = URL(string: "https://github.com/manaflow-ai/cmux#founders-edition")!
+    private static let setupHelpMacDownloadURL = URL(string: "https://github.com/emergent-inc/cmux#founders-edition")!
 
     /// Maps a setup gate to its title, icon, copy, and optional link. Pure and
     /// scoped to the content type so the gate guidance is data, separate from

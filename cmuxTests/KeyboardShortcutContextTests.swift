@@ -286,7 +286,7 @@ final class KeyboardShortcutContextTests: XCTestCase {
     // "+" and "-" are dedicated keys typed WITHOUT Shift, so the event reports
     // character "+"/"-" with no Shift flag and a keyCode that is not the US
     // kVK_ANSI_Equal (24) / kVK_ANSI_Minus (27). The Cmd-=/Cmd-- zoom chords must
-    // still match from those keys. See https://github.com/manaflow-ai/cmux/pull/5163.
+    // still match from those keys. See https://github.com/emergent-inc/cmux/pull/5163.
     func testMarkdownZoomMatchesDedicatedPlusMinusKeysOnNonUSLayout() {
         // German QWERTZ: dedicated "+" key sits at the US RightBracket position
         // (keyCode 30) and produces "+" with no Shift; "-" sits at the US Slash

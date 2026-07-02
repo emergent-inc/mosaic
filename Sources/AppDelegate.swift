@@ -17366,7 +17366,7 @@ private extension NSWindow {
         // The file-preview editor and any other standalone editable NSTextView
         // would otherwise lose plain/selection/word/line arrows to the original
         // NSWindow.performKeyEquivalent. Route them to the text view's keyDown so
-        // arrow navigation works as in any text editor (manaflow-ai/cmux#5227).
+        // arrow navigation works as in any text editor (emergent-inc/cmux#5227).
         if shouldDispatchEditableTextViewArrowViaFirstResponderKeyDown(
             keyCode: event.keyCode,
             firstResponderIsEditableTextView: firstResponderIsStandaloneEditableTextView,

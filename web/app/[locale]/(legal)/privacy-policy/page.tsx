@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
       <p>Last updated: June 23, 2026</p>
 
       <p>
-        Manaflow (the &ldquo;Company&rdquo;) is committed to maintaining robust
+        emergent.inc (the &ldquo;Company&rdquo;) is committed to maintaining robust
         privacy protections for its users. This Privacy Policy is designed to
         help you understand how we collect, use and safeguard the information you
         provide to us.
@@ -82,7 +82,7 @@ export default function PrivacyPolicyPage() {
         The Service is not directed to anyone under the age of 13. We do not
         knowingly collect information from anyone under 13. If you believe we
         have collected such information, please contact us at{" "}
-        <a href="mailto:founders@manaflow.com">founders@manaflow.com</a>.
+        <a href="mailto:contact@emergent.inc">contact@emergent.inc</a>.
       </p>
 
       <h2>II. Third-Party Services</h2>
@@ -157,7 +157,7 @@ export default function PrivacyPolicyPage() {
       </ul>
       <p>
         To exercise any of these rights, please contact us at{" "}
-        <a href="mailto:founders@manaflow.com">founders@manaflow.com</a>.
+        <a href="mailto:contact@emergent.inc">contact@emergent.inc</a>.
       </p>
 
       <h2>VI. Links to Other Websites</h2>
@@ -178,7 +178,7 @@ export default function PrivacyPolicyPage() {
       <p>
         If you have any questions regarding this Privacy Policy, please contact
         us at{" "}
-        <a href="mailto:founders@manaflow.com">founders@manaflow.com</a>.
+        <a href="mailto:contact@emergent.inc">contact@emergent.inc</a>.
       </p>
 
       <h2>IX. Data Retention</h2>
@@ -186,7 +186,7 @@ export default function PrivacyPolicyPage() {
         Crash reports and diagnostics are retained only as long as needed to
         diagnose and fix issues. You may request deletion of any data associated
         with you by contacting us at{" "}
-        <a href="mailto:founders@manaflow.com">founders@manaflow.com</a>.
+        <a href="mailto:contact@emergent.inc">contact@emergent.inc</a>.
       </p>
     </>
   );

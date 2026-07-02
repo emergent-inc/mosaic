@@ -16,7 +16,7 @@ import Testing
 ///
 /// `State(initialValue: DefaultsValueModel(...))` re-runs on every parent
 /// render, constructing throwaway models, so each leaked trio accumulates
-/// monotonically (see https://github.com/manaflow-ai/cmux/issues/5302).
+/// monotonically (see https://github.com/emergent-inc/cmux/issues/5302).
 ///
 /// This suite proves the model cancels its observation when it deallocates by
 /// observing the injected stream's `onTermination`: cancellation of the

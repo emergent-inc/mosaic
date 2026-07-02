@@ -1603,15 +1603,15 @@ final class WorkspaceRemoteDaemonManifestTests: XCTestCase {
           "schemaVersion": 1,
           "appVersion": "0.62.0",
           "releaseTag": "v0.62.0",
-          "releaseURL": "https://github.com/manaflow-ai/cmux/releases/tag/v0.62.0",
+          "releaseURL": "https://github.com/emergent-inc/cmux/releases/tag/v0.62.0",
           "checksumsAssetName": "cmuxd-remote-checksums.txt",
-          "checksumsURL": "https://github.com/manaflow-ai/cmux/releases/download/v0.62.0/cmuxd-remote-checksums.txt",
+          "checksumsURL": "https://github.com/emergent-inc/cmux/releases/download/v0.62.0/cmuxd-remote-checksums.txt",
           "entries": [
             {
               "goOS": "linux",
               "goArch": "amd64",
               "assetName": "cmuxd-remote-linux-amd64",
-              "downloadURL": "https://github.com/manaflow-ai/cmux/releases/download/v0.62.0/cmuxd-remote-linux-amd64",
+              "downloadURL": "https://github.com/emergent-inc/cmux/releases/download/v0.62.0/cmuxd-remote-linux-amd64",
               "sha256": "abc123"
             }
           ]
@@ -4386,7 +4386,7 @@ final class GhosttyMouseFocusTests: XCTestCase {
         }
     }
 
-    // Regression: https://github.com/manaflow-ai/cmux/issues/3459
+    // Regression: https://github.com/emergent-inc/cmux/issues/3459
     // `cmux themes set` always encodes the selection with conditional
     // `light:...,dark:...` syntax, even when both sides are identical. Ghostty
     // mis-applies that conditional syntax (background lands but foreground/palette
@@ -4404,7 +4404,7 @@ final class GhosttyMouseFocusTests: XCTestCase {
         }
     }
 
-    // Regression: https://github.com/manaflow-ai/cmux/issues/3459
+    // Regression: https://github.com/emergent-inc/cmux/issues/3459
     // Exact repro from the issue body: selecting a single light theme for both
     // sides must force ghostty to apply the light theme's dark-on-light
     // foreground instead of leaving the default white foreground.
@@ -4427,7 +4427,7 @@ final class GhosttyMouseFocusTests: XCTestCase {
         }
     }
 
-    // Regression: https://github.com/manaflow-ai/cmux/issues/3459
+    // Regression: https://github.com/emergent-inc/cmux/issues/3459
     // `cmux themes set --light X` encodes `theme = light:X`, which ghostty treats
     // as conditional config. cmux injects the resolved plain theme for the
     // explicitly named light side, but must NOT force it onto dark appearances
@@ -4450,7 +4450,7 @@ final class GhosttyMouseFocusTests: XCTestCase {
         }
     }
 
-    // Regression: https://github.com/manaflow-ai/cmux/issues/3459
+    // Regression: https://github.com/emergent-inc/cmux/issues/3459
     // Mirror of the one-sided case for `theme = dark:Y` (only the dark side set).
     func testConditionalThemeOverrideResolvesExplicitSideOnlyForDarkOnlyTheme() throws {
         try withTempConfig("theme = dark:Catppuccin Mocha\n") { path in
@@ -5481,7 +5481,7 @@ final class ZshShellIntegrationHandoffTests: XCTestCase {
             contents: """
             #!/bin/sh
             printf invoked > "$CMUX_GH_MARKER"
-            printf '2746\\tOPEN\\thttps://github.com/manaflow-ai/cmux/pull/2746\\n'
+            printf '2746\\tOPEN\\thttps://github.com/emergent-inc/cmux/pull/2746\\n'
             """
         )
         let socketFD = try bindUnixSocket(at: socketPath.path)
@@ -5532,7 +5532,7 @@ final class ZshShellIntegrationHandoffTests: XCTestCase {
             contents: """
             #!/bin/sh
             printf invoked > "$CMUX_GH_MARKER"
-            printf '2746\\tOPEN\\thttps://github.com/manaflow-ai/cmux/pull/2746\\n'
+            printf '2746\\tOPEN\\thttps://github.com/emergent-inc/cmux/pull/2746\\n'
             """
         )
         let socketFD = try bindUnixSocket(at: socketPath.path)

@@ -5326,7 +5326,7 @@ final class BrowserLinkOpenSettingsTests: XCTestCase {
     @Test func resolvesDottedHostWithPortAsHTTPSURL() throws {
         // URL(string: "example.com:8443") parses "example.com" as a scheme, so
         // the resolver must recover the bare host:port shape instead of
-        // sending it to search (https://github.com/manaflow-ai/cmux/issues/5913:
+        // sending it to search (https://github.com/emergent-inc/cmux/issues/5913:
         // the omnibar inline completion displays history hosts this way).
         let resolved = try #require(resolveBrowserNavigableURL("example.com:8443"))
         #expect(resolved.scheme == "https")

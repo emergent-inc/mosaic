@@ -1921,7 +1921,7 @@ final class WindowBrowserPortal: NSObject {
     private var webViewByAnchorId: [ObjectIdentifier: ObjectIdentifier] = [:]
 
 #if DEBUG
-    // Test seam for https://github.com/manaflow-ai/cmux/issues/5733. Installs a
+    // Test seam for https://github.com/emergent-inc/cmux/issues/5733. Installs a
     // slot container into the portal host without registering an Entry, so tests
     // can prove the find-overlay lookup resolves off the live slot view hierarchy
     // rather than by enumerating/copying Entry values out of entriesByWebViewId

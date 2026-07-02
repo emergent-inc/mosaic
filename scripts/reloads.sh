@@ -10,7 +10,7 @@ BUNDLE_SET=0
 DERIVED_SET=0
 TAG=""
 # Matches CmuxStateDirectory (non-TCC ~/.local/state/cmux) where the app/CLI now
-# read the last-socket-path markers (https://github.com/manaflow-ai/cmux/issues/5146).
+# read the last-socket-path markers (https://github.com/emergent-inc/cmux/issues/5146).
 # Resolve the real account home via getpwuid (the same syscall
 # homeDirectoryForCurrentUser uses) rather than $HOME, which a shell can override.
 # perl ships with macOS and returns the full home path even when it contains spaces;

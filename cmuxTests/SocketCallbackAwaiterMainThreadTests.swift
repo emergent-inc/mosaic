@@ -8,7 +8,7 @@ import Testing
 #endif
 
 /// Regression coverage for
-/// https://github.com/manaflow-ai/cmux/issues/5830.
+/// https://github.com/emergent-inc/cmux/issues/5830.
 ///
 /// Control-socket command handlers that wait on an async callback (a
 /// `browser eval`/`screenshot`/`cookies` WKWebView completion, etc.) bridge it

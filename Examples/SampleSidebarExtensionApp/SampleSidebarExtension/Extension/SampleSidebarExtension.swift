@@ -4,7 +4,7 @@ import SwiftUI
 @main
 final class SampleSidebarExtension: @MainActor CmuxSidebarExtension {
     static let manifest = CmuxExtensionManifest(
-        id: "co.manaflow.CMUXExtKitSampleSidebarApp.Extension",
+        id: "co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension",
         displayName: String(localized: "sampleSidebar.manifest.displayName", defaultValue: "CMUX Sample Sidebar Extension"),
         readScopes: [
             .workspaceList,

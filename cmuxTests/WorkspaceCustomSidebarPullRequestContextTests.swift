@@ -177,7 +177,7 @@ final class WorkspaceCustomSidebarPullRequestContextTests: XCTestCase {
             panelId: panelId,
             number: 5314,
             label: "PR",
-            url: URL(string: "https://github.com/manaflow-ai/cmux/pull/5314")!,
+            url: URL(string: "https://github.com/emergent-inc/cmux/pull/5314")!,
             status: .open
         )
         // The focused-panel `pullRequest` mirror only refreshes while its panel
@@ -194,7 +194,7 @@ final class WorkspaceCustomSidebarPullRequestContextTests: XCTestCase {
         }
         XCTAssertEqual(fields["number"], .int(5314))
         XCTAssertEqual(fields["status"], .string("open"))
-        XCTAssertEqual(fields["url"], .string("https://github.com/manaflow-ai/cmux/pull/5314"))
+        XCTAssertEqual(fields["url"], .string("https://github.com/emergent-inc/cmux/pull/5314"))
         XCTAssertEqual(fields["stale"], .bool(false))
     }
 

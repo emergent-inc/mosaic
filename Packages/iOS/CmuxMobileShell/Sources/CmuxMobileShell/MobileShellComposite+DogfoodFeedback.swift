@@ -16,7 +16,7 @@ extension MobileShellComposite {
     /// `~/.cache/cmux-dogfood-feedback/` catches it.
     ///
     /// This is the privileged path of the Send Feedback feature: it is offered
-    /// only to `@manaflow.ai` users on an active mobile-host connection (see
+    /// only to `@emergent.inc` users on an active mobile-host connection (see
     /// ``MobileFeedbackRoute/resolve(email:hasActiveMacConnection:hostSupportsAgentSink:)``), and is NOT
     /// `#if DEBUG`-gated, so it works on Release (beta/prod) builds for the team.
     ///

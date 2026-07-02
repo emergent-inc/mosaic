@@ -15,7 +15,7 @@ public protocol RemotePTYBridgeStrings: Sendable {
     var daemonTimeout: String { get }
     /// Wraps the daemon's PTY-allocation diagnostic (the dynamic `message`
     /// names the failing device and cause; see
-    /// https://github.com/manaflow-ai/cmux/issues/5185).
+    /// https://github.com/emergent-inc/cmux/issues/5185).
     func allocationDiagnostic(_ message: String) -> String
     /// Generic attach-failure fallback.
     var attachFailed: String { get }

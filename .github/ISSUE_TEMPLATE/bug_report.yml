@@ -50,7 +50,7 @@ body:
     id: nightly-repro
     attributes:
       label: Can you reproduce this on cmux NIGHTLY?
-      description: "Please test with the latest NIGHTLY build first: https://github.com/manaflow-ai/cmux?tab=readme-ov-file#nightly-builds"
+      description: "Please test with the latest NIGHTLY build first: https://github.com/emergent-inc/cmux?tab=readme-ov-file#nightly-builds"
       options:
         - Yes, it still reproduces on NIGHTLY
         - No, it does not reproduce on NIGHTLY

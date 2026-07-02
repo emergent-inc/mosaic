@@ -80,7 +80,7 @@ def _git_stub() -> str:
         fi
 
         if [ "$1" = "remote" ] && [ "$2" = "get-url" ] && [ "$3" = "origin" ]; then
-          printf 'https://github.com/manaflow-ai/cmux.git\\n'
+          printf 'https://github.com/emergent-inc/cmux.git\\n'
           exit 0
         fi
 

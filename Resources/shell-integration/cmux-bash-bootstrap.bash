@@ -11,7 +11,7 @@
 # most notably `eval "$(starship init bash)"`, which appends starship_precmd.
 # We must remove only this bootstrap and keep whatever the user appended, so
 # hooks like starship_precmd keep running on every prompt instead of being wiped
-# after the first one (https://github.com/manaflow-ai/cmux/issues/5164).
+# after the first one (https://github.com/emergent-inc/cmux/issues/5164).
 #
 # How: strip everything up to and including the marker at the end of this script
 # (the marker is the last occurrence, so the greedy ## match lands on it), which

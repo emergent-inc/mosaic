@@ -96,9 +96,9 @@ TAGGED_POINT_ID="${HOST_BUNDLE_ID}.${SIDEBAR_POINT_NAME}"
 example_specs() {
   case "$1" in
     sample)
-      echo "Examples/SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj|CMUXExtKitSampleSidebarApp|CMUX ExtKit Sample Sidebar|co.manaflow.CMUXExtKitSampleSidebarApp|Contents/Extensions/CMUX ExtKit Sample Sidebar Extension.appex|co.manaflow.CMUXExtKitSampleSidebarApp.Extension" ;;
+      echo "Examples/SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj|CMUXExtKitSampleSidebarApp|CMUX ExtKit Sample Sidebar|co.emergent.inc.CMUXExtKitSampleSidebarApp|Contents/Extensions/CMUX ExtKit Sample Sidebar Extension.appex|co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension" ;;
     tabs)
-      echo "Examples/TabsVisibleSidebar/TabsVisibleSidebar.xcodeproj|TabsVisibleSidebar|TabsVisibleSidebar|co.manaflow.TabsVisibleSidebar|Contents/Extensions/Tabs Visible Sidebar Extension.appex|co.manaflow.TabsVisibleSidebar.Extension" ;;
+      echo "Examples/TabsVisibleSidebar/TabsVisibleSidebar.xcodeproj|TabsVisibleSidebar|TabsVisibleSidebar|co.emergent.inc.TabsVisibleSidebar|Contents/Extensions/Tabs Visible Sidebar Extension.appex|co.emergent.inc.TabsVisibleSidebar.Extension" ;;
   esac
 }
 
@@ -163,7 +163,7 @@ build_install_example() {
   rm -rf "$derived" "$derived.log"
 
   # Do NOT re-sign. xcodebuild already ad-hoc signs with the appex's entitlements
-  # (App Sandbox + the co.manaflow.cmux.sidebar app group) bound in. Those entitlements
+  # (App Sandbox + the co.emergent.inc.cmux.sidebar app group) bound in. Those entitlements
   # are required for the extension's XPC connection to the host; a bare
   # `codesign --force --sign -` re-sign strips them, and the extension then connects and
   # immediately drops ("Extension Blocked / lost the connection") with no recovery.

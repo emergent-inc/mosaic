@@ -2,7 +2,7 @@ import CMUXAgentLaunch
 import Foundation
 import Testing
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5427.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5427.
 ///
 /// cmux injects Claude Code's hooks from the `Resources/bin/claude` wrapper,
 /// which is first on `PATH` inside cmux terminals and re-injects the hook

@@ -1,4 +1,4 @@
-# Ghostty Fork Changes (manaflow-ai/ghostty)
+# Ghostty Fork Changes (emergent-inc/ghostty)
 
 This repo uses a fork of Ghostty for local patches that aren't upstream yet.
 When we change the fork, update this document and the parent submodule SHA.
@@ -6,7 +6,7 @@ When we change the fork, update this document and the parent submodule SHA.
 ## Fork update checklist
 
 1) Make changes in `ghostty/`.
-2) Commit and push to `manaflow-ai/ghostty`.
+2) Commit and push to `emergent-inc/ghostty`.
 3) Update this file with the new change summary + conflict notes.
 4) In the parent repo: `git add ghostty` and commit the submodule SHA.
 
@@ -21,25 +21,25 @@ IOSurface) while keeping its PTY alive, then rebuild them on re-show. The API
 returns whether the message was enqueued so the embedder only advances its
 realize/unrealize mirror state on success. The push is `.instant`
 (non-blocking) so it never stalls the embedder's main thread waiting on the
-renderer. See manaflow-ai/ghostty branch `feat-renderer-realized-offscreen`,
+renderer. See emergent-inc/ghostty branch `feat-renderer-realized-offscreen`,
 the copy-mode read branches `issue-6170-surface-read-screen-text-main` and
 `issue-6170-screen-clipboard-text`, and
-https://github.com/manaflow-ai/cmux/issues/4607. The corresponding prebuilt
+https://github.com/emergent-inc/cmux/issues/4607. The corresponding prebuilt
 archive is published at
-https://github.com/manaflow-ai/ghostty/releases/tag/xcframework-49cb510f759aa109a5b1d30329583195155e58a4-crashsubdir-cmux-crash-v1
+https://github.com/emergent-inc/ghostty/releases/tag/xcframework-49cb510f759aa109a5b1d30329583195155e58a4-crashsubdir-cmux-crash-v1
 and pinned in `scripts/ghosttykit-checksums.txt`.
 
 The prior head was refreshed from upstream `main` on May 1, 2026.
 Earlier cmux pinned fork head: `34cbf180d`, merging the surface registry
-serialization for https://github.com/manaflow-ai/cmux/issues/5458 (`e5c962a72`,
+serialization for https://github.com/emergent-inc/cmux/issues/5458 (`e5c962a72`,
 landed on cmux `main`) into the iOS render bounded-acquire line (`f78189ac1`)
 combined with the cmd-click link refresh under mouse reporting (`df789cd4b`,
-manaflow-ai/ghostty#71 and PRs #74 through #79) for
-https://github.com/manaflow-ai/cmux/issues/5128. This keeps the previous head's
-manual embedded IO patch in https://github.com/manaflow-ai/ghostty/pull/53,
-the Metal renderer row rebuild guard for https://github.com/manaflow-ai/cmux/issues/3369,
+emergent-inc/ghostty#71 and PRs #74 through #79) for
+https://github.com/emergent-inc/cmux/issues/5128. This keeps the previous head's
+manual embedded IO patch in https://github.com/emergent-inc/ghostty/pull/53,
+the Metal renderer row rebuild guard for https://github.com/emergent-inc/cmux/issues/3369,
 the URL/path regex bound for spaced file paths followed by prose, and the iOS
-render serial-queue bounded acquire fix from manaflow-ai/ghostty#80. This head
+render serial-queue bounded acquire fix from emergent-inc/ghostty#80. This head
 keeps the cmux theme picker hooks, exposes the manual surface IO needed by
 libghostty iOS clients, bounds shaped glyph iteration during IME/preedit row
 rebuilds, prevents Cmd-hover from highlighting normal sentence text after a file
@@ -47,7 +47,7 @@ path, and lets Cmd-click open links even while a mouse-reporting alt-screen TUI
 (Claude Code, Codex) has grabbed the mouse.
 It also supports Ctrl-N and Ctrl-P in the cmux theme picker.
 The corresponding prebuilt archive is published at
-https://github.com/manaflow-ai/ghostty/releases/tag/xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-cmux-crash-v1
+https://github.com/emergent-inc/ghostty/releases/tag/xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-cmux-crash-v1
 and pinned in `scripts/ghosttykit-checksums.txt`.
 
 ### 1) macOS display link restart on display changes
@@ -183,7 +183,7 @@ tend to conflict together during rebases.
 ### 10) Manual embedded IO for libghostty iOS
 
 - Commit: `22fa801f8` (Expose manual embedded IO for iOS)
-- PR: https://github.com/manaflow-ai/ghostty/pull/53
+- PR: https://github.com/emergent-inc/ghostty/pull/53
 - Files:
   - `include/ghostty.h`
   - `src/Surface.zig`
@@ -221,7 +221,7 @@ tend to conflict together during rebases.
     `GenericRenderer(Metal).rebuildRow` no longer assumes terminal cells and
     shaped glyph cells have one-to-one cardinality.
   - The first commit intentionally preserves the panic so cmux can keep the
-    required failing-test-then-fix history for https://github.com/manaflow-ai/cmux/issues/3369.
+    required failing-test-then-fix history for https://github.com/emergent-inc/cmux/issues/3369.
 
 ### 12) URL/path regex bounds for spaced file paths
 
@@ -243,22 +243,22 @@ tend to conflict together during rebases.
 
 ### 13) Cmd-click opens links under mouse reporting (alt-screen TUIs)
 
-- Commits (manaflow-ai/ghostty#71, by @doronpr):
+- Commits (emergent-inc/ghostty#71, by @doronpr):
   - `1c7613c95` (fix: open terminal links on cmd-click even when mouse reporting is active)
   - `55d154a97` (fix: gate link refresh on effective mouse-reporting state)
-- Follow-up commits (manaflow-ai/ghostty#74):
+- Follow-up commits (emergent-inc/ghostty#74):
   - `354e3626b` (fix: suppress mouse reporting for the full cmd-clicked link click)
   - `d1dbbec9b` (fix: key cmd-click link suppression on the modifier, not over_link)
-- Follow-up commit (manaflow-ai/ghostty#75):
+- Follow-up commit (emergent-inc/ghostty#75):
   - `76ead3eae` (fix: also suppress motion reports during a cmd-clicked link drag)
-- Follow-up commit (manaflow-ai/ghostty#76):
+- Follow-up commit (emergent-inc/ghostty#76):
   - `f24195271` (fix: scope cmd-click link suppression to left button; clear stale hover)
-- Follow-up commits (manaflow-ai/ghostty#77):
+- Follow-up commits (emergent-inc/ghostty#77):
   - `5998abddd` (fix: latch cmd-click link suppression for the click lifecycle)
   - `59fb750c0` (fix: clear link-click latch unconditionally on left release)
-- Follow-up commit (manaflow-ai/ghostty#78):
+- Follow-up commit (emergent-inc/ghostty#78):
   - `9f014e98b` (fix: open latched link on release with press-time chord; defer-clear latch)
-- Follow-up commit (manaflow-ai/ghostty#79):
+- Follow-up commit (emergent-inc/ghostty#79):
   - `df789cd4b` (fix: only open a latched link click that started on a link)
 - Files:
   - `src/Surface.zig`
@@ -274,7 +274,7 @@ tend to conflict together during rebases.
     `mouseLinkRefreshAllowedState`) that also allows local link handling when the
     ctrl/super modifier is held, using the effective mouse-reporting state
     (`isMouseReporting()`), matching iTerm2 and macOS Terminal. Fixes
-    https://github.com/manaflow-ai/cmux/issues/5128.
+    https://github.com/emergent-inc/cmux/issues/5128.
   - Follow-up (#74): `mouseButtonCallback` ran the link-open path only on
     release, while the mouse-report path ran for both press and release and only
     broke out for the shift-release case — so a Cmd-click over a link still
@@ -337,7 +337,7 @@ The current cmux pin is the merged head `34cbf180d`, which merges the surface
 registry serialization (`e5c962a72`, section 14, landed on cmux `main` via
 branch `issue-5458-surface-registry-lock`) into the Cmd-click link fix line
 (`df789cd4b`, section 13) on top of the iOS render bounded-acquire pin
-(`f78189ac1`). It is reachable from `manaflow-ai/ghostty` through branch
+(`f78189ac1`). It is reachable from `emergent-inc/ghostty` through branch
 `issue-5128-alt-screen-link-open`. Published
 `xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-cmux-crash-v1`
 and pinned its archive checksum in `scripts/ghosttykit-checksums.txt`. The
@@ -373,7 +373,7 @@ These files change frequently upstream; be careful when rebasing the fork:
   - Verified cmux with `./scripts/reload.sh --tag gtyup`.
   - Published `xcframework-d3117e03ea19665bc83a28f7e0428c63937e6140` and pinned
     its archive checksum in `scripts/ghosttykit-checksums.txt`.
-  - Merged `d3117e03e` into fork `main` with https://github.com/manaflow-ai/ghostty/pull/48.
+  - Merged `d3117e03e` into fork `main` with https://github.com/emergent-inc/ghostty/pull/48.
   - Package GhosttyKit archives with `COPYFILE_DISABLE=1`; the archive validator rejects
     macOS AppleDouble entries such as `._GhosttyKit.xcframework`.
 
@@ -406,7 +406,7 @@ These files change frequently upstream; be careful when rebasing the fork:
     `CMUX_GHOSTTYKIT_NO_PREBUILT=1 ./scripts/ensure-ghosttykit.sh`.
   - Published `xcframework-22fa801f88f96fa842e54ecce6c34a5d36003d19` and pinned
     its archive checksum in `scripts/ghosttykit-checksums.txt`.
-  - Merged https://github.com/manaflow-ai/ghostty/pull/53 so the submodule SHA is
+  - Merged https://github.com/emergent-inc/ghostty/pull/53 so the submodule SHA is
     reachable from fork `main`.
 
 - `src/terminal/osc.zig`

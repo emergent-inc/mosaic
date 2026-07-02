@@ -28,7 +28,7 @@ final class KeyboardShortcutSettingsFileStoreMigrationTests: XCTestCase {
         try writeSettingsFile(
             """
             {
-              "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux-settings.schema.json",
+              "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux-settings.schema.json",
               "shortcuts": {
                 "showNotifications": "cmd+i"
               }
@@ -51,7 +51,7 @@ final class KeyboardShortcutSettingsFileStoreMigrationTests: XCTestCase {
         )
 
         let primaryContents = try String(contentsOf: primaryURL, encoding: .utf8)
-        XCTAssertTrue(primaryContents.contains(#""$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json""#))
+        XCTAssertTrue(primaryContents.contains(#""$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json""#))
         XCTAssertTrue(primaryContents.contains(#""showNotifications": "cmd+i""#))
     }
 

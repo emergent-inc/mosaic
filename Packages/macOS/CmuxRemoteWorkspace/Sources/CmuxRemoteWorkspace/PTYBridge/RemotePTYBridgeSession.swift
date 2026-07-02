@@ -528,7 +528,7 @@ extension RemotePTYBridgeServer {
             // device and the devpts/ptmxmode cause) instead of collapsing it into a
             // generic message. Key off the daemon's stable marker only, so an
             // unrelated error that merely mentions a device path is not leaked.
-            // See https://github.com/manaflow-ai/cmux/issues/5185.
+            // See https://github.com/emergent-inc/cmux/issues/5185.
             if lowered.contains("could not allocate a remote pty") {
                 return strings.allocationDiagnostic(message)
             }

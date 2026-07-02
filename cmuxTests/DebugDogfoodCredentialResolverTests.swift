@@ -36,23 +36,23 @@ import Testing
 
     @Test func dogfoodEnvCredentialsResolve() {
         let resolver = makeResolver(environment: [
-            "CMUX_DOGFOOD_STACK_EMAIL": "lawrence@manaflow.ai",
+            "CMUX_DOGFOOD_STACK_EMAIL": "lawrence@emergent.inc",
             "CMUX_DOGFOOD_STACK_PASSWORD": "dog-pw",
         ])
         #expect(
             resolver.resolve()
-                == .init(email: "lawrence@manaflow.ai", password: "dog-pw")
+                == .init(email: "lawrence@emergent.inc", password: "dog-pw")
         )
     }
 
     @Test func uitestEnvCredentialsResolveWhenNoDogfood() {
         let resolver = makeResolver(environment: [
-            "CMUX_UITEST_STACK_EMAIL": "agent-dev@manaflow.ai",
+            "CMUX_UITEST_STACK_EMAIL": "agent-dev@emergent.inc",
             "CMUX_UITEST_STACK_PASSWORD": "agent-pw",
         ])
         #expect(
             resolver.resolve()
-                == .init(email: "agent-dev@manaflow.ai", password: "agent-pw")
+                == .init(email: "agent-dev@emergent.inc", password: "agent-pw")
         )
     }
 
@@ -62,14 +62,14 @@ import Testing
         // the dog Mac comes up as lawrence, not the agent account.
         let resolver = makeResolver(
             environment: [
-                "CMUX_UITEST_STACK_EMAIL": "agent-dev@manaflow.ai",
+                "CMUX_UITEST_STACK_EMAIL": "agent-dev@emergent.inc",
                 "CMUX_UITEST_STACK_PASSWORD": "agent-pw",
             ],
             files: [
                 (
                     "/secrets/cmuxterm-dev.env",
                     """
-                    CMUX_DOGFOOD_STACK_EMAIL=lawrence@manaflow.ai
+                    CMUX_DOGFOOD_STACK_EMAIL=lawrence@emergent.inc
                     CMUX_DOGFOOD_STACK_PASSWORD=dog-pw
                     """
                 ),
@@ -77,21 +77,21 @@ import Testing
         )
         #expect(
             resolver.resolve()
-                == .init(email: "lawrence@manaflow.ai", password: "dog-pw")
+                == .init(email: "lawrence@emergent.inc", password: "dog-pw")
         )
     }
 
     @Test func envWinsOverFileWithinSameAccount() {
         let resolver = makeResolver(
             environment: [
-                "CMUX_DOGFOOD_STACK_EMAIL": "env@manaflow.ai",
+                "CMUX_DOGFOOD_STACK_EMAIL": "env@emergent.inc",
                 "CMUX_DOGFOOD_STACK_PASSWORD": "env-pw",
             ],
             files: [
                 (
                     "/secrets/cmuxterm-dev.env",
                     """
-                    CMUX_DOGFOOD_STACK_EMAIL=file@manaflow.ai
+                    CMUX_DOGFOOD_STACK_EMAIL=file@emergent.inc
                     CMUX_DOGFOOD_STACK_PASSWORD=file-pw
                     """
                 ),
@@ -99,7 +99,7 @@ import Testing
         )
         #expect(
             resolver.resolve()
-                == .init(email: "env@manaflow.ai", password: "env-pw")
+                == .init(email: "env@emergent.inc", password: "env-pw")
         )
     }
 
@@ -112,12 +112,12 @@ import Testing
                 switch path {
                 case "/secrets/cmuxterm-dev.env":
                     return """
-                    CMUX_DOGFOOD_STACK_EMAIL=devfile@manaflow.ai
+                    CMUX_DOGFOOD_STACK_EMAIL=devfile@emergent.inc
                     CMUX_DOGFOOD_STACK_PASSWORD=dev-pw
                     """
                 case "/secrets/cmux.env":
                     return """
-                    CMUX_DOGFOOD_STACK_EMAIL=cmuxfile@manaflow.ai
+                    CMUX_DOGFOOD_STACK_EMAIL=cmuxfile@emergent.inc
                     CMUX_DOGFOOD_STACK_PASSWORD=cmux-pw
                     """
                 default:
@@ -127,7 +127,7 @@ import Testing
         )
         #expect(
             resolver.resolve()
-                == .init(email: "devfile@manaflow.ai", password: "dev-pw")
+                == .init(email: "devfile@emergent.inc", password: "dev-pw")
         )
     }
 
@@ -141,7 +141,7 @@ import Testing
                     return "# no stack creds here\nE2B_API_KEY=abc\n"
                 case "/secrets/cmux.env":
                     return """
-                    CMUX_UITEST_STACK_EMAIL=agent@manaflow.ai
+                    CMUX_UITEST_STACK_EMAIL=agent@emergent.inc
                     CMUX_UITEST_STACK_PASSWORD=agent-pw
                     """
                 default:
@@ -151,14 +151,14 @@ import Testing
         )
         #expect(
             resolver.resolve()
-                == .init(email: "agent@manaflow.ai", password: "agent-pw")
+                == .init(email: "agent@emergent.inc", password: "agent-pw")
         )
     }
 
     @Test func partialCredentialPairIsIgnored() {
         // Email without password must not yield a half-resolved credential.
         let resolver = makeResolver(environment: [
-            "CMUX_DOGFOOD_STACK_EMAIL": "lawrence@manaflow.ai",
+            "CMUX_DOGFOOD_STACK_EMAIL": "lawrence@emergent.inc",
         ])
         #expect(resolver.resolve() == nil)
     }
@@ -175,13 +175,13 @@ import Testing
         let parsed = DebugDogfoodCredentialResolver.parseEnvFile(
             """
             # comment line
-            CMUX_DOGFOOD_STACK_EMAIL="lawrence@manaflow.ai"
+            CMUX_DOGFOOD_STACK_EMAIL="lawrence@emergent.inc"
             CMUX_DOGFOOD_STACK_PASSWORD='secret value'
 
             BLANK_AFTER=1
             """
         )
-        #expect(parsed["CMUX_DOGFOOD_STACK_EMAIL"] == "lawrence@manaflow.ai")
+        #expect(parsed["CMUX_DOGFOOD_STACK_EMAIL"] == "lawrence@emergent.inc")
         #expect(parsed["CMUX_DOGFOOD_STACK_PASSWORD"] == "secret value")
         #expect(parsed["BLANK_AFTER"] == "1")
     }
@@ -200,18 +200,18 @@ import Testing
         // uitest keys that AuthLaunchOptions reads.
         let merged = MacAuthComposition.environmentWithDogfoodAutoSignIn(
             [
-                "CMUX_UITEST_STACK_EMAIL": "agent-dev@manaflow.ai",
+                "CMUX_UITEST_STACK_EMAIL": "agent-dev@emergent.inc",
                 "CMUX_UITEST_STACK_PASSWORD": "agent-pw",
             ],
             secretFilePaths: ["/secrets/cmuxterm-dev.env"],
             readFile: { _ in
                 """
-                CMUX_DOGFOOD_STACK_EMAIL=lawrence@manaflow.ai
+                CMUX_DOGFOOD_STACK_EMAIL=lawrence@emergent.inc
                 CMUX_DOGFOOD_STACK_PASSWORD=dog-pw
                 """
             }
         )
-        #expect(merged["CMUX_UITEST_STACK_EMAIL"] == "lawrence@manaflow.ai")
+        #expect(merged["CMUX_UITEST_STACK_EMAIL"] == "lawrence@emergent.inc")
         #expect(merged["CMUX_UITEST_STACK_PASSWORD"] == "dog-pw")
     }
 
@@ -220,13 +220,13 @@ import Testing
         // resolver returns that same pair, so the merge is a no-op.
         let merged = MacAuthComposition.environmentWithDogfoodAutoSignIn(
             [
-                "CMUX_UITEST_STACK_EMAIL": "agent-dev@manaflow.ai",
+                "CMUX_UITEST_STACK_EMAIL": "agent-dev@emergent.inc",
                 "CMUX_UITEST_STACK_PASSWORD": "agent-pw",
             ],
             secretFilePaths: ["/secrets/cmuxterm-dev.env"],
             readFile: { _ in nil }
         )
-        #expect(merged["CMUX_UITEST_STACK_EMAIL"] == "agent-dev@manaflow.ai")
+        #expect(merged["CMUX_UITEST_STACK_EMAIL"] == "agent-dev@emergent.inc")
         #expect(merged["CMUX_UITEST_STACK_PASSWORD"] == "agent-pw")
     }
 

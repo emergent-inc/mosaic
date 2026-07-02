@@ -298,25 +298,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Feedback is unavailable right now. Email founders@manaflow.com instead."
+            "value": "Feedback is unavailable right now. Email contact@emergent.inc instead."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在フィードバックを送信できません。代わりに founders@manaflow.com までメールしてください。"
+            "value": "現在フィードバックを送信できません。代わりに contact@emergent.inc までメールしてください。"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Відгуки зараз недоступні. Напишіть на founders@manaflow.com."
+            "value": "Відгуки зараз недоступні. Напишіть на contact@emergent.inc."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 피드백을 사용할 수 없습니다. 대신 founders@manaflow.com으로 이메일을 보내주세요."
+            "value": "현재 피드백을 사용할 수 없습니다. 대신 contact@emergent.inc로 이메일을 보내주세요."
           }
         }
       }
@@ -501,25 +501,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You can also reach us at founders@manaflow.com."
+            "value": "A human will read this. You can also reach us at contact@emergent.inc."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "founders@manaflow.com 宛てに直接ご連絡いただくこともできます。"
+            "value": "人間のチームメンバーが確認します。contact@emergent.inc 宛てに直接ご連絡いただくこともできます。"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ви також можете написати нам на founders@manaflow.com."
+            "value": "Людина з команди це прочитає. Ви також можете написати нам на contact@emergent.inc."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "founders@manaflow.com으로도 연락하실 수 있습니다."
+            "value": "팀원이 직접 확인합니다. contact@emergent.inc로도 연락하실 수 있습니다."
           }
         }
       }
@@ -617,25 +617,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You can also reach us at founders@manaflow.com."
+            "value": "You can also reach us at contact@emergent.inc."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "founders@manaflow.com 宛てに直接ご連絡いただくこともできます。"
+            "value": "contact@emergent.inc 宛てに直接ご連絡いただくこともできます。"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ви також можете написати нам на founders@manaflow.com."
+            "value": "Ви також можете написати нам на contact@emergent.inc."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "founders@manaflow.com으로도 연락하실 수 있습니다."
+            "value": "contact@emergent.inc로도 연락하실 수 있습니다."
           }
         }
       }

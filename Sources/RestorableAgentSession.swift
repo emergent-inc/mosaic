@@ -407,7 +407,7 @@ enum AgentResumeCommandBuilder {
         // shell (fish/csh/tcsh included), so token-bearing commands are wrapped in
         // `/bin/sh -c '…'` to parse everywhere; the cwd guard stays outside so
         // cd-prefix rewriting keeps composing.
-        // https://github.com/manaflow-ai/cmux/issues/5639
+        // https://github.com/emergent-inc/cmux/issues/5639
         let shellCommand: String
         switch kind {
         case .claude:
@@ -568,7 +568,7 @@ enum AgentResumeCommandBuilder {
             guard let preserved = AgentLaunchSanitizer.preservedArguments(kind: "claude", args: original.tail) else { return nil }
             // Mirror the resume path: route through the `claude` wrapper (not the
             // captured real binary) so cmux hooks fire on the forked session.
-            // See https://github.com/manaflow-ai/cmux/issues/5427.
+            // See https://github.com/emergent-inc/cmux/issues/5427.
             return ["claude", "--resume", sessionId, "--fork-session"] + preserved
         case .codex:
             let original = commandParts(launchCommand: launchCommand, fallbackExecutable: "codex")

@@ -131,7 +131,7 @@ extension SurfaceResumeCommandCanonicalizer {
             // Mirror claude: route a stale codex executable (a PATH-managed path
             // whose file is gone) through the codex wrapper token instead of a
             // bare `codex`, so the restored codex surface keeps cmux hooks.
-            // https://github.com/manaflow-ai/cmux/issues/5639
+            // https://github.com/emergent-inc/cmux/issues/5639
             return replacingStaleWrapperRoutedExecutable(
                 in: command,
                 words: words,

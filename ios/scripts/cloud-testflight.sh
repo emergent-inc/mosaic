@@ -28,7 +28,7 @@
 #
 # Relies on the upload-testflight.sh re-sign + aps-environment=production gate
 # (shipped with this lane; a superset of the copy in PR
-# https://github.com/manaflow-ai/cmux/pull/5647 with the same re-sign/gates plus
+# https://github.com/emergent-inc/cmux/pull/5647 with the same re-sign/gates plus
 # main's --external support preserved) to make a push-working beta. This lane
 # only feeds the archive in; it deliberately does NOT duplicate that signing
 # logic. Without the re-sign, the export still runs but the unsigned archive's

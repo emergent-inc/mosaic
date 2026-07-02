@@ -2526,7 +2526,7 @@ final class AppDelegateShortcutRoutingTests: XCTestCase {
     }
 
     func testGhosttyConfigDoesNotRetainNumberedGotoTabFallback() throws {
-        // Regression for https://github.com/manaflow-ai/cmux/issues/5189.
+        // Regression for https://github.com/emergent-inc/cmux/issues/5189.
         // cmux owns "Select Workspace 1…9" (default ⌘1–9) through KeyboardShortcutSettings.
         // Ghostty's built-in super+1…8 = goto_tab and super+9 = last_tab fallbacks must be
         // unbound — exactly like cmux already unbinds super+d / super+w — so the numbered

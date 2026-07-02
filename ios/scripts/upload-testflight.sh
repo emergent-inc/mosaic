@@ -69,7 +69,7 @@ On the manual signing path the exported app is RE-SIGNED with the full
 entitlements before upload. The archive is built unsigned (to avoid
 distribution-cert churn), so -exportArchive re-adds only the profile baseline
 and silently DROPS app-capability entitlements like aps-environment. That is
-the https://github.com/manaflow-ai/cmux/pull/5496 regression that killed
+the https://github.com/emergent-inc/cmux/pull/5496 regression that killed
 beta/prod push. A config-level entitlements file alone does not prove the
 entitlement reaches the signed binary; only codesign -d --entitlements on the
 exported app does. So the re-sign merges Config/cmux-release.entitlements into
@@ -637,7 +637,7 @@ fi
 # com.apple.developer.team-identifier, get-task-allow, beta-reports-active) and
 # SILENTLY DROPS app-capability entitlements such as aps-environment. This
 # regressed in
-# https://github.com/manaflow-ai/cmux/pull/5496 (June 2026): the signed beta IPA
+# https://github.com/emergent-inc/cmux/pull/5496 (June 2026): the signed beta IPA
 # had aps-environment absent entirely, so the device registered no push token and
 # beta/prod push was dead. The per-config entitlements file fix
 # (Config/cmux-release.entitlements) is necessary but NOT sufficient on its own:
@@ -661,7 +661,7 @@ fi
 # ID's current capabilities, not editing this script or the Release file.
 #
 # This runs on the MANUAL signing path only: it re-signs with the named
-# distribution cert from the local keychain ("Apple Distribution: Manaflow,
+# distribution cert from the local keychain ("Apple Distribution: emergent.inc,
 # Inc."), which is present for local/fleet-archive beta cuts. The cmux iOS app is
 # a single self-contained bundle (no Frameworks/, no PlugIns/, GhosttyKit is
 # static), so only the top-level .app is signed; there is no nested code to
@@ -673,7 +673,7 @@ if [[ "$SIGNING" == "manual" ]]; then
   # CODE_SIGN_ENTITLEMENTS = Config/cmux-release.entitlements, so default to that
   # path rather than parsing xcodebuild -showBuildSettings (slower, more brittle).
   RELEASE_ENTITLEMENTS="${IOS_RELEASE_ENTITLEMENTS:-$IOS_DIR/Config/cmux-release.entitlements}"
-  RESIGN_IDENTITY="${IOS_DISTRIBUTION_IDENTITY:-Apple Distribution: Manaflow, Inc. (7WLXT3NR37)}"
+  RESIGN_IDENTITY="${IOS_DISTRIBUTION_IDENTITY:-Apple Distribution: emergent.inc (7WLXT3NR37)}"
 
   if [[ ! -f "$RELEASE_ENTITLEMENTS" ]]; then
     echo "error: re-sign needs the Release entitlements file but it is missing: $RELEASE_ENTITLEMENTS (set IOS_RELEASE_ENTITLEMENTS to override)" >&2

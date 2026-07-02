@@ -6,7 +6,7 @@ import Testing
 /// The control-plane files (socket, markers, password) must resolve **outside**
 /// the macOS TCC-protected app-data roots, or the separately-signed `cmux` CLI
 /// re-triggers the "access data from other apps" prompt on every agent hook
-/// (https://github.com/manaflow-ai/cmux/issues/5146).
+/// (https://github.com/emergent-inc/cmux/issues/5146).
 @Suite struct CmuxStateDirectoryTests {
     @Test func resolvesUnderLocalStateNotLibrary() {
         let home = URL(fileURLWithPath: "/Users/test-user", isDirectory: true)
@@ -104,7 +104,7 @@ import Testing
 
     /// When an atomic move fails (e.g. cross-device) but the copy succeeds, the
     /// legacy original is removed so no stale credential copy is left behind in the
-    /// TCC-protected directory (https://github.com/manaflow-ai/cmux/issues/5146).
+    /// TCC-protected directory (https://github.com/emergent-inc/cmux/issues/5146).
     @Test func copyFallbackRemovesLegacyAfterSuccessfulCopy() throws {
         let legacyDir = tempDir()
         let destDir = tempDir()
