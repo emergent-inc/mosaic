@@ -396,6 +396,8 @@ final class CollaborationRuntime {
     static let shared = CollaborationRuntime()
     static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
     private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
+    private static let terminalInitialRenderGridScrollbackLines = 10_000
+    private static let terminalLiveRenderGridScrollbackLines = 0
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
@@ -419,6 +421,7 @@ final class CollaborationRuntime {
     private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
+    private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
@@ -512,6 +515,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
         hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalsByID.removeValue(forKey: terminalID)
+        mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
@@ -526,6 +530,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
         Task {
             try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data))
+            scheduleTerminalRenderGridSnapshot(terminalID: terminalID)
         }
     }
 
@@ -1209,6 +1214,7 @@ final class CollaborationRuntime {
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
+        mirroredTerminalRenderGridSequencesByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
         terminalStatesByID.removeAll()
@@ -1499,12 +1505,11 @@ final class CollaborationRuntime {
         Task {
             do {
                 try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
-                if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
-                   !replay.data.isEmpty {
-                    try await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
-                } else {
-                    try await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
-                }
+                try await sendTerminalRenderGridSnapshotIfPossible(
+                    terminalID: terminalID,
+                    scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    requireLiveScrollbackBottom: false
+                )
             } catch {
                 lastErrorMessage = error.localizedDescription
             }
@@ -1555,6 +1560,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
         hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
+        mirroredTerminalRenderGridSequencesByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
         terminalStatesByID.removeAll()
@@ -1571,12 +1577,11 @@ final class CollaborationRuntime {
             )
             Task {
                 try? await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor))
-                if let replay = MobileTerminalByteTee.shared.replayState(surfaceID: terminal.id),
-                   !replay.data.isEmpty {
-                    try? await send(.terminalOutput(terminalID: terminalID, sequence: replay.seq, data: replay.data))
-                } else {
-                    try? await sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
-                }
+                try? await sendTerminalRenderGridSnapshotIfPossible(
+                    terminalID: terminalID,
+                    scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    requireLiveScrollbackBottom: false
+                )
             }
         }
     }
@@ -1624,6 +1629,7 @@ final class CollaborationRuntime {
         panel.surface.suppressPassiveMouseInput = true
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
+        mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
@@ -1631,9 +1637,21 @@ final class CollaborationRuntime {
         )
     }
 
-    private func handleRemoteTerminalOutput(terminalID: String, data: Data, caretPeerID: String?) {
+    private func handleRemoteTerminalOutput(terminalID: String, sequence: UInt64, data: Data, caretPeerID: String?) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
-        panel.surface.processRemoteOutput(data)
+        let endSequence = sequence &+ UInt64(data.count)
+        if let renderGridSequence = mirroredTerminalRenderGridSequencesByID[terminalID] {
+            guard endSequence > renderGridSequence else { return }
+            if sequence < renderGridSequence {
+                let trimCount = Int(renderGridSequence - sequence)
+                guard trimCount < data.count else { return }
+                panel.surface.processRemoteOutput(Data(data.dropFirst(trimCount)))
+            } else {
+                panel.surface.processRemoteOutput(data)
+            }
+        } else {
+            panel.surface.processRemoteOutput(data)
+        }
         if let peer = peerVisibleToThisClient(caretPeerID) {
             panel.surface.hostedView.showTerminalCollaboratorCaret(
                 peerID: peer.peerID,
@@ -1645,11 +1663,19 @@ final class CollaborationRuntime {
 
     private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        if let renderGridSequence = mirroredTerminalRenderGridSequencesByID[terminalID],
+           frame.stateSeq < renderGridSequence {
+            return
+        }
         var mirrorFrame = frame
         mirrorFrame.modes.removeAll { mode in
             !mode.ansi && mode.code == 1004
         }
         panel.surface.processRemoteOutput(mirrorFrame.vtPatchBytes())
+        mirroredTerminalRenderGridSequencesByID[terminalID] = max(
+            mirroredTerminalRenderGridSequencesByID[terminalID] ?? 0,
+            frame.stateSeq
+        )
     }
 
     private func handleRemoteTerminalInput(terminalID: String, data: Data, fromPeerID: String?) {
@@ -1920,6 +1946,7 @@ final class CollaborationRuntime {
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
     }
 
@@ -1988,6 +2015,7 @@ final class CollaborationRuntime {
             if peer.peerID != peerIdentity.peerID {
                 peersByID[peer.peerID] = peer
                 refreshPeerSummaries()
+                sendHostedTerminalSeedsForNewPeer()
             }
         case "peer.left":
             let left = try decoder.decode(CollaborationPeerLeftWire.self, from: data)
@@ -2026,7 +2054,12 @@ final class CollaborationRuntime {
         case "terminal.output":
             let output = try decoder.decode(CollaborationTerminalOutputWire.self, from: data)
             if let bytes = Data(base64Encoded: output.dataBase64) {
-                handleRemoteTerminalOutput(terminalID: output.terminalID, data: bytes, caretPeerID: output.caretPeerID)
+                handleRemoteTerminalOutput(
+                    terminalID: output.terminalID,
+                    sequence: output.sequence,
+                    data: bytes,
+                    caretPeerID: output.caretPeerID
+                )
             }
         case "terminal.render_grid":
             let renderGrid = try decoder.decode(CollaborationTerminalRenderGridWire.self, from: data)
@@ -2074,21 +2107,44 @@ final class CollaborationRuntime {
         }
     }
 
-    private func sendTerminalRenderGridSnapshotIfPossible(terminalID: String) async throws {
+    private func sendTerminalRenderGridSnapshotIfPossible(
+        terminalID: String,
+        scrollbackLines: Int,
+        requireLiveScrollbackBottom: Bool
+    ) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
-        guard Self.shouldSendTerminalRenderGridSnapshot(for: panel) else { return }
+        guard !requireLiveScrollbackBottom || Self.shouldSendTerminalRenderGridSnapshot(for: panel) else { return }
         let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
             ?? MobileTerminalByteTee.shared.currentSequence(surfaceID: panel.id)
             ?? 0
         guard let snapshot = panel.surface.mobileRenderGridFrame(
             stateSeq: stateSeq,
-            full: true
+            full: true,
+            scrollbackLines: scrollbackLines
         ) else { return }
         try await send(CollaborationTerminalRenderGridWire(
             type: "terminal.render_grid",
             terminalID: terminalID,
             frame: snapshot.frame
         ))
+    }
+
+    private func sendHostedTerminalSeedsForNewPeer() {
+        let terminals = hostedTerminalsByID.compactMap { terminalID, weakPanel -> (String, TerminalPanel)? in
+            guard let panel = weakPanel.panel else { return nil }
+            return (terminalID, panel)
+        }
+        guard !terminals.isEmpty else { return }
+        Task {
+            for (terminalID, panel) in terminals {
+                try? await send(.terminalOpen(terminalID: terminalID, descriptor: terminalDescriptor(for: panel)))
+                try? await sendTerminalRenderGridSnapshotIfPossible(
+                    terminalID: terminalID,
+                    scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    requireLiveScrollbackBottom: false
+                )
+            }
+        }
     }
 
     private static func shouldSendTerminalRenderGridSnapshot(for panel: TerminalPanel) -> Bool {
@@ -2100,7 +2156,11 @@ final class CollaborationRuntime {
         hostedTerminalRenderGridSnapshotTasksByID[terminalID] = Task { [weak self] in
             await Task.yield()
             if !Task.isCancelled {
-                try? await self?.sendTerminalRenderGridSnapshotIfPossible(terminalID: terminalID)
+                try? await self?.sendTerminalRenderGridSnapshotIfPossible(
+                    terminalID: terminalID,
+                    scrollbackLines: Self.terminalLiveRenderGridScrollbackLines,
+                    requireLiveScrollbackBottom: true
+                )
             }
             await MainActor.run {
                 self?.hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)
