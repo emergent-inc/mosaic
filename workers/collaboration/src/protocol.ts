@@ -1,5 +1,6 @@
 export interface PeerInfo {
   peerID: string;
+  participantID: string;
   displayName: string;
   color: string;
 }
@@ -27,8 +28,12 @@ export function parsePeer(value: unknown): PeerInfo | null {
   if (typeof record.peerID !== "string" || record.peerID.trim() === "") return null;
   if (typeof record.displayName !== "string" || record.displayName.trim() === "") return null;
   if (typeof record.color !== "string" || record.color.trim() === "") return null;
+  const participantID = typeof record.participantID === "string" && record.participantID.trim() !== ""
+    ? record.participantID
+    : record.peerID;
   return {
     peerID: record.peerID,
+    participantID,
     displayName: record.displayName,
     color: record.color,
   };

@@ -320,7 +320,7 @@ public struct AppSection: View {
                 configurationReview: .action,
                 searchAnchorID: "setting:app:terminal-config",
                 String(localized: "settings.app.configWindow", defaultValue: "Terminal Config"),
-                subtitle: String(localized: "settings.app.configWindow.subtitle", defaultValue: "Open the cmux terminal config and generated preview in one utility window."),
+                subtitle: String(localized: "settings.app.configWindow.subtitle", defaultValue: "Open terminal config for non-color settings. Terminal colors are fixed to Cursor Dark."),
                 controlWidth: Self.columnWidth
             ) {
                 Button(String(localized: "settings.app.configWindow.openButton", defaultValue: "Open Config")) {

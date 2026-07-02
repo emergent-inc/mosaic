@@ -1,6 +1,6 @@
 public import Foundation
 
-/// Stores and normalizes collaboration invite codes shown in the rejoin UI.
+/// Stores and normalizes collaboration invite codes.
 public struct CollaborationInviteCodeStore {
     /// The default key used for recently joined collaboration sessions.
     public static let defaultRecentSessionCodesKey = "collaboration.recentSessionCodes"

@@ -7,6 +7,11 @@ extension CMUXCLI {
     static let cmuxThemesBlockStart = "# cmux themes start"
     static let cmuxThemesBlockEnd = "# cmux themes end"
     static let cmuxThemesReloadNotificationName = "com.cmuxterm.themes.reload-config"
+    static let cmuxEnforcedTerminalThemeName = "Cursor Dark"
+    static let cmuxThemeChangesDisabledMessage = String(
+        localized: "cli.themes.disabled",
+        defaultValue: "Terminal theme is managed by cmux and cannot be changed."
+    )
 
     struct ThemeSelection {
         let rawValue: String?
@@ -239,14 +244,6 @@ extension CMUXCLI {
     ) throws {
         let targetBundleIdentifier = themeTargetBundleIdentifier(socketPath: socketPath)
         if commandArgs.isEmpty {
-            if shouldUseInteractiveThemePicker(jsonOutput: jsonOutput) {
-                try runInteractiveThemes(
-                    socketPath: socketPath,
-                    targetBundleIdentifier: targetBundleIdentifier,
-                    explicitPassword: explicitPassword
-                )
-                return
-            }
             try printThemesList(
                 jsonOutput: jsonOutput,
                 targetBundleIdentifier: targetBundleIdentifier
@@ -272,76 +269,57 @@ extension CMUXCLI {
                 targetBundleIdentifier: targetBundleIdentifier
             )
         case "set":
-            try runThemesSet(
-                args: Array(commandArgs.dropFirst()),
-                jsonOutput: jsonOutput,
-                socketPath: socketPath,
-                targetBundleIdentifier: targetBundleIdentifier,
-                explicitPassword: explicitPassword
-            )
+            throw CLIError(message: Self.cmuxThemeChangesDisabledMessage)
         case "clear":
             if commandArgs.count > 1 {
                 throw CLIError(message: "themes clear does not take any positional arguments")
             }
-            try runThemesClear(
-                jsonOutput: jsonOutput,
-                socketPath: socketPath,
-                targetBundleIdentifier: targetBundleIdentifier,
-                explicitPassword: explicitPassword
-            )
+            throw CLIError(message: Self.cmuxThemeChangesDisabledMessage)
         default:
             if subcommand.hasPrefix("-") {
                 throw CLIError(message: "Unknown themes subcommand '\(subcommand)'. Run 'cmux themes --help'.")
             }
 
-            try runThemesSet(
-                args: commandArgs,
-                jsonOutput: jsonOutput,
-                socketPath: socketPath,
-                targetBundleIdentifier: targetBundleIdentifier,
-                explicitPassword: explicitPassword
-            )
+            throw CLIError(message: Self.cmuxThemeChangesDisabledMessage)
         }
     }
 
     private func printThemesList(
         jsonOutput: Bool,
-        targetBundleIdentifier: String
+        targetBundleIdentifier _: String
     ) throws {
         let themes = availableThemeNames()
-        let current = currentThemeSelection(targetBundleIdentifier: targetBundleIdentifier)
-        let configPath = try cmuxThemeOverrideConfigURL(
-            targetBundleIdentifier: targetBundleIdentifier
-        ).path
 
         if jsonOutput {
             let currentPayload: [String: Any] = [
-                "raw_value": current.rawValue ?? NSNull(),
-                "light": current.light ?? NSNull(),
-                "dark": current.dark ?? NSNull(),
-                "source_path": current.sourcePath ?? NSNull()
+                "raw_value": Self.cmuxEnforcedTerminalThemeName,
+                "light": Self.cmuxEnforcedTerminalThemeName,
+                "dark": Self.cmuxEnforcedTerminalThemeName,
+                "source_path": NSNull()
             ]
             let payload: [String: Any] = [
                 "themes": themes.map { theme in
                     [
                         "name": theme,
-                        "current_light": current.light?.caseInsensitiveCompare(theme) == .orderedSame,
-                        "current_dark": current.dark?.caseInsensitiveCompare(theme) == .orderedSame
+                        "current_light": Self.cmuxEnforcedTerminalThemeName.caseInsensitiveCompare(theme) == .orderedSame,
+                        "current_dark": Self.cmuxEnforcedTerminalThemeName.caseInsensitiveCompare(theme) == .orderedSame
                     ]
                 },
                 "current": currentPayload,
-                "config_path": configPath
+                "fixed_theme": Self.cmuxEnforcedTerminalThemeName,
+                "managed": true
             ]
             print(jsonString(payload))
             return
         }
 
-        print("Current light: \(current.light ?? "inherit")")
-        print("Current dark: \(current.dark ?? "inherit")")
-        print("Config: \(configPath)")
-        if let sourcePath = current.sourcePath {
-            print("Source: \(sourcePath)")
-        }
+        print(
+            String(
+                localized: "cli.themes.currentManaged",
+                defaultValue: "Current theme: Cursor Dark (managed by cmux)"
+            )
+        )
+        print(Self.cmuxThemeChangesDisabledMessage)
         print("")
 
         guard !themes.isEmpty else {
@@ -351,10 +329,10 @@ extension CMUXCLI {
 
         for theme in themes {
             var badges: [String] = []
-            if current.light?.caseInsensitiveCompare(theme) == .orderedSame {
+            if Self.cmuxEnforcedTerminalThemeName.caseInsensitiveCompare(theme) == .orderedSame {
                 badges.append("light")
             }
-            if current.dark?.caseInsensitiveCompare(theme) == .orderedSame {
+            if Self.cmuxEnforcedTerminalThemeName.caseInsensitiveCompare(theme) == .orderedSame {
                 badges.append("dark")
             }
             let badgeText = badges.isEmpty ? "" : "  [\(badges.joined(separator: ", "))]"
