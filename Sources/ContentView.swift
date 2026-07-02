@@ -6624,7 +6624,7 @@ struct ContentView: View {
                 title: constant(
                     String(
                         localized: "command.makeDefaultTerminal.title",
-                        defaultValue: "Make cmux the Default Terminal"
+                        defaultValue: "Make mosaic the Default Terminal"
                     )
                 ),
                 subtitle: constant(
@@ -6676,7 +6676,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.disableBrowser",
-                title: constant(String(localized: "command.disableBrowser.title", defaultValue: "Disable cmux Browser")),
+                title: constant(String(localized: "command.disableBrowser.title", defaultValue: "Disable mosaic Browser")),
                 subtitle: constant(String(localized: "command.browserAvailability.subtitle", defaultValue: "Browser")),
                 keywords: ["browser", "disable", "external", "default", "open", "auth"],
                 when: { !$0.bool(CommandPaletteContextKeys.browserDisabled) }
@@ -6685,7 +6685,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.enableBrowser",
-                title: constant(String(localized: "command.enableBrowser.title", defaultValue: "Enable cmux Browser")),
+                title: constant(String(localized: "command.enableBrowser.title", defaultValue: "Enable mosaic Browser")),
                 subtitle: constant(String(localized: "command.browserAvailability.subtitle", defaultValue: "Browser")),
                 keywords: ["browser", "enable", "embedded", "open"],
                 when: { $0.bool(CommandPaletteContextKeys.browserDisabled) }
@@ -9610,29 +9610,10 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
 
         hidesAllDetails = settings.value(for: catalog.sidebar.hideAllDetails)
         wrapsWorkspaceTitles = SidebarWorkspaceTitleWrapSettings.wraps(defaults: defaults)
-        let detailVisibility = SidebarWorkspaceDetailVisibility(
-            showWorkspaceDescription: settings.value(for: catalog.sidebar.showWorkspaceDescription),
-            showNotificationMessage: settings.value(for: catalog.sidebar.showNotificationMessage),
-            hideAllDetails: hidesAllDetails
-        )
-        showsWorkspaceDescription = detailVisibility.showsWorkspaceDescription
-        showsNotificationMessage = detailVisibility.showsNotificationMessage
+        showsWorkspaceDescription = false
+        showsNotificationMessage = false
 
-        let showsMetadata = Self.bool(defaults: defaults, key: "sidebarShowStatusPills", defaultValue: SidebarWorkspaceDetailDefaults.showCustomMetadata)
-        let showsLog = Self.bool(defaults: defaults, key: "sidebarShowLog", defaultValue: SidebarWorkspaceDetailDefaults.showLog)
-        let showsProgress = Self.bool(defaults: defaults, key: "sidebarShowProgress", defaultValue: SidebarWorkspaceDetailDefaults.showProgress)
-        let showsBranchDirectory = Self.bool(defaults: defaults, key: "sidebarShowBranchDirectory", defaultValue: SidebarWorkspaceDetailDefaults.showBranchDirectory)
-        let showsPullRequests = Self.bool(defaults: defaults, key: "sidebarShowPullRequest", defaultValue: SidebarWorkspaceDetailDefaults.showPullRequests)
-        let showsPorts = Self.bool(defaults: defaults, key: "sidebarShowPorts", defaultValue: SidebarWorkspaceDetailDefaults.showPorts)
-        visibleAuxiliaryDetails = SidebarWorkspaceAuxiliaryDetailVisibility.resolved(
-            showMetadata: showsMetadata,
-            showLog: showsLog,
-            showProgress: showsProgress,
-            showBranchDirectory: showsBranchDirectory,
-            showPullRequests: showsPullRequests,
-            showPorts: showsPorts,
-            hideAllDetails: hidesAllDetails
-        )
+        visibleAuxiliaryDetails = .hidden
 
         activeTabIndicatorStyle = settings.value(for: catalog.workspaceColors.indicatorStyle)
         selectionColorHex = defaults.string(forKey: "sidebarSelectionColorHex")
@@ -11449,14 +11430,14 @@ struct VerticalTabsSidebar: View {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(
                             isSelected
-                                ? Color(red: 0.44, green: 0.29, blue: 0.23).opacity(0.9)
+                                ? Color.white.opacity(0.20)
                                 : Color.primary.opacity(0.10)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 13, style: .continuous)
                                 .stroke(
-                                    isSelected ? Color.red.opacity(0.85) : Color.primary.opacity(0.08),
-                                    lineWidth: isSelected ? 2 : 1
+                                    isSelected ? Color.clear : Color.primary.opacity(0.08),
+                                    lineWidth: 1
                                 )
                         )
                 )
@@ -11533,11 +11514,11 @@ struct VerticalTabsSidebar: View {
             .padding(.vertical, compact ? 6 : 7)
             .background(
                 RoundedRectangle(cornerRadius: compact ? 8 : 10, style: .continuous)
-                    .fill(isSelected ? Color.primary.opacity(0.12) : Color.clear)
+                    .fill(isSelected ? Color.white.opacity(0.20) : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: compact ? 8 : 10, style: .continuous)
-                    .stroke(isSelected ? cmuxAccentColor().opacity(0.55) : Color.clear, lineWidth: 1)
+                    .stroke(Color.clear, lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
@@ -12359,9 +12340,6 @@ struct VerticalTabsSidebar: View {
             target: contextMenuPinTarget
         )
         let liveUnreadCount = sidebarUnread.unreadCount(forWorkspaceId: tab.id)
-        let liveLatestNotificationText: String? = showsSidebarNotificationMessage
-            ? sidebarUnread.latestNotificationText(forWorkspaceId: tab.id)
-            : nil
         let participantSnapshots = collaborationRuntime.participantSnapshots(forWorkspaceID: tab.id)
         let liveShowsModifierShortcutHints = showModifierHoldHints && modifierKeyMonitor.isModifierPressed
         let resolvedShowsModifierShortcutHints = SidebarShortcutHintFreezePolicy().resolved(
@@ -12440,7 +12418,7 @@ struct VerticalTabsSidebar: View {
             canCloseWorkspace: renderContext.canCloseWorkspace,
             accessibilityWorkspaceCount: renderContext.workspaceCount,
             unreadCount: liveUnreadCount,
-            latestNotificationText: liveLatestNotificationText,
+            latestNotificationText: nil,
             participantSnapshots: participantSnapshots,
             rowSpacing: tabRowSpacing,
             setSelectionToTabs: { selection = .tabs },
@@ -12706,14 +12684,10 @@ private struct SidebarFooter: View {
     let onSendFeedback: () -> Void
 
     var body: some View {
-#if DEBUG
-        SidebarDevFooter(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
-#else
         SidebarFooterButtons(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
             .padding(.leading, 6)
             .padding(.trailing, 10)
             .padding(.bottom, 6)
-#endif
     }
 }
 
@@ -12758,10 +12732,7 @@ private struct SidebarFooterButtons: View {
 private enum SidebarHelpMenuAction {
     case importBrowserData
     case keyboardShortcuts
-    case docs
-    case changelog
-    case github
-    case githubIssues
+    case twitter
     case discord
     case checkForUpdates
     case sendFeedback
@@ -12769,11 +12740,8 @@ private enum SidebarHelpMenuAction {
 }
 
 private struct SidebarHelpMenuButton: View {
-    private let docsURL = URL(string: "https://cmux.com/docs")
-    private let changelogURL = URL(string: "https://cmux.com/docs/changelog")
-    private let githubURL = URL(string: "https://github.com/manaflow-ai/cmux")
-    private let githubIssuesURL = URL(string: "https://github.com/manaflow-ai/cmux/issues")
-    private let discordURL = URL(string: "https://discord.gg/xsgFEVrWCZ")
+    private let twitterURL = URL(string: "https://x.com/mosaic_ide")
+    private let discordURL = URL(string: "https://discord.gg/zmWHDeZffZ")
     private let helpTitle = String(localized: "sidebar.help.button", defaultValue: "Help")
     private let buttonSize: CGFloat = 22
     private let iconSize: CGFloat = 11
@@ -12814,7 +12782,7 @@ private struct SidebarHelpMenuButton: View {
     private var helpPopover: some View {
         VStack(alignment: .leading, spacing: 2) {
             helpOptionButton(
-                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome to cmux!"),
+                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome to mosaic!"),
                 action: .welcome,
                 accessibilityIdentifier: "SidebarHelpMenuOptionWelcome",
                 isExternalLink: false
@@ -12839,35 +12807,11 @@ private struct SidebarHelpMenuButton: View {
                 accessibilityIdentifier: "SidebarHelpMenuOptionImportBrowserData",
                 isExternalLink: false
             )
-            if docsURL != nil {
+            if twitterURL != nil {
                 helpOptionButton(
-                    title: String(localized: "about.docs", defaultValue: "Docs"),
-                    action: .docs,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionDocs",
-                    isExternalLink: true
-                )
-            }
-            if changelogURL != nil {
-                helpOptionButton(
-                    title: String(localized: "sidebar.help.changelog", defaultValue: "Changelog"),
-                    action: .changelog,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionChangelog",
-                    isExternalLink: true
-                )
-            }
-            if githubURL != nil {
-                helpOptionButton(
-                    title: String(localized: "about.github", defaultValue: "GitHub"),
-                    action: .github,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionGitHub",
-                    isExternalLink: true
-                )
-            }
-            if githubIssuesURL != nil {
-                helpOptionButton(
-                    title: String(localized: "sidebar.help.githubIssues", defaultValue: "GitHub Issues"),
-                    action: .githubIssues,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionGitHubIssues",
+                    title: String(localized: "sidebar.help.twitter", defaultValue: "Twitter (X)"),
+                    action: .twitter,
+                    accessibilityIdentifier: "SidebarHelpMenuOptionTwitter",
                     isExternalLink: true
                 )
             }
@@ -12959,18 +12903,9 @@ private struct SidebarHelpMenuButton: View {
                     }
                 }
             }
-        case .docs:
-            guard let docsURL else { return }
-            NSWorkspace.shared.open(docsURL)
-        case .changelog:
-            guard let changelogURL else { return }
-            NSWorkspace.shared.open(changelogURL)
-        case .github:
-            guard let githubURL else { return }
-            NSWorkspace.shared.open(githubURL)
-        case .githubIssues:
-            guard let githubIssuesURL else { return }
-            NSWorkspace.shared.open(githubIssuesURL)
+        case .twitter:
+            guard let twitterURL else { return }
+            NSWorkspace.shared.open(twitterURL)
         case .discord:
             guard let discordURL else { return }
             NSWorkspace.shared.open(discordURL)
@@ -13025,30 +12960,6 @@ private struct SidebarFooterIconButtonStyleBody: View {
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }
-
-#if DEBUG
-private struct SidebarDevFooter: View {
-    var updateViewModel: UpdateStateModel
-    @ObservedObject var fileExplorerState: FileExplorerState
-    let onSendFeedback: () -> Void
-    @AppStorage(DevBuildBannerDebugSettings.sidebarBannerVisibleKey)
-    private var showSidebarDevBuildBanner = DevBuildBannerDebugSettings.defaultShowSidebarBanner
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SidebarFooterButtons(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
-            if showSidebarDevBuildBanner {
-                Text(String(localized: "debug.devBuildBanner.title", defaultValue: "THIS IS A DEV BUILD"))
-                    .cmuxFont(size: 11, weight: .semibold)
-                    .foregroundColor(.red)
-            }
-        }
-        .padding(.leading, 6)
-        .padding(.trailing, 10)
-        .padding(.bottom, 6)
-    }
-}
-#endif
 
 private struct SidebarEmptyArea: View {
     @EnvironmentObject var tabManager: TabManager
@@ -13792,14 +13703,6 @@ struct TabItemView: View, Equatable {
         let accessibilityHintText = String(localized: "sidebar.workspace.accessibilityHint", defaultValue: "Activate to focus this workspace. Drag to reorder, or use Move Up and Move Down actions.")
         let moveUpActionText = String(localized: "sidebar.workspace.moveUpAction", defaultValue: "Move Up")
         let moveDownActionText = String(localized: "sidebar.workspace.moveDownAction", defaultValue: "Move Down")
-        let latestNotificationSubtitle = latestNotificationText
-        let conversationMessageSubtitle = !settings.hidesAllDetails && settings.iMessageModeEnabled
-            ? workspaceSnapshot.latestConversationMessage?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .nilIfEmpty
-            : nil
-        let effectiveSubtitle = latestNotificationSubtitle ?? conversationMessageSubtitle
-        let detailVisibility = visibleAuxiliaryDetails
         let titleLineLimit = settings.wrapsWorkspaceTitles ? Self.maxWrappedTitleLines : 1
         let displayedTitle = workspaceSnapshot.title.sidebarBoundedDisplayString(
             maxDisplayedLines: titleLineLimit,
@@ -13910,235 +13813,6 @@ struct TabItemView: View, Equatable {
                 }
             }
 
-            if let description = workspaceSnapshot.customDescription {
-                SidebarWorkspaceDescriptionText(
-                    markdown: description,
-                    isActive: usesInvertedActiveForeground,
-                    activeForegroundColor: activeSecondaryColor(0.84),
-                    fontScale: fontScale
-                )
-            }
-
-            if let subtitle = effectiveSubtitle {
-                Text(subtitle)
-                    .font(magnifiedFont(scaledFontSize(10)))
-                    .foregroundColor(activeSecondaryColor(0.8))
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .multilineTextAlignment(.leading)
-            }
-
-            remoteWorkspaceSection
-
-            if detailVisibility.showsMetadata {
-                let metadataEntries = workspaceSnapshot.metadataEntries
-                let metadataBlocks = workspaceSnapshot.metadataBlocks
-                if !metadataEntries.isEmpty {
-                    SidebarMetadataRows(
-                        entries: metadataEntries,
-                        isActive: usesInvertedActiveForeground,
-                        activeForegroundColor: activeSecondaryColor(0.95),
-                        activeSecondaryForegroundColor: activeSecondaryColor(0.65),
-                        fontScale: fontScale,
-                        onFocus: { updateSelection() }
-                    )
-                    .transition(.opacity)
-                }
-                if !metadataBlocks.isEmpty {
-                    SidebarMetadataMarkdownBlocks(
-                        blocks: metadataBlocks,
-                        isActive: usesInvertedActiveForeground,
-                        activeForegroundColor: activeSecondaryColor(0.8),
-                        activeSecondaryForegroundColor: activeSecondaryColor(0.65),
-                        fontScale: fontScale,
-                        onFocus: { updateSelection() }
-                    )
-                    .transition(.opacity)
-                }
-            }
-
-            if detailVisibility.showsLog, let latestLog = workspaceSnapshot.latestLog {
-                HStack(spacing: 4) {
-                    CmuxSystemSymbolImage(magnified: logLevelIcon(latestLog.level), pointSize: scaledFontSize(8))
-                        .foregroundColor(logLevelColor(latestLog.level, isActive: usesInvertedActiveForeground))
-                    Text(latestLog.message)
-                        .font(magnifiedFont(scaledFontSize(10)))
-                        .foregroundColor(activeSecondaryColor(0.8))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .transition(.opacity)
-            }
-
-            if detailVisibility.showsProgress, let progress = workspaceSnapshot.progress {
-                VStack(alignment: .leading, spacing: 2) {
-                    let progressFraction = CGFloat(max(0, min(progress.value, 1)))
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(activeProgressTrackColor)
-                        Capsule()
-                            .fill(activeProgressFillColor)
-                            .scaleEffect(x: progressFraction, y: 1, anchor: .leading)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: max(3, 3 * fontScale))
-
-                    if let label = progress.label {
-                        Text(label)
-                            .font(magnifiedFont(scaledFontSize(9)))
-                            .foregroundColor(activeSecondaryColor(0.6))
-                            .lineLimit(1)
-                    }
-                }
-                .transition(.opacity)
-            }
-
-            // Branch + directory row
-            if detailVisibility.showsBranchDirectory {
-                if sidebarBranchVerticalLayout {
-                    if !workspaceSnapshot.branchDirectoryLines.isEmpty {
-                        HStack(alignment: .top, spacing: 3) {
-                            if sidebarShowGitBranchIcon, workspaceSnapshot.branchLinesContainBranch {
-                                CmuxSystemSymbolImage(magnified: "arrow.triangle.branch", pointSize: scaledFontSize(9))
-                                    .foregroundColor(activeSecondaryColor(0.6))
-                            }
-                            VStack(alignment: .leading, spacing: 1) {
-                                ForEach(Array(workspaceSnapshot.branchDirectoryLines.enumerated()), id: \.offset) { _, line in
-                                    if sidebarStacksBranchAndDirectory {
-                                        if let branch = line.branch {
-                                            Text(branch)
-                                                .font(magnifiedFont(scaledFontSize(10), design: .monospaced))
-                                                .foregroundColor(activeSecondaryColor(0.75))
-                                                .lineLimit(1)
-                                                .truncationMode(.tail)
-                                        }
-                                        if !line.directoryCandidates.isEmpty {
-                                            SidebarDirectoryText(
-                                                candidates: line.directoryCandidates,
-                                                color: activeSecondaryColor(0.75),
-                                                fontScale: fontScale
-                                            )
-                                        }
-                                    } else {
-                                        HStack(spacing: 3) {
-                                            if let branch = line.branch {
-                                                Text(branch)
-                                                    .font(magnifiedFont(scaledFontSize(10), design: .monospaced))
-                                                    .foregroundColor(activeSecondaryColor(0.75))
-                                                    .lineLimit(1)
-                                                    .truncationMode(.tail)
-                                            }
-                                            if line.branch != nil, !line.directoryCandidates.isEmpty {
-                                                CmuxSystemSymbolImage(magnified: "circle.fill", pointSize: scaledFontSize(3))
-                                                    .foregroundColor(activeSecondaryColor(0.6))
-                                                    .padding(.horizontal, 1)
-                                            }
-                                            if !line.directoryCandidates.isEmpty {
-                                                SidebarDirectoryText(
-                                                    candidates: line.directoryCandidates,
-                                                    color: activeSecondaryColor(0.75),
-                                                    fontScale: fontScale
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if sidebarStacksBranchAndDirectory,
-                          (workspaceSnapshot.compactGitBranchSummaryText != nil
-                           || !workspaceSnapshot.compactDirectoryCandidates.isEmpty) {
-                    HStack(alignment: .top, spacing: 3) {
-                        if sidebarShowGitBranchIcon, workspaceSnapshot.compactGitBranchSummaryText != nil {
-                            CmuxSystemSymbolImage(magnified: "arrow.triangle.branch", pointSize: scaledFontSize(9))
-                                .foregroundColor(activeSecondaryColor(0.6))
-                        }
-                        VStack(alignment: .leading, spacing: 1) {
-                            if let branchRow = workspaceSnapshot.compactGitBranchSummaryText {
-                                Text(branchRow)
-                                    .font(magnifiedFont(scaledFontSize(10), design: .monospaced))
-                                    .foregroundColor(activeSecondaryColor(0.75))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                            }
-                            if !workspaceSnapshot.compactDirectoryCandidates.isEmpty {
-                                SidebarDirectoryText(
-                                    candidates: workspaceSnapshot.compactDirectoryCandidates,
-                                    color: activeSecondaryColor(0.75),
-                                    fontScale: fontScale
-                                )
-                            }
-                        }
-                    }
-                } else if !workspaceSnapshot.compactBranchDirectoryCandidates.isEmpty {
-                    HStack(spacing: 3) {
-                        if sidebarShowGitBranchIcon, workspaceSnapshot.compactGitBranchSummaryText != nil {
-                            CmuxSystemSymbolImage(magnified: "arrow.triangle.branch", pointSize: scaledFontSize(9))
-                                .foregroundColor(activeSecondaryColor(0.6))
-                        }
-                        SidebarDirectoryText(
-                            candidates: workspaceSnapshot.compactBranchDirectoryCandidates,
-                            color: activeSecondaryColor(0.75),
-                            fontScale: fontScale
-                        )
-                    }
-                }
-            }
-
-            // Pull request rows
-            if detailVisibility.showsPullRequests, !workspaceSnapshot.pullRequestRows.isEmpty {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(workspaceSnapshot.pullRequestRows) { pullRequest in
-                        let pullRequestNumber = String(pullRequest.number)
-                        let pullRequestTitle = "\(pullRequest.label) #\(pullRequestNumber)"
-                        let rowContent = HStack(spacing: 4) {
-                            PullRequestStatusIcon(
-                                status: pullRequest.status,
-                                color: pullRequestForegroundColor,
-                                fontScale: fontScale
-                            )
-                            Text(pullRequestTitle).underline(settings.makesPullRequestsClickable).lineLimit(1).truncationMode(.tail)
-                            Text(pullRequestStatusLabel(pullRequest.status)).lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .font(magnifiedFont(scaledFontSize(10), weight: .semibold))
-                        .foregroundColor(pullRequestForegroundColor)
-                        .opacity(pullRequest.isStale ? 0.5 : 1)
-                        if settings.makesPullRequestsClickable {
-                            Button(action: { openPullRequestLink(pullRequest.url) }) { rowContent }
-                                .buttonStyle(.plain)
-                                .tint(pullRequestForegroundColor)
-                                .safeHelp(String(localized: "sidebar.pullRequest.openTooltip", defaultValue: "Open \(pullRequestTitle)"))
-                                .accessibilityIdentifier("SidebarPullRequestRow")
-                        } else {
-                            rowContent.accessibilityElement(children: .combine).accessibilityIdentifier("SidebarPullRequestRow")
-                        }
-                    }
-                }
-            }
-
-            // Ports row
-            if detailVisibility.showsPorts, !workspaceSnapshot.listeningPorts.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(workspaceSnapshot.listeningPorts, id: \.self) { port in
-                        let portLabel = SidebarPortDisplayText.label(for: port)
-                        let portTooltip = SidebarPortDisplayText.openTooltip(for: port)
-                        Button(action: {
-                            openPortLink(port)
-                        }) {
-                            Text(portLabel)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                        .safeHelp(portTooltip)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .font(magnifiedFont(scaledFontSize(10), design: .monospaced))
-                .foregroundColor(activeSecondaryColor(0.75))
-                .lineLimit(1)
-            }
         }
         // No implicit .animation(value:) on agent-mutable fields: animating a
         // row-height change interpolates the LazyVStack's measured height over
@@ -14896,49 +14570,10 @@ struct TabItemView: View, Equatable {
     }
 
     private func makeWorkspaceSnapshot() -> SidebarWorkspaceSnapshotBuilder.Snapshot {
-        let detailVisibility = visibleAuxiliaryDetails
-        let orderedPanelIds: [UUID]? = (detailVisibility.showsBranchDirectory || detailVisibility.showsPullRequests)
-            ? tab.sidebarOrderedPanelIds()
-            : nil
-        let compactGitBranchSummaryText: String? = {
-            guard detailVisibility.showsBranchDirectory,
-                  !sidebarBranchVerticalLayout,
-                  sidebarShowGitBranch,
-                  let orderedPanelIds else {
-                return nil
-            }
-            return gitBranchSummaryText(orderedPanelIds: orderedPanelIds)
-        }()
-        let compactDirectoryCandidates: [String] = {
-            guard detailVisibility.showsBranchDirectory,
-                  !sidebarBranchVerticalLayout,
-                  let orderedPanelIds else {
-                return []
-            }
-            return compactDirectoryCandidatesList(orderedPanelIds: orderedPanelIds)
-        }()
-        let compactBranchDirectoryCandidates = compactBranchDirectoryCandidatesList(
-            gitSummary: compactGitBranchSummaryText,
-            directoryCandidates: compactDirectoryCandidates
-        )
-        let branchDirectoryLines: [SidebarWorkspaceSnapshotBuilder.VerticalBranchDirectoryLine] = {
-            guard detailVisibility.showsBranchDirectory,
-                  sidebarBranchVerticalLayout,
-                  let orderedPanelIds else {
-                return []
-            }
-            return verticalBranchDirectoryLines(orderedPanelIds: orderedPanelIds)
-        }()
-        let branchLinesContainBranch = sidebarShowGitBranch && branchDirectoryLines.contains { $0.branch != nil }
-        let pullRequestRows: [SidebarWorkspaceSnapshotBuilder.PullRequestDisplay] = {
-            guard detailVisibility.showsPullRequests, let orderedPanelIds else { return [] }
-            return pullRequestDisplays(orderedPanelIds: orderedPanelIds)
-        }()
-
         return SidebarWorkspaceSnapshotBuilder.Snapshot(
             presentationKey: workspaceSnapshotPresentationKey,
             title: tab.title,
-            customDescription: settings.showsWorkspaceDescription ? sidebarVisibleCustomDescription : nil,
+            customDescription: nil,
             isPinned: tab.isPinned,
             customColorHex: tab.customColor,
             remoteWorkspaceSidebarText: remoteWorkspaceSidebarText,
@@ -14947,30 +14582,21 @@ struct TabItemView: View, Equatable {
             showsRemoteReconnectAffordance: tab.remoteConnectionState == .suspended
                 || tab.remoteConnectionState == .disconnected,
             copyableSidebarSSHError: copyableSidebarSSHError,
-            latestConversationMessage: tab.latestConversationMessage,
-            metadataEntries: detailVisibility.showsMetadata ? tab.sidebarStatusEntriesInDisplayOrder() : [],
-            metadataBlocks: detailVisibility.showsMetadata ? tab.sidebarMetadataBlocksInDisplayOrder() : [],
-            latestLog: detailVisibility.showsLog ? tab.logEntries.last : nil,
-            progress: detailVisibility.showsProgress ? tab.progress : nil,
-            compactGitBranchSummaryText: compactGitBranchSummaryText,
-            compactDirectoryCandidates: compactDirectoryCandidates,
-            compactBranchDirectoryCandidates: compactBranchDirectoryCandidates,
-            branchDirectoryLines: branchDirectoryLines,
-            branchLinesContainBranch: branchLinesContainBranch,
-            pullRequestRows: pullRequestRows,
-            listeningPorts: detailVisibility.showsPorts ? tab.listeningPorts : [],
+            latestConversationMessage: nil,
+            metadataEntries: [],
+            metadataBlocks: [],
+            latestLog: nil,
+            progress: nil,
+            compactGitBranchSummaryText: nil,
+            compactDirectoryCandidates: [],
+            compactBranchDirectoryCandidates: [],
+            branchDirectoryLines: [],
+            branchLinesContainBranch: false,
+            pullRequestRows: [],
+            listeningPorts: [],
             finderDirectoryPath: WorkspaceFinderDirectoryResolver.path(for: tab),
             mediaActivity: tab.browserMediaActivity
         )
-    }
-
-    private var sidebarVisibleCustomDescription: String? {
-        guard let description = tab.customDescription else { return nil }
-        if tab.title.hasPrefix("vm:"),
-           description.trimmingCharacters(in: .whitespacesAndNewlines) == Self.legacyVMWebSocketDescription {
-            return nil
-        }
-        return description
     }
 
     private func moveWorkspaces(_ workspaceIds: [UUID], toWindow windowId: UUID) {

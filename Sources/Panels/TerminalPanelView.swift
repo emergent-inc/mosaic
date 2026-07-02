@@ -4,6 +4,7 @@ import AppKit
 import Bonsplit
 import CmuxAppKitSupportUI
 import CmuxTestSupport
+import CmuxCollaboration
 import CmuxTerminal
 import CmuxFoundation
 import UniformTypeIdentifiers
@@ -213,6 +214,10 @@ struct TerminalPanelView: View {
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
+                onCopyInviteCode: {
+                    CollaborationRuntime.shared.copyTerminalSessionInviteCode(for: panel)
+                    isTerminalRecipientPopoverPresented = false
+                },
                 onShare: { selectedIDs in
                     CollaborationRuntime.shared.applyRecipientSelection(selectedIDs, for: panel)
                     isTerminalRecipientPopoverPresented = false
@@ -259,14 +264,17 @@ struct TerminalPanelView: View {
 
 private struct TerminalCollaborationRecipientPopoverContent: View {
     let recipients: [CollaborationTerminalRecipientSnapshot]
+    let onCopyInviteCode: () -> Void
     let onShare: (Set<String>) -> Void
     @State private var selectedParticipantIDs: Set<String>
 
     init(
         recipients: [CollaborationTerminalRecipientSnapshot],
+        onCopyInviteCode: @escaping () -> Void,
         onShare: @escaping (Set<String>) -> Void
     ) {
         self.recipients = recipients
+        self.onCopyInviteCode = onCopyInviteCode
         self.onShare = onShare
         _selectedParticipantIDs = State(initialValue: Set(
             recipients
@@ -276,16 +284,33 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
     }
 
     var body: some View {
+        let model = CollaborationTerminalRecipientPopoverModel(recipientCount: recipients.count)
         VStack(alignment: .leading, spacing: 12) {
-            Text(CollaborationStrings.terminalRecipientsTitle)
-                .cmuxFont(size: 12, weight: .semibold)
+            HStack(spacing: 8) {
+                Image("AppIconLight", bundle: .main)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
 
-            if recipients.isEmpty {
+                Text(CollaborationStrings.terminalRecipientsTitle)
+                    .cmuxFont(size: 12, weight: .semibold)
+            }
+
+            if model.showsInviteAction {
                 Text(CollaborationStrings.terminalRecipientsEmpty)
                     .cmuxFont(size: 11)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-            } else {
+
+                HStack {
+                    Spacer()
+                    Button(CollaborationStrings.copyInviteCode) {
+                        onCopyInviteCode()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            } else if model.showsRecipientSelection {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipients) { recipient in
                         Toggle(isOn: binding(for: recipient.participantID)) {
@@ -296,14 +321,16 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                         .toggleStyle(.checkbox)
                     }
                 }
-            }
 
-            HStack {
-                Spacer()
-                Button(CollaborationStrings.share) {
-                    onShare(selectedParticipantIDs)
+                if model.showsShareAction {
+                    HStack {
+                        Spacer()
+                        Button(CollaborationStrings.share) {
+                            onShare(selectedParticipantIDs)
+                        }
+                        .keyboardShortcut(.defaultAction)
+                    }
                 }
-                .keyboardShortcut(.defaultAction)
             }
         }
         .padding(14)

@@ -44,7 +44,7 @@ enum BrowserImportAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.import.automation.error.destinationProfileNotFound",
-                    defaultValue: "No cmux browser profile matches '%@'"
+                    defaultValue: "No mosaic browser profile matches '%@'"
                 ),
                 query
             )
@@ -52,7 +52,7 @@ enum BrowserImportAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.import.automation.error.destinationProfileCreationFailed",
-                    defaultValue: "Failed to create cmux browser profile '%@'"
+                    defaultValue: "Failed to create mosaic browser profile '%@'"
                 ),
                 name
             )
@@ -95,7 +95,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileNotFound",
-                    defaultValue: "No cmux browser profile matches '%@'"
+                    defaultValue: "No mosaic browser profile matches '%@'"
                 ),
                 query
             )
@@ -103,7 +103,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.ambiguousProfile",
-                    defaultValue: "Multiple cmux browser profiles match '%@'. Use the profile ID instead."
+                    defaultValue: "Multiple mosaic browser profiles match '%@'. Use the profile ID instead."
                 ),
                 query
             )
@@ -111,7 +111,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileCreationFailed",
-                    defaultValue: "Failed to create cmux browser profile '%@'"
+                    defaultValue: "Failed to create mosaic browser profile '%@'"
                 ),
                 name
             )
@@ -119,7 +119,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileRenameFailed",
-                    defaultValue: "Failed to rename cmux browser profile to '%@'"
+                    defaultValue: "Failed to rename mosaic browser profile to '%@'"
                 ),
                 name
             )
@@ -132,7 +132,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileInUse",
-                    defaultValue: "Cannot delete cmux browser profile '%@' while %d browser panel(s) are using it"
+                    defaultValue: "Cannot delete mosaic browser profile '%@' while %d browser panel(s) are using it"
                 ),
                 name,
                 count
@@ -141,7 +141,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileDeleteFailed",
-                    defaultValue: "Failed to delete cmux browser profile '%@'"
+                    defaultValue: "Failed to delete mosaic browser profile '%@'"
                 ),
                 name
             )
@@ -149,7 +149,7 @@ enum BrowserProfileAutomationError: LocalizedError, CustomStringConvertible {
             return String.localizedStringWithFormat(
                 String(
                     localized: "browser.profile.automation.error.profileClearFailed",
-                    defaultValue: "Failed to clear cmux browser profile '%@'"
+                    defaultValue: "Failed to clear mosaic browser profile '%@'"
                 ),
                 name
             )

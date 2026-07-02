@@ -8,7 +8,7 @@ import SwiftUI
 /// New Workspace Placement, Inherit Working Directory, Minimal Mode,
 /// Keep Workspace Open When Closing Last Surface, Focus Pane on
 /// First Click, File Drops, Open Files With, Open Supported Files in
-/// cmux, Terminal Config link, Open Markdown in cmux Viewer,
+/// mosaic, Terminal Config link, Open Markdown in mosaic Viewer,
 /// Markdown Viewer typography, iMessage Mode, Reorder on Notification, Dock Badge, Menu Bar
 /// Only, Show in Menu Bar, Unread Pane Ring, Pane Flash, Desktop
 /// Notifications, Notification Sound, Notification Command, Send
@@ -142,7 +142,7 @@ public struct AppSection: View {
         }
         return String(
             localized: "settings.app.globalFontMagnification.subtitleOff",
-            defaultValue: "Scale every font in cmux by the same percentage. 100% = design size."
+            defaultValue: "Scale every font in mosaic by the same percentage. 100% = design size."
         )
     }
 
@@ -159,7 +159,7 @@ public struct AppSection: View {
                 configurationReview: .json("app.language"),
                 String(localized: "settings.app.language", defaultValue: "Language"),
                 subtitle: languageAtAppear != nil && language.current != languageAtAppear
-                    ? String(localized: "settings.app.language.restartSubtitle", defaultValue: "Restart cmux to apply")
+                    ? String(localized: "settings.app.language.restartSubtitle", defaultValue: "Restart mosaic to apply")
                     : nil,
                 controlWidth: Self.columnWidth
             ) {
@@ -262,8 +262,8 @@ public struct AppSection: View {
                 configurationReview: .json("app.focusPaneOnFirstClick"),
                 String(localized: "settings.app.paneFirstClickFocus", defaultValue: "Focus Pane on First Click"),
                 subtitle: firstClick.current
-                    ? String(localized: "settings.app.paneFirstClickFocus.subtitleOn", defaultValue: "When cmux is inactive, clicking a pane activates the window and focuses that pane in one click.")
-                    : String(localized: "settings.app.paneFirstClickFocus.subtitleOff", defaultValue: "When cmux is inactive, the first click only activates the window. Click again to focus the pane.")
+                    ? String(localized: "settings.app.paneFirstClickFocus.subtitleOn", defaultValue: "When mosaic is inactive, clicking a pane activates the window and focuses that pane in one click.")
+                    : String(localized: "settings.app.paneFirstClickFocus.subtitleOff", defaultValue: "When mosaic is inactive, the first click only activates the window. Click again to focus the pane.")
             ) {
                 Toggle("", isOn: Binding(get: { firstClick.current }, set: { firstClick.set($0) }))
                     .labelsHidden()
@@ -306,8 +306,8 @@ public struct AppSection: View {
             // Open Supported Files in cmux
             SettingsCardRow(
                 configurationReview: .json("app.openSupportedFilesInCmux"),
-                String(localized: "settings.app.openSupportedFilesInCmux", defaultValue: "Open Supported Files in cmux"),
-                subtitle: String(localized: "settings.app.openSupportedFilesInCmux.subtitle", defaultValue: "Cmd-clicking readable files opens text, code, PDFs, images, audio, video, and Quick Look previews in cmux.")
+                String(localized: "settings.app.openSupportedFilesInCmux", defaultValue: "Open Supported Files in mosaic"),
+                subtitle: String(localized: "settings.app.openSupportedFilesInCmux.subtitle", defaultValue: "Cmd-clicking readable files opens text, code, PDFs, images, audio, video, and Quick Look previews in mosaic.")
             ) {
                 Toggle("", isOn: Binding(get: { openSupported.current }, set: { openSupported.set($0) }))
                     .labelsHidden()
@@ -344,11 +344,11 @@ public struct AppSection: View {
             }
             SettingsCardDivider()
 
-            // Open Markdown in cmux Viewer
+            // Open Markdown in mosaic Viewer
             SettingsCardRow(
                 configurationReview: .json("app.openMarkdownInCmuxViewer"),
-                String(localized: "settings.app.openMarkdownInCmuxViewer", defaultValue: "Open Markdown in cmux Viewer"),
-                subtitle: String(localized: "settings.app.openMarkdownInCmuxViewer.subtitle", defaultValue: "When supported file routing is on, Cmd-clicking Markdown files opens the rendered cmux markdown viewer instead of the generic file preview.")
+                String(localized: "settings.app.openMarkdownInCmuxViewer", defaultValue: "Open Markdown in mosaic Viewer"),
+                subtitle: String(localized: "settings.app.openMarkdownInCmuxViewer.subtitle", defaultValue: "When supported file routing is on, Cmd-clicking Markdown files opens the rendered mosaic markdown viewer instead of the generic file preview.")
             ) {
                 Toggle("", isOn: Binding(get: { openMarkdown.current }, set: { openMarkdown.set($0) }))
                     .labelsHidden()
@@ -509,7 +509,7 @@ public struct AppSection: View {
             SettingsCardRow(
                 configurationReview: .json("app.menuBarOnly"),
                 String(localized: "settings.app.menuBarOnly", defaultValue: "Menu Bar Only"),
-                subtitle: String(localized: "settings.app.menuBarOnly.subtitle", defaultValue: "Hide the Dock icon and Cmd+Tab entry. Use the menu bar item to show cmux.")
+                subtitle: String(localized: "settings.app.menuBarOnly.subtitle", defaultValue: "Hide the Dock icon and Cmd+Tab entry. Use the menu bar item to show mosaic.")
             ) {
                 Toggle("", isOn: Binding(get: { menuBarOnly.current }, set: { enabled in
                     if hostActions.setMenuBarOnly(enabled) {
@@ -526,7 +526,7 @@ public struct AppSection: View {
             SettingsCardRow(
                 configurationReview: .json("notifications.showInMenuBar"),
                 String(localized: "settings.app.showInMenuBar", defaultValue: "Show in Menu Bar"),
-                subtitle: String(localized: "settings.app.showInMenuBar.subtitle", defaultValue: "Keep cmux in the menu bar for unread notifications and quick actions.")
+                subtitle: String(localized: "settings.app.showInMenuBar.subtitle", defaultValue: "Keep mosaic in the menu bar for unread notifications and quick actions.")
             ) {
                 Toggle("", isOn: Binding(get: { showInMenuBar.current }, set: { showInMenuBar.set($0) }))
                     .labelsHidden()
@@ -551,7 +551,7 @@ public struct AppSection: View {
             SettingsCardRow(
                 configurationReview: .json("notifications.paneFlash"),
                 String(localized: "settings.notifications.paneFlash.title", defaultValue: "Pane Flash"),
-                subtitle: String(localized: "settings.notifications.paneFlash.subtitle", defaultValue: "Briefly flash a blue outline when cmux highlights a pane.")
+                subtitle: String(localized: "settings.notifications.paneFlash.subtitle", defaultValue: "Briefly flash a blue outline when mosaic highlights a pane.")
             ) {
                 Toggle("", isOn: Binding(get: { paneFlash.current }, set: { paneFlash.set($0) }))
                     .labelsHidden()
@@ -617,7 +617,7 @@ public struct AppSection: View {
                 String(localized: "settings.app.telemetry", defaultValue: "Send anonymous telemetry"),
                 subtitle: (telemetryAtAppear != nil && telemetry.current != telemetryAtAppear)
                     ? String(localized: "settings.app.telemetry.subtitleChanged", defaultValue: "Change takes effect on next launch.")
-                    : String(localized: "settings.app.telemetry.subtitle", defaultValue: "Share anonymized crash and usage data to help improve cmux.")
+                    : String(localized: "settings.app.telemetry.subtitle", defaultValue: "Share anonymized crash and usage data to help improve mosaic.")
             ) {
                 Toggle("", isOn: Binding(get: { telemetry.current }, set: { telemetry.set($0) }))
                     .labelsHidden()

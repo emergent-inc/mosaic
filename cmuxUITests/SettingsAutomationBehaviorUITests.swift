@@ -20,7 +20,7 @@ import XCTest
 /// What XCUITest *can* assert behaviorally is the Settings UI's own reactive
 /// surface, which is the contract this section actually owns:
 ///   * choosing **Password mode** reveals a Socket Password subrow that does
-///     not exist in the default `cmux processes only` mode, and choosing a
+///     not exist in the default `mosaic processes only` mode, and choosing a
 ///     non-password mode hides it again;
 ///   * choosing **Full open access** raises a destructive confirmation dialog,
 ///     and cancelling it does not show the open-access warning;
@@ -51,7 +51,7 @@ final class SettingsAutomationBehaviorUITests: SettingsUITestCase {
     private enum L {
         static let modePassword = "Password mode"
         static let modeOpenAccess = "Full open access"
-        static let modeCmuxOnly = "cmux processes only"
+        static let modeCmuxOnly = "mosaic processes only"
 
         static let passwordRowTitle = "Socket Password"
         static let passwordSubtitleUnset = "No password set. External clients will be blocked until one is configured."
@@ -65,15 +65,15 @@ final class SettingsAutomationBehaviorUITests: SettingsUITestCase {
 
         // Claude Code Integration subtitles.
         static let claudeOn = "Sidebar shows Claude session status and notifications."
-        static let claudeOff = "Claude Code runs without cmux integration."
+        static let claudeOff = "Claude Code runs without mosaic integration."
 
         // Cursor Integration subtitles.
         static let cursorOn = "Sidebar shows Cursor agent status and notifications."
-        static let cursorOff = "Cursor runs without cmux integration."
+        static let cursorOff = "Cursor runs without mosaic integration."
 
         // Gemini CLI Integration subtitles.
         static let geminiOn = "Sidebar shows Gemini session status and notifications."
-        static let geminiOff = "Gemini runs without cmux integration."
+        static let geminiOff = "Gemini runs without mosaic integration."
 
         // Suppress Subagent Notifications subtitles.
         static let suppressOn = "Child agent completions stay in Feed without notifications."
@@ -139,9 +139,9 @@ final class SettingsAutomationBehaviorUITests: SettingsUITestCase {
 
     // MARK: - TIER 1: Socket Control Mode reveals/hides the password subrow
 
-    /// Default mode is `cmux processes only`, so the Socket Password row must
+    /// Default mode is `mosaic processes only`, so the Socket Password row must
     /// be absent. Selecting `Password mode` must reveal it (title + the
-    /// "no password set" subtitle), and selecting `cmux processes only`
+    /// "no password set" subtitle), and selecting `mosaic processes only`
     /// again must hide it. This is the section's core conditional-UI contract.
     func testPasswordModeRevealsAndHidesSocketPasswordRow() {
         let app = makeLaunchedApp()
