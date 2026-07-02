@@ -390,6 +390,7 @@ final class CollaborationRuntime {
     static let shared = CollaborationRuntime()
     static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
     private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
+    private static let inviteCodeStore = CollaborationInviteCodeStore()
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
@@ -442,21 +443,15 @@ final class CollaborationRuntime {
     }
 
     private static func normalizedSessionCode(from value: String) -> String {
-        let compact = value
-            .uppercased()
-            .unicodeScalars
-            .filter { scalar in
-                (65...90).contains(scalar.value) || (48...57).contains(scalar.value)
-            }
-            .map(String.init)
-            .joined()
-        if compact.count == 8 {
-            return compact
-        }
-        if compact.count == 5 {
-            return compact
-        }
-        return value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        inviteCodeStore.normalizedSessionCode(from: value)
+    }
+
+    private static func recentSessionCodes() -> [String] {
+        inviteCodeStore.recentSessionCodes()
+    }
+
+    private static func rememberSessionCode(_ code: String) {
+        inviteCodeStore.rememberSessionCode(code)
     }
 
     func state(for panel: any CollaborationEditablePanel) -> CollaborationDocumentHeaderState {
@@ -1213,24 +1208,25 @@ final class CollaborationRuntime {
 
     private func presentStartDialog() {
         let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.startTitle
         alert.informativeText = CollaborationStrings.startMessage
         alert.addButton(withTitle: CollaborationStrings.createSession)
         alert.addButton(withTitle: CollaborationStrings.joinSession)
+        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
 
-        let relayField = NSTextField(string: relayURLString)
-        relayField.placeholderString = CollaborationStrings.relayURLPlaceholder
-        relayField.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        alert.accessoryView = relayField
+        let rejoinField = makeRejoinField()
+        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
 
         let response = alert.runModal()
-        relayURLString = Self.normalizedRelayURL(from: relayField.stringValue)
         switch response {
         case .alertFirstButtonReturn:
-            Task { await createSessionAndPresentCode(relayURL: relayURLString) }
+            Task { await createSessionAndPresentCode(relayURL: nil) }
         case .alertSecondButtonReturn:
             presentJoinDialog()
+        case .alertThirdButtonReturn:
+            rejoinSession(code: rejoinField.stringValue)
         default:
             break
         }
@@ -1238,6 +1234,7 @@ final class CollaborationRuntime {
 
     private func presentJoinDialog() {
         let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.joinSession
         alert.informativeText = CollaborationStrings.joinMessage
         alert.addButton(withTitle: CollaborationStrings.joinSession)
@@ -1259,24 +1256,25 @@ final class CollaborationRuntime {
 
     private func presentStartDialog(thenShare panel: any CollaborationEditablePanel) {
         let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.startTitle
         alert.informativeText = CollaborationStrings.startMessage
         alert.addButton(withTitle: CollaborationStrings.createSession)
         alert.addButton(withTitle: CollaborationStrings.joinSession)
+        alert.addButton(withTitle: CollaborationStrings.rejoinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
 
-        let relayField = NSTextField(string: relayURLString)
-        relayField.placeholderString = CollaborationStrings.relayURLPlaceholder
-        relayField.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        alert.accessoryView = relayField
+        let rejoinField = makeRejoinField()
+        alert.accessoryView = makeRejoinAccessoryView(rejoinField: rejoinField)
 
         let response = alert.runModal()
-        relayURLString = Self.normalizedRelayURL(from: relayField.stringValue)
         switch response {
         case .alertFirstButtonReturn:
             Task { await createSessionAndShare(panel: panel) }
         case .alertSecondButtonReturn:
             presentJoinDialog(thenShare: panel)
+        case .alertThirdButtonReturn:
+            rejoinSession(code: rejoinField.stringValue, thenShare: panel)
         default:
             break
         }
@@ -1284,6 +1282,7 @@ final class CollaborationRuntime {
 
     private func presentJoinDialog(thenShare panel: any CollaborationEditablePanel) {
         let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.joinSession
         alert.informativeText = CollaborationStrings.joinMessage
         alert.addButton(withTitle: CollaborationStrings.joinSession)
@@ -1302,6 +1301,63 @@ final class CollaborationRuntime {
         let code = Self.normalizedSessionCode(from: codeField.stringValue)
         Task {
             await joinSession(code: code)
+            share(panel: panel)
+        }
+    }
+
+    private func configureCollaborationAlertChrome(_ alert: NSAlert) {
+        alert.icon = NSImage(size: NSSize(width: 1, height: 1))
+    }
+
+    private func makeRejoinField() -> NSComboBox {
+        let codes = Self.recentSessionCodes()
+        let field = NSComboBox(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        field.addItems(withObjectValues: codes)
+        field.placeholderString = CollaborationStrings.rejoinSessionCodePlaceholder
+        field.completes = true
+        if let code = codes.first {
+            field.stringValue = code
+        }
+        return field
+    }
+
+    private func makeRejoinAccessoryView(rejoinField: NSComboBox) -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 8
+
+        let label = NSTextField(labelWithString: CollaborationStrings.rejoinSession)
+        label.alignment = .right
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        row.addArrangedSubview(label)
+        row.addArrangedSubview(rejoinField)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 8
+        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
+        stack.addArrangedSubview(row)
+        return stack
+    }
+
+    private func rejoinSession(code: String) {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        guard !normalizedCode.isEmpty else {
+            presentJoinDialog()
+            return
+        }
+        Task { await joinSession(code: normalizedCode) }
+    }
+
+    private func rejoinSession(code: String, thenShare panel: any CollaborationEditablePanel) {
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        guard !normalizedCode.isEmpty else {
+            presentJoinDialog(thenShare: panel)
+            return
+        }
+        Task {
+            await joinSession(code: normalizedCode)
             share(panel: panel)
         }
     }
@@ -1335,6 +1391,7 @@ final class CollaborationRuntime {
     private func presentCreatedSessionDialog(code: String) {
         let normalizedCode = Self.normalizedSessionCode(from: code)
         let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.sessionCreatedTitle
         alert.informativeText = CollaborationStrings.sessionCreatedMessage(code: normalizedCode)
         alert.addButton(withTitle: CollaborationStrings.copyCode)
@@ -1403,6 +1460,7 @@ final class CollaborationRuntime {
         receiveNextMessage()
         startHeartbeatLoop()
         await nextSession.markConnected()
+        Self.rememberSessionCode(sessionCode ?? code)
         connectionLabel = CollaborationStrings.connected
         reopenSharedDocumentsForCurrentSession()
         reopenSharedTerminalsForCurrentSession()
@@ -2444,7 +2502,7 @@ enum CollaborationStrings {
     }
 
     static var startMessage: String {
-        String(localized: "collaboration.start.message", defaultValue: "Enter a relay URL, then create a new invite or join an existing one.")
+        String(localized: "collaboration.start.message", defaultValue: "Create a new invite, join one, or rejoin a recent session.")
     }
 
     static var relayURLPlaceholder: String {
@@ -2457,6 +2515,10 @@ enum CollaborationStrings {
 
     static var joinSession: String {
         String(localized: "collaboration.action.joinSession", defaultValue: "Join Session")
+    }
+
+    static var rejoinSession: String {
+        String(localized: "collaboration.action.rejoinSession", defaultValue: "Rejoin")
     }
 
     static var cancel: String {
@@ -2489,6 +2551,10 @@ enum CollaborationStrings {
 
     static var sessionCodePlaceholder: String {
         String(localized: "collaboration.join.sessionCodePlaceholder", defaultValue: "Session code")
+    }
+
+    static var rejoinSessionCodePlaceholder: String {
+        String(localized: "collaboration.rejoin.sessionCodePlaceholder", defaultValue: "Recent session code")
     }
 
     static var invalidRelayURL: String {
