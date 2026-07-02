@@ -208,12 +208,21 @@ def main() -> int:
             cli_path,
             server.socket_path,
             "prompt-submit",
-            {"session_id": old_session_id, "turn_id": "turn-1", "cwd": "/tmp"},
+            {
+                "session_id": old_session_id,
+                "turn_id": "turn-1",
+                "cwd": "/tmp",
+                "prompt": "message is french are coming",
+            },
             env,
         )
 
         if not has_command(server.commands, f"set_status claude_code Running --icon=bolt.fill --color=#4C8DFF --tab={workspace_id}"):
             print("FAIL: expected prompt-submit to set Claude Running")
+            print(f"commands={server.commands!r}")
+            return 1
+        if not has_command_with(server.commands, '"method":"agent.room.post"', "message is french are coming"):
+            print("FAIL: expected prompt-submit to publish the user prompt into the agent room")
             print(f"commands={server.commands!r}")
             return 1
 
