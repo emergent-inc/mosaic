@@ -16,6 +16,7 @@ struct TerminalPanelView: View {
     @AppStorage(TerminalTextBoxInputSettings.maxLinesKey)
     private var textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
+    @State private var isTerminalRecipientPopoverPresented = false
     let paneId: PaneID
     let isFocused: Bool
     let isVisibleInUI: Bool
@@ -187,17 +188,37 @@ struct TerminalPanelView: View {
 
     private var terminalCollaborationButton: some View {
         let state = CollaborationRuntime.shared.state(for: panel)
-        let label = state.isShared ? CollaborationStrings.stopSharingTerminal : CollaborationStrings.shareTerminal
+        let canManageRecipients = CollaborationRuntime.shared.canManageRecipients(for: panel)
+        let label = if state.isShared && canManageRecipients {
+            CollaborationStrings.manageTerminalSharing
+        } else if state.isShared {
+            CollaborationStrings.stopSharingTerminal
+        } else {
+            CollaborationStrings.shareTerminal
+        }
         return PanelHeaderIconButton(
             systemName: state.isShared ? "person.2.fill" : "person.2",
             label: label,
             isDisabled: false,
             action: {
-                CollaborationRuntime.shared.configureOrShare(terminal: panel)
+                if state.isShared && canManageRecipients {
+                    isTerminalRecipientPopoverPresented = true
+                } else {
+                    CollaborationRuntime.shared.configureOrShare(terminal: panel)
+                }
             }
         )
         .foregroundColor(state.isShared ? .accentColor : .secondary)
         .accessibilityIdentifier("TerminalCollaborationButton")
+        .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
+            TerminalCollaborationRecipientPopoverContent(
+                recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
+                onShare: { selectedIDs in
+                    CollaborationRuntime.shared.applyRecipientSelection(selectedIDs, for: panel)
+                    isTerminalRecipientPopoverPresented = false
+                }
+            )
+        }
     }
 
     private var terminalAgentRoomButton: some View {
@@ -233,6 +254,75 @@ struct TerminalPanelView: View {
             }
         }
         return true
+    }
+}
+
+private struct TerminalCollaborationRecipientPopoverContent: View {
+    let recipients: [CollaborationTerminalRecipientSnapshot]
+    let onShare: (Set<String>) -> Void
+    @State private var selectedParticipantIDs: Set<String>
+
+    init(
+        recipients: [CollaborationTerminalRecipientSnapshot],
+        onShare: @escaping (Set<String>) -> Void
+    ) {
+        self.recipients = recipients
+        self.onShare = onShare
+        _selectedParticipantIDs = State(initialValue: Set(
+            recipients
+                .filter(\.isSelected)
+                .map(\.participantID)
+        ))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(CollaborationStrings.terminalRecipientsTitle)
+                .cmuxFont(size: 12, weight: .semibold)
+
+            if recipients.isEmpty {
+                Text(CollaborationStrings.terminalRecipientsEmpty)
+                    .cmuxFont(size: 11)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(recipients) { recipient in
+                        Toggle(isOn: binding(for: recipient.participantID)) {
+                            Text(recipient.displayName)
+                                .cmuxFont(size: 11)
+                                .lineLimit(1)
+                        }
+                        .toggleStyle(.checkbox)
+                    }
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button(CollaborationStrings.share) {
+                    onShare(selectedParticipantIDs)
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(14)
+        .frame(width: 240)
+    }
+
+    private func binding(for participantID: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                selectedParticipantIDs.contains(participantID)
+            },
+            set: { isSelected in
+                if isSelected {
+                    selectedParticipantIDs.insert(participantID)
+                } else {
+                    selectedParticipantIDs.remove(participantID)
+                }
+            }
+        )
     }
 }
 

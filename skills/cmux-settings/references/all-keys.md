@@ -9,7 +9,7 @@ General app preferences from Settings > App.
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `app.language` | `"system"` or `"en"` or `"ar"` or `"bs"` or `"zh-Hans"` or `"zh-Hant"` or `"da"` or `"de"` or `"es"` or `"fr"` or `"it"` or `"ja"` or `"ko"` or `"nb"` or `"pl"` or `"pt-BR"` or `"ru"` or `"th"` or `"tr"` | `"system"` | Preferred app language. |
-| `app.appearance` | `"system"` or `"light"` or `"dark"` | `"system"` | App appearance mode. |
+| `app.appearance` | `"system"` or `"light"` or `"dark"` | `"system"` | App chrome appearance mode. Terminal colors are fixed to the managed `Cursor Dark` theme and cannot be changed. |
 | `app.appIcon` | `"automatic"` or `"light"` or `"dark"` | `"automatic"` | Dock and app switcher icon style. |
 | `app.menuBarOnly` | boolean | `false` | Hide the Dock icon and app switcher entry while keeping cmux available from the menu bar. |
 | `app.newWorkspacePlacement` | `"top"` or `"afterCurrent"` or `"end"` | `"afterCurrent"` | Where new workspaces are inserted in the sidebar. |

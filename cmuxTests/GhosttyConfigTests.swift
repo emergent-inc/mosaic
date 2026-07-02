@@ -273,9 +273,11 @@ final class GhosttyConfigTests: XCTestCase {
         let themes = try XCTUnwrap(payload["themes"] as? [[String: Any]])
         XCTAssertTrue(themes.contains { ($0["name"] as? String) == "Zag Light" }, result.output)
         let current = try XCTUnwrap(payload["current"] as? [String: Any])
-        XCTAssertEqual(current["light"] as? String, "Zag Light")
-        XCTAssertEqual(current["dark"] as? String, "Zag Light")
-        XCTAssertEqual(current["source_path"] as? String, configURL.path)
+        XCTAssertEqual(current["light"] as? String, "Cursor Dark")
+        XCTAssertEqual(current["dark"] as? String, "Cursor Dark")
+        XCTAssertEqual(payload["fixed_theme"] as? String, "Cursor Dark")
+        XCTAssertEqual(payload["managed"] as? Bool, true)
+        XCTAssert(current["source_path"] is NSNull)
     }
 
     func testCmuxDefaultThemeConfigContentsSkipsInvalidUTF8Candidate() throws {
@@ -292,10 +294,10 @@ final class GhosttyConfigTests: XCTestCase {
         try fileManager.createDirectory(at: firstThemeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: secondThemeDir, withIntermediateDirectories: true)
 
-        let firstTheme = firstThemeDir.appendingPathComponent("Apple System Colors Light", isDirectory: false)
+        let firstTheme = firstThemeDir.appendingPathComponent("Cursor Dark", isDirectory: false)
         try Data([0xff, 0xfe]).write(to: firstTheme)
 
-        let secondTheme = secondThemeDir.appendingPathComponent("Apple System Colors Light", isDirectory: false)
+        let secondTheme = secondThemeDir.appendingPathComponent("Cursor Dark", isDirectory: false)
         let expected = "foreground = #123456\n"
         try expected.write(to: secondTheme, atomically: true, encoding: .utf8)
 
@@ -385,7 +387,7 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertEqual(lowOpacityConfig.backgroundOpacity, 0.0, accuracy: 0.0001)
     }
 
-    func testLoadReadsBackgroundFromRecursiveConfigFile() throws {
+    func testLoadEnforcesCursorDarkOverRecursiveColorConfigFile() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory
             .appendingPathComponent("cmux-ghostty-config-recursive-background-\(UUID().uuidString)")
@@ -419,8 +421,9 @@ final class GhosttyConfigTests: XCTestCase {
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
 
-        XCTAssertEqual(loaded.backgroundColor.hexString(), "#123456")
-        XCTAssertEqual(loaded.foregroundColor.hexString(), "#ABCDEF")
+        XCTAssertEqual(loaded.theme, GhosttyConfig.cmuxEnforcedThemeName)
+        XCTAssertEqual(loaded.backgroundColor.hexString(), "#141414")
+        XCTAssertEqual(loaded.foregroundColor.hexString(), "#FFFFFF")
     }
 
     func testLoadDoesNotReparseTopLevelConfigReferencedByConfigFile() throws {
@@ -454,8 +457,8 @@ final class GhosttyConfigTests: XCTestCase {
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
 
-        XCTAssertEqual(loaded.backgroundColor.hexString(), "#111111")
-        XCTAssertEqual(loaded.foregroundColor.hexString(), "#222222")
+        XCTAssertEqual(loaded.backgroundColor.hexString(), "#141414")
+        XCTAssertEqual(loaded.foregroundColor.hexString(), "#FFFFFF")
     }
 
     func testLoadAllowsRecursiveConfigFileToReloadTopLevelConfigAsFinalOverride() throws {
@@ -492,7 +495,7 @@ final class GhosttyConfigTests: XCTestCase {
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
 
-        XCTAssertEqual(loaded.backgroundColor.hexString(), "#111111")
+        XCTAssertEqual(loaded.backgroundColor.hexString(), "#141414")
     }
 
     func testLoadReadsOptionalQuotedConfigFilePath() throws {
@@ -529,8 +532,8 @@ final class GhosttyConfigTests: XCTestCase {
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
 
-        XCTAssertEqual(loaded.backgroundColor.hexString(), "#334455")
-        XCTAssertEqual(loaded.foregroundColor.hexString(), "#DDEEFF")
+        XCTAssertEqual(loaded.backgroundColor.hexString(), "#141414")
+        XCTAssertEqual(loaded.foregroundColor.hexString(), "#FFFFFF")
     }
 
     func testLoadIgnoresLegacyAppSupportConfigWhenConfigGhosttyIsNonEmpty() throws {
@@ -605,10 +608,10 @@ final class GhosttyConfigTests: XCTestCase {
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
 
-        XCTAssertEqual(loaded.backgroundColor.hexString(), "#112233")
+        XCTAssertEqual(loaded.backgroundColor.hexString(), "#141414")
     }
 
-    func testLoadAppliesThemeBeforeLaterCursorColorOverride() throws {
+    func testLoadEnforcesCursorDarkAfterUserThemeAndCursorColorOverride() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory
             .appendingPathComponent("cmux-ghostty-theme-order-\(UUID().uuidString)")
@@ -646,8 +649,9 @@ final class GhosttyConfigTests: XCTestCase {
         )
 
         let loaded = GhosttyConfig.load(preferredColorScheme: .dark, useCache: false)
+        XCTAssertEqual(loaded.theme, GhosttyConfig.cmuxEnforcedThemeName)
         XCTAssertEqual(rgb255(loaded.cursorColor), RGB(red: 255, green: 255, blue: 255))
-        XCTAssertEqual(rgb255(loaded.cursorTextColor), RGB(red: 17, green: 17, blue: 17))
+        XCTAssertEqual(rgb255(loaded.cursorTextColor), RGB(red: 20, green: 20, blue: 20))
     }
 
     func testLoadThemeReadsAbsoluteThemeFilePath() throws {
@@ -4530,7 +4534,7 @@ final class GhosttyMouseFocusTests: XCTestCase {
         )
     }
 
-    func testStartupAppearanceFreshInstallPreviewUsesManagedDefaultColorsWithoutSettingTheme() {
+    func testStartupAppearanceFreshInstallPreviewUsesEnforcedTheme() {
         #if DEBUG
         let previousProfile = GhosttyStartupAppearancePreviewState.profile
         GhosttyStartupAppearancePreviewState.profile = .freshInstall
@@ -4541,8 +4545,8 @@ final class GhosttyMouseFocusTests: XCTestCase {
         }
 
         let config = GhosttyConfig.load(preferredColorScheme: .light, useCache: false)
-        XCTAssertNil(config.theme)
-        XCTAssertEqual(config.backgroundColor.hexString(), "#FEFFFF")
+        XCTAssertEqual(config.theme, GhosttyConfig.cmuxEnforcedThemeName)
+        XCTAssertEqual(config.backgroundColor.hexString(), "#141414")
         #endif
     }
 }
