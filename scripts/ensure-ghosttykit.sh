@@ -113,18 +113,24 @@ mkdir -p "$CACHE_ROOT"
 
 echo "==> Ghostty build key: $GHOSTTY_KEY"
 
-LOCK_TIMEOUT=300
-LOCK_START=$SECONDS
-while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-  if (( SECONDS - LOCK_START > LOCK_TIMEOUT )); then
-    echo "==> Lock stale (>${LOCK_TIMEOUT}s), removing and retrying..."
-    rmdir "$LOCK_DIR" 2>/dev/null || rm -rf "$LOCK_DIR"
-    continue
-  fi
-  echo "==> Waiting for GhosttyKit cache lock for $GHOSTTY_KEY..."
-  sleep 1
-done
-trap 'rmdir "$LOCK_DIR" >/dev/null 2>&1 || true' EXIT
+CACHE_READY_BEFORE_LOCK=0
+if [[ -d "$CACHE_XCFRAMEWORK" ]]; then
+  CACHE_READY_BEFORE_LOCK=1
+  echo "==> Reusing cached GhosttyKit.xcframework"
+else
+  LOCK_TIMEOUT=300
+  LOCK_START=$SECONDS
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    if (( SECONDS - LOCK_START > LOCK_TIMEOUT )); then
+      echo "==> Lock stale (>${LOCK_TIMEOUT}s), removing and retrying..."
+      rmdir "$LOCK_DIR" 2>/dev/null || rm -rf "$LOCK_DIR"
+      continue
+    fi
+    echo "==> Waiting for GhosttyKit cache lock for $GHOSTTY_KEY..."
+    sleep 1
+  done
+  trap 'rmdir "$LOCK_DIR" >/dev/null 2>&1 || true' EXIT
+fi
 
 try_fetch_prebuilt_xcframework() {
   # Only attempt when Ghostty submodule is clean — dirty trees won't match any
@@ -204,7 +210,9 @@ try_fetch_prebuilt_xcframework() {
   return 0
 }
 
-if [[ -d "$CACHE_XCFRAMEWORK" ]]; then
+if [[ "$CACHE_READY_BEFORE_LOCK" -eq 1 ]]; then
+  :
+elif [[ -d "$CACHE_XCFRAMEWORK" ]]; then
   echo "==> Reusing cached GhosttyKit.xcframework"
 else
   LOCAL_KEY=""
