@@ -421,6 +421,7 @@ final class CollaborationRuntime {
     private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
+    private var mirroredTerminalRenderGridPatchSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
@@ -515,6 +516,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
         hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalsByID.removeValue(forKey: terminalID)
+        mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
@@ -1214,6 +1216,7 @@ final class CollaborationRuntime {
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
+        mirroredTerminalRenderGridPatchSequencesByID.removeAll()
         mirroredTerminalRenderGridSequencesByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
@@ -1508,6 +1511,7 @@ final class CollaborationRuntime {
                 try await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    full: true,
                     requireLiveScrollbackBottom: false
                 )
             } catch {
@@ -1560,6 +1564,7 @@ final class CollaborationRuntime {
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
         hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
         hostedTerminalRenderGridSnapshotTasksByID.removeAll()
+        mirroredTerminalRenderGridPatchSequencesByID.removeAll()
         mirroredTerminalRenderGridSequencesByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
@@ -1580,6 +1585,7 @@ final class CollaborationRuntime {
                 try? await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    full: true,
                     requireLiveScrollbackBottom: false
                 )
             }
@@ -1629,6 +1635,7 @@ final class CollaborationRuntime {
         panel.surface.suppressPassiveMouseInput = true
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
+        mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
@@ -1663,19 +1670,33 @@ final class CollaborationRuntime {
 
     private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
-        if let renderGridSequence = mirroredTerminalRenderGridSequencesByID[terminalID],
-           frame.stateSeq < renderGridSequence {
+        if let patchSequence = mirroredTerminalRenderGridPatchSequencesByID[terminalID],
+           frame.stateSeq < patchSequence {
             return
         }
         var mirrorFrame = frame
-        mirrorFrame.modes.removeAll { mode in
-            !mode.ansi && mode.code == 1004
-        }
+        mirrorFrame.modes.removeAll(where: Self.isMirrorInputReportingMode)
         panel.surface.processRemoteOutput(mirrorFrame.vtPatchBytes())
-        mirroredTerminalRenderGridSequencesByID[terminalID] = max(
-            mirroredTerminalRenderGridSequencesByID[terminalID] ?? 0,
+        mirroredTerminalRenderGridPatchSequencesByID[terminalID] = max(
+            mirroredTerminalRenderGridPatchSequencesByID[terminalID] ?? 0,
             frame.stateSeq
         )
+        if frame.full {
+            mirroredTerminalRenderGridSequencesByID[terminalID] = max(
+                mirroredTerminalRenderGridSequencesByID[terminalID] ?? 0,
+                frame.stateSeq
+            )
+        }
+    }
+
+    private static func isMirrorInputReportingMode(_ mode: MobileTerminalRenderGridFrame.ModeSetting) -> Bool {
+        guard !mode.ansi else { return false }
+        switch mode.code {
+        case 9, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1015, 1016, 2004, 2027:
+            return true
+        default:
+            return false
+        }
     }
 
     private func handleRemoteTerminalInput(terminalID: String, data: Data, fromPeerID: String?) {
@@ -1737,6 +1758,17 @@ final class CollaborationRuntime {
                 )
                 #endif
                 break
+            } else if let keyboardInput = terminalKeyboardInputReplacement(bytes, from: index) {
+                #if DEBUG
+                let sequence = Data(bytes[index..<(index + keyboardInput.length)])
+                cmuxDebugLog(
+                    "collab.terminal.input.normalize direction=\(direction) terminal=\(terminalID) " +
+                    "sequence=\(debugByteSummary(sequence)) replacement=\(debugByteSummary(keyboardInput.replacement))"
+                )
+                #endif
+                filtered.append(contentsOf: keyboardInput.replacement)
+                index += keyboardInput.length
+                continue
             } else if let reportLength = terminalGeneratedReportLength(bytes, from: index) {
                 #if DEBUG
                 let report = Data(bytes[index..<(index + reportLength)])
@@ -1785,6 +1817,64 @@ final class CollaborationRuntime {
             return nil
         }
         return bytes.count - start
+    }
+
+    private static func terminalKeyboardInputReplacement(
+        _ bytes: [UInt8],
+        from start: Int
+    ) -> (length: Int, replacement: Data)? {
+        guard start + 3 < bytes.count,
+              bytes[start] == 0x1B,
+              bytes[start + 1] == 0x5B else {
+            return nil
+        }
+
+        var index = start + 2
+        let parameterStart = index
+        while index < bytes.count, (0x30...0x3F).contains(bytes[index]) {
+            index += 1
+        }
+        guard index > parameterStart,
+              index < bytes.count,
+              bytes[index] == 0x75 else {
+            return nil
+        }
+
+        let parameterBytes = bytes[parameterStart..<index]
+        let parameterString = String(decoding: parameterBytes, as: UTF8.self)
+        let parts = parameterString.split(separator: ";")
+        guard parts.count >= 2,
+              let codepoint = Int(parts[0]),
+              let modifiers = Int(parts[1]),
+              Self.csiUModifiersContainControl(modifiers),
+              let controlByte = Self.controlByte(forCSIUCodepoint: codepoint) else {
+            return nil
+        }
+        return (index - start + 1, Data([controlByte]))
+    }
+
+    private static func csiUModifiersContainControl(_ modifiers: Int) -> Bool {
+        switch modifiers {
+        case 5, 6, 7, 8:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func controlByte(forCSIUCodepoint codepoint: Int) -> UInt8? {
+        switch codepoint {
+        case 64:
+            return 0
+        case 65...90:
+            return UInt8(codepoint - 64)
+        case 91...95:
+            return UInt8(codepoint - 64)
+        case 97...122:
+            return UInt8(codepoint - 96)
+        default:
+            return nil
+        }
     }
 
     private static func terminalGeneratedReportLength(_ bytes: [UInt8], from start: Int) -> Int? {
@@ -1946,6 +2036,7 @@ final class CollaborationRuntime {
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
     }
@@ -2110,6 +2201,7 @@ final class CollaborationRuntime {
     private func sendTerminalRenderGridSnapshotIfPossible(
         terminalID: String,
         scrollbackLines: Int,
+        full: Bool,
         requireLiveScrollbackBottom: Bool
     ) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
@@ -2119,7 +2211,7 @@ final class CollaborationRuntime {
             ?? 0
         guard let snapshot = panel.surface.mobileRenderGridFrame(
             stateSeq: stateSeq,
-            full: true,
+            full: full,
             scrollbackLines: scrollbackLines
         ) else { return }
         try await send(CollaborationTerminalRenderGridWire(
@@ -2141,6 +2233,7 @@ final class CollaborationRuntime {
                 try? await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                    full: true,
                     requireLiveScrollbackBottom: false
                 )
             }
@@ -2159,6 +2252,7 @@ final class CollaborationRuntime {
                 try? await self?.sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalLiveRenderGridScrollbackLines,
+                    full: false,
                     requireLiveScrollbackBottom: true
                 )
             }
