@@ -41,12 +41,12 @@ final class CloudVMActionLauncher {
             presentStartFailure(
                 summary: String(
                     localized: "command.cloudVM.failed.missingCLI",
-                    defaultValue: "The bundled cmux CLI is missing from this app build."
+                    defaultValue: "The bundled CLI is missing from this mosaic build."
                 ),
                 output: "",
                 action: String(
                     localized: "command.cloudVM.failed.action.missingCLI",
-                    defaultValue: "Install or reload a fresh cmux build, then try Start Cloud VM again. You can also run `cmux vm new` in a terminal to see the full error."
+                    defaultValue: "Install or reload a fresh mosaic build, then try Start Cloud VM again. You can also run `cmux vm new` in a terminal to see the full error."
                 ),
                 preferredWindow: preferredWindow
             )
@@ -111,12 +111,12 @@ final class CloudVMActionLauncher {
             presentStartFailure(
                 summary: String(
                     localized: "command.cloudVM.failed.launch",
-                    defaultValue: "cmux vm new could not be launched."
+                    defaultValue: "`cmux vm new` could not be launched."
                 ),
                 output: error.localizedDescription,
                 action: String(
                     localized: "command.cloudVM.failed.action.launch",
-                    defaultValue: "Reload cmux so the bundled CLI is available, then try again. If it still fails, run `cmux vm new` in a terminal and send us the output."
+                    defaultValue: "Reload mosaic so the bundled CLI is available, then try again. If it still fails, run `cmux vm new` in a terminal and send us the output."
                 ),
                 preferredWindow: preferredWindow
             )

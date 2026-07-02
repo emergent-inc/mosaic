@@ -285,9 +285,19 @@ public struct WorkspaceColorsSection: View {
         let nsColor = NSColor(name: nil) { appearance in
             let bestMatch = appearance.bestMatch(from: [.darkAqua, .aqua])
             if bestMatch == .darkAqua {
-                return NSColor(srgbRed: 0, green: 145.0 / 255.0, blue: 1.0, alpha: 1.0)
+                return NSColor(
+                    srgbRed: 161.0 / 255.0,
+                    green: 161.0 / 255.0,
+                    blue: 170.0 / 255.0,
+                    alpha: 1.0
+                )
             }
-            return NSColor(srgbRed: 0, green: 136.0 / 255.0, blue: 1.0, alpha: 1.0)
+            return NSColor(
+                srgbRed: 82.0 / 255.0,
+                green: 82.0 / 255.0,
+                blue: 82.0 / 255.0,
+                alpha: 1.0
+            )
         }
         return Color(nsColor: nsColor)
     }
