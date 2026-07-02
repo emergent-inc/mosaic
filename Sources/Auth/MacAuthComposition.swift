@@ -2,13 +2,12 @@ import CMUXAuthCore
 import CmuxAuthRuntime
 import AppKit
 import Foundation
-import StackAuth
 
 /// The macOS auth composition root.
 ///
 /// Constructs the de-singletonized auth graph once at app startup, mirroring
-/// the iOS `MobileAuthComposition`: the keychain/file fallback token store, a
-/// `StackClientApp` over it (wrapped in ``CmuxAuthRuntime/StackAuthClient``),
+/// the iOS `MobileAuthComposition`: the keychain/file fallback token store,
+/// the cmux-native Clerk session client,
 /// the shared ``CmuxAuthRuntime/AuthCoordinator`` bound to the historical mac
 /// defaults keys, and the ``HostBrowserSignInFlow``. Replaces
 /// `AuthManager.shared`.
@@ -20,7 +19,7 @@ struct MacAuthComposition {
     let browserSignIn: HostBrowserSignInFlow
     /// Recognizes/parses auth callback URLs (AppDelegate URL routing).
     let callbackRouter: AuthCallbackRouter
-    /// The token store the Stack client persists through.
+    /// The token store the native auth client persists through.
     let tokenStore: any StackAuthTokenStoreProtocol
 
     /// Build the auth graph.
@@ -41,14 +40,10 @@ struct MacAuthComposition {
         )
         self.tokenStore = tokenStore
 
-        let stack = StackClientApp(
-            projectId: AuthEnvironment.stackProjectID,
-            publishableClientKey: AuthEnvironment.stackPublishableClientKey,
-            baseUrl: AuthEnvironment.stackBaseURL.absoluteString,
-            tokenStore: .custom(tokenStore),
-            noAutomaticPrefetch: true
+        let client = NativeAuthClient(
+            apiBaseURL: AuthEnvironment.vmAPIBaseURL,
+            tokenStore: tokenStore
         )
-        let client = StackAuthClient(stack: stack)
 
         let userCache = CMUXAuthIdentityStore(
             keyValueStore: defaults,
@@ -69,8 +64,8 @@ struct MacAuthComposition {
 
         let config = AuthConfig(
             stack: CMUXAuthConfig(
-                projectId: AuthEnvironment.stackProjectID,
-                publishableClientKey: AuthEnvironment.stackPublishableClientKey
+                projectId: "clerk",
+                publishableClientKey: "clerk"
             ),
             magicLinkCallbackURL: AuthEnvironment.websiteOrigin
                 .appendingPathComponent("auth/callback", isDirectory: false)

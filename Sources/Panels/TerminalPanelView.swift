@@ -134,9 +134,6 @@ struct TerminalPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onDrop(of: [AgentRoomWireDragPayload.contentType], isTargeted: nil) { providers in
-            handleAgentRoomWireDrop(providers)
-        }
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
             terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
         }
@@ -243,22 +240,6 @@ struct TerminalPanelView: View {
             CollaborationRuntime.shared.beginAgentRoomWireDrag(sourcePanel: panel)
             return AgentRoomWireDragPayload.provider(for: panel.id)
         }
-    }
-
-    private func handleAgentRoomWireDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(AgentRoomWireDragPayload.contentType.identifier) }) else {
-            return false
-        }
-        provider.loadDataRepresentation(forTypeIdentifier: AgentRoomWireDragPayload.contentType.identifier) { data, _ in
-            guard let sourceSurfaceID = AgentRoomWireDragPayload.surfaceID(from: data) else { return }
-            Task { @MainActor in
-                CollaborationRuntime.shared.connectAgentRoomWire(
-                    sourceSurfaceID: sourceSurfaceID,
-                    targetPanel: panel
-                )
-            }
-        }
-        return true
     }
 }
 

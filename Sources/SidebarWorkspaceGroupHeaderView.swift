@@ -157,7 +157,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                     .frame(width: metrics.iconFrame, height: metrics.iconFrame)
                     .accessibilityHidden(true)
                 Text(name)
-                    .cmuxFont(size: metrics.nameFontSize, weight: .semibold)
+                    .cmuxFont(size: metrics.nameFontSize, weight: .medium)
                     .foregroundStyle(isAnchorActive ? Color.primary : Color.primary.opacity(0.9))
                     .lineLimit(1)
                     .truncationMode(.tail)

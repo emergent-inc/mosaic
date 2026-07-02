@@ -1072,6 +1072,14 @@ struct TabBarView: View {
         chromeSnapshot.actionLaneWidth
     }
 
+    private var visibleTrailingSplitButtonLaneWidth: CGFloat {
+        guard shouldRenderTrailingSplitButtons else { return 0 }
+        return max(
+            splitButtonsBackdropWidth,
+            TabBarStyling.minimumVisibleSplitButtonLaneWidth(buttonCount: trailingSplitButtons.count)
+        )
+    }
+
     private var showsControlShortcutHints: Bool {
         isFocused && splitViewController.tabShortcutHintsEnabled && controlKeyMonitor.isShortcutHintVisible
     }
@@ -1281,7 +1289,7 @@ struct TabBarView: View {
             TabBarDragZoneView(
                 hitRegion: .trailingEmptyChrome(
                     tabFrames: Array(tabFramesInBar.values),
-                    reservedTrailingWidth: 0
+                    reservedTrailingWidth: shouldShowTrailingSplitButtons ? visibleTrailingSplitButtonLaneWidth : 0
                 ),
                 isMinimalMode: isMinimalMode,
                 isFocusedPane: isFocused,
@@ -1633,10 +1641,10 @@ struct TabBarView: View {
     private var splitButtonChrome: some View {
         if shouldRenderTrailingSplitButtons {
             splitButtons(buttons: trailingSplitButtons)
-                .frame(width: splitButtonsBackdropWidth, height: tabBarHeight, alignment: .trailing)
+                .frame(width: visibleTrailingSplitButtonLaneWidth, height: tabBarHeight, alignment: .trailing)
                 .mask {
                     Rectangle()
-                        .frame(width: splitButtonsBackdropWidth, height: tabBarHeight)
+                        .frame(width: visibleTrailingSplitButtonLaneWidth, height: tabBarHeight)
                 }
                 .clipped()
                 .saturation(tabBarSaturation)
@@ -1753,7 +1761,10 @@ struct TabBarView: View {
 
     @ViewBuilder
     private func splitButtons(buttons: [BonsplitConfiguration.SplitActionButton]) -> some View {
-        let laneWidth = splitButtonsBackdropWidth
+        let laneWidth = max(
+            splitButtonsBackdropWidth,
+            TabBarStyling.minimumVisibleSplitButtonLaneWidth(buttonCount: buttons.count)
+        )
         ZStack(alignment: .trailing) {
             ScrollView(.horizontal, showsIndicators: false) {
                 splitButtonRow(buttons: buttons)

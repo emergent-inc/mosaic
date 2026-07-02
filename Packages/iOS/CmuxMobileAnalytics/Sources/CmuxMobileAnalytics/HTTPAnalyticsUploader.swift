@@ -76,7 +76,7 @@ public struct HTTPAnalyticsUploader: AnalyticsUploading {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
         if let refreshToken = await tokenProvider.refreshToken() {
-            request.setValue(refreshToken, forHTTPHeaderField: "X-Stack-Refresh-Token")
+            request.setValue(refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
         }
 
         do {
