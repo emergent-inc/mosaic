@@ -1,5 +1,22 @@
+import AppKit
 import CmuxFoundation
 import CoreGraphics
+
+enum MosaicChromePalette {
+    static let sidebarBackgroundHex = "#131019"
+    static let workspaceBackgroundHex = "#100E17"
+    static let chromeBackgroundHex = "#16131E"
+    static let selectedSurfaceHex = "#221F2E"
+    static let selectedSidebarRowHex = "#1E1A27"
+    static let borderHex = "#FFFFFF0D"
+    static let accentHex = "#45C9B6"
+
+    static let sidebarBackgroundColor = NSColor(hex: sidebarBackgroundHex) ?? .black
+    static let workspaceBackgroundColor = NSColor(hex: workspaceBackgroundHex) ?? .black
+    static let chromeBackgroundColor = NSColor(hex: chromeBackgroundHex) ?? .black
+    static let selectedSurfaceColor = NSColor(hex: selectedSurfaceHex) ?? .black
+    static let selectedSidebarRowColor = NSColor(hex: selectedSidebarRowHex) ?? .black
+}
 
 enum WindowChromeMetrics {
     static let sharedChromeBarHeight: CGFloat = 28

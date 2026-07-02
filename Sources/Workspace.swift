@@ -2824,37 +2824,12 @@ final class Workspace: Identifiable, ObservableObject {
         sharesWindowBackdrop: Bool = false,
         renderingMode: GhosttyTerminalBackdropRenderingMode = .windowHostBackdrop
     ) -> BonsplitConfiguration.Appearance.ChromeColors {
-        let surfaceHex = bonsplitChromeHex(
-            backgroundColor: backgroundColor,
-            backgroundOpacity: backgroundOpacity,
-            sharesWindowBackdrop: sharesWindowBackdrop
-        )
-        let borderHex = WindowChromeColorResolver()
-            .separatorColor(forChromeBackground: backgroundColor)
-            .hexString(includeAlpha: true)
-
-        if sharesWindowBackdrop {
-            return .init(
-                backgroundHex: surfaceHex,
-                tabBarBackgroundHex: "#00000000",
-                splitButtonBackdropHex: "#00000000",
-                paneBackgroundHex: "#00000000",
-                borderHex: borderHex
-            )
-        }
-
-        let paneBackgroundHex = usesBonsplitPaneTerminalBackdrop(
-            renderingMode: renderingMode,
-            sharesWindowBackdrop: sharesWindowBackdrop
-        )
-            ? surfaceHex
-            : "#00000000"
         return .init(
-            backgroundHex: surfaceHex,
-            tabBarBackgroundHex: surfaceHex,
-            splitButtonBackdropHex: surfaceHex,
-            paneBackgroundHex: paneBackgroundHex,
-            borderHex: borderHex
+            backgroundHex: MosaicChromePalette.workspaceBackgroundHex,
+            tabBarBackgroundHex: MosaicChromePalette.chromeBackgroundHex,
+            splitButtonBackdropHex: MosaicChromePalette.selectedSurfaceHex,
+            paneBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
+            borderHex: MosaicChromePalette.borderHex
         )
     }
 
@@ -2863,35 +2838,12 @@ final class Workspace: Identifiable, ObservableObject {
         sharesWindowBackdrop: Bool = false,
         renderingMode: GhosttyTerminalBackdropRenderingMode = .windowHostBackdrop
     ) -> BonsplitConfiguration.Appearance.ChromeColors {
-        // Keep this signature aligned with bonsplitChromeHex for settings tests
-        // and future background-image handling.
-        let backgroundHex = backgroundColor.hexString()
-        let borderHex = WindowChromeColorResolver()
-            .separatorColor(forChromeBackground: backgroundColor)
-            .hexString(includeAlpha: true)
-
-        if sharesWindowBackdrop {
-            return .init(
-                backgroundHex: backgroundHex,
-                tabBarBackgroundHex: "#00000000",
-                splitButtonBackdropHex: "#00000000",
-                paneBackgroundHex: "#00000000",
-                borderHex: borderHex
-            )
-        }
-
-        let paneBackgroundHex = usesBonsplitPaneTerminalBackdrop(
-            renderingMode: renderingMode,
-            sharesWindowBackdrop: sharesWindowBackdrop
-        )
-            ? backgroundHex
-            : "#00000000"
         return .init(
-            backgroundHex: backgroundHex,
-            tabBarBackgroundHex: backgroundHex,
-            splitButtonBackdropHex: backgroundHex,
-            paneBackgroundHex: paneBackgroundHex,
-            borderHex: borderHex
+            backgroundHex: MosaicChromePalette.workspaceBackgroundHex,
+            tabBarBackgroundHex: MosaicChromePalette.chromeBackgroundHex,
+            splitButtonBackdropHex: MosaicChromePalette.selectedSurfaceHex,
+            paneBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
+            borderHex: MosaicChromePalette.borderHex
         )
     }
 

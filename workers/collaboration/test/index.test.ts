@@ -128,7 +128,7 @@ test("create route retries when a generated session code is already active", asy
   });
 
   try {
-    const occupied = namespace.get("2222");
+    const occupied = namespace.get("AAAA");
     occupied.claimExistingSession = true;
     const createResponse = await collaborationFetch(
       new Request("http://relay.test/v1/collaboration/sessions", { method: "POST" }),
@@ -137,8 +137,8 @@ test("create route retries when a generated session code is already active", asy
     const created = await createResponse.json() as { sessionCode: string };
 
     expect(createResponse.status).toBe(201);
-    expect(created.sessionCode).toBe("3333");
-    expect(namespace.stubs.get("3333")?.createdSessionCode).toBe("3333");
+    expect(created.sessionCode).toBe("BBBB");
+    expect(namespace.stubs.get("BBBB")?.createdSessionCode).toBe("BBBB");
   } finally {
     Object.defineProperty(crypto, "getRandomValues", {
       configurable: true,
@@ -152,7 +152,7 @@ test("create route reports exhaustion when every generated code is already activ
   const env = {
     COLLABORATION_SESSIONS: namespace,
   } satisfies CollaborationWorkerEnv;
-  const occupied = namespace.get("2222");
+  const occupied = namespace.get("AAAA");
   occupied.claimExistingSession = true;
   const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
   let callCount = 0;

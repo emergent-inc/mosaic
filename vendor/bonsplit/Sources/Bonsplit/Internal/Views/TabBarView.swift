@@ -2055,16 +2055,8 @@ struct TabBarView: View {
     }
 
     @ViewBuilder
-    private func selectedTabIndicator(totalWidth: CGFloat) -> some View {
-        if let frame = selectedIndicatorFrame(totalWidth: totalWidth) {
-            Rectangle()
-                .fill(TabBarColors.activeIndicator(saturation: tabBarSaturation))
-                .frame(width: frame.width, height: TabBarMetrics.activeIndicatorHeight)
-                .offset(x: frame.minX)
-                .transaction { transaction in
-                    transaction.animation = nil
-                }
-        }
+    private func selectedTabIndicator(totalWidth _: CGFloat) -> some View {
+        EmptyView()
     }
 
     @ViewBuilder

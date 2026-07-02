@@ -30,7 +30,7 @@ test("parseEnvelope rejects malformed or oversized frames", () => {
 });
 
 test("invite material has expected shape", () => {
-  expect(randomSessionCode()).toMatch(/^[2-9A-HJ-NP-Z]{4}$/);
+  expect(randomSessionCode()).toMatch(/^[A-HJ-NP-Z]{4}$/);
 });
 
 test("session code normalization accepts shareable and pasted forms", () => {
