@@ -12,6 +12,14 @@ Use:
 
 `reload.sh` builds but does not launch by default. It terminates any running app with the same tag after a successful build, so opening the printed app path launches the fresh binary.
 
+For fast Swift/UI iteration on a tag with warmed DerivedData, use:
+
+```bash
+CMUX_DEV_FAST_RELOAD=1 ./scripts/reload.sh --tag <tag>
+```
+
+This keeps the same Xcode compile graph but skips slow dev packaging work: the Ghostty CLI helper Zig rebuild is skipped, an existing `cmuxd` binary is reused when available, and the Xcode-built app is retagged in place instead of copying the full `.app` bundle. Use the normal reload path when changing Ghostty, `cmuxd`, helper binaries, signing/bundle packaging, or tag/socket isolation behavior.
+
 Use:
 
 ```bash
