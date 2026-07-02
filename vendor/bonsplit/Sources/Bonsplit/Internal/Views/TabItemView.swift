@@ -269,6 +269,7 @@ struct TabItemView: View {
         // Icon-only pinned tabs always size to their fixed compact width.
         .fixedSize(horizontal: isIconOnlyPinned || !fillsWidth, vertical: false)
         .background(tabBackground.saturation(saturation))
+        .padding(.vertical, max(0, (appearance.tabBarHeight - tabHeight) / 2))
         .tabControlShortcutHintVisibilityAnimation(value: showsShortcutHint)
         .contentShape(Rectangle().inset(by: -BonsplitTabItemHitTesting.horizontalSlop))
         // Middle click to close (macOS convention).
@@ -328,7 +329,13 @@ struct TabItemView: View {
         HStack(spacing: 0) {
             // Icon + title block uses the standard spacing, but keep the close affordance tight.
             HStack(spacing: scaledContentSpacing) {
-                leadingIcon
+                if isSelected {
+                    activeTileMarker
+                }
+
+                if shouldShowLeadingIcon {
+                    leadingIcon
+                }
 
                 Text(tab.title)
                     .font(.system(size: appearance.tabTitleFontSize))
@@ -438,6 +445,30 @@ struct TabItemView: View {
             // Close button / dirty indicator / shortcut hint share the same trailing slot.
             trailingAccessory
         }
+    }
+
+    private var activeTileMarker: some View {
+        let color = TabBarColors.activeText(for: appearance).opacity(0.72)
+        return VStack(spacing: 2) {
+            HStack(spacing: 2) {
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+            }
+            HStack(spacing: 2) {
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+            }
+        }
+        .frame(width: 8, height: 8)
+        .accessibilityHidden(true)
     }
 
     /// Compact pinned-browser layout: a centered favicon with a small status badge
@@ -640,6 +671,14 @@ struct TabItemView: View {
         return "\(shortcutModifierSymbol)\(controlShortcutDigit)"
     }
 
+    private var shouldShowLeadingIcon: Bool {
+        if tab.isLoading || renderedFaviconImage != nil || tab.iconImageData != nil {
+            return true
+        }
+        guard let iconName = tab.icon else { return false }
+        return iconName != "terminal.fill" && iconName != "terminal"
+    }
+
     /// Hints are only ever shown on the focused pane; gating on focus here keeps
     /// hint visibility scoped to the focused pane while leaving width untouched.
     private var allowsShortcutHints: Bool {
@@ -762,10 +801,10 @@ struct TabItemView: View {
     private var tabBackground: some View {
         ZStack(alignment: .top) {
             if isSelected {
-                Rectangle()
+                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
                     .fill(TabBarColors.activeTabBackground(for: appearance))
             } else if TabItemStyling.shouldShowHoverBackground(isHovered: isHovered, isSelected: isSelected) {
-                Rectangle()
+                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
                     .fill(TabBarColors.hoveredTabBackground(for: appearance))
             } else {
                 Color.clear

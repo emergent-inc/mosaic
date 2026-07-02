@@ -34,6 +34,18 @@ private var tmuxWorkspacePaneWindowOverlayKey: UInt8 = 0
 let commandPaletteOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.commandPalette.overlay.container")
 let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.tmuxWorkspacePane.overlay.container")
 
+private enum MosaicSidebarStyle {
+    static let background = Color(nsColor: MosaicChromePalette.sidebarBackgroundColor)
+    static let selectedRow = Color(nsColor: MosaicChromePalette.selectedSidebarRowColor)
+    static let hoverRow = Color.white.opacity(0.045)
+    static let selectedBorder = Color.white.opacity(0.055)
+    static let primaryText = Color(red: 0xEC / 255, green: 0xE8 / 255, blue: 0xF3 / 255)
+    static let secondaryText = Color(red: 0xB9 / 255, green: 0xB4 / 255, blue: 0xC8 / 255)
+    static let inactiveText = Color(red: 0x84 / 255, green: 0x7D / 255, blue: 0x94 / 255)
+    static let mutedText = Color(red: 0x57 / 255, green: 0x51 / 255, blue: 0x6A / 255)
+    static let sectionText = Color(red: 0x57 / 255, green: 0x51 / 255, blue: 0x6A / 255)
+}
+
 @MainActor
 private final class CommandPaletteOverlayContainerView: NSView {
     var capturesMouseEvents = false
@@ -1698,6 +1710,7 @@ struct ContentView: View {
         )
         .frame(width: sidebarWidth)
         .frame(maxHeight: .infinity, alignment: .topLeading)
+        .background(MosaicSidebarStyle.background.ignoresSafeArea())
     }
 
     /// Native titlebar inset reported by AppKit. Standard mode follows cmux's visual chrome;
@@ -2510,11 +2523,6 @@ struct ContentView: View {
                     .allowsHitTesting(false)
 
                 contentAndSidebarLayout(appearance: appearance)
-
-                WorkspaceTitlebarModeLayer {
-                    workspaceTitlebarBand(appearance: appearance)
-                        .zIndex(100)
-                }
             }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .frame(minWidth: CGFloat(SessionPersistencePolicy.minimumWindowWidth), minHeight: CGFloat(SessionPersistencePolicy.minimumWindowHeight))
@@ -11922,6 +11930,15 @@ struct VerticalTabsSidebar: View {
         // read them, never this sidebar body. See SidebarDragState and
         // https://github.com/manaflow-ai/cmux/issues/2586.
         LazyVStack(spacing: tabRowSpacing) {
+            Text(String(localized: "sidebar.sessions.section", defaultValue: "SESSIONS"))
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(1.1)
+                .foregroundColor(MosaicSidebarStyle.sectionText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 18)
+                .padding(.bottom, 9)
+
             ForEach(renderItems, id: \.id) { item in
                 switch item {
                 case .groupHeader(let group, let memberWorkspaceIds):
@@ -13219,7 +13236,7 @@ private struct SidebarParticipantAvatar: View, Equatable {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.dicebear.com"
-        components.path = "/9.x/initials/png"
+        components.path = "/10.x/initials/svg"
         components.queryItems = [
             URLQueryItem(name: "seed", value: participant.avatarSeed),
             URLQueryItem(name: "chars", value: "2"),
@@ -13497,7 +13514,7 @@ struct TabItemView: View, Equatable {
         case .leftRail:
             return 0
         case .solidFill:
-            return isActive ? 1.5 : 0
+            return isActive ? 1 : 0
         }
     }
 
@@ -13507,24 +13524,21 @@ struct TabItemView: View, Equatable {
         case .leftRail:
             return .clear
         case .solidFill:
-            return Color.primary.opacity(0.5)
+            return MosaicSidebarStyle.selectedBorder
         }
     }
 
     private var usesInvertedActiveForeground: Bool {
-        isActive
+        false
     }
 
     private var activePrimaryTextColor: Color {
-        usesInvertedActiveForeground
-            ? Color(nsColor: selectedWorkspaceForegroundNSColor(opacity: 1.0))
-            : .primary
+        isActive ? MosaicSidebarStyle.primaryText : MosaicSidebarStyle.inactiveText
     }
 
     private func activeSecondaryColor(_ opacity: Double = 0.75) -> Color {
-        usesInvertedActiveForeground
-            ? Color(nsColor: selectedWorkspaceForegroundNSColor(opacity: CGFloat(opacity)))
-            : .secondary
+        (isActive ? MosaicSidebarStyle.secondaryText : MosaicSidebarStyle.mutedText)
+            .opacity(opacity)
     }
 
     private var activeUnreadBadgeFillColor: Color {
@@ -13690,6 +13704,30 @@ struct TabItemView: View, Equatable {
         )
     }
 
+    private var sidebarActiveTileMarker: some View {
+        let color = MosaicSidebarStyle.primaryText.opacity(0.74)
+        return VStack(spacing: 2) {
+            HStack(spacing: 2) {
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+            }
+            HStack(spacing: 2) {
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+                RoundedRectangle(cornerRadius: 0.8, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3, height: 3)
+            }
+        }
+        .frame(width: 8, height: 8)
+        .accessibilityHidden(true)
+    }
+
     var body: some View {
         let workspaceSnapshot = self.workspaceSnapshot
         let closeWorkspaceTooltip = String(localized: "sidebar.closeWorkspace.tooltip", defaultValue: "Close Workspace")
@@ -13716,7 +13754,7 @@ struct TabItemView: View, Equatable {
         )
 
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .center, spacing: 11) {
                 if unreadCount > 0 {
                     ZStack {
                         Circle()
@@ -13779,8 +13817,12 @@ struct TabItemView: View, Equatable {
                     .padding(.trailing, -2)
                 }
 
+                if isActive {
+                    sidebarActiveTileMarker
+                }
+
                 Text(displayedTitle)
-                    .font(magnifiedFont(scaledFontSize(12.5), weight: titleFontWeight))
+                    .font(magnifiedFont(scaledFontSize(13), weight: titleFontWeight, design: .monospaced))
                     .foregroundColor(activePrimaryTextColor)
                     .lineLimit(titleLineLimit)
                     .truncationMode(.tail)
@@ -13820,13 +13862,13 @@ struct TabItemView: View, Equatable {
         // row is always animating, so the sidebar-wide layout re-runs at display
         // refresh rate (#5764 / #5845). Lazy rows must be height-stable after
         // they appear; content changes now apply in one discrete layout pass.
-        .padding(.horizontal, SidebarWorkspaceListMetrics.rowContentHorizontalPadding)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(backgroundColor)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(activeBorderColor, lineWidth: activeBorderLineWidth)
                 }
                 .overlay(alignment: .leading) {
@@ -14311,16 +14353,13 @@ struct TabItemView: View, Equatable {
     }
 
     private var backgroundColor: Color {
-        let style = sidebarWorkspaceRowBackgroundStyle(
-            activeTabIndicatorStyle: activeTabIndicatorStyle,
-            isActive: isActive,
-            isMultiSelected: isMultiSelected,
-            customColorHex: workspaceSnapshot.customColorHex,
-            colorScheme: colorScheme,
-            sidebarSelectionColorHex: sidebarSelectionColorHex
-        )
-        guard let color = style.color else { return .clear }
-        return Color(nsColor: color).opacity(style.opacity)
+        if isActive || isMultiSelected {
+            return MosaicSidebarStyle.selectedRow
+        }
+        if rowInteractionState.isPointerHovering {
+            return MosaicSidebarStyle.hoverRow
+        }
+        return .clear
     }
 
     private var railColor: Color {

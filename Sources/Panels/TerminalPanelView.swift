@@ -571,10 +571,7 @@ struct PanelAppearance {
     }
 
     static func fromConfig(_ config: GhosttyConfig, usesTransparentWindow: Bool) -> PanelAppearance {
-        let backgroundColor = GhosttyBackgroundTheme.color(
-            backgroundColor: config.backgroundColor,
-            opacity: config.backgroundOpacity
-        )
+        let backgroundColor = MosaicChromePalette.workspaceBackgroundColor
         return PanelAppearance(
             backgroundColor: backgroundColor,
             foregroundColor: cmuxReadableForegroundNSColor(
