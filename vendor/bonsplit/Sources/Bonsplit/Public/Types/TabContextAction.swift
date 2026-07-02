@@ -1,0 +1,59 @@
+import Foundation
+
+/// Context menu actions that can be triggered from a tab item.
+public enum TabContextAction: String, CaseIterable, Sendable {
+    case rename
+    case clearName
+    case copyIdentifiers
+    case closeToLeft
+    case closeToRight
+    case closeOthers
+    case move
+    case moveToNewWorkspace
+    case moveToLeftPane
+    case moveToRightPane
+    case newTerminalToRight
+    case newBrowserToRight
+    case reload
+    case duplicate
+    case toggleAudioMute
+    case togglePin
+    case markAsRead
+    case markAsUnread
+    case toggleZoom
+    case forkConversation
+    case forkConversationRight
+    case forkConversationLeft
+    case forkConversationTop
+    case forkConversationBottom
+    case forkConversationNewTab
+    case forkConversationNewWorkspace
+
+    public static let defaultForkConversationDestination: TabContextAction = .forkConversationRight
+
+    public var isForkConversationDestination: Bool {
+        switch self {
+        case .forkConversationRight,
+             .forkConversationLeft,
+             .forkConversationTop,
+             .forkConversationBottom,
+             .forkConversationNewTab,
+             .forkConversationNewWorkspace:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+public struct TabContextMoveDestination: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let isEnabled: Bool
+
+    public init(id: String, title: String, isEnabled: Bool = true) {
+        self.id = id
+        self.title = title
+        self.isEnabled = isEnabled
+    }
+}
