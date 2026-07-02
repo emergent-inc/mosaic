@@ -50,13 +50,14 @@ export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | nu
 
 export function randomSessionCode(): string {
   const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const values = new Uint8Array(8);
+  const values = new Uint8Array(4);
   crypto.getRandomValues(values);
   return [...values].map((value) => alphabet[value % alphabet.length]).join("");
 }
 
 export function normalizeSessionCode(value: string): string | null {
   const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (/^[2-9A-HJ-NP-Z]{4}$/.test(compact)) return compact;
   if (/^[A-Z]{5}$/.test(compact)) return compact;
   if (/^[2-9A-HJ-NP-Z]{8}$/.test(compact)) return compact;
   return null;
