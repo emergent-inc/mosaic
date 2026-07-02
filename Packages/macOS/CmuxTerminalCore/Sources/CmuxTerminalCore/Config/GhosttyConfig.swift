@@ -19,12 +19,12 @@ public struct GhosttyConfig {
     /// terminal view/engine code.
     public typealias ColorSchemePreference = TerminalColorSchemePreference
 
-    /// Native fallback light theme name used for fresh installs before the user
-    /// has chosen terminal colors.
-    public static let cmuxDefaultLightThemeName = "Apple System Colors Light"
-    /// Native fallback dark theme name used for fresh installs before the user
-    /// has chosen terminal colors.
-    public static let cmuxDefaultDarkThemeName = "Apple System Colors"
+    /// The terminal theme cmux enforces for every user-facing terminal surface.
+    public static let cmuxEnforcedThemeName = "Cursor Dark"
+    /// Native fallback light theme name used when resolving cmux-managed colors.
+    public static let cmuxDefaultLightThemeName = cmuxEnforcedThemeName
+    /// Native fallback dark theme name used when resolving cmux-managed colors.
+    public static let cmuxDefaultDarkThemeName = cmuxEnforcedThemeName
 
     private static let loadCacheLock = NSLock()
     // Every read/write of this cache is serialized by `loadCacheLock`; the
@@ -314,12 +314,22 @@ public struct GhosttyConfig {
                     preferredColorScheme: preferredColorScheme
                 )
             }
+            config.applyCmuxEnforcedAppearance(
+                environment: ProcessInfo.processInfo.environment,
+                bundleResourceURL: Bundle.main.resourceURL,
+                preferredColorScheme: preferredColorScheme
+            )
         } else if let contents = startupPreviewOverride?.previewConfigContents(
             preferredColorScheme
         ) {
             config.parse(
                 contents,
                 loadingThemesImmediatelyFor: preferredColorScheme
+            )
+            config.applyCmuxEnforcedAppearance(
+                environment: ProcessInfo.processInfo.environment,
+                bundleResourceURL: Bundle.main.resourceURL,
+                preferredColorScheme: preferredColorScheme
             )
         }
         #else
@@ -337,6 +347,11 @@ public struct GhosttyConfig {
                 preferredColorScheme: preferredColorScheme
             )
         }
+        config.applyCmuxEnforcedAppearance(
+            environment: ProcessInfo.processInfo.environment,
+            bundleResourceURL: Bundle.main.resourceURL,
+            preferredColorScheme: preferredColorScheme
+        )
         #endif
 
         config.resolveSidebarBackground(preferredColorScheme: preferredColorScheme)
@@ -359,6 +374,22 @@ public struct GhosttyConfig {
         bundleResourceURL: URL?,
         preferredColorScheme: ColorSchemePreference
     ) {
+        parse(
+            Self.cmuxDefaultThemeConfigContents(
+                preferredColorScheme: preferredColorScheme,
+                environment: environment,
+                bundleResourceURL: bundleResourceURL
+            )
+        )
+    }
+
+    /// Applies cmux's enforced terminal theme after user config has loaded.
+    public mutating func applyCmuxEnforcedAppearance(
+        environment: [String: String],
+        bundleResourceURL: URL?,
+        preferredColorScheme: ColorSchemePreference
+    ) {
+        theme = Self.cmuxEnforcedThemeName
         parse(
             Self.cmuxDefaultThemeConfigContents(
                 preferredColorScheme: preferredColorScheme,
@@ -419,60 +450,32 @@ public struct GhosttyConfig {
     }
 
     private static func cmuxDefaultFallbackConfigContents(
-        preferredColorScheme: ColorSchemePreference
+        preferredColorScheme _: ColorSchemePreference
     ) -> String {
-        switch preferredColorScheme {
-        case .light:
-            return """
-            palette = 0=#1a1a1a
-            palette = 1=#cc372e
-            palette = 2=#26a439
-            palette = 3=#cdac08
-            palette = 4=#0869cb
-            palette = 5=#9647bf
-            palette = 6=#479ec2
-            palette = 7=#98989d
-            palette = 8=#464646
-            palette = 9=#ff453a
-            palette = 10=#32d74b
-            palette = 11=#e5bc00
-            palette = 12=#0a84ff
-            palette = 13=#bf5af2
-            palette = 14=#69c9f2
-            palette = 15=#ffffff
-            background = #feffff
-            foreground = #000000
-            cursor-color = #98989d
-            cursor-text = #ffffff
-            selection-background = #abd8ff
-            selection-foreground = #000000
-            """
-        case .dark:
-            return """
-            palette = 0=#1a1a1a
-            palette = 1=#cc372e
-            palette = 2=#26a439
-            palette = 3=#cdac08
-            palette = 4=#0869cb
-            palette = 5=#9647bf
-            palette = 6=#479ec2
-            palette = 7=#98989d
-            palette = 8=#464646
-            palette = 9=#ff453a
-            palette = 10=#32d74b
-            palette = 11=#ffd60a
-            palette = 12=#0a84ff
-            palette = 13=#bf5af2
-            palette = 14=#76d6ff
-            palette = 15=#ffffff
-            background = #1e1e1e
-            foreground = #ffffff
-            cursor-color = #98989d
-            cursor-text = #ffffff
-            selection-background = #3f638b
-            selection-foreground = #ffffff
-            """
-        }
+        """
+        palette = 0=#2a2a2a
+        palette = 1=#bf616a
+        palette = 2=#a3be8c
+        palette = 3=#ebcb8b
+        palette = 4=#81a1c1
+        palette = 5=#b48ead
+        palette = 6=#88c0d0
+        palette = 7=#d8dee9
+        palette = 8=#505050
+        palette = 9=#bf616a
+        palette = 10=#a3be8c
+        palette = 11=#ebcb8b
+        palette = 12=#81a1c1
+        palette = 13=#b48ead
+        palette = 14=#88c0d0
+        palette = 15=#ffffff
+        background = #141414
+        foreground = #ffffff
+        cursor-color = #ffffff
+        cursor-text = #141414
+        selection-background = #303030
+        selection-foreground = #ffffff
+        """
     }
 
     /// Parses ghostty-format config `contents` into this config. When

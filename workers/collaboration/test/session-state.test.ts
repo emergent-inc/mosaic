@@ -16,6 +16,7 @@ class FakeSocket implements RelaySocket {
 
 const peer = (peerID: string) => ({
   peerID,
+  participantID: `${peerID}-participant`,
   displayName: peerID,
   color: "#123456",
 });
@@ -91,6 +92,65 @@ test("forwards terminal collaboration frames to other peers", () => {
     fromPeerID: "p2",
     receivedAt: 1200,
   });
+});
+
+test("forwards targeted terminal frames only to selected participants", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  const third = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+  state.addPeer("ABCD-1234", peer("p3"), third, 1000);
+  const beforeSecond = second.sent.length;
+  const beforeThird = third.sent.length;
+
+  state.handleMessage(
+    "p1",
+    JSON.stringify({
+      type: "terminal.output",
+      terminalID: "term1",
+      sequence: 7,
+      dataBase64: "b2s=",
+      recipientParticipantIDs: ["p2-participant"],
+    }),
+    1100
+  );
+
+  expect(JSON.parse(second.sent.at(-1) ?? "{}")).toEqual({
+    type: "terminal.output",
+    terminalID: "term1",
+    sequence: 7,
+    dataBase64: "b2s=",
+    recipientParticipantIDs: ["p2-participant"],
+    fromPeerID: "p1",
+    receivedAt: 1100,
+  });
+  expect(second.sent.length).toBe(beforeSecond + 1);
+  expect(third.sent.length).toBe(beforeThird);
+});
+
+test("targeted terminal frames with empty recipients are not forwarded", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+  const before = second.sent.length;
+
+  state.handleMessage(
+    "p1",
+    JSON.stringify({
+      type: "terminal.output",
+      terminalID: "term1",
+      sequence: 7,
+      dataBase64: "b2s=",
+      recipientParticipantIDs: [],
+    }),
+    1100
+  );
+
+  expect(second.sent.length).toBe(before);
 });
 
 test("preserves terminal output caret attribution", () => {
