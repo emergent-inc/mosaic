@@ -1,7 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
 import { parsePeer } from "./protocol";
 import { CollaborationRelaySessionState } from "./session-state";
-import { createSessionMetadata, readSessionMetadata, type SessionMetadata } from "./session-metadata";
+import {
+  createSessionMetadataIfAbsent,
+  readSessionMetadata,
+  type SessionMetadata,
+  type SessionMetadataCreateResult,
+} from "./session-metadata";
 
 const HEARTBEAT_TIMEOUT_MS = 30_000;
 const liveSessionStates = new Map<string, CollaborationRelaySessionState>();
@@ -10,10 +15,11 @@ export class CollaborationSessionObject extends DurableObject {
   private metadata: SessionMetadata | null = null;
   private state = new CollaborationRelaySessionState();
 
-  async create(sessionCode: string): Promise<SessionMetadata> {
-    if (this.metadata !== null) return this.metadata;
-    this.metadata = await createSessionMetadata(this.ctx.storage, sessionCode);
-    return this.metadata;
+  async create(sessionCode: string): Promise<SessionMetadataCreateResult> {
+    if (this.metadata !== null) return { metadata: this.metadata, created: false };
+    const result = await createSessionMetadataIfAbsent(this.ctx.storage, sessionCode);
+    this.metadata = result.metadata;
+    return result;
   }
 
   override async fetch(request: Request): Promise<Response> {

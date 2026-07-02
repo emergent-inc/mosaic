@@ -176,6 +176,21 @@ fileprivate func cmuxVsyncIOSurfaceTimelineCallback(
 
 @MainActor
 class TabManager: ObservableObject {
+    private static let automaticWelcomeEnabled = false
+
+    static func shouldSendAutomaticWelcome(
+        autoWelcomeIfNeeded: Bool,
+        select: Bool,
+        startsWithTerminal: Bool,
+        welcomeAlreadyShown: Bool
+    ) -> Bool {
+        automaticWelcomeEnabled
+            && autoWelcomeIfNeeded
+            && select
+            && startsWithTerminal
+            && !welcomeAlreadyShown
+    }
+
     /// The window that owns this TabManager. Set by AppDelegate.registerMainWindow().
     /// Used to apply title updates to the correct window instead of NSApp.keyWindow.
     weak var window: NSWindow?
@@ -1167,8 +1182,12 @@ class TabManager: ObservableObject {
                 "selectedTabId": select ? newWorkspace.id.uuidString : (snapshot.selectedTabId?.uuidString ?? "")
             ])
 #endif
-            if autoWelcomeIfNeeded && select && initialSurface == .terminal
-                && !UserDefaults.standard.bool(forKey: AccountCatalogSection().welcomeShown.userDefaultsKey) {
+            if Self.shouldSendAutomaticWelcome(
+                autoWelcomeIfNeeded: autoWelcomeIfNeeded,
+                select: select,
+                startsWithTerminal: initialSurface == .terminal,
+                welcomeAlreadyShown: UserDefaults.standard.bool(forKey: AccountCatalogSection().welcomeShown.userDefaultsKey)
+            ) {
                 if let appDelegate = AppDelegate.shared {
                     appDelegate.sendWelcomeCommandWhenReady(to: newWorkspace, markShownOnSend: true)
                 } else {

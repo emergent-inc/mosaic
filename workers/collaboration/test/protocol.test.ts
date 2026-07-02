@@ -20,13 +20,16 @@ test("parseEnvelope rejects malformed or oversized frames", () => {
 });
 
 test("invite material has expected shape", () => {
-  expect(randomSessionCode()).toMatch(/^[2-9A-HJ-NP-Z]{8}$/);
+  expect(randomSessionCode()).toMatch(/^[2-9A-HJ-NP-Z]{4}$/);
 });
 
 test("session code normalization accepts shareable and pasted forms", () => {
+  expect(normalizeSessionCode("5znh")).toBe("5ZNH");
+  expect(normalizeSessionCode("5z-nh")).toBe("5ZNH");
   expect(normalizeSessionCode("5znh-gf9p")).toBe("5ZNHGF9P");
   expect(normalizeSessionCode("5ZNH GF9P")).toBe("5ZNHGF9P");
   expect(normalizeSessionCode("5ZNHGF9P")).toBe("5ZNHGF9P");
   expect(normalizeSessionCode("ABCDE")).toBe("ABCDE");
+  expect(normalizeSessionCode("1ZNH")).toBeNull();
   expect(normalizeSessionCode("1ZNH-GF9P")).toBeNull();
 });
