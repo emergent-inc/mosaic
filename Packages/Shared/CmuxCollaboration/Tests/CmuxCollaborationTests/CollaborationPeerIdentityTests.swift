@@ -21,9 +21,41 @@ struct CollaborationPeerIdentityTests {
         )
 
         #expect(first.peerID != second.peerID)
+        #expect(first.participantID == first.peerID)
         #expect(first.displayName == second.displayName)
         #expect(first.color == "#111111")
         #expect(second.color == "#111111")
+    }
+
+    @Test
+    func persistedParticipantKeepsStableParticipantIDAcrossPeerIDs() throws {
+        let suite = "cmux-collaboration-peer-identity-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let firstPeerUUID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000011"))
+        let secondPeerUUID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000012"))
+        let participantUUID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000099"))
+
+        let first = CollaborationPeerIdentity.persistedParticipant(
+            displayName: "Dorsa",
+            defaults: defaults,
+            participantIDKey: "participant-id",
+            colorPalette: ["#111111"],
+            peerIDProvider: { firstPeerUUID },
+            participantIDProvider: { participantUUID }
+        )
+        let second = CollaborationPeerIdentity.persistedParticipant(
+            displayName: "Dorsa",
+            defaults: defaults,
+            participantIDKey: "participant-id",
+            colorPalette: ["#111111"],
+            peerIDProvider: { secondPeerUUID },
+            participantIDProvider: { UUID() }
+        )
+
+        #expect(first.peerID != second.peerID)
+        #expect(first.participantID == participantUUID.uuidString)
+        #expect(second.participantID == participantUUID.uuidString)
     }
 
     @Test
