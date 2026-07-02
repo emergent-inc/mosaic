@@ -24895,7 +24895,11 @@ struct CMUXCLI {
                 }
                 let rawLabel = (surface["display_name"] as? String)?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                let label = rawLabel?.isEmpty == false ? rawLabel! : "surface \(surfaceID)"
+                let fallbackLabelFormat = String(
+                    localized: "cli.claudeHook.roomContext.activeFallbackLabelFormat",
+                    defaultValue: "surface %@"
+                )
+                let label = rawLabel?.isEmpty == false ? rawLabel! : String(format: fallbackLabelFormat, surfaceID)
                 return (label, surfaceID)
             }
         guard !surfaces.isEmpty else { return "" }
@@ -24907,15 +24911,27 @@ struct CMUXCLI {
             localized: "cli.claudeHook.roomContext.activeCommandIntro",
             defaultValue: "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging:"
         )
-        let peerLines = surfaces.map { "- \($0.label): target surface \($0.surfaceID)" }
+        let peerLineFormat = String(
+            localized: "cli.claudeHook.roomContext.activePeerLineFormat",
+            defaultValue: "- %@: target surface %@"
+        )
+        let promptPlaceholder = String(
+            localized: "cli.claudeHook.roomContext.activePromptPlaceholder",
+            defaultValue: "handoff or question for that peer"
+        )
+        let kindHint = String(
+            localized: "cli.claudeHook.roomContext.activeKindHint",
+            defaultValue: "Use --kind question for a question and --kind blocker for an urgent blocker."
+        )
+        let peerLines = surfaces.map { String(format: peerLineFormat, $0.label, $0.surfaceID) }
         let exampleSurface = surfaces[0].surfaceID
         return """
         \(intro)
         \(peerLines.joined(separator: "\n"))
 
         \(commandIntro)
-        cmux agent-room post --kind handoff --target-surfaces \(exampleSurface) -- "<handoff or question for that peer>"
-        Use --kind question for a question and --kind blocker for an urgent blocker.
+        cmux agent-room post --kind handoff --target-surfaces \(exampleSurface) -- "<\(promptPlaceholder)>"
+        \(kindHint)
         """
     }
 
