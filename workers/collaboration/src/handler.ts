@@ -1,7 +1,7 @@
 import { json, normalizeSessionCode, randomSessionCode, type SessionCreateResponse } from "./protocol";
 
 interface CollaborationSessionStub {
-  create(sessionCode: string): Promise<SessionCreateResponse>;
+  create(sessionCode: string): Promise<{ metadata: SessionCreateResponse; created: boolean }>;
   fetch(request: Request): Promise<Response>;
 }
 
@@ -14,6 +14,8 @@ export interface CollaborationWorkerEnv {
   COLLABORATION_SESSIONS: CollaborationSessionNamespace;
 }
 
+const CREATE_SESSION_MAX_ATTEMPTS = 8;
+
 export async function collaborationFetch(request: Request, env: CollaborationWorkerEnv): Promise<Response> {
   const url = new URL(request.url);
 
@@ -22,9 +24,13 @@ export async function collaborationFetch(request: Request, env: CollaborationWor
   }
 
   if (url.pathname === "/v1/collaboration/sessions" && request.method === "POST") {
-    const sessionCode = randomSessionCode();
-    const stub = env.COLLABORATION_SESSIONS.get(env.COLLABORATION_SESSIONS.idFromName(sessionCode));
-    return json(await stub.create(sessionCode), 201);
+    for (let attempt = 0; attempt < CREATE_SESSION_MAX_ATTEMPTS; attempt += 1) {
+      const sessionCode = randomSessionCode();
+      const stub = env.COLLABORATION_SESSIONS.get(env.COLLABORATION_SESSIONS.idFromName(sessionCode));
+      const result = await stub.create(sessionCode);
+      if (result.created) return json(result.metadata, 201);
+    }
+    return json({ error: "session_code_exhausted" }, 503);
   }
 
   const match = url.pathname.match(/^\/v1\/collaboration\/sessions\/([^/]+)\/connect$/);
