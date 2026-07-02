@@ -1,13 +1,16 @@
 public import Foundation
 
-/// In-memory room store used by the demo room runtime.
+/// In-memory room store used by the agent room runtime.
 public actor ClaudeRoomStore {
     private var rooms: [String: ClaudeRoomSnapshot] = [:]
+    private var transcriptTurnsByRoomID: [String: [AgentRoomTranscriptTurn]] = [:]
     private let maxEventsPerRoom: Int
+    private let maxTranscriptTurnsPerRoom: Int
 
     /// Creates a room store.
-    public init(maxEventsPerRoom: Int = 200) {
+    public init(maxEventsPerRoom: Int = 200, maxTranscriptTurnsPerRoom: Int = 2_000) {
         self.maxEventsPerRoom = maxEventsPerRoom
+        self.maxTranscriptTurnsPerRoom = maxTranscriptTurnsPerRoom
     }
 
     /// Creates and stores a new room.
@@ -119,5 +122,147 @@ public actor ClaudeRoomStore {
         )
         rooms[roomID] = room
         return room
+    }
+
+    /// Appends a transcript turn to the room's queryable transcript index.
+    public func appendTranscriptTurn(
+        roomID: String,
+        agentKind: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil,
+        role: AgentRoomTranscriptRole,
+        text: String,
+        sourceSequence: Int? = nil,
+        sourceID: String? = nil,
+        createdAt: Date = Date()
+    ) -> AgentRoomTranscriptTurn {
+        let existing = transcriptTurnsByRoomID[roomID] ?? []
+        let nextSequence = (existing.last?.sequence ?? 0) + 1
+        let turn = AgentRoomTranscriptTurn(
+            roomID: roomID,
+            sequence: nextSequence,
+            agentKind: agentKind,
+            memberID: memberID,
+            surfaceID: surfaceID,
+            role: role,
+            text: text,
+            sourceSequence: sourceSequence,
+            sourceID: sourceID,
+            createdAt: createdAt
+        )
+        transcriptTurnsByRoomID[roomID] = trimmedTranscriptTurns(existing + [turn])
+        return turn
+    }
+
+    /// Returns recent transcript turns for a room, optionally scoped to a member or surface.
+    public func transcriptTurns(
+        roomID: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil,
+        sinceSequence: Int? = nil,
+        limit: Int = 50
+    ) -> [AgentRoomTranscriptTurn] {
+        selectedTranscriptTurns(
+            roomID: roomID,
+            memberID: memberID,
+            surfaceID: surfaceID,
+            sinceSequence: sinceSequence,
+            limit: limit
+        )
+    }
+
+    /// Searches indexed transcript turns with a case-insensitive substring query.
+    public func searchTranscripts(
+        roomID: String,
+        query: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil,
+        limit: Int = 20
+    ) -> [AgentRoomTranscriptTurn] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
+            return selectedTranscriptTurns(
+                roomID: roomID,
+                memberID: memberID,
+                surfaceID: surfaceID,
+                limit: limit
+            )
+        }
+        return Array(selectedTranscriptTurns(
+            roomID: roomID,
+            memberID: memberID,
+            surfaceID: surfaceID,
+            limit: maxTranscriptTurnsPerRoom
+        )
+        .filter { $0.text.localizedCaseInsensitiveContains(trimmedQuery) }
+        .suffix(limit))
+    }
+
+    /// Builds a focused context pack from room ledger deltas and transcript excerpts.
+    public func contextPack(
+        roomID: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil,
+        sinceEventSequence: Int? = nil,
+        transcriptQuery: String? = nil,
+        maxEvents: Int = 8,
+        maxTranscriptTurns: Int = 6
+    ) -> AgentRoomContextPack? {
+        guard let room = rooms[roomID] else { return nil }
+        let transcriptTurns: [AgentRoomTranscriptTurn]
+        if let transcriptQuery,
+           !transcriptQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Explicit transcript lookup is evidence retrieval from the room,
+            // not recipient-scoped prompt history. Call `searchTranscripts`
+            // directly when a caller wants member/surface filtering.
+            transcriptTurns = searchTranscripts(
+                roomID: roomID,
+                query: transcriptQuery,
+                limit: maxTranscriptTurns
+            )
+        } else {
+            transcriptTurns = selectedTranscriptTurns(
+                roomID: roomID,
+                memberID: memberID,
+                surfaceID: surfaceID,
+                limit: maxTranscriptTurns
+            )
+        }
+        return AgentRoomContextCompiler(
+            maxEvents: maxEvents,
+            maxTranscriptTurns: maxTranscriptTurns
+        )
+        .contextPack(
+            room: room,
+            transcriptTurns: transcriptTurns,
+            memberID: memberID,
+            surfaceID: surfaceID,
+            sinceEventSequence: sinceEventSequence,
+            maxEvents: maxEvents,
+            maxTranscriptTurns: maxTranscriptTurns
+        )
+    }
+
+    private func selectedTranscriptTurns(
+        roomID: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil,
+        sinceSequence: Int? = nil,
+        limit: Int
+    ) -> [AgentRoomTranscriptTurn] {
+        let lowerBound = sinceSequence ?? 0
+        return Array((transcriptTurnsByRoomID[roomID] ?? [])
+            .filter { $0.sequence > lowerBound }
+            .filter { turn in
+                if let memberID, turn.memberID != memberID { return false }
+                if let surfaceID, turn.surfaceID != surfaceID { return false }
+                return true
+            }
+            .suffix(limit))
+    }
+
+    private func trimmedTranscriptTurns(_ turns: [AgentRoomTranscriptTurn]) -> [AgentRoomTranscriptTurn] {
+        guard turns.count > maxTranscriptTurnsPerRoom else { return turns }
+        return Array(turns.suffix(maxTranscriptTurnsPerRoom))
     }
 }
