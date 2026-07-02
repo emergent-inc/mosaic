@@ -22,7 +22,7 @@ function sameOriginURL(value: string, request: NextRequest): URL | null {
 
 export function GET(request: NextRequest) {
   const afterAuthReturnTo = request.nextUrl.searchParams.get("after_auth_return_to");
-  if (!afterAuthReturnTo) return NextResponse.redirect(new URL("/handler/sign-in", request.url));
+  if (!afterAuthReturnTo) return NextResponse.redirect(new URL("/sign-in", request.url));
 
   const afterSignInURL = sameOriginURL(afterAuthReturnTo, request);
   if (!afterSignInURL || afterSignInURL.pathname !== "/handler/after-sign-in") {
@@ -37,9 +37,9 @@ export function GET(request: NextRequest) {
     afterSignInURL.searchParams.set(NATIVE_HANDOFF_PARAM, nonce);
   }
 
-  const stackSignInURL = new URL("/handler/sign-in", request.nextUrl.origin);
-  stackSignInURL.searchParams.set("after_auth_return_to", afterSignInURL.toString());
-  const response = NextResponse.redirect(stackSignInURL);
+  const clerkSignInURL = new URL("/sign-in", request.nextUrl.origin);
+  clerkSignInURL.searchParams.set("redirect_url", afterSignInURL.toString());
+  const response = NextResponse.redirect(clerkSignInURL);
   if (nonce) {
     response.cookies.set(NATIVE_HANDOFF_COOKIE, nonce, {
       httpOnly: true,

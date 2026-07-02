@@ -1,11 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { isAgentPageVariantPath } from "./app/lib/agent-page-paths";
 
 const intlMiddleware = createMiddleware(routing);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-export default function middleware(request: NextRequest) {
+function cmuxMiddleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
 
   // 301 redirect cmux.dev (and www.cmux.dev) to cmux.com, preserving path and query
@@ -17,6 +19,15 @@ export default function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/handler/") ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up")
+  ) {
+    return NextResponse.next();
+  }
 
   // Temporary redirect: /changelog → /docs/changelog, preserving any locale prefix.
   const changelogMatch = pathname.match(/^(\/[a-z]{2}(?:-[A-Z]{2})?)?\/changelog\/?$/);
@@ -66,6 +77,14 @@ export default function middleware(request: NextRequest) {
   return intlMiddleware(request);
 }
 
+export default clerkMiddleware(async (auth, request) => {
+  if (isProtectedRoute(request)) {
+    await auth.protect();
+  }
+
+  return cmuxMiddleware(request);
+});
+
 export const config = {
-  matcher: ["/((?!api|_next|_vercel|agent-page-variant|handler).*)"],
+  matcher: ["/((?!_next|_vercel|agent-page-variant).*)"],
 };

@@ -53,13 +53,13 @@ public struct AuthDebugLog: Sendable {
     public static func redacted(_ message: String) -> String {
         var redacted = message
         let replacements: [(pattern: String, replacement: String)] = [
-            (#"(?i)\b(stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)=([^\s&#,)]+)"#, "$1=<redacted>"),
-            (#"(?i)(stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)%253[dD]([^\s&#,)]+)"#, "$1%253D<redacted>"),
-            (#"(?i)(stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)%3[dD]([^\s&#,)]+)"#, "$1%3D<redacted>"),
+            (#"(?i)\b(cmux_access|cmux_refresh|stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)=([^\s&#,)]+)"#, "$1=<redacted>"),
+            (#"(?i)(cmux_access|cmux_refresh|stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)%253[dD]([^\s&#,)]+)"#, "$1%253D<redacted>"),
+            (#"(?i)(cmux_access|cmux_refresh|stack_access|stack_refresh|access_token|refresh_token|id_token|token|login_code|polling_code|code|state|cmux_auth_state)%3[dD]([^\s&#,)]+)"#, "$1%3D<redacted>"),
             (#"(?i)\b(access|refresh)=([^\s,;)]+)"#, "$1=<redacted>"),
             (#"(?i)(access|refresh)%253[dD]([^\s,;)]+)"#, "$1%253D<redacted>"),
             (#"(?i)(access|refresh)%3[dD]([^\s,;)]+)"#, "$1%3D<redacted>"),
-            (#"(?i)\b(authorization|x-stack-access-token|x-stack-refresh-token)\s*[:=]\s*(?:Bearer\s+)?([^\s,;)]+)"#, "$1=<redacted>"),
+            (#"(?i)\b(authorization|x-cmux-refresh-token|x-stack-access-token|x-stack-refresh-token)\s*[:=]\s*(?:Bearer\s+)?([^\s,;)]+)"#, "$1=<redacted>"),
             (#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, "<email>"),
             (#"[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}"#, "<jwt>"),
         ]

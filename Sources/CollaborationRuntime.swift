@@ -566,7 +566,7 @@ final class CollaborationRuntime {
     private(set) var lastErrorMessage: String?
     private(set) var workspaceParticipantSnapshotRevision = 0
 
-    private let peerIdentity: CollaborationPeerIdentity
+    private var peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
     private let terminalOwnerAvatarRenderer = CollaborationTerminalOwnerAvatarRenderer()
     private let encoder = JSONEncoder()
@@ -777,6 +777,12 @@ final class CollaborationRuntime {
     }
 
     func configureOrShare(panel: any CollaborationEditablePanel) {
+        guard ensureSignedInForSharing(continue: { [weak panel] in
+            guard let panel else { return }
+            self.configureOrShare(panel: panel)
+        }) else {
+            return
+        }
         scheduleStartDialog(thenShare: panel)
     }
 
@@ -799,6 +805,12 @@ final class CollaborationRuntime {
     }
 
     func configureOrShare(terminal: TerminalPanel) {
+        guard ensureSignedInForSharing(continue: { [weak terminal] in
+            guard let terminal else { return }
+            self.configureOrShare(terminal: terminal)
+        }) else {
+            return
+        }
         let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
         switch CollaborationTerminalShareAction.action(
             isShared: state(for: terminal).isShared,
@@ -821,6 +833,47 @@ final class CollaborationRuntime {
         case .presentSessionChooser:
             scheduleStartDialog(thenShare: terminal)
         }
+    }
+
+    private func ensureSignedInForSharing(continue action: @escaping @MainActor () -> Void) -> Bool {
+        guard let auth = AppDelegate.shared?.auth else {
+            NSSound.beep()
+            return false
+        }
+        if auth.coordinator.isAuthenticated {
+            refreshPeerIdentityFromAuth()
+            return true
+        }
+
+        let alert = NSAlert()
+        configureCollaborationAlertChrome(alert)
+        alert.messageText = CollaborationStrings.signInRequiredTitle
+        alert.informativeText = CollaborationStrings.signInRequiredMessage
+        alert.addButton(withTitle: CollaborationStrings.signIn)
+        alert.addButton(withTitle: CollaborationStrings.cancel)
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return false
+        }
+
+        Task { @MainActor in
+            let signedIn = await auth.browserSignIn.signIn(timeout: 10 * 60)
+            guard signedIn else { return }
+            refreshPeerIdentityFromAuth()
+            action()
+        }
+        return false
+    }
+
+    private func refreshPeerIdentityFromAuth() {
+        guard let user = AppDelegate.shared?.auth?.coordinator.currentUser else { return }
+        let displayName = user.displayName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? user.primaryEmail?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? peerIdentity.displayName
+        peerIdentity = CollaborationPeerIdentity.authenticatedParticipant(
+            peerID: peerIdentity.peerID,
+            userID: user.id,
+            displayName: displayName
+        )
     }
 
     func recipientSnapshots(for terminal: TerminalPanel) -> [CollaborationTerminalRecipientSnapshot] {
@@ -3348,6 +3401,21 @@ enum CollaborationStrings {
 
     static var joinMessage: String {
         String(localized: "collaboration.join.message", defaultValue: "Enter the session code from the collaborator.")
+    }
+
+    static var signInRequiredTitle: String {
+        String(localized: "collaboration.signInRequired.title", defaultValue: "Sign In to Share")
+    }
+
+    static var signInRequiredMessage: String {
+        String(
+            localized: "collaboration.signInRequired.message",
+            defaultValue: "Sharing with peers uses your cmux account so collaborators know who you are."
+        )
+    }
+
+    static var signIn: String {
+        String(localized: "collaboration.action.signIn", defaultValue: "Sign In")
     }
 
     static var sessionCodePlaceholder: String {

@@ -33,13 +33,12 @@ public struct AuthCallbackRouter: Sendable {
             return nil
         }
 
-        guard let refreshToken = Self.queryValue(named: "stack_refresh", in: components)?
+        guard let refreshToken = Self.queryValue(named: "cmux_refresh", in: components)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
               !refreshToken.isEmpty,
-              let accessCookie = Self.queryValue(named: "stack_access", in: components)?
+              let accessToken = Self.queryValue(named: "cmux_access", in: components)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
-              !accessCookie.isEmpty,
-              let accessToken = Self.decodeAccessToken(from: accessCookie) else {
+              !accessToken.isEmpty else {
             return nil
         }
 
@@ -69,24 +68,10 @@ public struct AuthCallbackRouter: Sendable {
 
     private static func queryValue(named name: String, in components: URLComponents) -> String? {
         // Use the first matching query item so a maliciously appended
-        // duplicate (`?stack_refresh=real&stack_refresh=attacker`) can't
+        // duplicate (`?cmux_refresh=real&cmux_refresh=attacker`) can't
         // override the legitimate value.
         components.queryItems?
             .first(where: { $0.name == name })?
             .value
-    }
-
-    private static func decodeAccessToken(from accessCookie: String) -> String? {
-        guard accessCookie.hasPrefix("[") else {
-            return accessCookie
-        }
-        guard let data = accessCookie.data(using: .utf8),
-              let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
-              array.count >= 2,
-              let accessToken = array[1] as? String,
-              !accessToken.isEmpty else {
-            return nil
-        }
-        return accessToken
     }
 }

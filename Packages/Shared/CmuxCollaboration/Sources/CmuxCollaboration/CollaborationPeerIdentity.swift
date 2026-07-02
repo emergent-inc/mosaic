@@ -94,6 +94,32 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
         )
     }
 
+    /// Creates a process-unique relay identity for an authenticated account.
+    ///
+    /// The live peer ID remains unique per app process so simultaneous
+    /// connections do not collide at the relay, while `participantID` is the
+    /// signed-in account's stable user ID for persisted sharing preferences.
+    /// - Parameters:
+    ///   - peerID: The process-local relay identifier to keep using.
+    ///   - userID: The signed-in account user ID.
+    ///   - displayName: The display name shown to collaborators.
+    ///   - colorPalette: The palette used to derive the account color.
+    /// - Returns: Relay identity metadata backed by an authenticated user.
+    public static func authenticatedParticipant(
+        peerID: String,
+        userID: String,
+        displayName: String,
+        colorPalette: [String] = Self.defaultColorPalette
+    ) -> CollaborationPeerIdentity {
+        let palette = colorPalette.isEmpty ? Self.defaultColorPalette : colorPalette
+        return CollaborationPeerIdentity(
+            peerID: peerID,
+            participantID: userID,
+            displayName: displayName,
+            color: palette[Self.colorIndex(for: userID, count: palette.count)]
+        )
+    }
+
     private static func colorIndex(for peerID: String, count: Int) -> Int {
         let total = peerID.utf8.reduce(0) { partial, byte in
             partial + Int(byte)
