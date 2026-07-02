@@ -1583,15 +1583,7 @@ final class CollaborationRuntime {
     }
 
     private func presentStartDialog() {
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.startTitle
-        alert.informativeText = CollaborationStrings.startMessage
-        alert.addButton(withTitle: CollaborationStrings.createSession)
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let response = alert.runModal()
+        let response = runCollaborationStartChooser()
         switch response {
         case .alertFirstButtonReturn:
             Task { await createSessionAndPresentCode(relayURL: nil) }
@@ -1625,15 +1617,7 @@ final class CollaborationRuntime {
     }
 
     private func presentStartDialog(thenShare panel: any CollaborationEditablePanel) {
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.startTitle
-        alert.informativeText = CollaborationStrings.startMessage
-        alert.addButton(withTitle: CollaborationStrings.createSession)
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let response = alert.runModal()
+        let response = runCollaborationStartChooser()
         switch response {
         case .alertFirstButtonReturn:
             Task { await createSessionAndShare(panel: panel) }
@@ -1645,15 +1629,7 @@ final class CollaborationRuntime {
     }
 
     private func presentStartDialog(thenShare terminal: TerminalPanel) {
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.startTitle
-        alert.informativeText = CollaborationStrings.startMessage
-        alert.addButton(withTitle: CollaborationStrings.createSession)
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let response = alert.runModal()
+        let response = runCollaborationStartChooser()
         switch CollaborationTerminalStartDialogAction.action(
             buttonIndex: Self.alertButtonIndex(for: response)
         ) {
@@ -1731,7 +1707,12 @@ final class CollaborationRuntime {
     }
 
     private func configureCollaborationAlertChrome(_ alert: NSAlert) {
-        alert.icon = NSImage(size: NSSize(width: 1, height: 1))
+        alert.icon = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+    }
+
+    private func runCollaborationStartChooser() -> NSApplication.ModalResponse {
+        let panel = CollaborationStartChooserPanel()
+        return panel.run()
     }
 
     private func createSessionAndPresentCode(relayURL: String?) async {
@@ -3260,6 +3241,169 @@ enum CollaborationStrings {
 
     static var relayRejected: String {
         String(localized: "collaboration.error.relayRejected", defaultValue: "The relay rejected the request.")
+    }
+}
+
+@MainActor
+private final class CollaborationStartChooserPanel {
+    private let window: NSWindow
+    private var response: NSApplication.ModalResponse = .alertThirdButtonReturn
+    private var actionBoxes: [ButtonActionBox] = []
+
+    init() {
+        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 328))
+        contentView.wantsLayer = true
+
+        window = NSWindow(
+            contentRect: contentView.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = contentView
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .modalPanel
+
+        let background = NSVisualEffectView(frame: contentView.bounds)
+        background.autoresizingMask = [.width, .height]
+        background.material = .hudWindow
+        background.blendingMode = .behindWindow
+        background.state = .active
+        background.wantsLayer = true
+        background.layer?.cornerRadius = 28
+        background.layer?.masksToBounds = true
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 12
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(textStack)
+
+        let titleField = NSTextField(labelWithString: CollaborationStrings.startTitle)
+        titleField.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleField.textColor = .labelColor
+        textStack.addArrangedSubview(titleField)
+
+        let messageField = NSTextField(wrappingLabelWithString: CollaborationStrings.startMessage)
+        messageField.font = .systemFont(ofSize: 16, weight: .regular)
+        messageField.textColor = .labelColor
+        messageField.maximumNumberOfLines = 0
+        messageField.preferredMaxLayoutWidth = 340
+        textStack.addArrangedSubview(messageField)
+
+        let buttonStack = NSStackView()
+        buttonStack.orientation = .vertical
+        buttonStack.alignment = .centerX
+        buttonStack.spacing = 6
+        buttonStack.translatesAutoresizingMaskIntoConstraints = false
+        buttonStack.setHuggingPriority(.required, for: .vertical)
+        stack.addArrangedSubview(buttonStack)
+
+        let createButton = makeButton(title: CollaborationStrings.createSession, keyEquivalent: "\r") { [weak self] in
+            self?.finish(.alertFirstButtonReturn)
+        }
+        createButton.bezelColor = .controlAccentColor
+        let joinButton = makeButton(title: CollaborationStrings.joinSession, keyEquivalent: "") { [weak self] in
+            self?.finish(.alertSecondButtonReturn)
+        }
+        let cancelButton = makeButton(title: CollaborationStrings.cancel, keyEquivalent: "\u{1b}") { [weak self] in
+            self?.finish(.alertThirdButtonReturn)
+        }
+        buttonStack.addArrangedSubview(createButton)
+        buttonStack.addArrangedSubview(joinButton)
+        buttonStack.addArrangedSubview(cancelButton)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 32),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+
+            iconView.widthAnchor.constraint(equalToConstant: 64),
+            iconView.heightAnchor.constraint(equalToConstant: 64),
+
+            textStack.widthAnchor.constraint(equalToConstant: 340),
+            titleField.widthAnchor.constraint(equalToConstant: 340),
+            messageField.widthAnchor.constraint(equalToConstant: 340),
+
+            buttonStack.widthAnchor.constraint(equalToConstant: 340),
+            createButton.widthAnchor.constraint(equalToConstant: 340),
+            joinButton.widthAnchor.constraint(equalToConstant: 340),
+            cancelButton.widthAnchor.constraint(equalToConstant: 340),
+            createButton.heightAnchor.constraint(equalToConstant: 44),
+            joinButton.heightAnchor.constraint(equalToConstant: 44),
+            cancelButton.heightAnchor.constraint(equalToConstant: 44),
+        ])
+    }
+
+    func run() -> NSApplication.ModalResponse {
+        guard let parent = NSApp.keyWindow ?? NSApp.mainWindow else {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.runModal(for: window)
+            window.orderOut(nil)
+            return response
+        }
+
+        parent.beginSheet(window)
+        NSApp.runModal(for: window)
+        parent.endSheet(window)
+        window.orderOut(nil)
+        return response
+    }
+
+    private func makeButton(
+        title: String,
+        keyEquivalent: String,
+        action: @escaping () -> Void
+    ) -> NSButton {
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.bezelStyle = .rounded
+        button.controlSize = .large
+        button.font = .systemFont(ofSize: 16, weight: .semibold)
+        button.keyEquivalent = keyEquivalent
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let actionBox = ButtonActionBox(action)
+        actionBoxes.append(actionBox)
+        button.target = actionBox
+        button.action = #selector(ButtonActionBox.invoke)
+        return button
+    }
+
+    private func finish(_ response: NSApplication.ModalResponse) {
+        self.response = response
+        NSApp.stopModal()
+    }
+
+    private final class ButtonActionBox: NSObject {
+        private let action: () -> Void
+
+        init(_ action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func invoke() {
+            action()
+        }
     }
 }
 
