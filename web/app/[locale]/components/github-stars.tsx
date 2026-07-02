@@ -101,7 +101,7 @@ export function GitHubStarsBadge({
 
   return (
     <a
-      href="https://github.com/manaflow-ai/cmux"
+      href="https://github.com/emergent-inc/cmux"
       target="_blank"
       rel="noopener noreferrer"
       onClick={() =>

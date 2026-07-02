@@ -4,7 +4,7 @@
 <p align="center">AI kodlama ajanları için dikey sekmeler ve bildirimler içeren Ghostty tabanlı macOS terminali</p>
 
 <p align="center">
-  <a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+  <a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
     <img src="./docs/assets/macos-badge.png" alt="macOS için cmux'u indir" width="180" />
   </a>
 </p>
@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <a href="https://x.com/manaflowai"><img src="https://img.shields.io/badge/@manaflow-555?logo=x" alt="X / Twitter" /></a>
+  <a href="https://x.com/emergentinc"><img src="https://img.shields.io/badge/@emergent.inc-555?logo=x" alt="X / Twitter" /></a>
   <a href="https://discord.gg/xsgFEVrWCZ"><img src="https://img.shields.io/badge/Discord-555?logo=discord" alt="Discord" /></a>
-  <a href="https://github.com/manaflow-ai/cmux"><img src="https://img.shields.io/github/stars/manaflow-ai/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
+  <a href="https://github.com/emergent-inc/cmux"><img src="https://img.shields.io/github/stars/emergent-inc/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@ Kenar çubuğu git dalını, bağlantılı PR durumunu/numarasını, çalışma 
 
 ### DMG (önerilen)
 
-<a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+<a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
   <img src="./docs/assets/macos-badge.png" alt="macOS için cmux'u indir" width="180" />
 </a>
 
@@ -108,7 +108,7 @@ Kenar çubuğu git dalını, bağlantılı PR durumunu/numarasını, çalışma 
 ### Homebrew
 
 ```bash
-brew tap manaflow-ai/cmux
+brew tap emergent-inc/cmux
 brew install --cask cmux
 ```
 
@@ -242,11 +242,11 @@ Tarayıcı geliştirici araçları kısayolları Safari varsayılanlarını taki
 
 ## Nightly Sürümler
 
-[cmux NIGHTLY'i indir](https://github.com/manaflow-ai/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
+[cmux NIGHTLY'i indir](https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
 
 cmux NIGHTLY, kendi bundle ID'sine sahip ayrı bir uygulamadır, bu yüzden kararlı sürümle yan yana çalışır. En son `main` commit'inden otomatik olarak derlenir ve kendi Sparkle akışı aracılığıyla otomatik güncellenir.
 
-Nightly hatalarını [GitHub Issues](https://github.com/manaflow-ai/cmux/issues) üzerinde veya [Discord'daki #nightly-bugs](https://discord.gg/xsgFEVrWCZ) kanalında bildirin.
+Nightly hatalarını [GitHub Issues](https://github.com/emergent-inc/cmux/issues) üzerinde veya [Discord'daki #nightly-bugs](https://discord.gg/xsgFEVrWCZ) kanalında bildirin.
 
 ## Oturum geri yükleme
 
@@ -339,7 +339,7 @@ cmux, terminalinizin yanında gerçek bir tarayıcı paneli bölebilir ve tamame
 
 ### cmux'un yetenekleri (skills) var mı?
 
-Evet. Yetenekler, cmux'ta çalışan herhangi bir ajana verebileceğiniz, CLI kontrolü, çalışma alanı otomasyonu, ayarlar ve tarayıcı yüzeyleri gibi şeyler için yeniden kullanılabilir iş akışlarıdır. Açık koleksiyona [cmux-skills](https://github.com/manaflow-ai/cmux-skills) adresinden göz atın veya [yetenekler dokümanlarını](https://cmux.com/docs/skills) okuyun.
+Evet. Yetenekler, cmux'ta çalışan herhangi bir ajana verebileceğiniz, CLI kontrolü, çalışma alanı otomasyonu, ayarlar ve tarayıcı yüzeyleri gibi şeyler için yeniden kullanılabilir iş akışlarıdır. Açık koleksiyona [cmux-skills](https://github.com/emergent-inc/cmux-skills) adresinden göz atın veya [yetenekler dokümanlarını](https://cmux.com/docs/skills) okuyun.
 
 ### Klavye kısayollarını özelleştirebilir miyim?
 
@@ -359,23 +359,23 @@ tmux, herhangi bir terminalin içinde çalışan bir terminal çoklayıcısıdı
 
 ### cmux ücretsiz mi?
 
-Evet, cmux ücretsiz kullanılır. Kaynak kodu [GitHub](https://github.com/manaflow-ai/cmux)'ta mevcuttur.
+Evet, cmux ücretsiz kullanılır. Kaynak kodu [GitHub](https://github.com/emergent-inc/cmux)'ta mevcuttur.
 
 ### cmux'u nasıl destekleyebilirim?
 
-cmux ücretsiz ve açık kaynaktır ve her zaman öyle kalacaktır. Geliştirmeyi desteklemek ve cmux AI, iOS uygulaması ve Cloud VMs dahil olmak üzere sırada ne olduğuna erken erişim almak isterseniz, [cmux Founders Edition](https://github.com/manaflow-ai/cmux#founders-edition)'a göz atın.
+cmux ücretsiz ve açık kaynaktır ve her zaman öyle kalacaktır. Geliştirmeyi desteklemek ve cmux AI, iOS uygulaması ve Cloud VMs dahil olmak üzere sırada ne olduğuna erken erişim almak isterseniz, [cmux Founders Edition](https://github.com/emergent-inc/cmux#founders-edition)'a göz atın.
 
 ### Bir özellik isteğim var veya bir hata buldum?
 
-Bunu duymak istiyoruz. GitHub'da bir [issue](https://github.com/manaflow-ai/cmux/issues) veya [pull request](https://github.com/manaflow-ai/cmux/pulls) açın ya da bize [e-posta gönderin](mailto:founders@manaflow.com?subject=cmux%20feature%20request).
+Bunu duymak istiyoruz. GitHub'da bir [issue](https://github.com/emergent-inc/cmux/issues) veya [pull request](https://github.com/emergent-inc/cmux/pulls) açın ya da bize [e-posta gönderin](mailto:contact@emergent.inc?subject=cmux%20feature%20request).
 
 ## Yıldız Geçmişi
 
-<a href="https://star-history.com/#manaflow-ai/cmux&Date">
+<a href="https://star-history.com/#emergent-inc/cmux&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" width="600" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" width="600" />
  </picture>
 </a>
 
@@ -383,18 +383,18 @@ Bunu duymak istiyoruz. GitHub'da bir [issue](https://github.com/manaflow-ai/cmux
 
 Katılım yolları:
 
-- Güncellemeler için bizi X'te takip edin [@manaflowai](https://x.com/manaflowai), [@lawrencecchen](https://x.com/lawrencecchen) ve [@austinywang](https://x.com/austinywang)
+- Güncellemeler için bizi X'te takip edin [@emergentinc](https://x.com/emergentinc), [@lawrencecchen](https://x.com/lawrencecchen) ve [@austinywang](https://x.com/austinywang)
 - [Discord](https://discord.gg/xsgFEVrWCZ)'da sohbete katılın
-- [GitHub issues](https://github.com/manaflow-ai/cmux/issues) ve [discussions](https://github.com/manaflow-ai/cmux/discussions) oluşturun ve katılın
+- [GitHub issues](https://github.com/emergent-inc/cmux/issues) ve [discussions](https://github.com/emergent-inc/cmux/discussions) oluşturun ve katılın
 - cmux ile ne inşa ettiğinizi bize bildirin
 
 ## Topluluk
 
 - [Discord](https://discord.gg/xsgFEVrWCZ)
-- [GitHub](https://github.com/manaflow-ai/cmux)
-- [X / Twitter](https://twitter.com/manaflowai)
+- [GitHub](https://github.com/emergent-inc/cmux)
+- [X / Twitter](https://twitter.com/emergentinc)
 - [YouTube](https://www.youtube.com/channel/UCAa89_j-TWkrXfk9A3CbASw)
-- [LinkedIn](https://www.linkedin.com/company/manaflow-ai/)
+- [LinkedIn](https://www.linkedin.com/company/emergent-inc/)
 - [Reddit](https://www.reddit.com/r/cmux/)
 
 ## Founder's Edition
@@ -414,4 +414,4 @@ cmux ücretsiz, açık kaynak ve her zaman öyle olacak. Geliştirmeyi desteklem
 
 cmux, [GPL-3.0-or-later](LICENSE) kapsamında açık kaynaklıdır.
 
-Kuruluşunuz GPL'ye uyum sağlayamıyorsa, ticari lisans mevcuttur. Ayrıntılar için [founders@manaflow.com](mailto:founders@manaflow.com) ile iletişime geçin.
+Kuruluşunuz GPL'ye uyum sağlayamıyorsa, ticari lisans mevcuttur. Ayrıntılar için [contact@emergent.inc](mailto:contact@emergent.inc) ile iletişime geçin.

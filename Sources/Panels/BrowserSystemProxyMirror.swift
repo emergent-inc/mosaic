@@ -14,7 +14,7 @@ import Network
 /// configurations keeps normal traffic on a faithfully representable proxy
 /// while loopback connects directly, matching Chromium's implicit proxy-bypass
 /// rules.
-/// https://github.com/manaflow-ai/cmux/issues/5888
+/// https://github.com/emergent-inc/cmux/issues/5888
 struct BrowserSystemProxyMirror: Equatable {
     /// A system proxy expressible as a Network.framework `ProxyConfiguration`.
     ///

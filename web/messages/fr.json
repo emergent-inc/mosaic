@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Contact",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Langue",
     "assets": "Ressources",
     "openSource": "Open source",
@@ -254,7 +254,7 @@
       "p075": "Installe une pile IA complète (cmux + Ghostty + Zed + Starship + JetBrainsMono) via une seule formule Homebrew avec relances idempotentes et mode dry-run; bootstrap d’environnement développeur en une commande",
       "p076": "Construit un shell de contenu Chromium pour le moteur de navigateur cmux avec téléchargements de framework précompilé pour développeurs de plugins",
       "p077": "Fournit des skills cmux installables pour tout runtime compatible Agent Skills, couvrant contrôle CLI, paramètres, automatisation du navigateur, artefacts, refs de workspace et personnalisation depuis une source publique maintenue",
-      "p078": "Fournit le tap Homebrew officiel de cmux avec casks stable et nightly maintenus par Manaflow",
+      "p078": "Fournit le tap Homebrew officiel de cmux avec casks stable et nightly maintenus par emergent.inc",
       "p079": "Apprend l’automatisation du navigateur Claude Code dans quatre fichiers de skill auto-synchronisés couvrant remplissage de formulaires, captures d’écran et capture de fenêtre de débogage; structuré comme suite de skills multi-fichiers plutôt qu’un document monolithique",
       "p080": "Implémente un modèle master-worker avec worktrees, workspaces cmux et Agent Teams (lead+tester+reviewer+security) avec allocation déterministe des ports; attribue de façon unique des ports fixes par rôle d’agent",
       "p081": "Remplacement direct du module @gsd/cmux de GSD/Pi ajoutant WezTerm comme second backend de multiplexeur avec variables utilisateur OSC 1337 et notifications toast Windows; le seul plugin Pi prenant en charge deux cibles de multiplexeur",
@@ -1472,7 +1472,7 @@
       "data3": "Les métadonnées d'appairage et d'appareil, pour relier votre téléphone à votre Mac.",
       "dataNot": "Votre session de terminal interactive, son contenu et vos frappes circulent directement entre votre téléphone et votre Mac via votre propre réseau, et ne sont ni relayés ni stockés sur les serveurs de cmux. La seule exception est le texte des notifications transférées, qui transite par cmux et le service de notifications d'Apple pour atteindre votre téléphone, sauf si vous activez Hide content (voir Notifications ci-dessus).",
       "enterpriseTitle": "Entreprise et auto-hébergement",
-      "enterpriseDesc": "Pour un déploiement auto-hébergé ou isolé du réseau, contactez <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "Pour un déploiement auto-hébergé ou isolé du réseau, contactez <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

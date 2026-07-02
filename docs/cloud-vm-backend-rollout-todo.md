@@ -1,13 +1,13 @@
 # Cloud VM Backend Rollout Todo
 
-This is the scoped todo list for making the Cloud VM backend production-ready with application logic running in the existing Vercel `manaflow/cmux` project.
+This is the scoped todo list for making the Cloud VM backend production-ready with application logic running in the existing Vercel `emergentinc/cmux` project.
 
 ## Current State
 
-- Vercel project exists: `manaflow/cmux`.
+- Vercel project exists: `emergentinc/cmux`.
 - Vercel root directory is `web`.
 - Production URL is `https://cmux.com`.
-- Vercel custom `staging` environment exists for the `manaflow/cmux` project and tracks the
+- Vercel custom `staging` environment exists for the `emergentinc/cmux` project and tracks the
   `staging` git branch.
 - VM application logic already runs in the Vercel Next app:
   - `web/app/api/vm/**`
@@ -18,7 +18,7 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
   - `cloud_vm_usage_events`
 - WebSocket PTY/browser proxy data paths talk to provider VM endpoints after the REST handshake.
 - No separate AWS app server is required for the current version.
-- A separate `manaflow/cmux-staging` Vercel project exists for staging.
+- A separate `emergentinc/cmux-staging` Vercel project exists for staging.
 
 ## Current Blockers
 
@@ -49,8 +49,8 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
 - [x] GitHub environments `cloud-vm-staging` and `cloud-vm-production` exist.
 - [x] GitHub environment variable `AWS_REGION=us-west-2` is set for both Cloud VM environments.
 - [x] GitHub OIDC provider `token.actions.githubusercontent.com` exists in AWS.
-- [x] Staging migration role is scoped to `repo:manaflow-ai/cmux:environment:cloud-vm-staging` and the staging Aurora cluster resource id.
-- [x] Production migration role is scoped to `repo:manaflow-ai/cmux:environment:cloud-vm-production` and the production Aurora cluster resource id.
+- [x] Staging migration role is scoped to `repo:emergent-inc/cmux:environment:cloud-vm-staging` and the staging Aurora cluster resource id.
+- [x] Production migration role is scoped to `repo:emergent-inc/cmux:environment:cloud-vm-production` and the production Aurora cluster resource id.
 - [x] Staging and production Cloud VM default provider are set to E2B.
 - [x] Freestyle creates are disabled in staging and production with `CMUX_VM_FREESTYLE_ENABLED=0`.
 - [x] Staging E2B create, WebSocket attach, and destroy smoke passed.
@@ -76,8 +76,8 @@ These are already configured in Vercel for development, preview, and production:
 - [x] Add per-provider kill switches:
   - `CMUX_VM_E2B_ENABLED`
   - `CMUX_VM_FREESTYLE_ENABLED`
-- [x] Set kill switches to enabled values in `manaflow/cmux` production and
-  `manaflow/cmux-staging` production.
+- [x] Set kill switches to enabled values in `emergentinc/cmux` production and
+  `emergentinc/cmux-staging` production.
 - [ ] Add a preview allowlist before paid provider calls if preview uses real provider keys:
   - Stack user ids
   - Stack org ids later, if org billing exists
@@ -273,7 +273,7 @@ after the Vercel REST handshake. Rivet is only a temporary stateful control-plan
 - [x] Add a Vercel Marketplace Aurora OIDC/RDS IAM runtime DB adapter.
 - [x] Add a dedicated `bun db:migrate:aws-rds-iam` migration command for production/staging.
 - [x] Seed Vercel staging and production with app/provider DB driver env names.
-- [ ] Connect the Vercel Marketplace Aurora resource to `manaflow/cmux` for both `staging` and production so these env names are present:
+- [ ] Connect the Vercel Marketplace Aurora resource to `emergentinc/cmux` for both `staging` and production so these env names are present:
   - `AWS_ROLE_ARN`
   - `AWS_REGION`
   - `PGHOST`

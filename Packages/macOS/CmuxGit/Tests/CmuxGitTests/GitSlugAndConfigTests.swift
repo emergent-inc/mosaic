@@ -4,15 +4,15 @@ import Testing
 
 @Suite struct GitSlugAndConfigTests {
     @Test(arguments: [
-        "git@github.com:manaflow-ai/cmux.git",
-        "ssh://git@github.com/manaflow-ai/cmux.git",
-        "https://github.com/manaflow-ai/cmux.git",
-        "http://github.com/manaflow-ai/cmux",
-        "git://github.com/manaflow-ai/cmux.git",
-        "https://github.com/manaflow-ai/cmux",
+        "git@github.com:emergent-inc/cmux.git",
+        "ssh://git@github.com/emergent-inc/cmux.git",
+        "https://github.com/emergent-inc/cmux.git",
+        "http://github.com/emergent-inc/cmux",
+        "git://github.com/emergent-inc/cmux.git",
+        "https://github.com/emergent-inc/cmux",
     ])
     func parsesGitHubRemoteForms(url: String) {
-        #expect(GitMetadataService.githubRepositorySlug(fromRemoteURL: url) == "manaflow-ai/cmux")
+        #expect(GitMetadataService.githubRepositorySlug(fromRemoteURL: url) == "emergent-inc/cmux")
     }
 
     @Test func ignoresNonGitHubRemotes() {
@@ -108,9 +108,9 @@ import Testing
     @Test func configSectionAndKeyNamesAreCaseInsensitive() {
         let config = """
         [Remote "origin"]
-            URL = https://github.com/manaflow-ai/cmux.git
+            URL = https://github.com/emergent-inc/cmux.git
         """
-        #expect(slugs(fromConfig: config) == ["manaflow-ai/cmux"])
+        #expect(slugs(fromConfig: config) == ["emergent-inc/cmux"])
     }
 
     @Test func includeHeaderIsCaseInsensitiveAndSubsectionCasePreserved() throws {
@@ -122,9 +122,9 @@ import Testing
         """)
         try """
         [remote "MixedCase"]
-            url = https://github.com/manaflow-ai/cmux.git
+            url = https://github.com/emergent-inc/cmux.git
         """.write(to: fixture.gitDirectory.appendingPathComponent("remotes.inc"), atomically: true, encoding: .utf8)
-        #expect(slugs(forDirectory: fixture.root.path) == ["manaflow-ai/cmux"])
+        #expect(slugs(forDirectory: fixture.root.path) == ["emergent-inc/cmux"])
     }
 
     @Test func relativeGitdirPatternMatchesAtAnyDepth() throws {

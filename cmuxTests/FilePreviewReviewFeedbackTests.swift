@@ -396,7 +396,7 @@ final class FilePreviewReviewFeedbackTests: XCTestCase {
         )
     }
 
-    // Regression test for manaflow-ai/cmux#4576: drag-selecting deep into a large file pegged the
+    // Regression test for emergent-inc/cmux#4576: drag-selecting deep into a large file pegged the
     // main thread because TextKit 2's `NSTextSelectionNavigation` hit-tests are O(N) in line
     // fragments. Selection hit-testing near the bottom of a large file must stay responsive.
     func testLargeFileSelectionHitTestStaysResponsive() {
@@ -439,7 +439,7 @@ final class FilePreviewReviewFeedbackTests: XCTestCase {
             1.0,
             "Selection hit-testing near the bottom of a \(lineCount)-line file took \(elapsed)s. "
                 + "File Preview likely regressed to TextKit 2 O(N) selection navigation (see "
-                + "manaflow-ai/cmux#4576)."
+                + "emergent-inc/cmux#4576)."
         )
     }
 

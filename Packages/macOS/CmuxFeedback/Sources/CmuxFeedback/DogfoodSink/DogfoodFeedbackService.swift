@@ -49,17 +49,17 @@ public struct DogfoodFeedbackService: Sendable {
         self.now = now
     }
 
-    /// The privileged feedback domain. Mirrors `isManaflowEmail` in
+    /// The privileged feedback domain. Mirrors `isEmergentIncEmail` in
     /// `CmuxMobileShellModel` (the phone's routing source of truth) but is
     /// replicated here so the macOS app target need not link that mobile
     /// package just for this one suffix check. Trims and lowercases before
     /// matching so stored casing or padding does not bypass the gate.
     /// - Parameter email: the caller's authenticated account email, if any.
-    /// - Returns: `true` when `email` is in the privileged `@manaflow.ai` domain.
+    /// - Returns: `true` when `email` is in the privileged `@emergent.inc` domain.
     public static func isPrivilegedFeedbackEmail(_ email: String?) -> Bool {
         guard let email else { return false }
         let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalized.hasSuffix("@manaflow.ai")
+        return normalized.hasSuffix("@emergent.inc")
     }
 
     /// Validate and persist a feedback submission, returning the outcome to map
@@ -80,7 +80,7 @@ public struct DogfoodFeedbackService: Sendable {
         authenticatedEmail: String?
     ) async -> DogfoodFeedbackOutcome {
         // Privilege check at the trust boundary: the privileged agent feedback
-        // sink is restricted to the @manaflow.ai domain; a crafted request from
+        // sink is restricted to the @emergent.inc domain; a crafted request from
         // any other account is rejected here regardless of which route the phone
         // UI chose.
         guard Self.isPrivilegedFeedbackEmail(authenticatedEmail) else {

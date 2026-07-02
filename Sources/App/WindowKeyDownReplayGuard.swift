@@ -9,7 +9,7 @@ import AppKit
 /// re-enters `performKeyEquivalent`. Without a replay guard at the dispatch
 /// chokepoint the same event ping-pongs between the swizzle and the focused
 /// responder until the main-thread stack overflows
-/// (https://github.com/manaflow-ai/cmux/issues/5887).
+/// (https://github.com/emergent-inc/cmux/issues/5887).
 ///
 /// Identity is the event's stable field tuple rather than object identity so
 /// the guard still holds if AppKit/WebKit re-deliver the event as an equal
@@ -41,7 +41,7 @@ extension NSWindow {
     /// `false` back must decline the event (fall through to default AppKit
     /// handling) instead of dispatching themselves; re-dispatching the same
     /// in-flight event is the infinite key-routing loop from
-    /// https://github.com/manaflow-ai/cmux/issues/5887.
+    /// https://github.com/emergent-inc/cmux/issues/5887.
     func cmuxForceDispatchKeyDownOnce(
         _ event: NSEvent,
         to target: NSResponder,

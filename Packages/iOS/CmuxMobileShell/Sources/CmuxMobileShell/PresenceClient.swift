@@ -5,7 +5,7 @@ public import Foundation
 /// This is the typed client for the cmux device presence service
 /// (`workers/presence`), the realtime online/offline layer over the durable
 /// device registry, and the seam for the iOS device tree
-/// (https://github.com/manaflow-ai/cmux/pull/5648): the tree renders the
+/// (https://github.com/emergent-inc/cmux/pull/5648): the tree renders the
 /// registry's durable rows, and ``PresenceUpdate`` events decide which rows
 /// get a live "online" dot. Wiring the updates into the tree UI is a
 /// follow-up.

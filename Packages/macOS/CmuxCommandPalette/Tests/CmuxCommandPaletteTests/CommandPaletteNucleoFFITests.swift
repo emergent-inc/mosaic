@@ -113,7 +113,7 @@ struct CommandPaletteNucleoFFITests {
         // description word produced by commandPaletteWorkspaceSearchMetadata). For short queries
         // an exact match on such a hidden line scored 30_030 and beat the visible title prefix,
         // which only reached nucleo(~88) + 2_000. The "ios" row shown to the user therefore had
-        // no highlighted title yet sat at the top. https://github.com/manaflow-ai/cmux/pull/5148
+        // no highlighted title yet sat at the top. https://github.com/emergent-inc/cmux/pull/5148
         guard let library = try NucleoLibrary.loadIfAvailable() else { return }
         // Skipped: nucleo FFI dylib not built in this environment.
         let entries = [
@@ -148,7 +148,7 @@ struct CommandPaletteNucleoFFITests {
         // can give a hidden row an exact line per token (~30_030 each, ~60_060 summed) that beats a
         // flat title-literal score. The title tier is scaled by query token count so a visible
         // title match still wins for multi-token queries.
-        // https://github.com/manaflow-ai/cmux/pull/5148
+        // https://github.com/emergent-inc/cmux/pull/5148
         guard let library = try NucleoLibrary.loadIfAvailable() else { return }
         // Skipped: nucleo FFI dylib not built in this environment.
         let entries = [
@@ -180,7 +180,7 @@ struct CommandPaletteNucleoFFITests {
         // Regression: the literal-title check must use the matcher's case + Smart diacritic
         // normalization, so a localized title like "Éclair" is recognized as a prefix of "e" and
         // still beats a row that only has a hidden exact "e" metadata token.
-        // https://github.com/manaflow-ai/cmux/pull/5148
+        // https://github.com/emergent-inc/cmux/pull/5148
         guard let library = try NucleoLibrary.loadIfAvailable() else { return }
         // Skipped: nucleo FFI dylib not built in this environment.
         let entries = [

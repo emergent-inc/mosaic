@@ -20,17 +20,17 @@ git remote -v
 git checkout -b <branch>
 git add <files>
 git commit -m "..."
-git push manaflow <branch>
+git push emergent.inc <branch>
 ```
 
 If the parent pointer is supposed to track fork `main`, make sure the commit is an ancestor of that remote branch:
 
 ```bash
-git fetch manaflow main
-git merge-base --is-ancestor HEAD manaflow/main
+git fetch emergent.inc main
+git merge-base --is-ancestor HEAD emergent.inc/main
 ```
 
-The top-level CLAUDE note uses `origin/main` as the generic verification form for submodules. In the Ghostty submodule, check the actual remote names first because `origin` may be upstream and `manaflow` may be the fork.
+The top-level CLAUDE note uses `origin/main` as the generic verification form for submodules. In the Ghostty submodule, check the actual remote names first because `origin` may be upstream and `emergent.inc` may be the fork.
 
 ## Detached HEAD hazard
 

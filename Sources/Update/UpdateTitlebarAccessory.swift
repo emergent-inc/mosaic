@@ -2271,7 +2271,7 @@ private struct NotificationsPopoverView: View {
             // so the row closures don't reach back into the ObservableObject. Reading the
             // store from inside the ForEach builder reintroduces a store dependency below
             // the list boundary, which is the same anti-pattern CLAUDE.md flags for the
-            // sidebar/sessions panel (https://github.com/manaflow-ai/cmux/issues/2586).
+            // sidebar/sessions panel (https://github.com/emergent-inc/cmux/issues/2586).
             let snapshot = notificationStore.notifications
             let lastIndex = snapshot.count - 1
             // One tabId -> title index per render, not an O(tabs) scan per row (#5794).

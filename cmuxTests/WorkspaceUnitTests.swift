@@ -1528,7 +1528,7 @@ final class KeyboardShortcutSettingsFileStoreTests: XCTestCase {
         try writeSettingsFile(
             """
             {
-              "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux-settings.schema.json",
+              "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux-settings.schema.json",
               "shortcuts": {
                 "showNotifications": "cmd+i"
               }
@@ -1882,7 +1882,7 @@ final class KeyboardShortcutSettingsFileStoreTests: XCTestCase {
         XCTAssertNil(store.override(for: .newTab))
 
         let contents = try String(contentsOf: settingsFileURL, encoding: .utf8)
-        XCTAssertTrue(contents.contains(#""$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json""#))
+        XCTAssertTrue(contents.contains(#""$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json""#))
         XCTAssertTrue(contents.contains(#""schemaVersion": 1,"#))
         XCTAssertTrue(contents.contains(#"//   "app" : {"#))
         XCTAssertTrue(contents.contains(#"//     "colors" : {"#))
@@ -1934,7 +1934,7 @@ final class KeyboardShortcutSettingsFileStoreTests: XCTestCase {
         try writeSettingsFile(
             """
             {
-              "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+              "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
               "schemaVersion": 1,
               // tmux-like prefix
               "shortcuts": {
@@ -6559,7 +6559,7 @@ final class WorkspacePanelGitBranchTests: XCTestCase {
         }
         defer { cancellable.cancel() }
 
-        let pullRequestURL = URL(string: "https://github.com/manaflow-ai/cmux/pull/2388")!
+        let pullRequestURL = URL(string: "https://github.com/emergent-inc/cmux/pull/2388")!
         workspace.updatePanelPullRequest(
             panelId: panelId,
             number: 2388,
@@ -6638,7 +6638,7 @@ final class WorkspacePanelGitBranchTests: XCTestCase {
             panelId: secondPanel.id,
             number: 1629,
             label: "PR",
-            url: URL(string: "https://github.com/manaflow-ai/cmux/pull/1629")!,
+            url: URL(string: "https://github.com/emergent-inc/cmux/pull/1629")!,
             status: .open
         )
 
@@ -6813,14 +6813,14 @@ final class WorkspacePanelGitBranchTests: XCTestCase {
             panelId: leftFirstPanelId,
             number: 101,
             label: "PR",
-            url: URL(string: "https://github.com/manaflow-ai/cmux/pull/101")!,
+            url: URL(string: "https://github.com/emergent-inc/cmux/pull/101")!,
             status: .open
         )
         workspace.updatePanelPullRequest(
             panelId: rightFirstPanel.id,
             number: 18,
             label: "MR",
-            url: URL(string: "https://gitlab.com/manaflow/cmux/-/merge_requests/18")!,
+            url: URL(string: "https://gitlab.com/emergentinc/cmux/-/merge_requests/18")!,
             status: .merged
         )
 
@@ -7371,8 +7371,8 @@ final class MosaicVisibleBrandingTests: XCTestCase {
     func testSidebarAndHelpMenuShareMosaicDestinations() {
         XCTAssertEqual(MosaicBranding.docsBaseURL.absoluteString, "https://mosaic.com/docs")
         XCTAssertEqual(MosaicBranding.docsURL("changelog").absoluteString, "https://mosaic.com/docs/changelog")
-        XCTAssertEqual(MosaicBranding.githubRepositoryURL.absoluteString, "https://github.com/manaflow-ai/mosaic")
-        XCTAssertEqual(MosaicBranding.githubIssuesURL.absoluteString, "https://github.com/manaflow-ai/mosaic/issues")
+        XCTAssertEqual(MosaicBranding.githubRepositoryURL.absoluteString, "https://github.com/emergent-inc/mosaic")
+        XCTAssertEqual(MosaicBranding.githubIssuesURL.absoluteString, "https://github.com/emergent-inc/mosaic/issues")
     }
 
     func testWindowTitleFallbackUsesMosaic() {

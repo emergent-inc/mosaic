@@ -75,7 +75,7 @@ export default function WorkspaceGroupsPage() {
 
       <DocsHeading level={3} id="subcommands">{t("cliSubcommandsTitle")}</DocsHeading>
       <CodeBlock lang="bash">{`cmux workspace-group list [--json]
-cmux workspace-group create --name "manaflow" [--cwd ~/projects/manaflow] [--from <id>,<id>]
+cmux workspace-group create --name "emergent.inc" [--cwd ~/projects/emergent.inc] [--from <id>,<id>]
 cmux workspace-group ungroup <group-id>
 cmux workspace-group delete  <group-id>
 cmux workspace-group rename <group-id> --name "new name"
@@ -96,7 +96,7 @@ cmux workspace-group focus <group-id>`}</CodeBlock>
 
       <DocsHeading level={3} id="examples">{t("cliExamplesTitle")}</DocsHeading>
       <p>{t("cliExampleGroup")}</p>
-      <CodeBlock lang="bash">{`cmux workspace-group create --name manaflow`}</CodeBlock>
+      <CodeBlock lang="bash">{`cmux workspace-group create --name emergent.inc`}</CodeBlock>
       <p>{t("cliExampleNew")}</p>
       <CodeBlock lang="bash">{`cmux workspace-group new-workspace workspace_group:1`}</CodeBlock>
       <p>{t("cliExampleList")}</p>

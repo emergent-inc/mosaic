@@ -44,7 +44,7 @@ Manual tag flow:
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
-gh run watch --repo manaflow-ai/cmux
+gh run watch --repo emergent-inc/cmux
 ```
 
 ## Release asset

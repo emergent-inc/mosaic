@@ -9,7 +9,7 @@ import Foundation
 /// counterparts are synchronous audio-hardware calls that block their caller
 /// roughly 100-300ms each. ``ComposerDictationController`` is `@MainActor`, so
 /// running them inline froze the composer mic button's press animation on every
-/// toggle (https://github.com/manaflow-ai/cmux/issues/6284). This owner runs
+/// toggle (https://github.com/emergent-inc/cmux/issues/6284). This owner runs
 /// every one of those calls on its own serial queue, so the main actor only ever
 /// ENQUEUES the work — it never blocks on the audio hardware.
 ///

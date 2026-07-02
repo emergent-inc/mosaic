@@ -8,12 +8,12 @@ struct XcconfigParserTests {
     func parsesSimpleAssignments() throws {
         let url = try writeTempXcconfig("""
         // header comment
-        PRODUCT_BUNDLE_IDENTIFIER = ai.manaflow.cmux
+        PRODUCT_BUNDLE_IDENTIFIER = ai.emergent.inc.cmux
         MACOSX_DEPLOYMENT_TARGET = 14.0
         EMPTY =
         """)
         let parsed = try XcconfigParser.parse(at: url)
-        #expect(parsed["PRODUCT_BUNDLE_IDENTIFIER"] == "ai.manaflow.cmux")
+        #expect(parsed["PRODUCT_BUNDLE_IDENTIFIER"] == "ai.emergent.inc.cmux")
         #expect(parsed["MACOSX_DEPLOYMENT_TARGET"] == "14.0")
         #expect(parsed["EMPTY"] == "")
         try? FileManager.default.removeItem(at: url)
@@ -35,10 +35,10 @@ struct XcconfigParserTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let baseURL = dir.appendingPathComponent("Base.xcconfig")
         let derivedURL = dir.appendingPathComponent("Debug.xcconfig")
-        try "PRODUCT_BUNDLE_IDENTIFIER = ai.manaflow.cmux\nMACOSX_DEPLOYMENT_TARGET = 14.0\n".write(to: baseURL, atomically: true, encoding: .utf8)
+        try "PRODUCT_BUNDLE_IDENTIFIER = ai.emergent.inc.cmux\nMACOSX_DEPLOYMENT_TARGET = 14.0\n".write(to: baseURL, atomically: true, encoding: .utf8)
         try "#include \"Base.xcconfig\"\nMACOSX_DEPLOYMENT_TARGET = 15.0\n".write(to: derivedURL, atomically: true, encoding: .utf8)
         let parsed = try XcconfigParser.parse(at: derivedURL)
-        #expect(parsed["PRODUCT_BUNDLE_IDENTIFIER"] == "ai.manaflow.cmux")
+        #expect(parsed["PRODUCT_BUNDLE_IDENTIFIER"] == "ai.emergent.inc.cmux")
         #expect(parsed["MACOSX_DEPLOYMENT_TARGET"] == "15.0", "including file should override included")
         try? FileManager.default.removeItem(at: dir)
     }

@@ -9,7 +9,7 @@ extension MobileHostService {
     ///
     /// This also advertises `dogfood.v1`, the agent feedback round-trip
     /// (`dogfood.feedback.submit`). It is advertised on every build type so the
-    /// privileged Send Feedback path (offered only to `@manaflow.ai` users on an
+    /// privileged Send Feedback path (offered only to `@emergent.inc` users on an
     /// active connection) works on Release (beta/prod) too; the sink itself is
     /// still gated by the same-account Stack-auth check the rest of the mobile
     /// data plane enforces.

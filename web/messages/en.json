@@ -67,7 +67,7 @@
     "discord": "Discord",
     "contact": "Contact",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Language",
     "assets": "Assets",
     "openSource": "Open source",
@@ -285,7 +285,7 @@
       "p075": "Install a full AI stack (cmux + Ghostty + Zed + Starship + JetBrainsMono) via a single Homebrew formula with idempotent re-runs and dry-run mode - one-command developer environment bootstrap",
       "p076": "Build a Chromium content shell for cmux's browser engine with prebuilt framework downloads for plugin developers",
       "p077": "Provide installable cmux skills for any Agent Skills-compatible runtime, covering CLI control, settings, browser automation, artifacts, workspace refs, and customization from one maintained public source",
-      "p078": "Provide the official Homebrew tap for cmux with stable and nightly casks maintained by Manaflow",
+      "p078": "Provide the official Homebrew tap for cmux with stable and nightly casks maintained by emergent.inc",
       "p079": "Teach Claude Code browser automation across four auto-syncing skill files covering form filling, screenshots, and debug window capture - structured as a multi-file skill suite rather than a single monolithic document",
       "p080": "Implement a master-worker pattern using worktrees, cmux workspaces, and Agent Teams (lead+tester+reviewer+security) with deterministic port allocation - uniquely assigns fixed ports per agent role",
       "p081": "Drop-in replacement for GSD/Pi's @gsd/cmux module adding WezTerm as a second multiplexer backend with OSC 1337 user variables and Windows toast notifications - the only Pi plugin supporting dual multiplexer targets",
@@ -1850,7 +1850,7 @@
       "data3": "Pairing and device metadata, to connect your phone to your Mac.",
       "dataNot": "Your interactive terminal session, its contents and keystrokes, flows directly between your phone and your Mac over your own network, and is not relayed through or stored on cmux servers. The one exception is forwarded notification text, which transits cmux and Apple's push service to reach your phone, unless you enable Hide content (see Notifications above).",
       "enterpriseTitle": "Enterprise and self-hosted",
-      "enterpriseDesc": "For a self-hosted or air-gapped deployment, contact <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "For a self-hosted or air-gapped deployment, contact <link>contact@emergent.inc</link>."
     }
   },
   "deeplink": {

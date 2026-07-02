@@ -702,7 +702,7 @@ extension CLINotifyProcessIntegrationRegressionTests {
         // the session or clear the surface resume binding — otherwise the restore
         // record is destroyed after the first turn and nothing survives a
         // quit/relaunch. The finalize hook must perform the destructive cleanup.
-        // See https://github.com/manaflow-ai/cmux/issues/5000.
+        // See https://github.com/emergent-inc/cmux/issues/5000.
         let cliPath = try bundledCLIPath()
         let socketPath = makeSocketPath("hermes-session-end")
         let listenerFD = try bindUnixSocket(at: socketPath)
@@ -3257,7 +3257,7 @@ extension CLINotifyProcessIntegrationRegressionTests {
         }
     }
 
-    /// G2 (https://github.com/manaflow-ai/cmux/issues/5350): plain `codex` under the subrouter account
+    /// G2 (https://github.com/emergent-inc/cmux/issues/5350): plain `codex` under the subrouter account
     /// manager points CODEX_HOME at ~/.codex-accounts/<account>, not ~/.codex. When the launch argv
     /// can't be captured (no CMUX_AGENT_LAUNCH_ARGV_B64 and an exited PID), the session record used to
     /// drop CODEX_HOME, so the resume/fork binding fell back to a bare `codex resume <id>` against the
@@ -3391,7 +3391,7 @@ extension CLINotifyProcessIntegrationRegressionTests {
         )
     }
 
-    /// G3 (https://github.com/manaflow-ai/cmux/issues/5333): the codex surface jumble. CMUX_SURFACE_ID
+    /// G3 (https://github.com/emergent-inc/cmux/issues/5333): the codex surface jumble. CMUX_SURFACE_ID
     /// can be leaked into the hook env as the operator's FOCUSED pane rather than the agent's own pane.
     /// When the agent process's controlling TTY is bound to a different, accessible surface in the same
     /// workspace, that TTY is ground truth and must override the leaked env surface — otherwise the
@@ -3486,7 +3486,7 @@ extension CLINotifyProcessIntegrationRegressionTests {
         )
     }
 
-    /// G3 stale-env variant (https://github.com/manaflow-ai/cmux/issues/5333): when the ambient
+    /// G3 stale-env variant (https://github.com/emergent-inc/cmux/issues/5333): when the ambient
     /// CMUX_SURFACE_ID is stale/invalid (the surface was closed, or belongs to another workspace) it no
     /// longer resolves to an accessible surface. That must NOT abort hook routing — the agent's own
     /// TTY-bound pane is valid, so the hook recovers and still publishes the resume binding there

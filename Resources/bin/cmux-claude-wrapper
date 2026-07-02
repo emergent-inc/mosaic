@@ -272,7 +272,7 @@ esac
 #     us-gov. variants), bare anthropic.<model>-v1:0, or an arn:aws:bedrock ARN.
 # Plain ids such as claude-opus-4-8 or claude-opus-4-8[1m] carry none of these
 # markers and are valid on the default Anthropic path, so they are NOT
-# backend-qualified. https://github.com/manaflow-ai/cmux/issues/7047
+# backend-qualified. https://github.com/emergent-inc/cmux/issues/7047
 claude_model_id_is_backend_qualified() {
     case "$1" in
         *@*|*:*|*/*) return 0 ;;
@@ -304,8 +304,8 @@ should_preserve_claude_auth_selection_key() {
     # shell rc authenticate inside cmux the same way they do in plain
     # Terminal. Without this, the wrapper silently drops the selection
     # signal and claude reports "not logged in".
-    # Refs: https://github.com/manaflow-ai/cmux/issues/3641 (Vertex)
-    #       https://github.com/manaflow-ai/cmux/issues/3638 (Bedrock)
+    # Refs: https://github.com/emergent-inc/cmux/issues/3641 (Vertex)
+    #       https://github.com/emergent-inc/cmux/issues/3638 (Bedrock)
     local vertex_on=false bedrock_on=false
     case "${CLAUDE_CODE_USE_VERTEX:-}" in
         1|true|TRUE|yes|YES) vertex_on=true ;;
@@ -336,7 +336,7 @@ should_preserve_claude_auth_selection_key() {
             # window selection survives every new pane/reboot. Still strip
             # backend-qualified ids: a stale "...@<date>" / "...anthropic...:..."
             # value is invalid on the Anthropic path and is exactly the leak the
-            # scrub guards against. https://github.com/manaflow-ai/cmux/issues/7047
+            # scrub guards against. https://github.com/emergent-inc/cmux/issues/7047
             local model_key="$1"
             local model_value="${!model_key-}"
             if [[ -n "$model_value" ]] &&
@@ -378,7 +378,7 @@ normalize_claude_config_dir() {
 # created under a different config root fails with "No conversation found" and drops
 # the user to a bare shell. Self-heal by relocating CLAUDE_CONFIG_DIR to the root
 # that actually holds the transcript, but only when the current root lacks it (so a
-# correct resume is never repointed). https://github.com/manaflow-ai/cmux/issues/6194
+# correct resume is never repointed). https://github.com/emergent-inc/cmux/issues/6194
 cmux_claude_config_dir_has_session() {
     local root="$1" sid="$2"
     [[ -n "$root" && -d "$root/projects" ]] || return 1
@@ -850,7 +850,7 @@ fi
 
 # For an explicit `--resume <id>`, point CLAUDE_CONFIG_DIR at the config root that
 # actually holds the transcript so an inherited/foreign config dir cannot turn the
-# resume into "No conversation found". https://github.com/manaflow-ai/cmux/issues/6194
+# resume into "No conversation found". https://github.com/emergent-inc/cmux/issues/6194
 reconcile_claude_config_dir_for_resume "$(extract_claude_resume_session_id "$@")"
 
 # Export the wrapper's PID. Because we exec claude below, this PID becomes
@@ -876,7 +876,7 @@ install_cmux_node_options
 #   --dangerously-skip-permissions (permission_mode "bypassPermissions") Claude
 #   fires no PermissionRequest/Notification for those two, so the handler also
 #   publishes the full needs-input status + bell itself. See
-#   https://github.com/manaflow-ai/cmux/issues/6606
+#   https://github.com/emergent-inc/cmux/issues/6606
 # - PermissionRequest: cmux hooks feed. SYNC with a 125s timeout.
 #   This is Claude Code's native blocking decision hook. Outside
 #   bypassPermissions it covers permissions, ExitPlanMode, and AskUserQuestion

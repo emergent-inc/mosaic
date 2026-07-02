@@ -41,7 +41,7 @@ export async function POST(request: Request): Promise<Response> {
   // r.cmux.com directly), so an anonymous proxy is no weaker than today.
   //
   // Rate limiting is deferred for Phase A (tracked in
-  // https://github.com/manaflow-ai/cmux/issues/5569). The only reusable limiter in
+  // https://github.com/emergent-inc/cmux/issues/5569). The only reusable limiter in
   // the codebase (`services/apns/rateLimit.ts`) is a per-`userId` Postgres-
   // transaction gate, which does not fit an anonymous-first, high-volume telemetry
   // ingest path (no user id pre-auth, and a DB write + advisory lock per analytics

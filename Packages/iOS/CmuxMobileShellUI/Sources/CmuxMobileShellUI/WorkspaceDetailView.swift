@@ -541,12 +541,12 @@ struct WorkspaceDetailView: View {
     }
 
     /// Whether the current submission will go straight to the agent (privileged
-    /// `@manaflow.ai` user on an active connection) vs the email inbox.
+    /// `@emergent.inc` user on an active connection) vs the email inbox.
     private var feedbackRoutesToAgent: Bool {
         store.currentFeedbackRoute == .privilegedAgent
     }
 
-    // Release-safe Send Feedback composer. Privileged @manaflow.ai users on an
+    // Release-safe Send Feedback composer. Privileged @emergent.inc users on an
     // active connection ship a diagnostic bundle straight to the paired Mac's
     // agent sink; everyone else emails the feedback inbox. Either way the
     // submission is stamped with build type + version + device.

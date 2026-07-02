@@ -22,13 +22,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Extension ID: co.manaflow.CMUXExtKitSampleSidebarApp.Extension"
+            "value" : "Extension ID: co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拡張機能ID: co.manaflow.CMUXExtKitSampleSidebarApp.Extension"
+            "value" : "拡張機能ID: co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension"
           }
         }
       }

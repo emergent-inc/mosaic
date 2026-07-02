@@ -10375,7 +10375,7 @@ struct VerticalTabsSidebar: View {
         // per-row "laid-out row ids" PreferenceKey whose sidebar-wide reduce
         // fed `@State` writes from inside the layout/preference update cycle,
         // the cmux-owned edge in the sidebar layout livelock
-        // (https://github.com/manaflow-ai/cmux/issues/2586). No anchor means
+        // (https://github.com/emergent-inc/cmux/issues/2586). No anchor means
         // SwiftUI scrolls the minimum needed to reveal the row.
         let group = renderContext.workspaceById[selectedWorkspaceId]?.groupId
             .flatMap { renderContext.workspaceGroupById[$0] }
@@ -11928,7 +11928,7 @@ struct VerticalTabsSidebar: View {
         // LazyVStack is safe here because `dragState` is @Observable:
         // drag mutations at 60fps invalidate only the rows/overlays that
         // read them, never this sidebar body. See SidebarDragState and
-        // https://github.com/manaflow-ai/cmux/issues/2586.
+        // https://github.com/emergent-inc/cmux/issues/2586.
         LazyVStack(spacing: tabRowSpacing) {
             Text(String(localized: "sidebar.sessions.section", defaultValue: "SESSIONS"))
                 .font(.system(size: 11, weight: .semibold))

@@ -87,7 +87,7 @@ For Swift files under a production `Sources/` path (matching `**/Sources/**` and
 
 Fail a `#if DEBUG` (or other test-build-guarded) extension or member that exposes internal/private state for tests or a debugger with no production caller, a member named like `debug…`/`…ForTesting`/`…ForTests`/`testOnly…`/`…TestHook`/`…TestSeam`/`_test…`, or visibility widened together with a wrapper accessor added so a test can call it. The compiled-out `#if DEBUG` guard does not make a test-observability accessor acceptable in shipping source.
 
-Prefer observing internal state from the test target via `@testable import` after widening `private` to `internal`, or isolating a genuinely debug-only facility in a dedicated debug file or folder. The canonical fix is cmux PR https://github.com/manaflow-ai/cmux/pull/6452, which removed the `#if DEBUG debugQueuedRequestCount()` accessor, widened the queue state to `internal`, and read it from the test target.
+Prefer observing internal state from the test target via `@testable import` after widening `private` to `internal`, or isolating a genuinely debug-only facility in a dedicated debug file or folder. The canonical fix is cmux PR https://github.com/emergent-inc/cmux/pull/6452, which removed the `#if DEBUG debugQueuedRequestCount()` accessor, widened the queue state to `internal`, and read it from the test target.
 
 Pass for `#if DEBUG` blocks that gate real product behavior, scaffolding inside `Tests/` or a test-support module, and existing seams the PR does not introduce or worsen.
 
@@ -117,7 +117,7 @@ Pass for `private`/`fileprivate` file-scope pure helpers (preferred over a priva
 
 For production Swift on hot, concurrent, or per-element paths (git index/path/signature encoding, terminal input/rendering, sidebar/feed/list rows, snapshot builders, and any per-byte/row/keystroke/frame loop or concurrent map), flag per-call allocating formatting.
 
-Flag `String(format:)` with per-element conversions, a `NumberFormatter`/`DateFormatter`/`ISO8601DateFormatter`/`ByteCountFormatter` allocated per call inside a loop or row body, and repeated per-element string interpolation/concatenation building large intermediates where a preallocated buffer or single reserved-capacity build would avoid the churn. The canonical P0 is cmux PR https://github.com/manaflow-ai/cmux/pull/5347: `String(format:)` byte-to-hex in the concurrent git-index snapshot path allocated per call and caused unbounded memory growth and crashes on users' machines; the fix used a fixed hex lookup table written into a preallocated buffer.
+Flag `String(format:)` with per-element conversions, a `NumberFormatter`/`DateFormatter`/`ISO8601DateFormatter`/`ByteCountFormatter` allocated per call inside a loop or row body, and repeated per-element string interpolation/concatenation building large intermediates where a preallocated buffer or single reserved-capacity build would avoid the churn. The canonical P0 is cmux PR https://github.com/emergent-inc/cmux/pull/5347: `String(format:)` byte-to-hex in the concurrent git-index snapshot path allocated per call and caused unbounded memory growth and crashes on users' machines; the fix used a fixed hex lookup table written into a preallocated buffer.
 
 Pass for cold paths (startup, settings, error/log construction), a formatter allocated once and reused, deterministic encoding via a fixed lookup table into a preallocated buffer, and tests/benchmarks or existing formatting the PR does not move into a hotter or concurrent path.
 

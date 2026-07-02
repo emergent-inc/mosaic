@@ -82,7 +82,7 @@ struct cmuxApp: App {
         // this file on every agent hook, and a cross-identity reach into
         // Application Support triggers the macOS Sequoia "access data from other
         // apps" prompt; the password now lives in the non-protected cmux state
-        // directory (https://github.com/manaflow-ai/cmux/issues/5146). The app
+        // directory (https://github.com/emergent-inc/cmux/issues/5146). The app
         // owns its Application Support data, so it can perform this move silently.
         // This App initializer is the composition root, so it is where the
         // concrete `FileManager.default` is named for the package's injected seams.
@@ -127,7 +127,7 @@ struct cmuxApp: App {
         // share the name `cmux`, so if the GUI's Contents/MacOS leaks onto $PATH
         // (which happens for any shell descended from this process), bare `cmux`
         // resolves here instead of the CLI. See
-        // https://github.com/manaflow-ai/cmux/issues/4678.
+        // https://github.com/emergent-inc/cmux/issues/4678.
         // cmux ships a universal binary so it still supports Intel Macs, but a
         // stale LaunchServices architecture preference can pin the app to its
         // x86_64 slice on Apple Silicon, running the whole process tree under
@@ -139,7 +139,7 @@ struct cmuxApp: App {
         // and the forwarded bundled CLI then inherits the native arch too. The
         // re-exec preserves argv and re-enters this initializer, so forwarding
         // proceeds normally in the native process. No-op on Intel and on native
-        // launches. See https://github.com/manaflow-ai/cmux/issues/753.
+        // launches. See https://github.com/emergent-inc/cmux/issues/753.
         RosettaNativeRelaunch.relaunchNativelyIfNeeded()
 
         CLIForwardingLaunchRouter.forwardToBundledCLIIfNeeded()
@@ -2431,7 +2431,7 @@ private final class SidebarDebugWindowController: ReleasingWindowController {
 private struct AboutPanelView: View {
     @Environment(\.openURL) private var openURL
 
-    private let githubURL = URL(string: "https://github.com/manaflow-ai/mosaic")
+    private let githubURL = URL(string: "https://github.com/emergent-inc/mosaic")
     private let docsURL = URL(string: "https://mosaic.com/docs")
 
     private var version: String? { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String }
@@ -2476,7 +2476,7 @@ private struct AboutPanelView: View {
                     }
                     let commitText = commit ?? "—"
                     let commitURL = commit.flatMap { hash in
-                        URL(string: "https://github.com/manaflow-ai/mosaic/commit/\(hash)")
+                        URL(string: "https://github.com/emergent-inc/mosaic/commit/\(hash)")
                     }
                     AboutPropertyRow(label: String(localized: "about.commit", defaultValue: "Commit"), text: commitText, url: commitURL)
                 }

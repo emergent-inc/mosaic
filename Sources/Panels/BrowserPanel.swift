@@ -1927,12 +1927,12 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
     private let lock = NSLock()
     private var sessions: [String: Session] = [:]
     private var activeSchemeTasks: [ObjectIdentifier: SchemeTaskState] = [:]
-    private let streamQueue = DispatchQueue(label: "com.manaflow.cmux.diff-viewer-stream", qos: .userInitiated)
+    private let streamQueue = DispatchQueue(label: "com.emergent.inc.cmux.diff-viewer-stream", qos: .userInitiated)
     // Branch picker routes shell out to the bundled CLI (git). Run them on a
     // dedicated concurrent queue, NOT the serial file-serving streamQueue, so a
     // slow/hung git invocation cannot stall restored diff-viewer file serving.
     private let pickerQueue = DispatchQueue(
-        label: "com.manaflow.cmux.diff-viewer-picker",
+        label: "com.emergent.inc.cmux.diff-viewer-picker",
         qos: .userInitiated,
         attributes: .concurrent
     )
@@ -2122,7 +2122,7 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
 
         // Drain stdout concurrently with the wait so the child can never block on
         // a full pipe while we wait, and we still capture all output.
-        let drainQueue = DispatchQueue(label: "com.manaflow.cmux.diff-viewer-picker-drain")
+        let drainQueue = DispatchQueue(label: "com.emergent.inc.cmux.diff-viewer-picker-drain")
         var collected = Data()
         let drainDone = DispatchSemaphore(value: 0)
         let readHandle = stdoutPipe.fileHandleForReading
@@ -3073,7 +3073,7 @@ final class BrowserPanel: Panel, ObservableObject {
     /// `<audio>` element, in the main frame or any iframe, reported by the
     /// injected media-playback hook. Keeps an actively-playing pane alive in the
     /// background instead of being discarded after the hidden delay
-    /// (https://github.com/manaflow-ai/cmux/issues/5409).
+    /// (https://github.com/emergent-inc/cmux/issues/5409).
     private(set) var isPlayingMedia: Bool = false {
         didSet {
             guard oldValue != isPlayingMedia else { return }
@@ -3722,7 +3722,7 @@ final class BrowserPanel: Panel, ObservableObject {
         )
         // Report <video>/<audio> playback so a hidden pane with actively-playing
         // media is exempted from memory discard
-        // (https://github.com/manaflow-ai/cmux/issues/5409). Injected into every
+        // (https://github.com/emergent-inc/cmux/issues/5409). Injected into every
         // frame so embedded players in cross-origin iframes keep the pane alive
         // too. Runs in an isolated content world (shared DOM, separate JS scope)
         // so the handler is hidden from page JavaScript that could otherwise post

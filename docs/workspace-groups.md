@@ -56,7 +56,7 @@ All group operations are scriptable via `cmux workspace-group <subcommand>`. The
 
 ```bash
 cmux workspace-group list [--json]
-cmux workspace-group create --name "manaflow" [--cwd ~/projects/manaflow] [--from <id>,<id>]
+cmux workspace-group create --name "emergent.inc" [--cwd ~/projects/emergent.inc] [--from <id>,<id>]
 cmux workspace-group ungroup <group-id>
 cmux workspace-group delete  <group-id>   # destructive: closes every member workspace
 cmux workspace-group rename <group-id> --name "new name"
@@ -77,7 +77,7 @@ cmux workspace-group new-workspace <group-id> [--placement afterCurrent|top|end]
 Group the three currently selected workspaces under a name:
 
 ```bash
-cmux workspace-group create --name manaflow
+cmux workspace-group create --name emergent.inc
 ```
 
 Spin up a new workspace inside an existing group (e.g. wired to a worktree script):
@@ -107,7 +107,7 @@ Per-group configuration is keyed by the anchor's working directory in `~/.config
     //   "end"                    - after the trailing member
     "newWorkspacePlacement": "afterCurrent",
     "byCwd": {
-      "/Users/you/manaflow/cmux": {
+      "/Users/you/emergentinc/cmux": {
         "color": "#7A4FD8",
         "icon": "ladybug.fill",
         "newWorkspacePlacement": "top",

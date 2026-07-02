@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Contacto",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Idioma",
     "assets": "Recursos",
     "openSource": "Open source",
@@ -254,7 +254,7 @@
       "p075": "Instala una pila completa de IA (cmux + Ghostty + Zed + Starship + JetBrainsMono) mediante una sola fórmula Homebrew con reejecuciones idempotentes y modo dry-run; bootstrap de entorno de desarrollador en un comando",
       "p076": "Construye un shell de contenido Chromium para el motor de navegador de cmux con descargas de framework precompilado para desarrolladores de plugins",
       "p077": "Proporciona skills instalables de cmux para cualquier runtime compatible con Agent Skills, cubriendo control CLI, configuración, automatización del navegador, artefactos, refs de workspace y personalización desde una fuente pública mantenida",
-      "p078": "Proporciona el tap oficial de Homebrew para cmux con casks stable y nightly mantenidos por Manaflow",
+      "p078": "Proporciona el tap oficial de Homebrew para cmux con casks stable y nightly mantenidos por emergent.inc",
       "p079": "Enseña automatización del navegador de Claude Code en cuatro archivos de skill con autosincronización que cubren llenado de formularios, capturas de pantalla y captura de ventana de depuración; estructurado como una suite de skills multiarchivo en vez de un documento monolítico",
       "p080": "Implementa un patrón master-worker con worktrees, workspaces de cmux y Agent Teams (lead+tester+reviewer+security) con asignación determinista de puertos; asigna de forma única puertos fijos por rol de agente",
       "p081": "Reemplazo directo del módulo @gsd/cmux de GSD/Pi que añade WezTerm como segundo backend de multiplexor con variables de usuario OSC 1337 y notificaciones toast de Windows; el único plugin Pi con soporte para dos objetivos de multiplexor",
@@ -1472,7 +1472,7 @@
       "data3": "Metadatos de emparejamiento y del dispositivo, para conectar tu teléfono con tu Mac.",
       "dataNot": "Tu sesión interactiva de terminal, su contenido y las pulsaciones de teclas fluyen directamente entre tu teléfono y tu Mac a través de tu propia red, y no se retransmiten ni se almacenan en los servidores de cmux. La única excepción es el texto de las notificaciones reenviadas, que transita por cmux y el servicio de notificaciones de Apple para llegar a tu teléfono, a menos que actives Hide content (consulta Notificaciones más arriba).",
       "enterpriseTitle": "Empresas y autoalojamiento",
-      "enterpriseDesc": "Para un despliegue autoalojado o aislado de red, contacta con <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "Para un despliegue autoalojado o aislado de red, contacta con <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

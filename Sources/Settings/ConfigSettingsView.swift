@@ -183,7 +183,7 @@ struct ConfigSettingsView: View {
         window.animationBehavior = .utilityWindow
         // The Config editor is a top-level peer window, not a floating
         // inspector: clicking the main window must be able to raise it above
-        // the editor (https://github.com/manaflow-ai/cmux/issues/5081).
+        // the editor (https://github.com/emergent-inc/cmux/issues/5081).
         window.adoptCmuxPeerWindowLevel()
         window.collectionBehavior.insert(.fullScreenAuxiliary)
     }

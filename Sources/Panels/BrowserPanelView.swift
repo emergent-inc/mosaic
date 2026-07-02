@@ -4047,7 +4047,7 @@ func browserOmnibarShouldSelectAllOnFocusReassertion(
 /// The first click on an unfocused omnibar showing a URL selects everything so
 /// the user can immediately type a replacement. A subsequent click (the field is
 /// already first responder, so `gainedFocusOnThisClick` is `false`) keeps the
-/// caret placement from https://github.com/manaflow-ai/cmux/issues/5268. A drag
+/// caret placement from https://github.com/emergent-inc/cmux/issues/5268. A drag
 /// or a Shift-click expresses an explicit range, so select-all defers to it; a
 /// double-click never reaches this path (the field routes multi-clicks straight
 /// to the field editor for word/line selection, and its second click lands after

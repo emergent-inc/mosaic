@@ -80,7 +80,7 @@ GET  /v1/presence/subscribe -> forward w/ verified team ------> WS (hibernation)
 
 Presence is deliberately ephemeral. The durable source of device identity is
 the Aurora `devices` / `device_app_instances` registry
-(https://github.com/manaflow-ai/cmux/pull/5626); this service adds no Aurora
+(https://github.com/emergent-inc/cmux/pull/5626); this service adds no Aurora
 columns and therefore ships no Drizzle migration. DO storage keeps the live
 instance map plus a 24h offline tail for "last seen", pruned by the same
 alarm, and the durable per-device owner pins. Losing the service's storage
@@ -165,7 +165,7 @@ the first production deploy and dogfood.
   subscription (starts on sign-in, blanks and stops on sign-out, backoff
   reconnect with snapshot-first resync), reduces frames into `PresenceMap`,
   overlays live online/offline on the device tree
-  (https://github.com/manaflow-ai/cmux/pull/5648) rows, writes pushed routes
+  (https://github.com/emergent-inc/cmux/pull/5648) rows, writes pushed routes
   through to the paired-Mac store, and kicks a reconnect when the active Mac
   comes online while the phone is disconnected.
 

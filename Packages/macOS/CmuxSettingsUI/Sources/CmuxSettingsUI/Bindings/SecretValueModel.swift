@@ -16,7 +16,7 @@ import Observation
 /// deallocates, finishing the change stream and tearing down its underlying
 /// observation. A bare `weak self` is **not** enough — the parked task never
 /// re-checks `self` for an idle key (see
-/// https://github.com/manaflow-ai/cmux/issues/5302).
+/// https://github.com/emergent-inc/cmux/issues/5302).
 @MainActor
 @Observable
 public final class SecretValueModel {

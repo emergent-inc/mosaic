@@ -14,7 +14,7 @@ import Foundation
 /// (`Workspace.isApplyingTabSelection`) is *per-instance*, a cycle that bounces
 /// through SwiftUI body re-evaluation and across different `Workspace` instances
 /// (command-palette focus restore + cross-workspace handoff) was unbounded. That is
-/// the 426s main-thread hang in https://github.com/manaflow-ai/cmux/issues/5100.
+/// the 426s main-thread hang in https://github.com/emergent-inc/cmux/issues/5100.
 ///
 /// ## Contract
 ///

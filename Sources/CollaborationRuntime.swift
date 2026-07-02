@@ -1,6 +1,7 @@
 import AppKit
 import CMUXMobileCore
 import CmuxCollaboration
+import CmuxFoundation
 import Foundation
 import Observation
 import SwiftUI
@@ -339,6 +340,7 @@ struct CollaborationTerminalHeaderState: Equatable {
     var isShared = false
     var statusText = ""
     var peerSummary = ""
+    var ownerSnapshot: CollaborationParticipantAvatarSnapshot?
 }
 
 struct CollaborationTerminalRecipientSnapshot: Equatable, Identifiable {
@@ -488,6 +490,60 @@ private final class AgentRoomWireOverlayView: NSView {
     }
 }
 
+private struct CollaborationTerminalOwnerAvatarRenderer {
+    private let pixelSize = 48
+
+    func pngData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelSize,
+            pixelsHigh: pixelSize,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return nil
+        }
+
+        let size = NSSize(width: pixelSize, height: pixelSize)
+        bitmap.size = size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        NSColor.clear.setFill()
+        NSRect(origin: .zero, size: size).fill()
+
+        let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
+        let circle = NSBezierPath(ovalIn: circleRect)
+        (NSColor(hex: participant.colorHex) ?? .controlAccentColor).setFill()
+        circle.fill()
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: CGFloat(pixelSize) * 0.38, weight: .bold),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: paragraph,
+        ]
+        let initials = NSString(string: participant.initials)
+        let textSize = initials.size(withAttributes: attributes)
+        let textRect = NSRect(
+            x: 0,
+            y: (size.height - textSize.height) / 2 - 1,
+            width: size.width,
+            height: textSize.height
+        )
+        initials.draw(in: textRect, withAttributes: attributes)
+
+        return bitmap.representation(using: .png, properties: [:])
+    }
+}
+
 @MainActor
 @Observable
 final class CollaborationRuntime {
@@ -512,6 +568,7 @@ final class CollaborationRuntime {
 
     private let peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
+    private let terminalOwnerAvatarRenderer = CollaborationTerminalOwnerAvatarRenderer()
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
@@ -586,10 +643,7 @@ final class CollaborationRuntime {
         guard let sessionCode = sessionCode(forWorkspaceID: workspaceID) else {
             return []
         }
-        let local = CollaborationWorkspaceParticipantSnapshot.local(
-            identity: peerIdentity,
-            avatarSeed: localAvatarSeed
-        )
+        let local = localParticipantSnapshot()
         guard let connection = connectionsBySessionCode[sessionCode] else {
             return [local]
         }
@@ -603,6 +657,61 @@ final class CollaborationRuntime {
                 )
             }
         return [local] + peers
+    }
+
+    private func localParticipantSnapshot() -> CollaborationParticipantAvatarSnapshot {
+        CollaborationParticipantAvatarSnapshot.local(
+            identity: peerIdentity,
+            avatarSeed: localAvatarSeed
+        )
+    }
+
+    private func ownerSnapshot(
+        forPeerID peerID: String?,
+        in connection: CollaborationRelayConnection
+    ) -> CollaborationParticipantAvatarSnapshot? {
+        guard let peerID else { return nil }
+        if peerID == peerIdentity.peerID {
+            return localParticipantSnapshot()
+        }
+        guard let peer = connection.peersByID[peerID] else {
+            return CollaborationParticipantAvatarSnapshot.remote(
+                peerID: peerID,
+                displayName: peerID,
+                colorHex: CollaborationPeerIdentity.defaultColorPalette.first ?? "#0A84FF"
+            )
+        }
+        return CollaborationParticipantAvatarSnapshot.remote(
+            peerID: peer.peerID,
+            displayName: peer.displayName,
+            colorHex: peer.color
+        )
+    }
+
+    private func syncTerminalTabPresentation(
+        terminalID: String,
+        ownerSnapshot: CollaborationParticipantAvatarSnapshot?
+    ) {
+        guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
+            return
+        }
+        guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
+            return
+        }
+        let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
+        let iconImageData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
+        workspace.setCollaborationTerminalTabPresentation(
+            panelId: panel.id,
+            title: title,
+            iconImageData: iconImageData
+        )
+    }
+
+    private func restoreAllTerminalTabPresentations() {
+        let terminalIDs = Set(hostedTerminalsByID.keys).union(mirroredTerminalsByID.keys)
+        for terminalID in terminalIDs {
+            syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
+        }
     }
 
     private func connection(forTerminalID terminalID: String) -> CollaborationRelayConnection? {
@@ -680,7 +789,8 @@ final class CollaborationRuntime {
         return CollaborationTerminalHeaderState(
             isShared: false,
             statusText: connection?.connectionLabel ?? connectionLabel,
-            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers
+            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers,
+            ownerSnapshot: nil
         )
     }
 
@@ -776,6 +886,7 @@ final class CollaborationRuntime {
                         type: "terminal.open",
                         terminalID: terminalID,
                         descriptor: descriptor,
+                        fromPeerID: peerIdentity.peerID,
                         recipientParticipantIDs: recipients
                     ),
                     via: connection
@@ -797,6 +908,7 @@ final class CollaborationRuntime {
             ?? mirroredTerminalIDsBySurfaceID[terminal.id]
             ?? terminalID(for: terminal)
         let connection = connection(forTerminalID: terminalID)
+        syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
@@ -1538,6 +1650,7 @@ final class CollaborationRuntime {
     func leaveSessionForAutomation() -> [String: Any] {
         disconnectAllConnections()
         sessionCode = nil
+        restoreAllTerminalTabPresentations()
         panelsByDocumentID.removeAll()
         descriptorsByDocumentID.removeAll()
         sessionCodesByDocumentID.removeAll()
@@ -1893,11 +2006,14 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
         terminalOwnerParticipantIDsByID[terminalID] = peerIdentity.participantID
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
+        let ownerSnapshot = localParticipantSnapshot()
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: connection.peerSummary
+            peerSummary: connection.peerSummary,
+            ownerSnapshot: ownerSnapshot
         )
+        syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: ownerSnapshot)
         Task {
             do {
                 try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor), via: connection)
@@ -2001,11 +2117,14 @@ final class CollaborationRuntime {
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
+        let ownerSnapshot = ownerSnapshot(forPeerID: ownerPeerID, in: connection)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: connection.peerSummary
+            peerSummary: connection.peerSummary,
+            ownerSnapshot: ownerSnapshot
         )
+        syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: ownerSnapshot)
     }
 
     private func handleRemoteTerminalOutput(
@@ -2417,6 +2536,7 @@ final class CollaborationRuntime {
     }
 
     private func handleRemoteTerminalClose(terminalID: String) {
+        syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
@@ -2665,6 +2785,7 @@ final class CollaborationRuntime {
                     type: "terminal.open",
                     terminalID: terminalID,
                     descriptor: terminalDescriptor(for: panel),
+                    fromPeerID: peerIdentity.peerID,
                     recipientParticipantIDs: recipients
                 ), via: connection)
                 try? await sendTerminalRenderGridSnapshotIfPossible(
@@ -2735,6 +2856,7 @@ final class CollaborationRuntime {
                 type: "terminal.open",
                 terminalID: terminalID,
                 descriptor: descriptor,
+                fromPeerID: peerIdentity.peerID,
                 recipientParticipantIDs: recipientParticipantIDsForSending(
                     terminalID: terminalID,
                     connection: connection
@@ -2867,10 +2989,12 @@ final class CollaborationRuntime {
         }
         for terminalID in terminalStatesByID.keys {
             guard terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else { continue }
+            let existingState = terminalStatesByID[terminalID]
             terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
-                isShared: terminalStatesByID[terminalID]?.isShared ?? false,
-                statusText: terminalStatesByID[terminalID]?.isShared == true ? CollaborationStrings.shared : connection.connectionLabel,
-                peerSummary: connection.peerSummary
+                isShared: existingState?.isShared ?? false,
+                statusText: existingState?.isShared == true ? CollaborationStrings.shared : connection.connectionLabel,
+                peerSummary: connection.peerSummary,
+                ownerSnapshot: existingState?.ownerSnapshot
             )
         }
     }
@@ -3093,7 +3217,7 @@ enum CollaborationStrings {
     }
 
     static var terminalRecipientsTitle: String {
-        String(localized: "collaboration.terminal.recipients.title", defaultValue: "Share with")
+        String(localized: "collaboration.terminal.recipients.title", defaultValue: "Sharing with")
     }
 
     static var terminalRecipientsEmpty: String {
@@ -3125,6 +3249,13 @@ enum CollaborationStrings {
 
     static var sharedTerminalTitle: String {
         String(localized: "collaboration.terminal.sharedTitle", defaultValue: "Shared Terminal")
+    }
+
+    static func terminalOwnerTitle(displayName: String) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "collaboration.terminal.ownerTitleFormat", defaultValue: "%@'s terminal"),
+            displayName
+        )
     }
 
     static var noWorkspaceForTerminalShare: String {

@@ -20,7 +20,7 @@ extension XCTestCase {
     ///    `PONG`.
     ///
     /// Splitting the wait this way is the fix for the flake in
-    /// https://github.com/manaflow-ai/cmux/issues/5414: previously a single
+    /// https://github.com/emergent-inc/cmux/issues/5414: previously a single
     /// fixed `pingTimeout` had to cover *both* the time for the listener to
     /// bind and the time to answer, so a slow cold-launch could exhaust the
     /// whole budget before the listener even existed. Now a slow launch is
@@ -45,7 +45,7 @@ extension XCTestCase {
     /// app's own sanity check reported `PONG` ~1s after launch, yet the test's
     /// 12s ping wait failed. A plain deadline loop guarantees the ping is
     /// actually retried for the whole budget. See also
-    /// https://github.com/manaflow-ai/cmux/issues/5414 for the two-phase split.
+    /// https://github.com/emergent-inc/cmux/issues/5414 for the two-phase split.
     ///
     /// - Parameters:
     ///   - listenerBindTimeout: Maximum time to wait for the socket file to

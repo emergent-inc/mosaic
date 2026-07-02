@@ -24,14 +24,14 @@ import Testing
         let output = """
         origin https://github.com/austinwang/cmux.git (fetch)
         origin https://github.com/austinwang/cmux.git (push)
-        upstream git@github.com:manaflow-ai/cmux.git (fetch)
-        upstream git@github.com:manaflow-ai/cmux.git (push)
-        backup ssh://git@github.com/manaflow-ai/cmux.git (fetch)
-        mirror https://gitlab.com/manaflow-ai/cmux.git (fetch)
+        upstream git@github.com:emergent-inc/cmux.git (fetch)
+        upstream git@github.com:emergent-inc/cmux.git (push)
+        backup ssh://git@github.com/emergent-inc/cmux.git (fetch)
+        mirror https://gitlab.com/emergent-inc/cmux.git (fetch)
         """
         #expect(
             GitMetadataService.githubRepositorySlugs(fromGitRemoteVOutput: output)
-                == ["manaflow-ai/cmux", "austinwang/cmux"]
+                == ["emergent-inc/cmux", "austinwang/cmux"]
         )
     }
 
@@ -41,10 +41,10 @@ import Testing
             url = git@github.com:austinwang/cmux.git # main origin
             fetch = +refs/heads/*:refs/remotes/origin/*
         [remote "upstream"] # canonical repo
-            url = https://github.com/manaflow-ai/cmux.git ; upstream source
+            url = https://github.com/emergent-inc/cmux.git ; upstream source
             fetch = +refs/heads/*:refs/remotes/upstream/*
         """
-        #expect(slugs(fromConfig: config) == ["manaflow-ai/cmux", "austinwang/cmux"])
+        #expect(slugs(fromConfig: config) == ["emergent-inc/cmux", "austinwang/cmux"])
     }
 
     @Test func unquotesUrlValues() {
@@ -53,19 +53,19 @@ import Testing
             url = "git@github.com:austinwang/cmux.git" # main origin
             fetch = +refs/heads/*:refs/remotes/origin/*
         [remote "upstream"] # canonical repo
-            url = "https://github.com/manaflow-ai/cmux.git" ; upstream source
+            url = "https://github.com/emergent-inc/cmux.git" ; upstream source
             fetch = +refs/heads/*:refs/remotes/upstream/*
         """
-        #expect(slugs(fromConfig: config) == ["manaflow-ai/cmux", "austinwang/cmux"])
+        #expect(slugs(fromConfig: config) == ["emergent-inc/cmux", "austinwang/cmux"])
     }
 
     @Test func usesLastRemoteURLValue() {
         let config = """
         [remote "origin"]
             url = https://github.com/old-owner/old-repo.git
-            url = https://github.com/manaflow-ai/cmux.git
+            url = https://github.com/emergent-inc/cmux.git
         """
-        #expect(slugs(fromConfig: config) == ["manaflow-ai/cmux"])
+        #expect(slugs(fromConfig: config) == ["emergent-inc/cmux"])
     }
 
     @Test func readsIncludedConfigFiles() throws {
@@ -83,10 +83,10 @@ import Testing
         """.write(to: fixture.gitDirectory.appendingPathComponent("remotes.inc"), atomically: true, encoding: .utf8)
         try """
         [remote "upstream"]
-            url = https://github.com/manaflow-ai/cmux.git ; canonical repo
+            url = https://github.com/emergent-inc/cmux.git ; canonical repo
         """.write(to: fixture.gitDirectory.appendingPathComponent("conditional-remotes.inc"), atomically: true, encoding: .utf8)
 
-        #expect(slugs(forDirectory: fixture.root.path) == ["manaflow-ai/cmux", "austinwang/cmux"])
+        #expect(slugs(forDirectory: fixture.root.path) == ["emergent-inc/cmux", "austinwang/cmux"])
     }
 
     @Test func appliesIncludesInPlace() throws {
@@ -96,7 +96,7 @@ import Testing
         [include]
             path = remotes.inc
         [remote "origin"]
-            url = https://github.com/manaflow-ai/cmux.git
+            url = https://github.com/emergent-inc/cmux.git
         """)
         try """
         [remote "origin"]
@@ -104,7 +104,7 @@ import Testing
         """.write(to: fixture.gitDirectory.appendingPathComponent("remotes.inc"), atomically: true, encoding: .utf8)
 
         // The in-place include is read first, so the later top-level url wins.
-        #expect(slugs(forDirectory: fixture.root.path) == ["manaflow-ai/cmux"])
+        #expect(slugs(forDirectory: fixture.root.path) == ["emergent-inc/cmux"])
     }
 
     @Test func treatsTrailingSlashGitdirAsRecursive() throws {
@@ -124,10 +124,10 @@ import Testing
         """.write(to: gitDir.appendingPathComponent("config"), atomically: true, encoding: .utf8)
         try """
         [remote "upstream"]
-            url = https://github.com/manaflow-ai/cmux.git
+            url = https://github.com/emergent-inc/cmux.git
         """.write(to: gitDir.appendingPathComponent("recursive-remotes.inc"), atomically: true, encoding: .utf8)
 
-        #expect(slugs(forDirectory: repoRoot.path) == ["manaflow-ai/cmux"])
+        #expect(slugs(forDirectory: repoRoot.path) == ["emergent-inc/cmux"])
     }
 
     // MARK: Submodule watched paths (migrated from the sidebar integration test)

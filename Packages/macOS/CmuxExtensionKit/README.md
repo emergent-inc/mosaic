@@ -23,7 +23,7 @@ Use `Examples/SampleSidebarExtensionApp` as the reference project:
 
 1. Open `SampleSidebarExtensionApp.xcodeproj`.
 2. Change the app and extension bundle identifiers to your own reverse-DNS prefix.
-3. Change the signing team from Manaflow to your team.
+3. Change the signing team from emergent.inc to your team.
 4. Keep the extension point identifier as `com.cmuxterm.app.cmux.sidebar`.
 5. Build and launch the containing app once so macOS registers the embedded extension.
 6. In CMUX, open Sidebar Extensions from the puzzle button next to the sidebar help button and enable your extension.

@@ -8,7 +8,7 @@ export type AwesomeCmuxProject = {
   categories: readonly string[];
 };
 
-export const awesomeCmuxSourceUrl = "https://github.com/manaflow-ai/awesome-cmux";
+export const awesomeCmuxSourceUrl = "https://github.com/emergent-inc/awesome-cmux";
 export const awesomeCmuxCuratedProjectRows = 150;
 
 export const awesomeCmuxCategoryOrder = [
@@ -949,8 +949,8 @@ export const awesomeCmuxProjects = [
     ]
   },
   {
-    "name": "manaflow-ai/chromium",
-    "url": "https://github.com/manaflow-ai/chromium",
+    "name": "emergent-inc/chromium",
+    "url": "https://github.com/emergent-inc/chromium",
     "descriptionKey": "p076",
     "language": "Obj-C++",
     "categories": [
@@ -958,8 +958,8 @@ export const awesomeCmuxProjects = [
     ]
   },
   {
-    "name": "manaflow-ai/cmux-skills",
-    "url": "https://github.com/manaflow-ai/cmux-skills",
+    "name": "emergent-inc/cmux-skills",
+    "url": "https://github.com/emergent-inc/cmux-skills",
     "agent": "Multi",
     "descriptionKey": "p077",
     "language": "Python",
@@ -969,8 +969,8 @@ export const awesomeCmuxProjects = [
     ]
   },
   {
-    "name": "manaflow-ai/homebrew-cmux",
-    "url": "https://github.com/manaflow-ai/homebrew-cmux",
+    "name": "emergent-inc/homebrew-cmux",
+    "url": "https://github.com/emergent-inc/homebrew-cmux",
     "descriptionKey": "p078",
     "language": "Ruby",
     "categories": [

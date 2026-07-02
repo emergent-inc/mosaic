@@ -26,12 +26,12 @@ import Testing
         let (store, fileURL) = makeStore()
         defer { store.clearHistory(); try? FileManager.default.removeItem(at: fileURL) }
 
-        store.recordVisit(url: URL(string: "https://github.com/manaflow-ai/cmux/issues"), title: "cmux issues")
+        store.recordVisit(url: URL(string: "https://github.com/emergent-inc/cmux/issues"), title: "cmux issues")
         store.recordVisit(url: URL(string: "https://example.com/docs"), title: "Example Docs")
 
         // First query warms the candidate cache.
         let results = store.suggestions(for: "github", limit: 8).map(\.url)
-        #expect(results.contains("https://github.com/manaflow-ai/cmux/issues"))
+        #expect(results.contains("https://github.com/emergent-inc/cmux/issues"))
         #expect(!results.contains("https://example.com/docs"))
     }
 
@@ -44,9 +44,9 @@ import Testing
         // are about to add.
         _ = store.suggestions(for: "example", limit: 8)
 
-        store.recordVisit(url: URL(string: "https://manaflow.ai/pricing"), title: "Pricing")
-        let results = store.suggestions(for: "manaflow", limit: 8).map(\.url)
-        #expect(results.contains("https://manaflow.ai/pricing"))
+        store.recordVisit(url: URL(string: "https://emergent.inc/pricing"), title: "Pricing")
+        let results = store.suggestions(for: "emergent.inc", limit: 8).map(\.url)
+        #expect(results.contains("https://emergent.inc/pricing"))
     }
 
     @Test func repeatedVisitRefreshesCachedRanking() throws {

@@ -74,7 +74,7 @@ export default function CmuxHomeBlogPage() {
       <p>
         {t.rich("p5", {
           link: (chunks) => (
-            <a href="https://github.com/manaflow-ai/cmux-home">{chunks}</a>
+            <a href="https://github.com/emergent-inc/cmux-home">{chunks}</a>
           ),
         })}
       </p>

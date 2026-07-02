@@ -401,7 +401,7 @@ final class BrowserOmnibarSuggestionsUITests: XCTestCase {
         }
 
         // Only an explicitly arrow-selected suggestion commits on Enter
-        // (https://github.com/manaflow-ai/cmux/issues/5913). Reach the Gmail
+        // (https://github.com/emergent-inc/cmux/issues/5913). Reach the Gmail
         // row with Ctrl+N; when it is already auto-highlighted at row 0, make
         // the selection explicit with a Ctrl+N / Ctrl+P round trip.
         let gmailRow = rows[gmailRowIndex]
@@ -428,7 +428,7 @@ final class BrowserOmnibarSuggestionsUITests: XCTestCase {
     }
 
     func testOmnibarReturnWithoutArrowSelectionNavigatesTypedText() {
-        // Regression for https://github.com/manaflow-ai/cmux/issues/5913: a
+        // Regression for https://github.com/emergent-inc/cmux/issues/5913: a
         // row that was auto-highlighted for the popup (here the Gmail history
         // entry matched by title) must not hijack plain Return. Without an
         // explicit arrow selection, Return submits the typed text.

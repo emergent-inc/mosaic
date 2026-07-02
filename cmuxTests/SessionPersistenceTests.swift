@@ -582,7 +582,7 @@ final class SessionPersistenceTests: XCTestCase {
         XCTAssertTrue(contents.hasSuffix(reset))
     }
 
-    // Regression for https://github.com/manaflow-ai/cmux/issues/5165.
+    // Regression for https://github.com/emergent-inc/cmux/issues/5165.
     //
     // Ghostty's `write_screen_file:copy,vt` export (used to capture session
     // scrollback) prepends OSC 10 / OSC 11 sequences that bake the capture-time
@@ -1880,7 +1880,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
         // (CMUX_AGENT_LAUNCH_EXECUTABLE). Resuming with it directly bypasses
         // cmux's `claude` wrapper, which is what injects the hooks, so resumed
         // sessions silently lost SessionStart/Stop/Notification. Resume must use
-        // the bare `claude` wrapper. https://github.com/manaflow-ai/cmux/issues/5427
+        // the bare `claude` wrapper. https://github.com/emergent-inc/cmux/issues/5427
         let snapshot = SessionRestorableAgentSnapshot(
             kind: .claude,
             sessionId: "claude-session-123",
@@ -1937,7 +1937,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
 
         // Fork mirrors resume: route through the `claude` wrapper (so hooks fire),
         // drop the captured session selectors and the stale hook --settings.
-        // https://github.com/manaflow-ai/cmux/issues/5427
+        // https://github.com/emergent-inc/cmux/issues/5427
         let command = try XCTUnwrap(snapshot.forkCommand)
         XCTAssertTrue(
             command.contains(
@@ -1951,7 +1951,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
         XCTAssertFalse(command.contains("old-session"), command)
     }
 
-    /// Regression for https://github.com/manaflow-ai/cmux/issues/5639.
+    /// Regression for https://github.com/emergent-inc/cmux/issues/5639.
     ///
     /// #5430 fixed the resume *argv string* (bare `claude`) but the close-&-reopen
     /// restore launcher runs the resumed agent in a fresh `$SHELL -lic` login shell
@@ -2091,7 +2091,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
     /// interactive shell. tcsh has no `${VAR:-fallback}` parameter expansion
     /// ("Bad : modifier in $"), so a raw POSIX-only wrapper token makes the whole resume
     /// command fail to parse and claude never launches, even though the same string works
-    /// under `zsh -lic`. https://github.com/manaflow-ai/cmux/issues/5639
+    /// under `zsh -lic`. https://github.com/emergent-inc/cmux/issues/5639
     func testClaudeResumeCommandExecutesThroughWrapperInsideTcshLauncher() throws {
         let tcshURL = URL(fileURLWithPath: "/bin/tcsh")
         try XCTSkipUnless(
@@ -2136,9 +2136,9 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
     /// launcher's `*)` branch dispatches `"$_cmux_resume_shell" -c <command>` for fish
     /// logins, so a POSIX-only wrapper token regresses fish users from working resume to
     /// a hard parse error. Uses a working directory so the brace-free cwd guard
-    /// (`cd … || [ ! -d … ] && …`, https://github.com/manaflow-ai/cmux/issues/6285) is
+    /// (`cd … || [ ! -d … ] && …`, https://github.com/emergent-inc/cmux/issues/6285) is
     /// exercised too — older fish rejects the POSIX `{ …; }` grouping the guard used to
-    /// emit. https://github.com/manaflow-ai/cmux/issues/5639
+    /// emit. https://github.com/emergent-inc/cmux/issues/5639
     func testClaudeResumeCommandExecutesThroughWrapperInsideFishLauncher() throws {
         let fishURL = ["/usr/local/bin/fish", "/opt/homebrew/bin/fish", "/usr/bin/fish"]
             .map { URL(fileURLWithPath: $0) }
@@ -2392,7 +2392,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
         )
 
         // The printf-escaped non-ASCII cwd plus the `/bin/sh -c` portability wrap
-        // (https://github.com/manaflow-ai/cmux/issues/5639) exceed the inline
+        // (https://github.com/emergent-inc/cmux/issues/5639) exceed the inline
         // startup-input byte budget, so the input is the `/bin/zsh '<script>'`
         // launcher form; the script body carries the actual resume command.
         let command = try inlineResumeCommandResolvingLauncherScript(from: startupInput)
@@ -4334,7 +4334,7 @@ extension SessionPersistenceTests {
         XCTAssertFalse(binding.command.contains(legacyQuotedCwd), binding.command)
     }
 
-    // Regression for https://github.com/manaflow-ai/cmux/issues/6285: the cwd guard runs
+    // Regression for https://github.com/emergent-inc/cmux/issues/6285: the cwd guard runs
     // verbatim in the user's login shell, which may be fish. fish has no POSIX `{ …; }`
     // command grouping (it uses `begin; …; end`) and errors before the agent launches.
     // The emitted guard must therefore avoid brace grouping entirely while keeping the
@@ -5032,7 +5032,7 @@ extension SessionPersistenceTests {
         let secret = Data("approval-secret".utf8)
         let initialSettings = """
         {
-          "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+          "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
           // keep root comment
           "schemaVersion": 1,
           "terminal": {
@@ -5084,7 +5084,7 @@ extension SessionPersistenceTests {
         let secret = Data("approval-secret".utf8)
         let initialSettings = """
         {
-          "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+          "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
           // keep utf16 comment
           "schemaVersion": 1,
           "terminal": {
@@ -5129,7 +5129,7 @@ extension SessionPersistenceTests {
         let secret = Data("approval-secret".utf8)
         try """
         {
-          "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+          "$schema": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
           // keep migration comment
           "schemaVersion": 1,
           "rightSidebar": {
@@ -5593,7 +5593,7 @@ extension SessionPersistenceTests {
 
             XCTAssertNil(restoredPanel.requestedWorkingDirectory)
             XCTAssertTrue(startupPayload.contains("codex resume session-duplicate-turn --yolo"), startupPayload)
-            // The guard is the fish-safe, brace-free form (https://github.com/manaflow-ai/cmux/issues/6285):
+            // The guard is the fish-safe, brace-free form (https://github.com/emergent-inc/cmux/issues/6285):
             // `cd -- '<dir>' 2>/dev/null || [ ! -d '<dir>' ] && <cmd>`.
             XCTAssertFalse(startupPayload.contains("{ cd -- "), startupPayload)
             let guardStart = try XCTUnwrap(startupPayload.range(of: "cd -- "), startupPayload)

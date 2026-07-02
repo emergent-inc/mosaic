@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Contatti",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Lingua",
     "assets": "Asset",
     "openSource": "Open source",
@@ -254,7 +254,7 @@
       "p075": "Installa uno stack IA completo (cmux + Ghostty + Zed + Starship + JetBrainsMono) tramite una sola formula Homebrew con riesecuzioni idempotenti e modalità dry-run; bootstrap ambiente sviluppatore in un comando",
       "p076": "Costruisce una content shell Chromium per il motore browser di cmux con download di framework precompilati per sviluppatori plugin",
       "p077": "Fornisce skill cmux installabili per qualsiasi runtime compatibile con Agent Skills, coprendo controllo CLI, impostazioni, automazione browser, artefatti, ref workspace e personalizzazione da una fonte pubblica mantenuta",
-      "p078": "Fornisce il tap Homebrew ufficiale di cmux con cask stable e nightly mantenuti da Manaflow",
+      "p078": "Fornisce il tap Homebrew ufficiale di cmux con cask stable e nightly mantenuti da emergent.inc",
       "p079": "Insegna automazione browser Claude Code in quattro file skill auto-sincronizzati che coprono compilazione moduli, screenshot e cattura finestra debug; strutturato come suite multi-file invece di documento monolitico",
       "p080": "Implementa un pattern master-worker usando worktrees, workspace cmux e Agent Teams (lead+tester+reviewer+security) con allocazione porte deterministica; assegna in modo unico porte fisse per ruolo agente",
       "p081": "Sostituto drop-in del modulo @gsd/cmux di GSD/Pi che aggiunge WezTerm come secondo backend multiplexer con variabili utente OSC 1337 e notifiche toast Windows; l’unico plugin Pi con supporto per due target multiplexer",
@@ -1472,7 +1472,7 @@
       "data3": "I metadati di abbinamento e del dispositivo, per collegare il telefono al Mac.",
       "dataNot": "La tua sessione interattiva del terminale, i suoi contenuti e le digitazioni passano direttamente tra il telefono e il Mac sulla tua rete, e non vengono inoltrati né memorizzati sui server di cmux. L'unica eccezione è il testo delle notifiche inoltrate, che transita attraverso cmux e il servizio di notifiche di Apple per raggiungere il telefono, a meno che non attivi Hide content (vedi Notifiche più sopra).",
       "enterpriseTitle": "Aziende e self-hosting",
-      "enterpriseDesc": "Per un deployment self-hosted o air-gapped, contatta <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "Per un deployment self-hosted o air-gapped, contatta <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

@@ -64,7 +64,7 @@ export function OfficialLinks({ heading = true }: { heading?: boolean }) {
         />
 
         <CommunityLink
-          href="https://github.com/manaflow-ai/cmux"
+          href="https://github.com/emergent-inc/cmux"
           name="GitHub"
           action={t("githubAction")}
           description={t("githubDesc")}
@@ -76,7 +76,7 @@ export function OfficialLinks({ heading = true }: { heading?: boolean }) {
         />
 
         <CommunityLink
-          href="https://twitter.com/manaflowai"
+          href="https://twitter.com/emergentinc"
           name={t("twitter")}
           action={t("twitterAction")}
           description={t("twitterDesc")}
@@ -100,7 +100,7 @@ export function OfficialLinks({ heading = true }: { heading?: boolean }) {
         />
 
         <CommunityLink
-          href="https://www.linkedin.com/company/manaflow-ai/"
+          href="https://www.linkedin.com/company/emergent-inc/"
           name={t("linkedin")}
           action={t("linkedinAction")}
           description={t("linkedinDesc")}

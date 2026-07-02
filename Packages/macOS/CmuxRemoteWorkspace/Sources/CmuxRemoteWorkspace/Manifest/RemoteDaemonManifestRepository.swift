@@ -57,7 +57,7 @@ public struct RemoteDaemonManifestRepository: Sendable {
     /// `remoteDaemonCacheURL`) rather than Application Support, so the
     /// separately-signed CLI can read it on `cmux ssh` without tripping the
     /// macOS Sequoia "access data from other apps" prompt
-    /// (https://github.com/manaflow-ai/cmux/issues/5146).
+    /// (https://github.com/emergent-inc/cmux/issues/5146).
     public func cachedBinaryURL(version: String, goOS: String, goArch: String) throws -> URL {
         try cacheRoot()
             .appendingPathComponent(version, isDirectory: true)

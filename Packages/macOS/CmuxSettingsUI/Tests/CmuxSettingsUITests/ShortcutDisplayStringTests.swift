@@ -23,7 +23,7 @@ struct ShortcutDisplayStringTests {
     }
 
     @Test func numberedControlDigitRendersAsRange() {
-        // Regression for https://github.com/manaflow-ai/cmux/issues/5189:
+        // Regression for https://github.com/emergent-inc/cmux/issues/5189:
         // a rebound numbered shortcut must display the whole ⌃1…9 range, not ⌃1.
         let rebound = shortcut(key: "1", control: true)
         #expect(shortcutDisplayString(rebound, numbered: true) == "⌃1…9")

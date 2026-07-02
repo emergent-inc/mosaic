@@ -116,7 +116,7 @@ async function runCase(index) {
   const started = Date.now();
   try {
     user = await stack.createUser({
-      primaryEmail: `cmux-${project.stackLabel}-stress+${suffix}@manaflow.dev`,
+      primaryEmail: `cmux-${project.stackLabel}-stress+${suffix}@emergent.inc.dev`,
       primaryEmailVerified: true,
       primaryEmailAuthEnabled: true,
       password: randomBytes(24).toString("base64url"),
