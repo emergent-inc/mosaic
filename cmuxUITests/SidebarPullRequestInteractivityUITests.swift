@@ -6,7 +6,7 @@ final class SidebarPullRequestInteractivityUITests: XCTestCase {
     private let launchTag = "ui-tests-sidebar-pr-interactivity"
     private let pullRequestNumber = 123
     private var pullRequestURL: String {
-        "https://github.com/manaflow-ai/cmux/pull/\(pullRequestNumber)"
+        "https://github.com/emergent-inc/cmux/pull/\(pullRequestNumber)"
     }
 
     override func setUp() {

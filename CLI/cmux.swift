@@ -209,7 +209,7 @@ struct ClaudeHookSessionStoreFile: Codable {
     // active session, so once another pane promotes (e.g. a forked conversation
     // in a split), it can no longer prove that a late hook from a superseded
     // session in this pane is stale. Keyed by surface id.
-    // https://github.com/manaflow-ai/cmux/issues/5908
+    // https://github.com/emergent-inc/cmux/issues/5908
     var activeSessionsBySurface: [String: ClaudeHookActiveSessionRecord] = [:]
 
     enum CodingKeys: String, CodingKey {
@@ -1262,7 +1262,7 @@ final class ClaudeHookSessionStore {
             // replaced-session races in one pane). This stays true even after a
             // sibling pane — e.g. a forked conversation in a split — later takes
             // the single workspace-active slot.
-            // https://github.com/manaflow-ai/cmux/issues/5908
+            // https://github.com/emergent-inc/cmux/issues/5908
             if let normalizedSurfaceId = normalizeOptional(surfaceId),
                let surfaceActive = state.activeSessionsBySurface[normalizedSurfaceId] {
                 guard surfaceActive.sessionId == normalizedSessionId else {
@@ -1313,7 +1313,7 @@ final class ClaudeHookSessionStore {
             // Replacement is pane-scoped like staleness: a stopped session in
             // THIS surface allows its own pane to start a new session even when
             // another pane currently holds the workspace-active slot.
-            // https://github.com/manaflow-ai/cmux/issues/5908
+            // https://github.com/emergent-inc/cmux/issues/5908
             if let normalizedSurfaceId = normalizeOptional(surfaceId),
                let surfaceActive = state.activeSessionsBySurface[normalizedSurfaceId] {
                 guard surfaceActive.sessionId != normalizedSessionId else {
@@ -1377,7 +1377,7 @@ final class ClaudeHookSessionStore {
         // sibling pane takes the single workspace-active slot, only the
         // surface slot still proves that this session is mid-turn in its own
         // pane and a stale SessionEnd from an older turn must not consume it.
-        // https://github.com/manaflow-ai/cmux/issues/5908
+        // https://github.com/emergent-inc/cmux/issues/5908
         var activeRecords: [ClaudeHookActiveSessionRecord] = []
         if let workspaceId = normalizeOptional(record.workspaceId),
            let active = state.activeSessionsByWorkspace[workspaceId] {
@@ -1476,7 +1476,7 @@ final class ClaudeHookSessionStore {
     /// Rebuild the pane boundary from each workspace-active session's recorded
     /// surface so pre-upgrade panes keep suppressing stale hooks after a
     /// sibling pane takes the workspace slot.
-    /// https://github.com/manaflow-ai/cmux/issues/5908
+    /// https://github.com/emergent-inc/cmux/issues/5908
     private func backfillSurfaceActiveSlots(_ state: inout ClaudeHookSessionStoreFile) {
         guard state.activeSessionsBySurface.isEmpty else { return }
         for active in state.activeSessionsByWorkspace.values {
@@ -1607,7 +1607,7 @@ enum SocketPasswordResolver {
     private static func loadFromFile() -> String? {
         // Resolve through the shared store so the CLI reads the exact path the app
         // writes — the non-TCC cmux state directory, not Application Support
-        // (https://github.com/manaflow-ai/cmux/issues/5146). The CLI is a
+        // (https://github.com/emergent-inc/cmux/issues/5146). The CLI is a
         // composition root, so it names the concrete `FileManager.default` here.
         guard let passwordURL = SocketControlPasswordStore.defaultPasswordFileURL(fileManager: .default) else {
             return nil
@@ -11922,13 +11922,13 @@ struct CMUXCLI {
         let downloadURL = entry?.downloadURL ?? "unknown"
         let checksumsAssetName = manifest?.checksumsAssetName ?? "unknown"
         let checksumsURL = manifest?.checksumsURL ?? "unknown"
-        let downloadCommand = "gh release download \(releaseTag) --repo manaflow-ai/cmux --pattern \(assetName)"
-        let downloadChecksumsCommand = "gh release download \(releaseTag) --repo manaflow-ai/cmux --pattern \(checksumsAssetName)"
+        let downloadCommand = "gh release download \(releaseTag) --repo emergent-inc/cmux --pattern \(assetName)"
+        let downloadChecksumsCommand = "gh release download \(releaseTag) --repo emergent-inc/cmux --pattern \(checksumsAssetName)"
         let checksumVerifyCommand = "shasum -a 256 -c \(checksumsAssetName) --ignore-missing"
         let signerWorkflow = releaseTag == "nightly"
-            ? "manaflow-ai/cmux/.github/workflows/nightly.yml"
-            : "manaflow-ai/cmux/.github/workflows/release.yml"
-        let verifyCommand = "gh attestation verify ./\(assetName) --repo manaflow-ai/cmux --signer-workflow \(signerWorkflow)"
+            ? "emergent-inc/cmux/.github/workflows/nightly.yml"
+            : "emergent-inc/cmux/.github/workflows/release.yml"
+        let verifyCommand = "gh attestation verify ./\(assetName) --repo emergent-inc/cmux --signer-workflow \(signerWorkflow)"
 
         let payload: [String: Any] = [
             "app_version": remoteDaemonVersionString(from: info),
@@ -12046,7 +12046,7 @@ struct CMUXCLI {
         // Support: the separately-signed CLI downloads these on `cmux ssh`, and a
         // cross-identity reach into the app's Application Support data triggers the
         // macOS Sequoia "access data from other apps" prompt
-        // (https://github.com/manaflow-ai/cmux/issues/5146). The app's
+        // (https://github.com/emergent-inc/cmux/issues/5146). The app's
         // RemoteDaemonManifestRepository.cachedBinaryURL resolves the same path. The CLI is
         // a composition root, so it names the concrete `FileManager.default` here.
         return CmuxStateDirectory.url(homeDirectory: FileManager.default.homeDirectoryForCurrentUser)
@@ -23236,7 +23236,7 @@ struct CMUXCLI {
             // surface/pid/launch command from the pane that still owns that
             // conversation, so fork launches leave the store untouched; the forked
             // session is recorded once its own id appears on prompt-submit.
-            // https://github.com/manaflow-ai/cmux/issues/5908
+            // https://github.com/emergent-inc/cmux/issues/5908
             let isForkSessionLaunch = isClaudeForkSessionLaunch(
                 env: ProcessInfo.processInfo.environment,
                 fallbackPID: claudePid
@@ -23494,7 +23494,7 @@ struct CMUXCLI {
                 // pane's pid and launch command here the way session-start does for
                 // normal launches. Only on first sighting, so an established
                 // record's richer capture is never overwritten.
-                // https://github.com/manaflow-ai/cmux/issues/5908
+                // https://github.com/emergent-inc/cmux/issues/5908
                 let firstSightingLaunchCommand = mappedSession == nil
                     ? agentLaunchCommandFromEnvironment(
                         ProcessInfo.processInfo.environment,
@@ -23763,7 +23763,7 @@ struct CMUXCLI {
             // pane's restore record and clear its resume binding even though
             // that pane still owns the conversation. Post-prompt fork exits
             // report the forked id and consume normally.
-            // https://github.com/manaflow-ai/cmux/issues/5908
+            // https://github.com/emergent-inc/cmux/issues/5908
             if let reportedSessionId = parsedInput.sessionId?.trimmingCharacters(in: .whitespacesAndNewlines),
                !reportedSessionId.isEmpty,
                let forkParentSessionId = claudeForkSessionParentId(
@@ -23936,7 +23936,7 @@ struct CMUXCLI {
             // signal — flag Needs input here and return early instead of falling
             // through to the generic ".running" tail (which would leave a tab blocked
             // on a question / plan approval looking busy and silent).
-            // https://github.com/manaflow-ai/cmux/issues/6606
+            // https://github.com/emergent-inc/cmux/issues/6606
             if let toolName = parsedInput.object?["tool_name"] as? String,
                toolName == "AskUserQuestion" || toolName == "ExitPlanMode",
                let sessionId = parsedInput.sessionId {
@@ -24305,7 +24305,7 @@ struct CMUXCLI {
     /// or from the focused/first-surface fallback. Only an identity-derived
     /// surface may participate in cross-surface staleness decisions — a borrowed
     /// fallback surface must not let a stale hook masquerade as another pane's.
-    /// https://github.com/manaflow-ai/cmux/issues/5908
+    /// https://github.com/emergent-inc/cmux/issues/5908
     private func resolvePreferredSurfaceForClaudeHookDetailed(
         preferred: String?,
         fallback: String?,
@@ -26951,7 +26951,7 @@ struct CMUXCLI {
     /// SessionStart (the forked id is only minted at the first UserPromptSubmit),
     /// so hook state keyed by the reported id must not be rebound to the fork
     /// pane. Reads the raw launch argv — the sanitized launch-command record
-    /// strips `--fork-session`. https://github.com/manaflow-ai/cmux/issues/5908
+    /// strips `--fork-session`. https://github.com/emergent-inc/cmux/issues/5908
     private func isClaudeForkSessionLaunch(env: [String: String], fallbackPID: Int?) -> Bool {
         guard let arguments = claudeRawLaunchArguments(env: env, fallbackPID: fallbackPID) else {
             return false
@@ -26977,7 +26977,7 @@ struct CMUXCLI {
     /// payloads carrying this id (SessionStart before the forked id is minted,
     /// and SessionEnd when the fork exits before its first prompt) describe a
     /// conversation another pane still owns and must not mutate or consume its
-    /// record. https://github.com/manaflow-ai/cmux/issues/5908
+    /// record. https://github.com/emergent-inc/cmux/issues/5908
     private func claudeForkSessionParentId(env: [String: String], fallbackPID: Int?) -> String? {
         guard let arguments = claudeRawLaunchArguments(env: env, fallbackPID: fallbackPID),
               claudeLaunchArgumentsContainForkSession(arguments) else {
@@ -27226,7 +27226,7 @@ struct CMUXCLI {
         // active). The token is POSIX-only and the launcher dispatches through the
         // user's shell (fish/csh/tcsh included), so token-bearing commands are wrapped
         // in `/bin/sh -c '…'` to parse everywhere; the cwd guard below stays outside so
-        // cd-prefix rewriting keeps composing. https://github.com/manaflow-ai/cmux/issues/5639
+        // cd-prefix rewriting keeps composing. https://github.com/emergent-inc/cmux/issues/5639
         var command = kind == "claude"
             ? AgentResumeArgv.renderedPortableClaudeResumeShellCommand(parts: resumeCommandParts, quote: cliShellQuote)
             : resumeCommandParts.map(cliShellQuote).joined(separator: " ")
@@ -34265,8 +34265,8 @@ export default CMUXSessionRestore;
         print()
         print("  \(bold)Docs\(reset)\(subdued)                https://cmux.com/docs\(reset)")
         print("  \(bold)Discord\(reset)\(subdued)             https://discord.gg/zmWHDeZffZ\(reset)")
-        print("  \(bold)GitHub\(reset)\(subdued)              https://github.com/manaflow-ai/cmux (please leave a star ⭐)\(reset)")
-        print("  \(bold)Email\(reset)\(subdued)               founders@manaflow.com\(reset)")
+        print("  \(bold)GitHub\(reset)\(subdued)              https://github.com/emergent-inc/cmux (please leave a star ⭐)\(reset)")
+        print("  \(bold)Email\(reset)\(subdued)               contact@emergent.inc\(reset)")
         print()
         print("  \(subdued)Run \(reset)\(bold)cmux --help\(reset)\(subdued) for all commands.\(reset)")
         print("  \(subdued)Run \(reset)\(bold)cmux shortcuts\(reset)\(subdued) to edit shortcuts.\(reset)")

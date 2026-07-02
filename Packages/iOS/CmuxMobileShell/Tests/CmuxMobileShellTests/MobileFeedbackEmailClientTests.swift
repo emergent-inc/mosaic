@@ -37,14 +37,14 @@ struct MobileFeedbackEmailClientTests {
         )
         let boundary = "Boundary-TEST"
         let body = MobileFeedbackEmailClient.multipartBody(
-            email: "lawrence@manaflow.ai",
+            email: "lawrence@emergent.inc",
             message: "the terminal froze",
             stamp: stamp,
             boundary: boundary
         )
         let fields = decodedFields(body, boundary: boundary)
 
-        #expect(fields["email"] == "lawrence@manaflow.ai")
+        #expect(fields["email"] == "lawrence@emergent.inc")
         #expect(fields["message"] == "the terminal froze")
         #expect(fields["buildType"] == "beta")
         #expect(fields["appVersion"] == "0.64.13")

@@ -9,7 +9,7 @@ import Testing
 @testable import cmux
 #endif
 
-// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5888:
+// Regression coverage for https://github.com/emergent-inc/cmux/issues/5888:
 // the browser pane must reach loopback directly even when a macOS system
 // proxy is active. WebKit has no implicit loopback bypass, so an active
 // system proxy is mirrored into explicit proxy configurations only when

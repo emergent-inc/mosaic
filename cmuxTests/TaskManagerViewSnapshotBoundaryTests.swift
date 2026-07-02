@@ -7,14 +7,14 @@ import XCTest
 @testable import cmux
 #endif
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/4529.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/4529.
 ///
-/// PR https://github.com/manaflow-ai/cmux/pull/4437 migrated
+/// PR https://github.com/emergent-inc/cmux/pull/4437 migrated
 /// `CmuxTaskManagerModel` to `@Observable` and the Task Manager view body
 /// held `@Bindable var model` while rendering
 /// `ScrollView { LazyVStack { ForEach { ... } } }`. That violates the
 /// snapshot-boundary rule documented in `repo/CLAUDE.md` (referencing
-/// https://github.com/manaflow-ai/cmux/issues/2586): any view rendered
+/// https://github.com/emergent-inc/cmux/issues/2586): any view rendered
 /// inside a lazy list subtree may only see immutable value snapshots and
 /// closure bundles, never the store. Combined with the 3 s refresh timer
 /// in `TaskManagerWindowController` mutating `model.snapshot`, every

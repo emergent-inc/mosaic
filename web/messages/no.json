@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Kontakt",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Språk",
     "assets": "Ressurser",
     "openSource": "Åpen kildekode",
@@ -254,7 +254,7 @@
       "p075": "Installer en full AI-stack (cmux + Ghostty + Zed + Starship + JetBrainsMono) via én Homebrew-formula med idempotente omkjøringer og dry-run-modus - developer environment bootstrap med én kommando",
       "p076": "Bygg en Chromium content shell for cmux' browsermotor med forhåndsbygde framework-nedlastinger for plugin-utviklere",
       "p077": "Tilby installerbare cmux-skills for enhver Agent Skills-kompatibel runtime, med CLI-styring, innstillinger, browserautomatisering, artefakter, workspace refs og tilpasning fra én vedlikeholdt offentlig kilde",
-      "p078": "Tilby det offisielle Homebrew tap for cmux med stabile og nightly casks vedlikeholdt av Manaflow",
+      "p078": "Tilby det offisielle Homebrew tap for cmux med stabile og nightly casks vedlikeholdt av emergent.inc",
       "p079": "Lær Claude Code browserautomatisering på tvers av fire autosynkroniserende skill-filer med skjemautfylling, screenshots og debug window capture - strukturert som en skill-suite med flere filer i stedet for ett monolittisk dokument",
       "p080": "Implementer et master-worker-mønster med worktrees, cmux-workspaces og Agent Teams (lead+tester+reviewer+security) med deterministisk porttildeling - tildeler unikt faste porter per agentrolle",
       "p081": "Drop-in-erstatning for GSD/Pi's @gsd/cmux-modul som legger til WezTerm som en andre multiplexer-backend med OSC 1337-brukervariabler og Windows toast-varsler - den eneste Pi-pluginen med støtte for to multiplexer-mål",
@@ -1472,7 +1472,7 @@
       "data3": "Parings- og enhetsmetadata, for å koble telefonen din til Mac-en din.",
       "dataNot": "Den interaktive terminaløkten din, innholdet og tastetrykkene dens går direkte mellom telefonen og Mac-en din over ditt eget nettverk, og videresendes ikke gjennom eller lagres på cmux-serverne. Det eneste unntaket er videresendt varseltekst, som går gjennom cmux og Apple's push service for å nå telefonen din, med mindre du aktiverer Hide content (se Varsler ovenfor).",
       "enterpriseTitle": "Enterprise og selvhostet",
-      "enterpriseDesc": "For en selvhostet eller air-gapped utrulling, kontakt <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "For en selvhostet eller air-gapped utrulling, kontakt <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

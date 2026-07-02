@@ -41,7 +41,7 @@ def _run_case(
     remote_config = textwrap.dedent(
         """\
         [remote "origin"] ; manually annotated main remote
-            url = "https://github.com/manaflow-ai/cmux.git" # canonical repo
+            url = "https://github.com/emergent-inc/cmux.git" # canonical repo
             fetch = +refs/heads/*:refs/remotes/origin/*
         """
     )
@@ -59,7 +59,7 @@ def _run_case(
                 """\
                 [remote "origin"]
                     url = https://github.com/example/stale.git
-                    url = https://github.com/manaflow-ai/cmux.git
+                    url = https://github.com/emergent-inc/cmux.git
                 """
             ),
             encoding="utf-8",
@@ -121,8 +121,8 @@ def _run_case(
         return result.returncode, (result.stdout or "") + (result.stderr or "")
 
     output = result.stdout.strip()
-    if output != "manaflow-ai/cmux":
-        return 1, f"{shell} {config_mode}: expected manaflow-ai/cmux, got {output!r}"
+    if output != "emergent-inc/cmux":
+        return 1, f"{shell} {config_mode}: expected emergent-inc/cmux, got {output!r}"
     return 0, f"{shell} {config_mode}: ok"
 
 

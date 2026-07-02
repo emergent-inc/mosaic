@@ -1,9 +1,9 @@
 # Remote SSH Living Spec
 
 Last updated: June 3, 2026
-Tracking issue: https://github.com/manaflow-ai/cmux/issues/151
-Primary PR: https://github.com/manaflow-ai/cmux/pull/1296
-CLI relay PR: https://github.com/manaflow-ai/cmux/pull/374
+Tracking issue: https://github.com/emergent-inc/cmux/issues/151
+Primary PR: https://github.com/emergent-inc/cmux/pull/1296
+CLI relay PR: https://github.com/emergent-inc/cmux/pull/374
 
 This document is the working source of truth for:
 1. what is implemented now

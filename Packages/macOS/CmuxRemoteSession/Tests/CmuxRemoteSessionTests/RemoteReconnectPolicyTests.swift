@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import CmuxRemoteSession
 
-// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5734:
+// Regression coverage for https://github.com/emergent-inc/cmux/issues/5734:
 // the SSH remote auto-reconnect loop must stop retrying once the host stays
 // unreachable, instead of retrying indefinitely, so the user controls when
 // reconnection happens. Retargeted from the app's

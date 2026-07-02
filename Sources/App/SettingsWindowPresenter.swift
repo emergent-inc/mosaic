@@ -10,7 +10,7 @@ struct SettingsWindowPresenter {
     private static let visibleAreaInset: CGFloat = 18
     private static let sharedPresenter = SettingsWindowPresenter()
     /// Release-safe diagnostics so intermittent "Settings won't open" reports
-    /// (https://github.com/manaflow-ai/cmux/issues/5770) become attributable
+    /// (https://github.com/emergent-inc/cmux/issues/5770) become attributable
     /// from `log show --predicate 'subsystem == "com.cmuxterm.app" && category == "Settings"'`.
     private nonisolated static let log = Logger(subsystem: "com.cmuxterm.app", category: "Settings")
     /// Number of times to re-request the SwiftUI window when an open request
@@ -351,7 +351,7 @@ struct SettingsWindowPresenter {
         // both windows front *as peers*, never via `addChildWindow`: a child
         // window is pinned above its parent forever and can never recede when
         // the user clicks the main window (the bug in
-        // https://github.com/manaflow-ai/cmux/issues/5081). One-time front
+        // https://github.com/emergent-inc/cmux/issues/5081). One-time front
         // ordering gives the same initial layering while leaving normal
         // click-to-raise window ordering fully intact afterwards.
         if let parentWindow = state.parentWindowProvider?(), parentWindow !== window {

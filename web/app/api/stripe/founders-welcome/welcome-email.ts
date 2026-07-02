@@ -7,9 +7,9 @@
 // Default sender/recipients. Sender is overridable via env so the verified
 // Resend domain can change without a code edit; the founders are always copied
 // so both see exactly what the customer received.
-export const DEFAULT_FROM_EMAIL = "austin@manaflow.ai";
-export const FOUNDER_CC = ["austin@manaflow.ai", "lawrence@manaflow.ai"];
-export const REPLY_TO = "austin@manaflow.ai";
+export const DEFAULT_FROM_EMAIL = "austin@emergent.inc";
+export const FOUNDER_CC = ["austin@emergent.inc", "lawrence@emergent.inc"];
+export const REPLY_TO = "austin@emergent.inc";
 export const EMAIL_SUBJECT = "cmux Founder's Edition";
 
 // Custom header that defeats Gmail's subject-based conversation grouping.
@@ -35,7 +35,7 @@ function buildBody(name: string): string {
     "Thank you for being one of the first ever customers of cmux :)",
     "",
     "My number is +1(714) 699-0169 and Lawrence's number is +1(949) 302-0749. " +
-      "Our emails are austin@manaflow.ai and lawrence@manaflow.ai. Feel free to " +
+      "Our emails are austin@emergent.inc and lawrence@emergent.inc. Feel free to " +
       "text me on iMessage or WhatsApp, or we can just continue talking here. " +
       "I've CC'd my cofounder as well.",
     "",

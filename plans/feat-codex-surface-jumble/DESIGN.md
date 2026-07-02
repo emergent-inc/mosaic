@@ -34,5 +34,5 @@ The restore map (`RestorableAgentSession.swift:1009-1010,1033`) faithfully propa
 - **DON'T** rely on a synthetic `RestorableAgentSessionIndex.load`-only test: it keys faithfully by `record.surfaceId`, so a hand-written wrong id resolves identically red and green and proves nothing.
 
 ## Related issues
-- https://github.com/manaflow-ai/cmux/issues/4920 (spawn env leaks focused workspace/surface IDs) — the source.
-- https://github.com/manaflow-ai/cmux/issues/695 (codex-hook routes to wrong workspace/session) — the symptom; codex prefers env over the session-keyed mapping unlike claude-hook.
+- https://github.com/emergent-inc/cmux/issues/4920 (spawn env leaks focused workspace/surface IDs) — the source.
+- https://github.com/emergent-inc/cmux/issues/695 (codex-hook routes to wrong workspace/session) — the symptom; codex prefers env over the session-keyed mapping unlike claude-hook.

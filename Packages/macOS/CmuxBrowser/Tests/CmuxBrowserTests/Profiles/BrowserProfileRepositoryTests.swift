@@ -74,7 +74,7 @@ private func makeRepository(
     history: FakeHistoryProvider = FakeHistoryProvider(),
     data: FakeWebsiteDataStoreProvider = FakeWebsiteDataStoreProvider(),
     files: FakeFileRemover = FakeFileRemover(),
-    bundleIdentifier: String = "ai.manaflow.cmux.test"
+    bundleIdentifier: String = "ai.emergent.inc.cmux.test"
 ) -> (BrowserProfileRepository, UserDefaults) {
     let defaults = UserDefaults(suiteName: suiteName)!
     defaults.removePersistentDomain(forName: suiteName)
@@ -193,12 +193,12 @@ struct BrowserProfileRepositoryTests {
 
     @Test func historyFileURLDefaultAndPerProfileShape() {
         let history = FakeHistoryProvider()
-        let (repo, _) = makeRepository(history: history, bundleIdentifier: "ai.manaflow.cmux.test")
+        let (repo, _) = makeRepository(history: history, bundleIdentifier: "ai.emergent.inc.cmux.test")
         #expect(repo.historyFileURL(for: BrowserProfileRepository.builtInDefaultProfileID) == history.defaultURL)
         let p = repo.createProfile(named: "P")!
         let url = repo.historyFileURL(for: p.id)!
         #expect(url.lastPathComponent == "browser_history.json")
-        #expect(url.path.contains("ns-ai.manaflow.cmux.test"))
+        #expect(url.path.contains("ns-ai.emergent.inc.cmux.test"))
         #expect(url.path.contains("browser_profiles"))
         #expect(url.path.contains(p.id.uuidString.lowercased()))
     }

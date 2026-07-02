@@ -4,7 +4,7 @@
 <p align="center">基于 Ghostty 的 macOS 终端，带有垂直标签页和为 AI 编程代理设计的通知系统</p>
 
 <p align="center">
-  <a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+  <a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
     <img src="./docs/assets/macos-badge.png" alt="下载 cmux macOS 版" width="180" />
   </a>
 </p>
@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <a href="https://x.com/manaflowai"><img src="https://img.shields.io/badge/@manaflow-555?logo=x" alt="X / Twitter" /></a>
+  <a href="https://x.com/emergentinc"><img src="https://img.shields.io/badge/@emergent.inc-555?logo=x" alt="X / Twitter" /></a>
   <a href="https://discord.gg/xsgFEVrWCZ"><img src="https://img.shields.io/badge/Discord-555?logo=discord" alt="Discord" /></a>
-  <a href="https://github.com/manaflow-ai/cmux"><img src="https://img.shields.io/github/stars/manaflow-ai/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
+  <a href="https://github.com/emergent-inc/cmux"><img src="https://img.shields.io/github/stars/emergent-inc/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@
 
 ### DMG（推荐）
 
-<a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+<a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
   <img src="./docs/assets/macos-badge.png" alt="下载 cmux macOS 版" width="180" />
 </a>
 
@@ -108,7 +108,7 @@
 ### Homebrew
 
 ```bash
-brew tap manaflow-ai/cmux
+brew tap emergent-inc/cmux
 brew install --cask cmux
 ```
 
@@ -242,11 +242,11 @@ cmux 是原语，而非解决方案。它提供终端、浏览器、通知、工
 
 ## 每夜构建
 
-[下载 cmux NIGHTLY](https://github.com/manaflow-ai/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
+[下载 cmux NIGHTLY](https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
 
 cmux NIGHTLY 是一个拥有独立 Bundle ID 的单独应用，因此可以与稳定版并行运行。它从最新的 `main` 提交自动构建，并通过独立的 Sparkle 更新源自动更新。
 
-在 [GitHub Issues](https://github.com/manaflow-ai/cmux/issues) 或 [Discord 的 #nightly-bugs 频道](https://discord.gg/xsgFEVrWCZ) 上报告每夜构建的 bug。
+在 [GitHub Issues](https://github.com/emergent-inc/cmux/issues) 或 [Discord 的 #nightly-bugs 频道](https://discord.gg/xsgFEVrWCZ) 上报告每夜构建的 bug。
 
 ## 会话恢复
 
@@ -339,7 +339,7 @@ cmux 可以在终端旁边分割出一个真正的浏览器窗格，并且它完
 
 ### cmux 有 skills 吗？
 
-有。Skills 是可复用的工作流，您可以将其交给任何运行在 cmux 中的代理，用于诸如 CLI 控制、工作区自动化、设置和浏览器界面等任务。可在 [cmux-skills](https://github.com/manaflow-ai/cmux-skills) 浏览开放的合集，或阅读 [skills 文档](https://cmux.com/docs/skills)。
+有。Skills 是可复用的工作流，您可以将其交给任何运行在 cmux 中的代理，用于诸如 CLI 控制、工作区自动化、设置和浏览器界面等任务。可在 [cmux-skills](https://github.com/emergent-inc/cmux-skills) 浏览开放的合集，或阅读 [skills 文档](https://cmux.com/docs/skills)。
 
 ### 我可以自定义键盘快捷键吗？
 
@@ -359,23 +359,23 @@ tmux 是一个在任意终端内运行的终端复用器。cmux 是一个带 GUI
 
 ### cmux 免费吗？
 
-是的，cmux 免费使用。源代码可在 [GitHub](https://github.com/manaflow-ai/cmux) 上获取。
+是的，cmux 免费使用。源代码可在 [GitHub](https://github.com/emergent-inc/cmux) 上获取。
 
 ### 我如何支持 cmux？
 
-cmux 免费且开源，并将一直如此。如果您想支持开发并提前体验接下来的功能，包括 cmux AI、iOS 应用和 Cloud VMs，请查看 [cmux Founders Edition](https://github.com/manaflow-ai/cmux#founders-edition)。
+cmux 免费且开源，并将一直如此。如果您想支持开发并提前体验接下来的功能，包括 cmux AI、iOS 应用和 Cloud VMs，请查看 [cmux Founders Edition](https://github.com/emergent-inc/cmux#founders-edition)。
 
 ### 我有功能请求或发现了 bug？
 
-我们很想听到。请在 GitHub 上提交 [issue](https://github.com/manaflow-ai/cmux/issues) 或 [pull request](https://github.com/manaflow-ai/cmux/pulls)，或者 [给我们发邮件](mailto:founders@manaflow.com?subject=cmux%20feature%20request)。
+我们很想听到。请在 GitHub 上提交 [issue](https://github.com/emergent-inc/cmux/issues) 或 [pull request](https://github.com/emergent-inc/cmux/pulls)，或者 [给我们发邮件](mailto:contact@emergent.inc?subject=cmux%20feature%20request)。
 
 ## Star History
 
-<a href="https://star-history.com/#manaflow-ai/cmux&Date">
+<a href="https://star-history.com/#emergent-inc/cmux&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" width="600" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" width="600" />
  </picture>
 </a>
 
@@ -383,18 +383,18 @@ cmux 免费且开源，并将一直如此。如果您想支持开发并提前体
 
 参与方式：
 
-- 在 X 上关注我们：[@manaflowai](https://x.com/manaflowai)、[@lawrencecchen](https://x.com/lawrencecchen)、[@austinywang](https://x.com/austinywang)
+- 在 X 上关注我们：[@emergentinc](https://x.com/emergentinc)、[@lawrencecchen](https://x.com/lawrencecchen)、[@austinywang](https://x.com/austinywang)
 - 加入 [Discord](https://discord.gg/xsgFEVrWCZ) 讨论
-- 创建和参与 [GitHub Issues](https://github.com/manaflow-ai/cmux/issues) 和[讨论](https://github.com/manaflow-ai/cmux/discussions)
+- 创建和参与 [GitHub Issues](https://github.com/emergent-inc/cmux/issues) 和[讨论](https://github.com/emergent-inc/cmux/discussions)
 - 告诉我们您在用 cmux 构建什么
 
 ## 社区
 
 - [Discord](https://discord.gg/xsgFEVrWCZ)
-- [GitHub](https://github.com/manaflow-ai/cmux)
-- [X / Twitter](https://twitter.com/manaflowai)
+- [GitHub](https://github.com/emergent-inc/cmux)
+- [X / Twitter](https://twitter.com/emergentinc)
 - [YouTube](https://www.youtube.com/channel/UCAa89_j-TWkrXfk9A3CbASw)
-- [LinkedIn](https://www.linkedin.com/company/manaflow-ai/)
+- [LinkedIn](https://www.linkedin.com/company/emergent-inc/)
 - [Reddit](https://www.reddit.com/r/cmux/)
 
 ## Founder's Edition
@@ -414,4 +414,4 @@ cmux 免费、开源，并将一直如此。如果您想支持开发并提前体
 
 cmux 以 [GPL-3.0-or-later](LICENSE) 开源。
 
-如果您的组织无法遵守 GPL，可提供商业许可证。详情请联系 [founders@manaflow.com](mailto:founders@manaflow.com)。
+如果您的组织无法遵守 GPL，可提供商业许可证。详情请联系 [contact@emergent.inc](mailto:contact@emergent.inc)。

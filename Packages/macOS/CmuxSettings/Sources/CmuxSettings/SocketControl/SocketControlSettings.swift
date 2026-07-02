@@ -430,7 +430,7 @@ public struct SocketControlSettings {
     /// Application Support: the separately-signed `cmux` CLI connects to this
     /// socket on every agent hook, and a different-identity process reaching into
     /// the app's Application Support data triggers the macOS Sequoia "access data
-    /// from other apps" prompt (https://github.com/manaflow-ai/cmux/issues/5146).
+    /// from other apps" prompt (https://github.com/emergent-inc/cmux/issues/5146).
     public static func stableSocketDirectoryURL(fileManager: FileManager = .default) -> URL? {
         CmuxStateDirectory.url(homeDirectory: fileManager.homeDirectoryForCurrentUser)
     }

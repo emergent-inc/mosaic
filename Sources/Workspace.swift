@@ -2551,9 +2551,15 @@ final class Workspace: Identifiable, ObservableObject {
         let reconnectCommand: String?
     }
 
+    private struct CollaborationTerminalTabPresentation {
+        let title: String
+        let iconImageData: Data?
+    }
+
     /// Remote disconnect metadata used by `createReplacementTerminalPanel()`.
     private var pendingRemoteDisconnectReplacement: PendingRemoteDisconnectReplacement?
     var remoteDisconnectPlaceholderPanelIds: Set<UUID> = []
+    private var collaborationTerminalTabPresentations: [UUID: CollaborationTerminalTabPresentation] = [:]
 
     private static let remoteErrorStatusKey = "remote.error"
     private static let remotePortConflictStatusKey = "remote.port_conflicts"
@@ -3952,6 +3958,47 @@ final class Workspace: Identifiable, ObservableObject {
         return fallbackTitle
     }
 
+    func setCollaborationTerminalTabPresentation(
+        panelId: UUID,
+        title: String?,
+        iconImageData: Data?
+    ) {
+        if let title {
+            collaborationTerminalTabPresentations[panelId] = CollaborationTerminalTabPresentation(
+                title: title,
+                iconImageData: iconImageData
+            )
+        } else {
+            collaborationTerminalTabPresentations.removeValue(forKey: panelId)
+        }
+        syncPanelTabPresentation(panelId: panelId)
+    }
+
+    private func syncPanelTabPresentation(panelId: UUID) {
+        guard let panel = panels[panelId], let tabId = surfaceIdFromPanelId(panelId) else {
+            return
+        }
+        if let collaborationPresentation = collaborationTerminalTabPresentations[panelId] {
+            bonsplitController.updateTab(
+                tabId,
+                title: collaborationPresentation.title,
+                icon: collaborationPresentation.iconImageData == nil ? .some("person.crop.circle.fill") : .some(nil),
+                iconImageData: .some(collaborationPresentation.iconImageData),
+                hasCustomTitle: false
+            )
+            return
+        }
+
+        let baseTitle = panelTitles[panelId] ?? panel.displayTitle
+        bonsplitController.updateTab(
+            tabId,
+            title: resolvedPanelTitle(panelId: panelId, fallback: baseTitle),
+            icon: .some(panel.displayIcon),
+            iconImageData: .some(nil),
+            hasCustomTitle: panelCustomTitles[panelId] != nil
+        )
+    }
+
     private func syncPinnedStateForTab(_ tabId: TabID, panelId: UUID) {
         let isPinned = pinnedPanelIds.contains(panelId)
         let kind = panels[panelId].map { surfaceKind(for: $0) }
@@ -4098,13 +4145,7 @@ final class Workspace: Identifiable, ObservableObject {
             panelCustomTitleSources[panelId] = source
         }
 
-        guard let panel = panels[panelId], let tabId = surfaceIdFromPanelId(panelId) else { return true }
-        let baseTitle = panelTitles[panelId] ?? panel.displayTitle
-        bonsplitController.updateTab(
-            tabId,
-            title: resolvedPanelTitle(panelId: panelId, fallback: baseTitle),
-            hasCustomTitle: panelCustomTitles[panelId] != nil
-        )
+        syncPanelTabPresentation(panelId: panelId)
         // A remote tmux mirror tab rename propagates to `rename-window`.
         if isRemoteTmuxMirror {
             AppDelegate.shared?.remoteTmuxController.handleMirrorWindowRenamed(
@@ -5019,16 +5060,8 @@ final class Workspace: Identifiable, ObservableObject {
         }
 
         // Update bonsplit tab title only when this panel's title changed.
-        if didMutate,
-           let tabId = surfaceIdFromPanelId(panelId),
-           let panel = panels[panelId] {
-            let baseTitle = panelTitles[panelId] ?? panel.displayTitle
-            let resolvedTitle = resolvedPanelTitle(panelId: panelId, fallback: baseTitle)
-            bonsplitController.updateTab(
-                tabId,
-                title: resolvedTitle,
-                hasCustomTitle: panelCustomTitles[panelId] != nil
-            )
+        if didMutate {
+            syncPanelTabPresentation(panelId: panelId)
         }
 
         // If this is the only panel and no custom title, update workspace title

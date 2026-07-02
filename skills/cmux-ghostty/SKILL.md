@@ -15,15 +15,15 @@ cd ghostty && zig build -Demit-xcframework=true -Dxcframework-target=universal -
 
 ## Submodule workflow
 
-Ghostty changes must be committed in the `ghostty` submodule and pushed to the `manaflow-ai/ghostty` fork. Keep `docs/ghostty-fork.md` up to date with any fork changes and conflict notes.
+Ghostty changes must be committed in the `ghostty` submodule and pushed to the `emergent-inc/ghostty` fork. Keep `docs/ghostty-fork.md` up to date with any fork changes and conflict notes.
 
 ```bash
 cd ghostty
-git remote -v  # origin = upstream, manaflow = fork
+git remote -v  # origin = upstream, emergent.inc = fork
 git checkout -b <branch>
 git add <files>
 git commit -m "..."
-git push manaflow <branch>
+git push emergent.inc <branch>
 ```
 
 To keep the fork up to date with upstream:
@@ -33,7 +33,7 @@ cd ghostty
 git fetch origin
 git checkout main
 git merge origin/main
-git push manaflow main
+git push emergent.inc main
 ```
 
 Then update the parent repo with the new submodule SHA:

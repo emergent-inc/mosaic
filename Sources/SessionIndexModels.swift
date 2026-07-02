@@ -322,7 +322,7 @@ struct SessionEntry: Identifiable, Hashable {
             // is typed into — and copy-pasted into — the user's own shell (fish/csh
             // included), so the rendered command is wrapped in `/bin/sh -c '…'` to parse
             // everywhere; the `cd` guard stays outside in `resumeCommandWithCwd`.
-            // https://github.com/manaflow-ai/cmux/issues/5639
+            // https://github.com/emergent-inc/cmux/issues/5639
             var parts = ["\(AgentResumeArgv.claudeWrapperShellExecutableToken) --resume \(sessionId)"]
             if let model, !model.isEmpty {
                 parts.append("--model \(Self.shellQuote(model))")
@@ -347,7 +347,7 @@ struct SessionEntry: Identifiable, Hashable {
             // POSIX-only and this command is typed into / copy-pasted into the
             // user's own shell (fish/csh included), so the rendered command is
             // wrapped in `/bin/sh -c '…'`; the `cd` guard stays outside in
-            // `resumeCommandWithCwd`. https://github.com/manaflow-ai/cmux/issues/5639
+            // `resumeCommandWithCwd`. https://github.com/emergent-inc/cmux/issues/5639
             var parts = ["\(AgentResumeArgv.codexWrapperShellExecutableToken) resume \(sessionId)"]
             if let model, !model.isEmpty {
                 parts.append("-m \(Self.shellQuote(model))")
@@ -467,7 +467,7 @@ struct SessionEntry: Identifiable, Hashable {
     /// superset of the CLI vocabulary (it also includes `disabled`, `managed`,
     /// and may grow further). Those extra types have no `--sandbox` equivalent
     /// and must never be forwarded as `-s`, or Codex rejects the resumed command
-    /// (see https://github.com/manaflow-ai/cmux/issues/5262).
+    /// (see https://github.com/emergent-inc/cmux/issues/5262).
     static let codexCLISandboxModes: Set<String> = [
         "read-only",
         "workspace-write",

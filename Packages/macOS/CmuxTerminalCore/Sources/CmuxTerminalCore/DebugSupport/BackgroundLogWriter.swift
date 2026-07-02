@@ -19,7 +19,7 @@ public typealias BackgroundLogClock = @Sendable () -> (
 /// on whatever thread emitted the event. Appearance resolution emits these from
 /// SwiftUI view updates, so the disk I/O landed on the main thread inside
 /// AttributeGraph updates — see
-/// https://github.com/manaflow-ai/cmux/issues/5833.
+/// https://github.com/emergent-inc/cmux/issues/5833.
 ///
 /// `log(_:isMainThread:)` only samples a few cheap timing values (via the injected
 /// ``BackgroundLogClock``) and `yield`s them onto an `AsyncStream`, then returns.

@@ -17,11 +17,11 @@ struct DogfoodFeedbackServiceTests {
 
     @Test("privileged domain gate trims, lowercases, and matches the suffix")
     func privilegeGate() {
-        #expect(DogfoodFeedbackService.isPrivilegedFeedbackEmail("a@manaflow.ai"))
-        #expect(DogfoodFeedbackService.isPrivilegedFeedbackEmail("  A@Manaflow.AI \n"))
+        #expect(DogfoodFeedbackService.isPrivilegedFeedbackEmail("a@emergent.inc"))
+        #expect(DogfoodFeedbackService.isPrivilegedFeedbackEmail("  A@emergent.inc \n"))
         #expect(!DogfoodFeedbackService.isPrivilegedFeedbackEmail("a@example.com"))
         #expect(!DogfoodFeedbackService.isPrivilegedFeedbackEmail(nil))
-        #expect(!DogfoodFeedbackService.isPrivilegedFeedbackEmail("manaflow.ai@evil.com"))
+        #expect(!DogfoodFeedbackService.isPrivilegedFeedbackEmail("emergent.inc@evil.com"))
     }
 
     @Test("non-privileged caller is rejected before any I/O")
@@ -44,7 +44,7 @@ struct DogfoodFeedbackServiceTests {
         let (service, _) = makeService(limits: limits)
         let outcome = await service.submit(
             DogfoodFeedbackSubmission(text: "", terminalText: "", buildStamp: "", diagnosticBlobBase64: "AAAAAAAA"),
-            authenticatedEmail: "a@manaflow.ai"
+            authenticatedEmail: "a@emergent.inc"
         )
         #expect(outcome == .invalidParams(reason: "diagnostic_blob_base64 exceeds size limit"))
     }
@@ -59,7 +59,7 @@ struct DogfoodFeedbackServiceTests {
         let blob = Data(repeating: 0xAB, count: 32).base64EncodedString()
         let outcome = await service.submit(
             DogfoodFeedbackSubmission(text: "", terminalText: "", buildStamp: "", diagnosticBlobBase64: blob),
-            authenticatedEmail: "a@manaflow.ai"
+            authenticatedEmail: "a@emergent.inc"
         )
         #expect(outcome == .invalidParams(reason: "diagnostic blob exceeds size limit"))
     }
@@ -75,7 +75,7 @@ struct DogfoodFeedbackServiceTests {
                 buildStamp: "DEV abc",
                 diagnosticBlobBase64: payload.base64EncodedString()
             ),
-            authenticatedEmail: "dev@manaflow.ai"
+            authenticatedEmail: "dev@emergent.inc"
         )
         guard case let .written(bundlePath, bytes) = outcome else {
             Issue.record("expected written, got \(outcome)")
@@ -115,7 +115,7 @@ struct DogfoodFeedbackServiceTests {
                 buildStamp: "ZZZ",
                 diagnosticBlobBase64: Data("d".utf8).base64EncodedString()
             ),
-            authenticatedEmail: "dev@manaflow.ai"
+            authenticatedEmail: "dev@emergent.inc"
         )
         guard case let .written(bundlePath, _) = outcome else {
             Issue.record("expected written, got \(outcome)")
@@ -150,7 +150,7 @@ struct DogfoodFeedbackServiceTests {
             )
             _ = await service.submit(
                 DogfoodFeedbackSubmission(text: "", terminalText: "", buildStamp: "", diagnosticBlobBase64: payload),
-                authenticatedEmail: "dev@manaflow.ai"
+                authenticatedEmail: "dev@emergent.inc"
             )
             tick += 60
         }

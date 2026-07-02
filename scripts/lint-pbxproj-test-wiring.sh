@@ -9,9 +9,9 @@
 # "Executed 0 tests" — so missing wiring is indistinguishable from a passing
 # regression test until a real user hits the bug the test was supposed to catch.
 #
-# Originally surfaced during the https://github.com/manaflow-ai/cmux/issues/4529
+# Originally surfaced during the https://github.com/emergent-inc/cmux/issues/4529
 # investigation, where SessionIndexJSONLStreamTests.swift on
-# https://github.com/manaflow-ai/cmux/pull/4536 looked like a clean two-commit
+# https://github.com/emergent-inc/cmux/pull/4536 looked like a clean two-commit
 # red/green test fix but never actually ran on CI.
 #
 # Usage:

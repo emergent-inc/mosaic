@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "문의",
     "nightly": "나이틀리",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "언어",
     "assets": "애셋",
     "openSource": "오픈 소스",
@@ -254,7 +254,7 @@
       "p075": "single Homebrew formula로 AI stack(cmux + Ghostty + Zed + Starship + JetBrainsMono)을 설치하고 idempotent re-run과 dry-run mode를 지원한다. one-command developer environment bootstrap",
       "p076": "plugin developer를 위해 prebuilt framework download가 포함된 cmux browser engine용 Chromium content shell을 build한다",
       "p077": "Agent Skills-compatible runtime 어디에나 설치 가능한 cmux skill을 제공하고 CLI control, settings, browser automation, artifact, workspace ref, customization을 하나의 maintained public source에서 다룬다",
-      "p078": "Manaflow가 유지 관리하는 stable 및 nightly cask를 갖춘 cmux 공식 Homebrew tap을 제공한다",
+      "p078": "emergent.inc가 유지 관리하는 stable 및 nightly cask를 갖춘 cmux 공식 Homebrew tap을 제공한다",
       "p079": "form filling, screenshot, debug window capture를 다루는 네 개의 auto-syncing skill file로 Claude Code browser automation을 가르친다. single monolithic document가 아니라 multi-file skill suite로 구성된다",
       "p080": "worktree, cmux workspace, Agent Teams(lead+tester+reviewer+security)를 사용한 master-worker pattern을 deterministic port allocation과 함께 구현한다. agent role별 fixed port를 할당하는 점이 독특하다",
       "p081": "GSD/Pi의 @gsd/cmux module을 대체하는 drop-in replacement로, OSC 1337 user variable과 Windows toast notification을 갖춘 두 번째 multiplexer backend로 WezTerm을 추가한다. dual multiplexer target을 지원하는 유일한 Pi plugin",
@@ -1472,7 +1472,7 @@
       "data3": "페어링 및 기기 메타데이터, 휴대폰을 Mac에 연결하기 위함.",
       "dataNot": "사용자의 대화형 터미널 세션과 그 내용 및 키 입력은 사용자 자신의 네트워크를 통해 휴대폰과 Mac 사이에서 직접 흐르며, cmux 서버를 거쳐 중계되거나 거기에 저장되지 않습니다. 유일한 예외는 전달된 알림 텍스트로, Hide content를 켜지 않는 한 휴대폰에 도달하기 위해 cmux와 Apple의 푸시 서비스를 거칩니다(위의 알림 참조).",
       "enterpriseTitle": "기업 및 자체 호스팅",
-      "enterpriseDesc": "자체 호스팅 또는 에어갭 배포는 <link>founders@manaflow.com</link>으로 문의하세요."
+      "enterpriseDesc": "자체 호스팅 또는 에어갭 배포는 <link>contact@emergent.inc</link>으로 문의하세요."
     }
   },
   "legal": {

@@ -1229,7 +1229,7 @@ public final class MobileShellComposite: MobileTerminalOutputSinking {
     /// Where a Send Feedback submission should be delivered right now.
     ///
     /// Pure decision over the current email + connection state; the privileged
-    /// direct-to-agent route is offered only to `@manaflow.ai` users on an
+    /// direct-to-agent route is offered only to `@emergent.inc` users on an
     /// active connection, everyone else routes to the email inbox.
     public var currentFeedbackRoute: MobileFeedbackRoute {
         MobileFeedbackRoute.resolve(

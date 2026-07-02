@@ -7,7 +7,7 @@ import Testing
 @testable import cmux
 #endif
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5227.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5227.
 ///
 /// In a cmux window every keyDown is funneled through the swizzled
 /// `NSWindow.performKeyEquivalent`, where the original AppKit implementation

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression coverage for https://github.com/manaflow-ai/cmux/issues/6714.
+Regression coverage for https://github.com/emergent-inc/cmux/issues/6714.
 
 When a user enables ``setopt noclobber`` in their interactive zsh, cmux's shell
 integration prints a spurious error on startup:

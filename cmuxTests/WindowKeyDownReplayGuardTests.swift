@@ -7,7 +7,7 @@ import XCTest
 @testable import cmux
 #endif
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5887.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5887.
 ///
 /// `NSWindow.cmux_performKeyEquivalent(with:)` force-dispatches certain key
 /// events straight into the focused responder's `keyDown(with:)`. When the
@@ -58,7 +58,7 @@ final class WindowKeyDownReplayGuardTests: XCTestCase {
     /// Option+A producing printable text ("å"). The printable-Option-text
     /// bypass in `cmux_performKeyEquivalent` force-dispatches this into the
     /// first responder's `keyDown`, which is the unguarded dispatch the
-    /// https://github.com/manaflow-ai/cmux/issues/5887 crash looped through.
+    /// https://github.com/emergent-inc/cmux/issues/5887 crash looped through.
     private func makeOptionTextKeyDownEvent(
         windowNumber: Int,
         timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
@@ -94,7 +94,7 @@ final class WindowKeyDownReplayGuardTests: XCTestCase {
             "The same in-flight key event must not be force-dispatched into keyDown again " +
             "while the first dispatch is still on the stack; unbounded re-dispatch is the " +
             "infinite key-routing loop from " +
-            "https://github.com/manaflow-ai/cmux/issues/5887"
+            "https://github.com/emergent-inc/cmux/issues/5887"
         )
     }
 

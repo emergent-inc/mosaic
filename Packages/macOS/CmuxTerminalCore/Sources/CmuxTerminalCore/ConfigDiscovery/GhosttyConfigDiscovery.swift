@@ -207,7 +207,7 @@ public struct GhosttyConfigDiscovery {
         // becomes `light:X,dark:X`), and ghostty mis-applies the conditional form
         // — the background lands but the foreground/palette stay at the default
         // white colors, producing the white-on-light terminals reported in
-        // https://github.com/manaflow-ai/cmux/issues/3459. Only override sides the
+        // https://github.com/emergent-inc/cmux/issues/3459. Only override sides the
         // value explicitly specifies: a one-sided `light:X` must not force the
         // light theme onto dark appearances (which would clobber the inherited or
         // default dark theme). Plain (non-conditional) theme values are applied

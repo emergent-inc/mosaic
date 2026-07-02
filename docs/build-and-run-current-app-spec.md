@@ -31,7 +31,7 @@ Use this when producing the app others download.
 - Configuration: Release, universal macOS app
 - Bundle ID: `com.cmuxterm.app`
 - Update feed: Sparkle `appcast.xml`
-- Download URL: `https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg`
+- Download URL: `https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg`
 - Release trigger: push a `v*` tag to GitHub
 
 Nightly has the same shape but a different channel:
@@ -93,7 +93,7 @@ Optional or adjacent release operations use:
 - `HOMEBREW_TAP_TOKEN`
 - `SENTRY_AUTH_TOKEN`
 
-The signing identity must be a Developer ID Application identity for Manaflow. The release provisioning profile must match `com.cmuxterm.app` and include required entitlements such as WebAuthn.
+The signing identity must be a Developer ID Application identity for emergent.inc. The release provisioning profile must match `com.cmuxterm.app` and include required entitlements such as WebAuthn.
 
 ### Tag And Trigger
 
@@ -102,7 +102,7 @@ Create and push a stable semver tag:
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
-gh run watch --repo manaflow-ai/cmux
+gh run watch --repo emergent-inc/cmux
 ```
 
 The public release path is tag-triggered. `workflow_dispatch` on `release.yml` is useful for dry-run artifacts, but it does not publish the public GitHub Release in the same way as a `v*` tag push.
@@ -149,7 +149,7 @@ build-universal/Build/Products/Release/cmux.app
 The workflow injects Sparkle metadata into `Info.plist`:
 
 - `SUPublicEDKey` derived from `SPARKLE_PRIVATE_KEY`
-- `SUFeedURL` set to `https://github.com/manaflow-ai/cmux/releases/latest/download/appcast.xml`
+- `SUFeedURL` set to `https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml`
 
 The workflow also embeds release channel metadata and removes Sparkle sandbox XPC services that do not apply to this non-sandboxed app.
 
@@ -255,7 +255,7 @@ On a `v*` tag push, CI uploads these assets to the GitHub Release:
 The README, localized READMEs, and web download code all assume the stable DMG is available at:
 
 ```text
-https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg
+https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg
 ```
 
 ### 11. Mirror Stable Appcast To R2
@@ -270,10 +270,10 @@ Backport tags do not overwrite the stable R2 appcast.
 
 ### 12. Update Homebrew
 
-After the release workflow succeeds, `.github/workflows/update-homebrew.yml` updates the `manaflow-ai/homebrew-cmux` cask. The cask points at:
+After the release workflow succeeds, `.github/workflows/update-homebrew.yml` updates the `emergent-inc/homebrew-cmux` cask. The cask points at:
 
 ```text
-https://github.com/manaflow-ai/cmux/releases/download/v#{version}/cmux-macos.dmg
+https://github.com/emergent-inc/cmux/releases/download/v#{version}/cmux-macos.dmg
 ```
 
 and pins the DMG SHA256.
@@ -381,7 +381,7 @@ cmux-nightly-macos.dmg
 and uploads it to the mutable `nightly` GitHub Release:
 
 ```text
-https://github.com/manaflow-ai/cmux/releases/download/nightly/cmux-nightly-macos.dmg
+https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg
 ```
 
 Nightly uses:

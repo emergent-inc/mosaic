@@ -2354,7 +2354,7 @@ extension CMUXCLI {
 
     /// Lowercase-hex encode bytes WITHOUT `String(format: "%02x", ...)`. The
     /// Foundation/C `String(format:)` path is the unbounded-memory-growth/crash
-    /// pattern fixed in https://github.com/manaflow-ai/cmux/pull/5347, and these
+    /// pattern fixed in https://github.com/emergent-inc/cmux/pull/5347, and these
     /// digests run from the concurrent HTTP picker endpoints + scheme handler.
     /// This is byte-identical to the old `map { String(format: "%02x", $0) }
     /// .joined()` output (same SHA-256 bytes -> same hex), so cache filenames and

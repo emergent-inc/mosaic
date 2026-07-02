@@ -40,7 +40,7 @@ from typing import Any
 
 DEFAULT_PATH = Path.home() / ".config" / "cmux" / "cmux.json"
 SCHEMA_URL = (
-    "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json"
+    "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json"
 )
 
 

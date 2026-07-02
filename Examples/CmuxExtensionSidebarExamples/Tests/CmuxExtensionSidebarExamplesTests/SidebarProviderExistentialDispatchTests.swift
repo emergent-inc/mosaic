@@ -2,7 +2,7 @@ import CmuxSidebarProviderKit
 @testable import CmuxExtensionSidebarExamples
 import XCTest
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5173.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5173.
 ///
 /// The host renders sidebar views through an `any CmuxSidebarProvider`
 /// existential (`CmuxExtensionSidebarSelection.provider(for:)?.render(snapshot:)`).

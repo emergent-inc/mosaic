@@ -49,7 +49,7 @@ public struct ChatFixtureConversation {
 
                     > The test asserts `rows.count == 5` after a stream drop.
 
-                    Docs: https://github.com/manaflow-ai/cmux
+                    Docs: https://github.com/emergent-inc/cmux
                     """
                 )
             ),

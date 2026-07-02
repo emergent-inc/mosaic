@@ -1354,7 +1354,7 @@ class GhosttyApp {
     ///
     /// Without this, a `⌘1–9` remapped away in Settings still falls through to the
     /// focused terminal and Ghostty performs `goto_tab`, so the rebind looks
-    /// hardcoded (https://github.com/manaflow-ai/cmux/issues/5189). Ghostty registers
+    /// hardcoded (https://github.com/emergent-inc/cmux/issues/5189). Ghostty registers
     /// each digit under both its Unicode form (`super+1`) and its physical-key form
     /// (`super+digit_1`), so both are unbound here.
     private static let numberedWorkspaceGhosttyUnbinds: String = {
@@ -1374,7 +1374,7 @@ class GhosttyApp {
     /// user-managed fallback chains or configured fonts that already cover
     /// the affected CJK ranges.
     ///
-    /// See: https://github.com/manaflow-ai/cmux/pull/1017
+    /// See: https://github.com/emergent-inc/cmux/pull/1017
     private func loadCJKFontFallbackIfNeeded(_ config: ghostty_config_t) {
         guard let mappings = Self.autoInjectedCJKFontMappings() else { return }
 
@@ -3317,7 +3317,7 @@ class GhosttyApp {
         // formatting + the file append on a dedicated serial queue against a single
         // long-lived handle, so emitting a line never blocks the calling thread —
         // frequently the main thread, inside SwiftUI appearance updates. See
-        // https://github.com/manaflow-ai/cmux/issues/5833.
+        // https://github.com/emergent-inc/cmux/issues/5833.
         backgroundLogWriter.log(message, isMainThread: Thread.isMainThread)
     }
 }

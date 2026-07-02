@@ -4,7 +4,7 @@
 <p align="center">macOS terminal baziran na Ghostty sa vertikalnim tabovima i obavještenjima za AI agente za programiranje</p>
 
 <p align="center">
-  <a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+  <a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
     <img src="./docs/assets/macos-badge.png" alt="Preuzmi cmux za macOS" width="180" />
   </a>
 </p>
@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <a href="https://x.com/manaflowai"><img src="https://img.shields.io/badge/@manaflow-555?logo=x" alt="X / Twitter" /></a>
+  <a href="https://x.com/emergentinc"><img src="https://img.shields.io/badge/@emergent.inc-555?logo=x" alt="X / Twitter" /></a>
   <a href="https://discord.gg/xsgFEVrWCZ"><img src="https://img.shields.io/badge/Discord-555?logo=discord" alt="Discord" /></a>
-  <a href="https://github.com/manaflow-ai/cmux"><img src="https://img.shields.io/github/stars/manaflow-ai/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
+  <a href="https://github.com/emergent-inc/cmux"><img src="https://img.shields.io/github/stars/emergent-inc/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@ Bočna traka prikazuje git granu, status/broj povezanog PR-a, radni direktorij, 
 
 ### DMG (preporučeno)
 
-<a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+<a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
   <img src="./docs/assets/macos-badge.png" alt="Preuzmi cmux za macOS" width="180" />
 </a>
 
@@ -108,7 +108,7 @@ Otvorite `.dmg` datoteku i prevucite cmux u folder Aplikacije. cmux se automatsk
 ### Homebrew
 
 ```bash
-brew tap manaflow-ai/cmux
+brew tap emergent-inc/cmux
 brew install --cask cmux
 ```
 
@@ -242,11 +242,11 @@ Prečice za navigaciju paletom komandi, uključujući ⌃ P, također se mogu pr
 
 ## Noćne verzije
 
-[Preuzmi cmux NIGHTLY](https://github.com/manaflow-ai/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
+[Preuzmi cmux NIGHTLY](https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
 
 cmux NIGHTLY je zasebna aplikacija sa vlastitim bundle ID-om, tako da radi uporedo sa stabilnom verzijom. Automatski se gradi iz najnovijeg `main` commita i ažurira se putem vlastitog Sparkle feeda.
 
-Prijavite greške noćnih verzija na [GitHub Issues](https://github.com/manaflow-ai/cmux/issues) ili na [#nightly-bugs na Discordu](https://discord.gg/xsgFEVrWCZ).
+Prijavite greške noćnih verzija na [GitHub Issues](https://github.com/emergent-inc/cmux/issues) ili na [#nightly-bugs na Discordu](https://discord.gg/xsgFEVrWCZ).
 
 ## Vraćanje sesije
 
@@ -339,7 +339,7 @@ cmux može podijeliti pravi panel preglednika pored vašeg terminala, i potpuno 
 
 ### Ima li cmux vještine (skills)?
 
-Da. Vještine su ponovo upotrebljivi tokovi rada koje možete dati bilo kojem agentu koji radi u cmux-u, za stvari poput kontrole CLI-ja, automatizacije radnog prostora, postavki i preglednik površina. Pregledajte otvorenu kolekciju na [cmux-skills](https://github.com/manaflow-ai/cmux-skills), ili pročitajte [dokumentaciju o vještinama](https://cmux.com/docs/skills).
+Da. Vještine su ponovo upotrebljivi tokovi rada koje možete dati bilo kojem agentu koji radi u cmux-u, za stvari poput kontrole CLI-ja, automatizacije radnog prostora, postavki i preglednik površina. Pregledajte otvorenu kolekciju na [cmux-skills](https://github.com/emergent-inc/cmux-skills), ili pročitajte [dokumentaciju o vještinama](https://cmux.com/docs/skills).
 
 ### Mogu li prilagoditi prečice na tastaturi?
 
@@ -359,23 +359,23 @@ tmux je terminalni multiplekser koji radi unutar bilo kojeg terminala. cmux je n
 
 ### Je li cmux besplatan?
 
-Da, cmux je besplatan za korištenje. Izvorni kod je dostupan na [GitHub-u](https://github.com/manaflow-ai/cmux).
+Da, cmux je besplatan za korištenje. Izvorni kod je dostupan na [GitHub-u](https://github.com/emergent-inc/cmux).
 
 ### Kako mogu podržati cmux?
 
-cmux je besplatan i otvorenog koda, i uvijek će biti. Ako želite podržati razvoj i dobiti rani pristup onome što slijedi, uključujući cmux AI, iOS aplikaciju i Cloud VMs, pogledajte [cmux Founders Edition](https://github.com/manaflow-ai/cmux#founders-edition).
+cmux je besplatan i otvorenog koda, i uvijek će biti. Ako želite podržati razvoj i dobiti rani pristup onome što slijedi, uključujući cmux AI, iOS aplikaciju i Cloud VMs, pogledajte [cmux Founders Edition](https://github.com/emergent-inc/cmux#founders-edition).
 
 ### Imam zahtjev za funkciju ili sam pronašao grešku?
 
-Želimo to čuti. Otvorite [issue](https://github.com/manaflow-ai/cmux/issues) ili [pull request](https://github.com/manaflow-ai/cmux/pulls) na GitHub-u, ili nam [pošaljite email](mailto:founders@manaflow.com?subject=cmux%20feature%20request).
+Želimo to čuti. Otvorite [issue](https://github.com/emergent-inc/cmux/issues) ili [pull request](https://github.com/emergent-inc/cmux/pulls) na GitHub-u, ili nam [pošaljite email](mailto:contact@emergent.inc?subject=cmux%20feature%20request).
 
 ## Historija zvjezdica
 
-<a href="https://star-history.com/#manaflow-ai/cmux&Date">
+<a href="https://star-history.com/#emergent-inc/cmux&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" width="600" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" width="600" />
  </picture>
 </a>
 
@@ -383,18 +383,18 @@ cmux je besplatan i otvorenog koda, i uvijek će biti. Ako želite podržati raz
 
 Načini da se uključite:
 
-- Pratite nas na X za ažuriranja [@manaflowai](https://x.com/manaflowai), [@lawrencecchen](https://x.com/lawrencecchen) i [@austinywang](https://x.com/austinywang)
+- Pratite nas na X za ažuriranja [@emergentinc](https://x.com/emergentinc), [@lawrencecchen](https://x.com/lawrencecchen) i [@austinywang](https://x.com/austinywang)
 - Pridružite se razgovoru na [Discordu](https://discord.gg/xsgFEVrWCZ)
-- Kreirajte i učestvujte u [GitHub issues](https://github.com/manaflow-ai/cmux/issues) i [diskusijama](https://github.com/manaflow-ai/cmux/discussions)
+- Kreirajte i učestvujte u [GitHub issues](https://github.com/emergent-inc/cmux/issues) i [diskusijama](https://github.com/emergent-inc/cmux/discussions)
 - Javite nam šta gradite sa cmux
 
 ## Zajednica
 
 - [Discord](https://discord.gg/xsgFEVrWCZ)
-- [GitHub](https://github.com/manaflow-ai/cmux)
-- [X / Twitter](https://twitter.com/manaflowai)
+- [GitHub](https://github.com/emergent-inc/cmux)
+- [X / Twitter](https://twitter.com/emergentinc)
 - [YouTube](https://www.youtube.com/channel/UCAa89_j-TWkrXfk9A3CbASw)
-- [LinkedIn](https://www.linkedin.com/company/manaflow-ai/)
+- [LinkedIn](https://www.linkedin.com/company/emergent-inc/)
 - [Reddit](https://www.reddit.com/r/cmux/)
 
 ## Osnivačko izdanje
@@ -414,4 +414,4 @@ cmux je besplatan, otvorenog koda i uvijek će biti. Ako želite podržati razvo
 
 cmux je otvorenog koda pod [GPL-3.0-or-later](LICENSE) licencom.
 
-Ako vaša organizacija ne može ispuniti uslove GPL-a, dostupna je komercijalna licenca. Kontaktirajte [founders@manaflow.com](mailto:founders@manaflow.com) za detalje.
+Ako vaša organizacija ne može ispuniti uslove GPL-a, dostupna je komercijalna licenca. Kontaktirajte [contact@emergent.inc](mailto:contact@emergent.inc) za detalje.

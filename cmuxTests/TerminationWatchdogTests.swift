@@ -15,7 +15,7 @@ struct TerminationWatchdogTests {
     ///
     /// Deterministic by construction — the injected scheduler captures the
     /// deadline handler instead of sleeping, so no real time is involved
-    /// (https://github.com/manaflow-ai/cmux/issues/6758).
+    /// (https://github.com/emergent-inc/cmux/issues/6758).
     @Test
     func repeatedArmingSchedulesTheDeadlineExactlyOnce() {
         let scheduler = CapturingScheduler()

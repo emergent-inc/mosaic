@@ -9,7 +9,7 @@ struct WorkspaceRemoteDaemonManifestTests {
       "schemaVersion": 1,
       "appVersion": "0.20.0",
       "releaseTag": "cmuxd-remote-v0.20.0",
-      "releaseURL": "https://github.com/manaflow-ai/cmux/releases/tag/cmuxd-remote-v0.20.0",
+      "releaseURL": "https://github.com/emergent-inc/cmux/releases/tag/cmuxd-remote-v0.20.0",
       "checksumsAssetName": "checksums.txt",
       "checksumsURL": "https://example.invalid/checksums.txt",
       "entries": [

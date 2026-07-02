@@ -7,7 +7,7 @@ import Testing
 @testable import cmux
 #endif
 
-// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5913:
+// Regression coverage for https://github.com/emergent-inc/cmux/issues/5913:
 // fast typing followed by an immediate Return must submit exactly the text the
 // field shows, never a stale published buffer or a suggestion that was
 // auto-selected for an older query. Only an explicit arrow selection may
@@ -297,7 +297,7 @@ import Testing
     }
 }
 
-// Regression coverage for https://github.com/manaflow-ai/cmux/issues/6250:
+// Regression coverage for https://github.com/emergent-inc/cmux/issues/6250:
 // a physical Return delivered to focused web content (the WKWebView) must not
 // reach the omnibar coordinator as a submit. AppKit dispatches
 // `performKeyEquivalent` across the whole window view hierarchy, so the omnibar

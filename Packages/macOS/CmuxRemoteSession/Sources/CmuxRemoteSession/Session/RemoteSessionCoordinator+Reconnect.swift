@@ -1,7 +1,7 @@
 internal import Foundation
 
 // Reconnect backoff scheduling and the reachability-based suspend policy
-// (https://github.com/manaflow-ai/cmux/issues/5734). Faithful lift; the
+// (https://github.com/emergent-inc/cmux/issues/5734). Faithful lift; the
 // legacy `asyncAfter` work item became an injected-clock task whose wakeup is
 // guarded by a token (strictly tighter than the legacy work-item cancel) —
 // delays, retry numbering, and suffix strings are identical.
@@ -56,7 +56,7 @@ extension RemoteSessionCoordinator {
     /// connection attempt. While the host stays unreachable the retry loop is
     /// allowed a short streak of attempts (absorbing sleep/wake and network
     /// handoffs) and then suspends instead of retrying indefinitely
-    /// (https://github.com/manaflow-ai/cmux/issues/5734).
+    /// (https://github.com/emergent-inc/cmux/issues/5734).
     func evaluateReconnectPolicyLocked() {
         guard configuration.transport == .ssh else { return }
         reachabilityProbeGeneration &+= 1

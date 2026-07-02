@@ -95,7 +95,7 @@ final class GlobalSearchShortcutSettingsTests: XCTestCase {
     }
 
     func testSettingsFileStoreParsesPackageObjectFormGlobalSearchShortcut() throws {
-        // Regression for https://github.com/manaflow-ai/cmux/issues/5137.
+        // Regression for https://github.com/emergent-inc/cmux/issues/5137.
         // The in-app Settings UI (CmuxSettings package) persists every
         // shortcut rebinding to cmux.json under `shortcuts.bindings.<action>`
         // as a nested StoredShortcut object ({"first": {key, command, ...}}),

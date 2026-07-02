@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "聯絡我們",
     "nightly": "每夜建置",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "語言",
     "assets": "素材",
     "openSource": "開源",
@@ -254,7 +254,7 @@
       "p075": "透過單個 Homebrew formula 安裝完整 AI stack(cmux + Ghostty + Zed + Starship + JetBrainsMono)，支援 idempotent re-run 和 dry-run mode。這是一條 command 的 developer environment bootstrap",
       "p076": "為 plugin developer 建構 cmux browser engine 的 Chromium content shell，並提供 prebuilt framework download",
       "p077": "為任何 Agent Skills-compatible runtime 提供可安裝的 cmux skill，從一個維護中的 public source 涵蓋 CLI control、settings、browser automation、artifact、workspace ref 和 customization",
-      "p078": "提供由 Manaflow 維護的 cmux 官方 Homebrew tap，包含 stable 和 nightly cask",
+      "p078": "提供由 emergent.inc 維護的 cmux 官方 Homebrew tap，包含 stable 和 nightly cask",
       "p079": "透過四個 auto-syncing skill file 教 Claude Code browser automation，涵蓋 form filling、screenshot 和 debug window capture。它以 multi-file skill suite 構成，而不是單個 monolithic document",
       "p080": "使用 worktree、cmux workspace 和 Agent Teams(lead+tester+reviewer+security) 實現 master-worker pattern，並帶 deterministic port allocation。它獨特地按 agent role 分配 fixed port",
       "p081": "作為 GSD/Pi 的 @gsd/cmux module 的 drop-in replacement，加入 WezTerm 作為第二個 multiplexer backend，帶 OSC 1337 user variable 和 Windows toast notification。它是唯一支援 dual multiplexer target 的 Pi plugin",
@@ -1472,7 +1472,7 @@
       "data3": "配對和裝置中繼資料，用於將你的手機連線到你的 Mac。",
       "dataNot": "你的互動式終端工作階段、其內容和按鍵，透過你自己的網路在手機和 Mac 之間直接傳輸，不會經由 cmux 伺服器中繼或儲存在其上。唯一的例外是轉發的通知文字，它會經過 cmux 和 Apple 的推送服務到達你的手機，除非你啟用 Hide content（參見上方的通知）。",
       "enterpriseTitle": "企業與自架",
-      "enterpriseDesc": "如需自架或氣隙隔離部署，請聯絡 <link>founders@manaflow.com</link>。"
+      "enterpriseDesc": "如需自架或氣隙隔離部署，請聯絡 <link>contact@emergent.inc</link>。"
     }
   },
   "legal": {

@@ -1,7 +1,7 @@
 public import Foundation
 
 /// Configuration value for the feedback composer: the persisted-email defaults
-/// key, the upload endpoint (env-overridable), size limits, and the founders
+/// key, the upload endpoint (env-overridable), size limits, and the support
 /// fallback address. Defaults are byte-identical to the originals lifted from
 /// the app's `ContentView`; construct with the defaults or override a field for
 /// testing.
@@ -29,7 +29,7 @@ public struct FeedbackComposerSettings: Sendable, Equatable {
         storedEmailKey: String = "sidebarHelpFeedbackEmail",
         endpointEnvironmentKey: String = "CMUX_FEEDBACK_API_URL",
         defaultEndpoint: String = "https://cmux.com/api/feedback",
-        foundersEmail: String = "founders@manaflow.com",
+        foundersEmail: String = "contact@emergent.inc",
         maxMessageLength: Int = 4_000,
         maxAttachmentCount: Int = 10,
         maxTotalAttachmentBytes: Int = 4 * 1_024 * 1_024,

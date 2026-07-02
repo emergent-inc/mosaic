@@ -36,7 +36,7 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// shim that execs the wrapper. It is inherited by every descendant shell regardless
     /// of `PATH`/function shadowing, so resolving the claude executable through it makes
     /// the executed resume command route through the wrapper (hooks fire) inside the
-    /// `-lic` launcher. https://github.com/manaflow-ai/cmux/issues/5639
+    /// `-lic` launcher. https://github.com/emergent-inc/cmux/issues/5639
     ///
     /// The token guards on `[ -x … ]`, not bare `${VAR:-claude}` expansion: macOS reaps
     /// idle files under the temporary directory after ~3 days, and a long-idle surface
@@ -64,7 +64,7 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// `TerminalSurface+RuntimeSurfaceCreation`), inherited by every descendant
     /// shell regardless of `PATH`/function shadowing, so resolving the codex
     /// executable through it routes the resume command through the wrapper and
-    /// the hooks fire. https://github.com/manaflow-ai/cmux/issues/5639
+    /// the hooks fire. https://github.com/emergent-inc/cmux/issues/5639
     ///
     /// The token guards on `[ -x … ]` rather than bare `${VAR:-codex}`: a
     /// long-idle surface can hold the env var after macOS reaps the shim file,
@@ -96,7 +96,7 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// environment and resolves the token, and outside cmux the unset variable still
     /// falls back to bare `claude`. Callers wrap the fully rendered POSIX command
     /// *before* prepending any working-directory guard, so cd-prefix rewriting keeps
-    /// composing on the outside. https://github.com/manaflow-ai/cmux/issues/5639
+    /// composing on the outside. https://github.com/emergent-inc/cmux/issues/5639
     public static func portableClaudeResumeShellCommand(posixCommand: String) -> String {
         "/bin/sh -c " + posixSingleQuoted(posixCommand)
     }
@@ -129,7 +129,7 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// every other token (including any later argument that happens to be the word `claude`)
     /// is quoted normally. Call only for the claude kind. Keeping this in the pure value
     /// layer lets the app resume builder and the cmux-cli surface-restore publisher share one
-    /// wrapper-routing seam. https://github.com/manaflow-ai/cmux/issues/5639
+    /// wrapper-routing seam. https://github.com/emergent-inc/cmux/issues/5639
     public static func renderingClaudeWrapperExecutable(
         parts: [String],
         quote: (String) -> String
@@ -181,7 +181,7 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// Mirror of ``renderingClaudeWrapperExecutable(parts:quote:)`` for codex: only
     /// the first element equal to `codex` — the wrapper executable emitted by the
     /// codex resume builder — is replaced; every other token is quoted normally.
-    /// Call only for the codex kind. https://github.com/manaflow-ai/cmux/issues/5639
+    /// Call only for the codex kind. https://github.com/emergent-inc/cmux/issues/5639
     public static func renderingCodexWrapperExecutable(
         parts: [String],
         quote: (String) -> String
@@ -328,13 +328,13 @@ public struct AgentResumeArgv: Sendable, Equatable {
     /// nested-session unset). The captured launch executable, however, is the
     /// *real* claude binary (`CMUX_AGENT_LAUNCH_EXECUTABLE`), so resuming with it
     /// directly bypassed the wrapper and dropped every hook
-    /// (https://github.com/manaflow-ai/cmux/issues/5427).
+    /// (https://github.com/emergent-inc/cmux/issues/5427).
     ///
     /// The argv keeps a bare `claude` executable as its logical value; the wrapper is
     /// reached at render time via ``claudeWrapperShellExecutableToken`` (resolved through
     /// the `CMUX_CLAUDE_WRAPPER_SHIM` managed env var), because relying on the wrapper
     /// being first on `PATH` does not hold inside the `$SHELL -lic` restore launcher
-    /// (https://github.com/manaflow-ai/cmux/issues/5639). The captured executable is
+    /// (https://github.com/emergent-inc/cmux/issues/5639). The captured executable is
     /// intentionally ignored for claude; the wrapper resolves the real binary
     /// (honouring `CMUX_CUSTOM_CLAUDE_PATH`).
     private func claudeResumeArgv(

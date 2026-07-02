@@ -119,7 +119,7 @@ export function withLinkedVercelProject(project, fn) {
 export function pullProductionEnv(project) {
   return withLinkedVercelProject(project, (scratch) => {
     const envFile = path.join(scratch, `${project.projectName}.env`);
-    runVercel(["env", "pull", envFile, "--environment=production", "--scope", "manaflow", "--cwd", scratch], {
+    runVercel(["env", "pull", envFile, "--environment=production", "--scope", "emergent.inc", "--cwd", scratch], {
       stdio: ["ignore", "pipe", "inherit"],
     });
     return loadEnv(envFile);

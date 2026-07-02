@@ -8,7 +8,7 @@ import Testing
 #endif
 
 /// Regression coverage for the remote-tmux mirror split routing contract
-/// (https://github.com/manaflow-ai/cmux/pull/5553): a split request on a
+/// (https://github.com/emergent-inc/cmux/pull/5553): a split request on a
 /// remote tmux mirror workspace must never create a local panel — it is
 /// routed to the remote tmux session (the pane arrives via %layout-change),
 /// or fails when no live mirror exists. A local panel here would be an

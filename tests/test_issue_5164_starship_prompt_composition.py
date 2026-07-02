@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression coverage for https://github.com/manaflow-ai/cmux/issues/5164.
+Regression coverage for https://github.com/emergent-inc/cmux/issues/5164.
 
 Using Starship as the bash prompt inside a cmux session breaks: Starship's
 status line stops updating after the first command. The root cause is the local

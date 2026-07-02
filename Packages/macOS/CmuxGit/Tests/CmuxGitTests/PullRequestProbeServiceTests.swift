@@ -9,7 +9,7 @@ import Testing
     private func item(
         number: Int,
         state: String,
-        url: String = "https://github.com/manaflow-ai/cmux/pull/1",
+        url: String = "https://github.com/emergent-inc/cmux/pull/1",
         updatedAt: String?,
         mergedAt: String? = nil,
         headRefName: String? = nil,
@@ -30,23 +30,23 @@ import Testing
 
     @Test func preferredPullRequestPrefersOpenOverMergedAndClosed() {
         let candidates = [
-            item(number: 1889, state: "MERGED", url: "https://github.com/manaflow-ai/cmux/pull/1889", updatedAt: "2026-03-20T18:00:00Z"),
-            item(number: 1891, state: "OPEN", url: "https://github.com/manaflow-ai/cmux/pull/1891", updatedAt: "2026-03-19T18:00:00Z"),
-            item(number: 1800, state: "CLOSED", url: "https://github.com/manaflow-ai/cmux/pull/1800", updatedAt: "2026-03-21T18:00:00Z"),
+            item(number: 1889, state: "MERGED", url: "https://github.com/emergent-inc/cmux/pull/1889", updatedAt: "2026-03-20T18:00:00Z"),
+            item(number: 1891, state: "OPEN", url: "https://github.com/emergent-inc/cmux/pull/1891", updatedAt: "2026-03-19T18:00:00Z"),
+            item(number: 1800, state: "CLOSED", url: "https://github.com/emergent-inc/cmux/pull/1800", updatedAt: "2026-03-21T18:00:00Z"),
         ]
         #expect(PullRequestProbeService.preferredPullRequest(from: candidates) == candidates[1])
     }
 
     @Test func preferredPullRequestPrefersMostRecentlyUpdatedWithinSameStatus() {
-        let olderOpen = item(number: 1880, state: "OPEN", url: "https://github.com/manaflow-ai/cmux/pull/1880", updatedAt: "2026-03-18T18:00:00Z")
-        let newerOpen = item(number: 1890, state: "OPEN", url: "https://github.com/manaflow-ai/cmux/pull/1890", updatedAt: "2026-03-20T18:00:00Z")
+        let olderOpen = item(number: 1880, state: "OPEN", url: "https://github.com/emergent-inc/cmux/pull/1880", updatedAt: "2026-03-18T18:00:00Z")
+        let newerOpen = item(number: 1890, state: "OPEN", url: "https://github.com/emergent-inc/cmux/pull/1890", updatedAt: "2026-03-20T18:00:00Z")
         #expect(PullRequestProbeService.preferredPullRequest(from: [olderOpen, newerOpen]) == newerOpen)
     }
 
     @Test func preferredPullRequestIgnoresMalformedCandidates() {
-        let valid = item(number: 1888, state: "OPEN", url: "https://github.com/manaflow-ai/cmux/pull/1888", updatedAt: "2026-03-20T18:00:00Z")
+        let valid = item(number: 1888, state: "OPEN", url: "https://github.com/emergent-inc/cmux/pull/1888", updatedAt: "2026-03-20T18:00:00Z")
         let preferred = PullRequestProbeService.preferredPullRequest(from: [
-            item(number: 9999, state: "WHATEVER", url: "https://github.com/manaflow-ai/cmux/pull/9999", updatedAt: "2026-03-21T18:00:00Z"),
+            item(number: 9999, state: "WHATEVER", url: "https://github.com/emergent-inc/cmux/pull/9999", updatedAt: "2026-03-21T18:00:00Z"),
             // An empty URL string is rejected by URL(string:) on every macOS;
             // "not a url" is only rejected by pre-macOS-14-SDK parsing (the
             // lenient parser percent-encodes it), so it is not a stable fixture.
@@ -61,9 +61,9 @@ import Testing
     @Test func pullRequestMapDropsStaleMergedHeadPullRequestForLongLivedBaseBranch() throws {
         let now = try #require(ISO8601DateFormatter().date(from: "2026-04-20T12:00:00Z"))
         let pullRequests = [
-            item(number: 2400, state: "MERGED", url: "https://github.com/manaflow-ai/cmux/pull/2400", updatedAt: "2026-03-06T12:00:00Z", mergedAt: "2026-03-06T12:00:00Z", headRefName: "develop", baseRefName: "main"),
-            item(number: 2501, state: "MERGED", url: "https://github.com/manaflow-ai/cmux/pull/2501", updatedAt: "2026-04-19T12:00:00Z", mergedAt: "2026-04-19T12:00:00Z", headRefName: "feature/recent-one", baseRefName: "develop"),
-            item(number: 2502, state: "OPEN", url: "https://github.com/manaflow-ai/cmux/pull/2502", updatedAt: "2026-04-20T12:00:00Z", headRefName: "feature/recent-two", baseRefName: "develop"),
+            item(number: 2400, state: "MERGED", url: "https://github.com/emergent-inc/cmux/pull/2400", updatedAt: "2026-03-06T12:00:00Z", mergedAt: "2026-03-06T12:00:00Z", headRefName: "develop", baseRefName: "main"),
+            item(number: 2501, state: "MERGED", url: "https://github.com/emergent-inc/cmux/pull/2501", updatedAt: "2026-04-19T12:00:00Z", mergedAt: "2026-04-19T12:00:00Z", headRefName: "feature/recent-one", baseRefName: "develop"),
+            item(number: 2502, state: "OPEN", url: "https://github.com/emergent-inc/cmux/pull/2502", updatedAt: "2026-04-20T12:00:00Z", headRefName: "feature/recent-two", baseRefName: "develop"),
         ]
 
         let byBranch = PullRequestProbeService.pullRequestMapByNormalizedBranch(from: pullRequests, now: now)
@@ -120,7 +120,7 @@ import Testing
           {
             "number": 5277,
             "state": "closed",
-            "html_url": "https://github.com/manaflow-ai/cmux/pull/5277",
+            "html_url": "https://github.com/emergent-inc/cmux/pull/5277",
             "updated_at": "2026-06-03T10:00:00Z",
             "merged_at": "2026-06-03T10:00:00Z",
             "head": {"ref": "feat-cmux-git"},
@@ -129,7 +129,7 @@ import Testing
           {
             "number": 5293,
             "state": "open",
-            "html_url": "https://github.com/manaflow-ai/cmux/pull/5293",
+            "html_url": "https://github.com/emergent-inc/cmux/pull/5293",
             "updated_at": "2026-06-03T11:00:00Z",
             "merged_at": null,
             "head": {"ref": "feat-packages-tools-62"},
@@ -151,15 +151,15 @@ import Testing
         #expect(items[1].state == "open")
         #expect(PullRequestStatus(githubState: items[1].state) == .open)
         #expect(items[1].baseRefName == nil)
-        #expect(items[1].url == "https://github.com/manaflow-ai/cmux/pull/5293")
+        #expect(items[1].url == "https://github.com/emergent-inc/cmux/pull/5293")
     }
 
     @Test func branchEndpointEncodesHeadFilterAndRejectsMalformedSlugs() throws {
         let endpoint = try #require(
-            PullRequestProbeService.branchEndpoint(repoSlug: "manaflow-ai/cmux", branch: "feat/x")
+            PullRequestProbeService.branchEndpoint(repoSlug: "emergent-inc/cmux", branch: "feat/x")
         )
-        #expect(endpoint.hasPrefix("repos/manaflow-ai/cmux/pulls?"))
-        #expect(endpoint.contains("head=manaflow-ai:feat/x") || endpoint.contains("head=manaflow-ai%3Afeat/x") || endpoint.contains("head=manaflow-ai:feat%2Fx"))
+        #expect(endpoint.hasPrefix("repos/emergent-inc/cmux/pulls?"))
+        #expect(endpoint.contains("head=emergent-inc:feat/x") || endpoint.contains("head=emergent-inc%3Afeat/x") || endpoint.contains("head=emergent-inc:feat%2Fx"))
         #expect(PullRequestProbeService.branchEndpoint(repoSlug: "no-slash", branch: "b") == nil)
         #expect(PullRequestProbeService.branchEndpoint(repoSlug: "/missing-owner", branch: "b") == nil)
     }

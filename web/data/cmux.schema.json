@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "$id": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
   "title": "cmux.json",
   "description": "cmux configuration. Global cmux.json supports app settings, shortcuts, actions, custom commands, notification hooks, and workspace layouts. Project-local .cmux/cmux.json supports actions, commands, notification hooks, and UI action wiring.",
   "type": "object",
@@ -9,7 +9,7 @@
     "$schema": {
       "type": "string",
       "format": "uri",
-      "default": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+      "default": "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json",
       "description": "Optional schema URL for editor completion and validation."
     },
     "schemaVersion": {

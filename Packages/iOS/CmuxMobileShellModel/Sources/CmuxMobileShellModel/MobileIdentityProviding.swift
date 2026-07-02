@@ -13,7 +13,7 @@ public protocol MobileIdentityProviding: Sendable {
     /// when no email is set on the account.
     ///
     /// The Send Feedback router reads this to decide whether the privileged
-    /// direct-to-agent path applies (`@manaflow.ai`); it is also the default
+    /// direct-to-agent path applies (`@emergent.inc`); it is also the default
     /// reply-to address when emailing the feedback inbox.
     @MainActor var currentUserEmail: String? { get }
 }

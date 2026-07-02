@@ -7,7 +7,7 @@ internal import Network
 /// The auto-reconnect loop uses this to distinguish "the host is temporarily
 /// failing" (keep retrying with backoff) from "the host cannot be reached at
 /// all" (suspend the loop and wait for a manual reconnect, see
-/// https://github.com/manaflow-ai/cmux/issues/5734).
+/// https://github.com/emergent-inc/cmux/issues/5734).
 ///
 /// The probe resolves the effective endpoint with `ssh -G` so ~/.ssh/config
 /// aliases, `HostName` overrides, and `ProxyJump` hops are honored. Transports

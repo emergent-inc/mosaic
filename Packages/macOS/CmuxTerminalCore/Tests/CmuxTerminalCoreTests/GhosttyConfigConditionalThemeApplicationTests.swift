@@ -4,7 +4,7 @@ import Foundation
 import Testing
 @testable import CmuxTerminalCore
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/6411.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/6411.
 ///
 /// cmux paints the terminal background from its host layer
 /// (`macos-background-from-layer = true`) using the color the Swift

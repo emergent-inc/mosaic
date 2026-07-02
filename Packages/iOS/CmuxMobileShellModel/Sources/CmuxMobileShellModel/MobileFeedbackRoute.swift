@@ -5,7 +5,7 @@ import Foundation
 /// The decision is pure: it depends only on the signed-in email, whether the
 /// device currently has an active mobile-host connection to a paired Mac, and
 /// the build type. The privileged path is intentionally NOT a debug-only path;
-/// it must work on Release builds for the `@manaflow.ai` team, which is the
+/// it must work on Release builds for the `@emergent.inc` team, which is the
 /// whole point of the feature.
 public enum MobileFeedbackRoute: Equatable, Sendable {
     /// Deliver the rich diagnostic bundle straight to the paired Mac's agent
@@ -21,7 +21,7 @@ public enum MobileFeedbackRoute: Equatable, Sendable {
     ///
     /// A submission goes direct-to-agent only when ALL of these hold:
     ///
-    /// 1. The signed-in Stack user's email ends with `@manaflow.ai` (case- and
+    /// 1. The signed-in Stack user's email ends with `@emergent.inc` (case- and
     ///    whitespace-insensitive), AND
     /// 2. The device is effectively on the tailnet — proxied by "has an active
     ///    mobile-host connection to a paired Mac", since that transport runs over
@@ -32,7 +32,7 @@ public enum MobileFeedbackRoute: Equatable, Sendable {
     ///    capability check makes it fall back to email under version skew.
     ///
     /// Build type does not change the route: the privileged path works on every
-    /// build type (dev/beta/prod), so `@manaflow.ai` dogfooders on a Release build
+    /// build type (dev/beta/prod), so `@emergent.inc` dogfooders on a Release build
     /// still send straight to the agent. Everyone else emails the inbox.
     ///
     /// - Parameters:
@@ -49,22 +49,22 @@ public enum MobileFeedbackRoute: Equatable, Sendable {
         hasActiveMacConnection: Bool,
         hostSupportsAgentSink: Bool
     ) -> MobileFeedbackRoute {
-        guard hasActiveMacConnection, hostSupportsAgentSink, isManaflowEmail(email) else {
+        guard hasActiveMacConnection, hostSupportsAgentSink, isEmergentIncEmail(email) else {
             return .email
         }
         return .privilegedAgent
     }
 
-    /// Whether an email belongs to the privileged `@manaflow.ai` domain.
+    /// Whether an email belongs to the privileged `@emergent.inc` domain.
     ///
     /// Trims surrounding whitespace and lowercases before matching, so a stored
     /// email with stray casing or padding still resolves correctly.
     ///
     /// - Parameter email: The candidate email, or `nil`.
-    /// - Returns: `true` when the normalized email ends with `@manaflow.ai`.
-    public static func isManaflowEmail(_ email: String?) -> Bool {
+    /// - Returns: `true` when the normalized email ends with `@emergent.inc`.
+    public static func isEmergentIncEmail(_ email: String?) -> Bool {
         guard let email else { return false }
         let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalized.hasSuffix("@manaflow.ai")
+        return normalized.hasSuffix("@emergent.inc")
     }
 }

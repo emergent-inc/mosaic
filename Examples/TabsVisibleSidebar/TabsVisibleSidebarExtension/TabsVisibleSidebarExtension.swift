@@ -6,7 +6,7 @@ import SwiftUI
 @Observable
 final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
     static let manifest = CmuxExtensionManifest(
-        id: "co.manaflow.TabsVisibleSidebar.Extension",
+        id: "co.emergent.inc.TabsVisibleSidebar.Extension",
         displayName: String(localized: "tabsVisible.manifest.displayName", defaultValue: "Tabs Visible Sidebar"),
         readScopes: [
             .workspaceList,

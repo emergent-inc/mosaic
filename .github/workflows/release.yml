@@ -307,7 +307,7 @@ jobs:
           ./scripts/build_remote_daemon_release_assets.sh \
             --version "$APP_VERSION" \
             --release-tag "$GITHUB_REF_NAME" \
-            --repo "manaflow-ai/cmux" \
+            --repo "emergent-inc/cmux" \
             --output-dir "remote-daemon-assets"
           MANIFEST_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding="utf-8")), separators=(",",":")))' remote-daemon-assets/cmuxd-remote-manifest.json)"
           plutil -remove CMUXRemoteDaemonManifestJSON "$APP_PLIST" >/dev/null 2>&1 || true
@@ -337,7 +337,7 @@ jobs:
           echo "Adding SUPublicEDKey to Info.plist..."
           /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string ${SPARKLE_PUBLIC_KEY}" "$APP_PLIST"
           echo "Adding SUFeedURL to Info.plist..."
-          /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://github.com/manaflow-ai/cmux/releases/latest/download/appcast.xml" "$APP_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml" "$APP_PLIST"
           echo "Verifying:"
           /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$APP_PLIST"
           /usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$APP_PLIST"
@@ -473,7 +473,7 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: manaflow
+          SENTRY_ORG: emergent.inc
           SENTRY_PROJECT: cmuxterm-macos
         run: |
           if [ -z "$SENTRY_AUTH_TOKEN" ]; then

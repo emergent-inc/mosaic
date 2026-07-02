@@ -7,7 +7,7 @@ import Foundation
 // not reference CLI-private symbols.
 
 /// Tunable constants for the auto-naming engine. Defaults follow the
-/// debounce shape proven by community prior art (manaflow-ai/cmux#2043)
+/// debounce shape proven by community prior art (emergent-inc/cmux#2043)
 /// and are expected to be tuned from dogfood feedback.
 struct AutoNamingConfig: Sendable {
     /// Minimum transcript line growth since the last naming before another

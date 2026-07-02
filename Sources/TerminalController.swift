@@ -13467,15 +13467,15 @@ class TerminalController {
     ///
     /// It is protected by the same-account Stack-auth authorization the rest of
     /// the mobile data plane enforces, so it never accepts an unauthenticated
-    /// caller. The phone only ever routes here for `@manaflow.ai` users on an
+    /// caller. The phone only ever routes here for `@emergent.inc` users on an
     /// active connection, so this exists in Release builds too (the team can
     /// dogfood beta/prod), and only a Mac that runs the watcher acts on it.
     func v2MobileDogfoodFeedbackSubmit(params: [String: Any]) async -> V2CallResult {
         // Privilege check at the trust boundary: the mobile data plane only
         // accepts same-account connections, so the caller is this Mac's own Stack
-        // account. The service re-enforces the @manaflow.ai gate, but we resolve
+        // account. The service re-enforces the @emergent.inc gate, but we resolve
         // the authenticated email here because it requires the main-actor
-        // `MobileHostService`. (The phone also gates the route on `@manaflow.ai`
+        // `MobileHostService`. (The phone also gates the route on `@emergent.inc`
         // + `dogfood.v1`, but the Mac is the real boundary.)
         let localEmail = await MobileHostService.shared.currentAuthenticatedLocalUserEmail()
         let submission = DogfoodFeedbackSubmission(

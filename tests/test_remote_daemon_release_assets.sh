@@ -8,7 +8,7 @@ trap 'rm -rf "$OUTPUT_DIR"' EXIT
 "$ROOT_DIR/scripts/build_remote_daemon_release_assets.sh" \
   --version "0.62.0-test" \
   --release-tag "v0.62.0-test" \
-  --repo "manaflow-ai/cmux" \
+  --repo "emergent-inc/cmux" \
   --output-dir "$OUTPUT_DIR" >/dev/null
 
 for asset in \
@@ -73,7 +73,7 @@ trap 'rm -rf "$OUTPUT_DIR" "$SUFFIX_DIR"' EXIT
 "$ROOT_DIR/scripts/build_remote_daemon_release_assets.sh" \
   --version "0.62.0-nightly.123456" \
   --release-tag "nightly" \
-  --repo "manaflow-ai/cmux" \
+  --repo "emergent-inc/cmux" \
   --output-dir "$SUFFIX_DIR" \
   --asset-suffix "123456" >/dev/null
 

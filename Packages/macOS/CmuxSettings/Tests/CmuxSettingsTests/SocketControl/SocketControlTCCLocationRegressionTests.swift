@@ -3,7 +3,7 @@ import Testing
 
 @testable import CmuxSettings
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5146.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5146.
 ///
 /// The control socket directory and the socket password file are read by the
 /// separately code-signed `cmux` CLI on every agent session-start/stop hook. On

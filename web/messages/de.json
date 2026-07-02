@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Kontakt",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Sprache",
     "assets": "Assets",
     "openSource": "Open Source",
@@ -254,7 +254,7 @@
       "p075": "Installiert einen vollständigen KI-Stack (cmux + Ghostty + Zed + Starship + JetBrainsMono) über eine einzige Homebrew-Formel mit idempotenten Wiederholungen und dry-run-Modus; Entwicklerumgebung-Bootstrap mit einem Befehl",
       "p076": "Baut eine Chromium content shell für die Browser-Engine von cmux mit vorgefertigten Framework-Downloads für Plugin-Entwickler",
       "p077": "Stellt installierbare cmux-Skills für jede Agent Skills-kompatible Runtime bereit, inklusive CLI-Steuerung, Einstellungen, Browserautomatisierung, Artefakte, Workspace-Refs und Anpassung aus einer gepflegten öffentlichen Quelle",
-      "p078": "Stellt den offiziellen Homebrew tap für cmux mit stable- und nightly-casks bereit, gepflegt von Manaflow",
+      "p078": "Stellt den offiziellen Homebrew tap für cmux mit stable- und nightly-casks bereit, gepflegt von emergent.inc",
       "p079": "Bringt Claude Code-Browserautomatisierung über vier automatisch synchronisierte Skill-Dateien bei, die Formularausfüllung, Screenshots und Debug-Fenster-Erfassung abdecken; als Multi-File-Skill-Suite statt monolithischem Dokument strukturiert",
       "p080": "Implementiert ein master-worker-Muster mit Worktrees, cmux-Workspaces und Agent Teams (lead+tester+reviewer+security) mit deterministischer Portzuweisung; weist eindeutig feste Ports pro Agentenrolle zu",
       "p081": "Drop-in-Ersatz für GSD/Pis @gsd/cmux-Modul, der WezTerm als zweites Multiplexer-Backend mit OSC 1337-Benutzervariablen und Windows-Toast-Benachrichtigungen ergänzt; das einzige Pi-Plugin mit dualer Multiplexer-Zielunterstützung",
@@ -1472,7 +1472,7 @@
       "data3": "Kopplungs- und Geräte-Metadaten, um dein Telefon mit deinem Mac zu verbinden.",
       "dataNot": "Deine interaktive Terminal-Sitzung, ihre Inhalte und Tastatureingaben fließen direkt zwischen deinem Telefon und deinem Mac über dein eigenes Netzwerk und werden nicht über cmux-Server weitergeleitet oder dort gespeichert. Die einzige Ausnahme ist der weitergeleitete Benachrichtigungstext, der über cmux und Apple's push service zu deinem Telefon gelangt, sofern du nicht Hide content aktivierst (siehe Benachrichtigungen oben).",
       "enterpriseTitle": "Enterprise und Self-Hosting",
-      "enterpriseDesc": "Für ein selbst gehostetes oder air-gapped Deployment wende dich an <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "Für ein selbst gehostetes oder air-gapped Deployment wende dich an <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

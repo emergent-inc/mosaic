@@ -9,7 +9,7 @@ import Testing
 
 /// Regression coverage for the shared-ControlMaster readiness gate that fixes the
 /// "only ~2 of N sessions mirror on first attach" race
-/// (https://github.com/manaflow-ai/cmux/issues/6732).
+/// (https://github.com/emergent-inc/cmux/issues/6732).
 ///
 /// The bug: ``RemoteTmuxController`` fires the per-session `tmux -CC attach`
 /// connections (each `ControlMaster=auto`) in a tight burst. On a cold first

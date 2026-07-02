@@ -8,7 +8,7 @@ public import CmuxFoundation
 /// only the views that read those properties (the dragged row's opacity and the
 /// drop-indicator overlays), never the sidebar body or the `LazyVStack` itself.
 /// That invariant is what prevents the layout-invalidation loop that caused
-/// https://github.com/manaflow-ai/cmux/issues/2586.
+/// https://github.com/emergent-inc/cmux/issues/2586.
 ///
 /// Begin/clear of a drag also drive the process-wide cross-window identity
 /// through the injected ``SidebarWorkspaceDragRegistering`` seam so a destination
