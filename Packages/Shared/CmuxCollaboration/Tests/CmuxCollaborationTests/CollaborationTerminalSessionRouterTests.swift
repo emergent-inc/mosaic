@@ -68,13 +68,19 @@ struct CollaborationTerminalSessionRouterTests {
     }
 
     @Test(arguments: [
-        (isShared: false, action: CollaborationTerminalShareAction.presentSessionChooser),
-        (isShared: true, action: CollaborationTerminalShareAction.leaveSharedTerminal),
+        (isShared: false, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentSessionChooser),
+        (isShared: false, workspaceHasSession: true, action: CollaborationTerminalShareAction.rejoinWorkspaceSession),
+        (isShared: true, workspaceHasSession: false, action: CollaborationTerminalShareAction.leaveSharedTerminal),
+        (isShared: true, workspaceHasSession: true, action: CollaborationTerminalShareAction.leaveSharedTerminal),
     ])
-    func terminalButtonActionDependsOnlyOnWhetherTheTerminalIsAlreadyShared(
+    func terminalButtonActionUsesSharedStateBeforeWorkspaceSessionBinding(
         isShared: Bool,
+        workspaceHasSession: Bool,
         action: CollaborationTerminalShareAction
     ) {
-        #expect(CollaborationTerminalShareAction.action(isShared: isShared) == action)
+        #expect(CollaborationTerminalShareAction.action(
+            isShared: isShared,
+            workspaceHasSession: workspaceHasSession
+        ) == action)
     }
 }
