@@ -50,9 +50,9 @@ final class SidebarSelectedWorkspaceColorTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(color.redComponent, 0, accuracy: 0.001)
-        XCTAssertEqual(color.greenComponent, 136.0 / 255.0, accuracy: 0.001)
-        XCTAssertEqual(color.blueComponent, 1.0, accuracy: 0.001)
+        XCTAssertEqual(color.redComponent, 82.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(color.greenComponent, 82.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(color.blueComponent, 82.0 / 255.0, accuracy: 0.001)
         XCTAssertEqual(color.alphaComponent, 1.0, accuracy: 0.001)
     }
 
@@ -62,9 +62,9 @@ final class SidebarSelectedWorkspaceColorTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(color.redComponent, 0, accuracy: 0.001)
-        XCTAssertEqual(color.greenComponent, 145.0 / 255.0, accuracy: 0.001)
-        XCTAssertEqual(color.blueComponent, 1.0, accuracy: 0.001)
+        XCTAssertEqual(color.redComponent, 161.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(color.greenComponent, 161.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(color.blueComponent, 170.0 / 255.0, accuracy: 0.001)
         XCTAssertEqual(color.alphaComponent, 1.0, accuracy: 0.001)
     }
 
@@ -3970,6 +3970,51 @@ final class SidebarWorkspaceDetailSettingsTests: XCTestCase {
 }
 
 
+final class SidebarTabItemSettingsSnapshotTitleOnlyTests: XCTestCase {
+    func testDefaultSidebarRowsStayTitleOnlyEvenWhenLegacyDetailSettingsAreEnabled() {
+        let suiteName = "SidebarTabItemSettingsSnapshotTitleOnlyTests.Enabled.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create isolated UserDefaults suite")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let catalog = SettingCatalog()
+        defaults.set(false, forKey: catalog.sidebar.hideAllDetails.userDefaultsKey)
+        defaults.set(true, forKey: catalog.sidebar.showWorkspaceDescription.userDefaultsKey)
+        defaults.set(true, forKey: catalog.sidebar.showNotificationMessage.userDefaultsKey)
+        defaults.set(true, forKey: "sidebarShowStatusPills")
+        defaults.set(true, forKey: "sidebarShowLog")
+        defaults.set(true, forKey: "sidebarShowProgress")
+        defaults.set(true, forKey: "sidebarShowBranchDirectory")
+        defaults.set(true, forKey: "sidebarShowPullRequest")
+        defaults.set(true, forKey: "sidebarShowPorts")
+
+        let snapshot = SidebarTabItemSettingsSnapshot(defaults: defaults)
+
+        XCTAssertFalse(snapshot.hidesAllDetails)
+        XCTAssertFalse(snapshot.showsWorkspaceDescription)
+        XCTAssertFalse(snapshot.showsNotificationMessage)
+        XCTAssertEqual(snapshot.visibleAuxiliaryDetails, .hidden)
+    }
+
+    func testDefaultSidebarRowsStayTitleOnlyWhenDetailSettingsAreUnset() {
+        let suiteName = "SidebarTabItemSettingsSnapshotTitleOnlyTests.Unset.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create isolated UserDefaults suite")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let snapshot = SidebarTabItemSettingsSnapshot(defaults: defaults)
+
+        XCTAssertFalse(snapshot.showsWorkspaceDescription)
+        XCTAssertFalse(snapshot.showsNotificationMessage)
+        XCTAssertEqual(snapshot.visibleAuxiliaryDetails, .hidden)
+    }
+}
+
+
 final class SidebarWorkspaceAuxiliaryDetailVisibilityTests: XCTestCase {
     func testResolvedVisibilityPreservesPerRowTogglesWhenDetailsAreShown() {
         XCTAssertEqual(
@@ -7291,6 +7336,70 @@ final class SidebarWorkspaceShortcutHintMetricsTests: XCTestCase {
         let base = SidebarWorkspaceShortcutHintMetrics().slotWidth(label: "⌘1", debugXOffset: 0)
         let widened = SidebarWorkspaceShortcutHintMetrics().slotWidth(label: "⌘1", debugXOffset: 10)
         XCTAssertGreaterThan(widened, base)
+    }
+}
+
+@MainActor
+final class MosaicVisibleBrandingTests: XCTestCase {
+    func testHelpMenuResourcesUseMosaicDestinations() {
+        let docResources: [(CmuxHelpResource, String)] = [
+            (.gettingStarted, "https://mosaic.com/docs/getting-started"),
+            (.concepts, "https://mosaic.com/docs/concepts"),
+            (.configuration, "https://mosaic.com/docs/configuration"),
+            (.customCommands, "https://mosaic.com/docs/custom-commands"),
+            (.dock, "https://mosaic.com/docs/dock"),
+            (.keyboardShortcuts, "https://mosaic.com/docs/keyboard-shortcuts"),
+            (.apiReference, "https://mosaic.com/docs/api"),
+            (.browserAutomation, "https://mosaic.com/docs/browser-automation"),
+            (.notifications, "https://mosaic.com/docs/notifications"),
+            (.ssh, "https://mosaic.com/docs/ssh"),
+            (.skills, "https://mosaic.com/docs/skills"),
+            (.claudeCodeTeams, "https://mosaic.com/docs/agent-integrations/claude-code-teams"),
+            (.ohMyOpenCode, "https://mosaic.com/docs/agent-integrations/oh-my-opencode"),
+            (.ohMyCodex, "https://mosaic.com/docs/agent-integrations/oh-my-codex"),
+            (.ohMyClaudeCode, "https://mosaic.com/docs/agent-integrations/oh-my-claudecode"),
+            (.changelog, "https://mosaic.com/docs/changelog"),
+        ]
+
+        for (resource, expectedURL) in docResources {
+            XCTAssertEqual(resource.url.absoluteString, expectedURL)
+        }
+        XCTAssertEqual(CmuxHelpResource.githubIssues.url, MosaicBranding.githubIssuesURL)
+        XCTAssertEqual(CmuxHelpResource.discord.url.absoluteString, "https://discord.gg/zmWHDeZffZ")
+    }
+
+    func testSidebarAndHelpMenuShareMosaicDestinations() {
+        XCTAssertEqual(MosaicBranding.docsBaseURL.absoluteString, "https://mosaic.com/docs")
+        XCTAssertEqual(MosaicBranding.docsURL("changelog").absoluteString, "https://mosaic.com/docs/changelog")
+        XCTAssertEqual(MosaicBranding.githubRepositoryURL.absoluteString, "https://github.com/manaflow-ai/mosaic")
+        XCTAssertEqual(MosaicBranding.githubIssuesURL.absoluteString, "https://github.com/manaflow-ai/mosaic/issues")
+    }
+
+    func testWindowTitleFallbackUsesMosaic() {
+        let manager = TabManager()
+        let window = NSWindow(contentRect: .zero, styleMask: [], backing: .buffered, defer: false)
+        manager.window = window
+
+        manager.updateWindowTitle(for: nil)
+
+        XCTAssertEqual(window.title, "mosaic")
+    }
+
+    func testRebrandedRuntimeLabelsUseMosaic() {
+        XCTAssertEqual(KeyboardShortcutSettings.Action.quit.label, "Quit mosaic")
+        XCTAssertEqual(SocketControlMode.cmuxOnly.displayName, "mosaic processes only")
+        XCTAssertEqual(
+            SocketControlMode.cmuxOnly.description,
+            "Only processes started inside mosaic terminals can send commands."
+        )
+        XCTAssertEqual(
+            BrowserImportAutomationError.destinationProfileNotFound("work").errorDescription,
+            "No mosaic browser profile matches 'work'"
+        )
+        XCTAssertEqual(
+            BrowserProfileAutomationError.ambiguousProfile("work").errorDescription,
+            "Multiple mosaic browser profiles match 'work'. Use the profile ID instead."
+        )
     }
 }
 
