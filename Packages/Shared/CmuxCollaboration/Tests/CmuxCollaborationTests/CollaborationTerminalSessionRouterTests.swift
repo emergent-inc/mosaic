@@ -70,8 +70,8 @@ struct CollaborationTerminalSessionRouterTests {
     @Test(arguments: [
         (isShared: false, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentSessionChooser),
         (isShared: false, workspaceHasSession: true, action: CollaborationTerminalShareAction.rejoinWorkspaceSession),
-        (isShared: true, workspaceHasSession: false, action: CollaborationTerminalShareAction.leaveSharedTerminal),
-        (isShared: true, workspaceHasSession: true, action: CollaborationTerminalShareAction.leaveSharedTerminal),
+        (isShared: true, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentParticipantPicker),
+        (isShared: true, workspaceHasSession: true, action: CollaborationTerminalShareAction.presentParticipantPicker),
     ])
     func terminalButtonActionUsesSharedStateBeforeWorkspaceSessionBinding(
         isShared: Bool,
