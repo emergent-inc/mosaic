@@ -792,7 +792,7 @@ struct EmptyPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: GhosttyBackgroundTheme.currentColor()))
+        .background(Color(nsColor: MosaicChromePalette.workspaceBackgroundColor))
 #if DEBUG
         .onAppear {
             DebugUIEventCounters.emptyPanelAppearCount += 1

@@ -54,7 +54,7 @@ export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | nu
 }
 
 export function randomSessionCode(): string {
-  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const values = new Uint8Array(4);
   crypto.getRandomValues(values);
   return [...values].map((value) => alphabet[value % alphabet.length]).join("");

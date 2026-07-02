@@ -1609,24 +1609,7 @@ final class CollaborationRuntime {
     }
 
     private func presentJoinDialog() {
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.joinSession
-        alert.informativeText = CollaborationStrings.joinMessage
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        let codeField = NSTextField(string: "")
-        codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
-        stack.addArrangedSubview(codeField)
-        alert.accessoryView = stack
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let code = Self.normalizedSessionCode(from: codeField.stringValue)
+        guard let code = runJoinCodeDialog() else { return }
         Task { await joinSession(code: code) }
     }
 
@@ -1670,24 +1653,7 @@ final class CollaborationRuntime {
     }
 
     private func presentJoinDialog(thenShare panel: any CollaborationEditablePanel) {
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.joinSession
-        alert.informativeText = CollaborationStrings.joinMessage
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
-        alert.addButton(withTitle: CollaborationStrings.cancel)
-
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        let codeField = NSTextField(string: "")
-        codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
-        stack.addArrangedSubview(codeField)
-        alert.accessoryView = stack
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let code = Self.normalizedSessionCode(from: codeField.stringValue)
+        guard let code = runJoinCodeDialog() else { return }
         Task {
             await joinSession(code: code)
             share(panel: panel)
@@ -1695,6 +1661,15 @@ final class CollaborationRuntime {
     }
 
     private func presentJoinDialog(thenBindWorkspaceFor terminal: TerminalPanel) {
+        guard let code = runJoinCodeDialog() else { return }
+        Task {
+            if let connection = await joinSession(code: code) {
+                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
+            }
+        }
+    }
+
+    private func runJoinCodeDialog() -> String? {
         let alert = NSAlert()
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.joinSession
@@ -1702,22 +1677,14 @@ final class CollaborationRuntime {
         alert.addButton(withTitle: CollaborationStrings.joinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
 
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
-        let codeField = NSTextField(string: "")
-        codeField.placeholderString = CollaborationStrings.sessionCodePlaceholder
-        stack.addArrangedSubview(codeField)
-        alert.accessoryView = stack
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let code = Self.normalizedSessionCode(from: codeField.stringValue)
-        Task {
-            if let connection = await joinSession(code: code) {
-                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
-            }
-        }
+        let entryView = CollaborationInviteCodeEntryView(
+            accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
+        )
+        alert.accessoryView = entryView
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        guard entryView.isComplete else { return nil }
+        let code = Self.normalizedSessionCode(from: entryView.code)
+        return code.isEmpty ? nil : code
     }
 
     private func configureCollaborationAlertChrome(_ alert: NSAlert) {

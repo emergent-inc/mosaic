@@ -171,9 +171,9 @@ enum TabBarColors {
             return .clear
         }
         let adjusted = custom.isBonsplitLightColor
-            ? custom.bonsplitDarken(by: 0.065)
-            : custom.bonsplitLighten(by: 0.12)
-        return Color(nsColor: adjusted)
+            ? custom.bonsplitDarken(by: 0.055)
+            : custom.bonsplitLighten(by: 0.085)
+        return Color(nsColor: adjusted.withAlphaComponent(0.92))
     }
 
     static var hoveredTabBackground: Color {
@@ -192,9 +192,9 @@ enum TabBarColors {
             return Color(nsColor: overlayColor)
         }
         let adjusted = custom.isBonsplitLightColor
-            ? custom.bonsplitDarken(by: 0.03)
-            : custom.bonsplitLighten(by: 0.07)
-        return Color(nsColor: adjusted.withAlphaComponent(0.78))
+            ? custom.bonsplitDarken(by: 0.025)
+            : custom.bonsplitLighten(by: 0.045)
+        return Color(nsColor: adjusted.withAlphaComponent(0.58))
     }
 
     static var inactiveTabBackground: Color {
@@ -273,7 +273,7 @@ enum TabBarColors {
     }
 
     static func activeIndicator(saturation: Double) -> Color {
-        return Color(nsColor: NSColor.controlAccentColor.bonsplitSaturating(by: saturation))
+        Color.white.opacity(saturation > 0 ? 0.32 : 0.18)
     }
 
     static var focusRing: Color {
