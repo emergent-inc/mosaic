@@ -6,7 +6,7 @@ This is a standalone macOS app that embeds a CMUX sidebar ExtensionKit app exten
 
 1. Open `SampleSidebarExtensionApp.xcodeproj`.
 2. Select the app and extension targets.
-3. Replace the Manaflow signing team with your own team.
+3. Replace the emergent.inc signing team with your own team.
 4. Replace the app and extension bundle identifiers with your own reverse-DNS identifiers.
 5. Keep the extension point identifier as `com.cmuxterm.app.cmux.sidebar`.
 6. Build and launch the containing app once.

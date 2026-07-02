@@ -16,7 +16,7 @@ extension NSWindow {
     /// justifying it (e.g. DEBUG HUD/lab panels). Accidentally inheriting a
     /// floating level — via an `NSPanel` default or a stray `level = .floating`
     /// — is what produced the "Settings floats above the main window forever"
-    /// bug (https://github.com/manaflow-ai/cmux/issues/5081).
+    /// bug (https://github.com/emergent-inc/cmux/issues/5081).
     ///
     /// - Note: A plain `NSWindow` / SwiftUI `Window` scene already defaults to
     ///   `.normal`; calling this makes the invariant explicit and guards against

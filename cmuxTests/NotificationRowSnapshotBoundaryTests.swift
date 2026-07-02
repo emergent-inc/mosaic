@@ -8,7 +8,7 @@ import Testing
 @testable import cmux
 #endif
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5794.
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5794.
 ///
 /// The notification surfaces (`NotificationsPage` and the titlebar
 /// `NotificationPopoverRow` list) render

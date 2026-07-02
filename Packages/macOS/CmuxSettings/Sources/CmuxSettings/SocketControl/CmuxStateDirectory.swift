@@ -15,7 +15,7 @@ public import Foundation
 /// The CLI touches the control socket and the socket password on **every** agent
 /// session-start and session-stop hook, so keeping those files in Application
 /// Support made the prompt fire constantly
-/// (https://github.com/manaflow-ai/cmux/issues/5146).
+/// (https://github.com/emergent-inc/cmux/issues/5146).
 ///
 /// This directory therefore resolves to `~/.local/state/cmux`, a plain dotfolder
 /// macOS does **not** treat as protected app data. It is the sibling of the

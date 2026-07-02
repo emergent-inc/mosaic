@@ -31,7 +31,7 @@ extension CMUXCLI {
         /// must not consume the session or clear the surface resume binding —
         /// otherwise the restore record is destroyed after the first turn and
         /// nothing survives a quit/relaunch. See
-        /// https://github.com/manaflow-ai/cmux/issues/5000.
+        /// https://github.com/emergent-inc/cmux/issues/5000.
         ///
         /// Agents whose runtime distinguishes a per-turn boundary from a genuine
         /// session teardown (hermes-agent emits both `on_session_end` per turn and

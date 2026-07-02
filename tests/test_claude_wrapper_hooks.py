@@ -1005,7 +1005,7 @@ def test_live_socket_normalizes_subrouter_claude_config_dir(failures: list[str])
 
 
 def test_live_socket_resume_self_heals_mismatched_claude_config_dir(failures: list[str]) -> None:
-    # Regression for https://github.com/manaflow-ai/cmux/issues/6194: when cmux is
+    # Regression for https://github.com/emergent-inc/cmux/issues/6194: when cmux is
     # launched with a foreign CLAUDE_CONFIG_DIR (e.g. the .app was opened from a
     # terminal whose agent set one), a restored `claude --resume <id>` must still
     # find the session by self-healing CLAUDE_CONFIG_DIR to the config root that
@@ -1090,9 +1090,9 @@ def test_stale_socket_resume_self_heals_mismatched_claude_config_dir(failures: l
     def setup_env(tmp: Path) -> dict[str, str]:
         home = tmp / "home"
         default_root = home / ".claude"
-        (default_root / "projects" / "-Users-austinwang-manaflow-term-cmux166").mkdir(parents=True)
+        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166").mkdir(parents=True)
         (
-            default_root / "projects" / "-Users-austinwang-manaflow-term-cmux166" / f"{session_id}.jsonl"
+            default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166" / f"{session_id}.jsonl"
         ).write_text("{}\n", encoding="utf-8")
         foreign_root = home / ".codex-accounts" / "claude" / "_pforeign"
         (foreign_root / "projects").mkdir(parents=True)
@@ -1132,9 +1132,9 @@ def test_stale_socket_resume_self_heals_after_value_option(failures: list[str]) 
     def setup_env(tmp: Path) -> dict[str, str]:
         home = tmp / "home"
         default_root = home / ".claude"
-        (default_root / "projects" / "-Users-austinwang-manaflow-term-cmux166").mkdir(parents=True)
+        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166").mkdir(parents=True)
         (
-            default_root / "projects" / "-Users-austinwang-manaflow-term-cmux166" / f"{session_id}.jsonl"
+            default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166" / f"{session_id}.jsonl"
         ).write_text("{}\n", encoding="utf-8")
         foreign_root = home / ".codex-accounts" / "claude" / "_pforeign"
         (foreign_root / "projects").mkdir(parents=True)
@@ -1430,7 +1430,7 @@ def test_live_socket_preserves_only_listed_claude_auth_keys(failures: list[str])
 
 
 def test_live_socket_auto_preserves_vertex_auth_when_truthy(failures: list[str]) -> None:
-    # Regression for https://github.com/manaflow-ai/cmux/issues/3641.
+    # Regression for https://github.com/emergent-inc/cmux/issues/3641.
     inherited = {
         "CLAUDE_CODE_USE_VERTEX": "1",
         "ANTHROPIC_API_KEY": "anthropic-key-must-be-scrubbed-on-vertex",
@@ -1488,7 +1488,7 @@ def test_live_socket_auto_preserves_vertex_auth_when_truthy(failures: list[str])
 
 
 def test_live_socket_auto_preserves_bedrock_auth_when_truthy(failures: list[str]) -> None:
-    # Regression for https://github.com/manaflow-ai/cmux/issues/3638.
+    # Regression for https://github.com/emergent-inc/cmux/issues/3638.
     inherited = {
         "CLAUDE_CODE_USE_BEDROCK": "1",
         "ANTHROPIC_API_KEY": "anthropic-key-must-be-scrubbed-on-bedrock",
@@ -1586,7 +1586,7 @@ def test_live_socket_does_not_auto_preserve_when_all_backends_are_falsy(failures
 
 
 def test_live_socket_preserves_plain_anthropic_model_on_default_path(failures: list[str]) -> None:
-    # Regression for https://github.com/manaflow-ai/cmux/issues/7047.
+    # Regression for https://github.com/emergent-inc/cmux/issues/7047.
     # A user who pins `export ANTHROPIC_MODEL=claude-opus-4-8[1m]` to get the
     # Max-plan 1M context window must keep that selection inside cmux on the
     # default Anthropic API path, exactly like a plain Terminal does. A plain

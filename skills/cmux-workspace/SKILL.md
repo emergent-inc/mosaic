@@ -45,7 +45,7 @@ cmux new-pane --workspace "${CMUX_WORKSPACE_ID}" --type terminal --direction dow
 
 Avoid create-then-move-then-focus chains. If a layout command rejects a valid `surface:` or `pane:` ref, do not work around it by focusing. Report the bug to the user and stop.
 
-Pass `--focus false` whenever the verb supports it. `move-surface --focus false` preserves the user's current attention. Other commands may grow the same flag over time (https://github.com/manaflow-ai/cmux/issues/1418, https://github.com/manaflow-ai/cmux/issues/2820).
+Pass `--focus false` whenever the verb supports it. `move-surface --focus false` preserves the user's current attention. Other commands may grow the same flag over time (https://github.com/emergent-inc/cmux/issues/1418, https://github.com/emergent-inc/cmux/issues/2820).
 
 ## Right-Side Helper Pane
 
@@ -159,7 +159,7 @@ Split a surface off into a new pane:
 cmux drag-surface-to-split --surface surface:240 down
 ```
 
-Known papercut: `drag-surface-to-split` currently routes through V1 and resolves the workspace via UI focus, so it can fail with `ERROR: Surface not found` when the caller's workspace is not the visually focused one. Tracked at https://github.com/manaflow-ai/cmux/issues/1901, related to https://github.com/manaflow-ai/cmux/issues/3189. Until that lands, prefer building the layout additively (see Non-Disruptive Automation above) over create-then-split.
+Known papercut: `drag-surface-to-split` currently routes through V1 and resolves the workspace via UI focus, so it can fail with `ERROR: Surface not found` when the caller's workspace is not the visually focused one. Tracked at https://github.com/emergent-inc/cmux/issues/1901, related to https://github.com/emergent-inc/cmux/issues/3189. Until that lands, prefer building the layout additively (see Non-Disruptive Automation above) over create-then-split.
 
 Do not call `focus-pane` or `focus-panel` to recover from a failed move. Report the failure and stop.
 

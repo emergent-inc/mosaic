@@ -4,7 +4,7 @@
 <p align="center">Un terminal macOS basé sur Ghostty avec des onglets verticaux et des notifications pour les agents de programmation IA</p>
 
 <p align="center">
-  <a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+  <a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
     <img src="./docs/assets/macos-badge.png" alt="Télécharger cmux pour macOS" width="180" />
   </a>
 </p>
@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <a href="https://x.com/manaflowai"><img src="https://img.shields.io/badge/@manaflow-555?logo=x" alt="X / Twitter" /></a>
+  <a href="https://x.com/emergentinc"><img src="https://img.shields.io/badge/@emergent.inc-555?logo=x" alt="X / Twitter" /></a>
   <a href="https://discord.gg/xsgFEVrWCZ"><img src="https://img.shields.io/badge/Discord-555?logo=discord" alt="Discord" /></a>
-  <a href="https://github.com/manaflow-ai/cmux"><img src="https://img.shields.io/github/stars/manaflow-ai/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
+  <a href="https://github.com/emergent-inc/cmux"><img src="https://img.shields.io/github/stars/emergent-inc/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@ La barre latérale affiche la branche git, le statut/numéro de PR lié, le rép
 
 ### DMG (recommandé)
 
-<a href="https://github.com/manaflow-ai/cmux/releases/latest/download/cmux-macos.dmg">
+<a href="https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg">
   <img src="./docs/assets/macos-badge.png" alt="Télécharger cmux pour macOS" width="180" />
 </a>
 
@@ -108,7 +108,7 @@ Ouvrez le `.dmg` et glissez cmux dans votre dossier Applications. cmux se met à
 ### Homebrew
 
 ```bash
-brew tap manaflow-ai/cmux
+brew tap emergent-inc/cmux
 brew install --cask cmux
 ```
 
@@ -242,11 +242,11 @@ Les raccourcis de navigation de la palette de commandes, y compris ⌃ P, sont �
 
 ## Builds Nightly
 
-[Télécharger cmux NIGHTLY](https://github.com/manaflow-ai/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
+[Télécharger cmux NIGHTLY](https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
 
 cmux NIGHTLY est une application séparée avec son propre identifiant de bundle, elle fonctionne donc en parallèle de la version stable. Construite automatiquement à partir du dernier commit `main` et mise à jour automatiquement via son propre flux Sparkle.
 
-Signalez les bugs nightly sur [GitHub Issues](https://github.com/manaflow-ai/cmux/issues) ou dans [#nightly-bugs sur Discord](https://discord.gg/xsgFEVrWCZ).
+Signalez les bugs nightly sur [GitHub Issues](https://github.com/emergent-inc/cmux/issues) ou dans [#nightly-bugs sur Discord](https://discord.gg/xsgFEVrWCZ).
 
 ## Restauration de session
 
@@ -363,7 +363,7 @@ cmux peut diviser un véritable panneau navigateur à côté de votre terminal, 
 
 ### cmux dispose-t-il de skills ?
 
-Oui. Les skills sont des flux de travail réutilisables que vous pouvez donner à n'importe quel agent s'exécutant dans cmux, pour des choses comme le contrôle du CLI, l'automatisation des espaces de travail, les paramètres et les surfaces navigateur. Parcourez la collection ouverte sur [cmux-skills](https://github.com/manaflow-ai/cmux-skills), ou lisez la [documentation des skills](https://cmux.com/docs/skills).
+Oui. Les skills sont des flux de travail réutilisables que vous pouvez donner à n'importe quel agent s'exécutant dans cmux, pour des choses comme le contrôle du CLI, l'automatisation des espaces de travail, les paramètres et les surfaces navigateur. Parcourez la collection ouverte sur [cmux-skills](https://github.com/emergent-inc/cmux-skills), ou lisez la [documentation des skills](https://cmux.com/docs/skills).
 
 ### Puis-je personnaliser les raccourcis clavier ?
 
@@ -383,23 +383,23 @@ tmux est un multiplexeur de terminal qui s'exécute dans n'importe quel terminal
 
 ### cmux est-il gratuit ?
 
-Oui, cmux est gratuit à utiliser. Le code source est disponible sur [GitHub](https://github.com/manaflow-ai/cmux).
+Oui, cmux est gratuit à utiliser. Le code source est disponible sur [GitHub](https://github.com/emergent-inc/cmux).
 
 ### Comment puis-je soutenir cmux ?
 
-cmux est gratuit et open source, et le restera toujours. Si vous voulez soutenir le développement et obtenir un accès anticipé à ce qui arrive, y compris cmux AI, l'application iOS et les Cloud VMs, découvrez [cmux Founders Edition](https://github.com/manaflow-ai/cmux#founders-edition).
+cmux est gratuit et open source, et le restera toujours. Si vous voulez soutenir le développement et obtenir un accès anticipé à ce qui arrive, y compris cmux AI, l'application iOS et les Cloud VMs, découvrez [cmux Founders Edition](https://github.com/emergent-inc/cmux#founders-edition).
 
 ### J'ai une demande de fonctionnalité ou j'ai trouvé un bug ?
 
-Nous voulons en entendre parler. Ouvrez une [issue](https://github.com/manaflow-ai/cmux/issues) ou une [pull request](https://github.com/manaflow-ai/cmux/pulls) sur GitHub, ou [écrivez-nous](mailto:founders@manaflow.com?subject=cmux%20feature%20request).
+Nous voulons en entendre parler. Ouvrez une [issue](https://github.com/emergent-inc/cmux/issues) ou une [pull request](https://github.com/emergent-inc/cmux/pulls) sur GitHub, ou [écrivez-nous](mailto:contact@emergent.inc?subject=cmux%20feature%20request).
 
 ## Historique des étoiles
 
-<a href="https://star-history.com/#manaflow-ai/cmux&Date">
+<a href="https://star-history.com/#emergent-inc/cmux&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=manaflow-ai/cmux&type=Date" width="600" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=emergent-inc/cmux&type=Date" width="600" />
  </picture>
 </a>
 
@@ -407,18 +407,18 @@ Nous voulons en entendre parler. Ouvrez une [issue](https://github.com/manaflow-
 
 Façons de s'impliquer :
 
-- Suivez-nous sur X pour les mises à jour [@manaflowai](https://x.com/manaflowai), [@lawrencecchen](https://x.com/lawrencecchen), et [@austinywang](https://x.com/austinywang)
+- Suivez-nous sur X pour les mises à jour [@emergentinc](https://x.com/emergentinc), [@lawrencecchen](https://x.com/lawrencecchen), et [@austinywang](https://x.com/austinywang)
 - Rejoignez la conversation sur [Discord](https://discord.gg/xsgFEVrWCZ)
-- Créez et participez aux [issues GitHub](https://github.com/manaflow-ai/cmux/issues) et aux [discussions](https://github.com/manaflow-ai/cmux/discussions)
+- Créez et participez aux [issues GitHub](https://github.com/emergent-inc/cmux/issues) et aux [discussions](https://github.com/emergent-inc/cmux/discussions)
 - Dites-nous ce que vous construisez avec cmux
 
 ## Communauté
 
 - [Discord](https://discord.gg/xsgFEVrWCZ)
-- [GitHub](https://github.com/manaflow-ai/cmux)
-- [X / Twitter](https://twitter.com/manaflowai)
+- [GitHub](https://github.com/emergent-inc/cmux)
+- [X / Twitter](https://twitter.com/emergentinc)
 - [YouTube](https://www.youtube.com/channel/UCAa89_j-TWkrXfk9A3CbASw)
-- [LinkedIn](https://www.linkedin.com/company/manaflow-ai/)
+- [LinkedIn](https://www.linkedin.com/company/emergent-inc/)
 - [Reddit](https://www.reddit.com/r/cmux/)
 
 ## Édition Fondateur
@@ -438,4 +438,4 @@ cmux est gratuit, open source, et le restera toujours. Si vous souhaitez souteni
 
 cmux est open source sous [GPL-3.0-or-later](LICENSE).
 
-Si votre organisation ne peut pas se conformer à la GPL, une licence commerciale est disponible. Contactez [founders@manaflow.com](mailto:founders@manaflow.com) pour plus de détails.
+Si votre organisation ne peut pas se conformer à la GPL, une licence commerciale est disponible. Contactez [contact@emergent.inc](mailto:contact@emergent.inc) pour plus de détails.

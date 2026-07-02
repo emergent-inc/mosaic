@@ -25,7 +25,7 @@ struct CMUXExtensionKitTests {
                     unreadCount: 2,
                     latestNotification: "Tests passed",
                     listeningPorts: [3000],
-                    pullRequestURLs: ["https://github.com/manaflow-ai/cmux/pull/1"]
+                    pullRequestURLs: ["https://github.com/emergent-inc/cmux/pull/1"]
                 ),
             ]
         )
@@ -99,7 +99,7 @@ struct CMUXExtensionKitTests {
                     unreadCount: 2,
                     latestNotification: "Private notification",
                     listeningPorts: [3000, 5173],
-                    pullRequestURLs: ["https://github.com/manaflow-ai/cmux/pull/4994"]
+                    pullRequestURLs: ["https://github.com/emergent-inc/cmux/pull/4994"]
                 ),
             ]
         )
@@ -141,7 +141,7 @@ struct CMUXExtensionKitTests {
                     unreadCount: 9,
                     latestNotification: "Sensitive notification",
                     listeningPorts: [8080],
-                    pullRequestURLs: ["https://github.com/manaflow-ai/cmux/pull/4994"]
+                    pullRequestURLs: ["https://github.com/emergent-inc/cmux/pull/4994"]
                 ),
             ]
         )
@@ -193,7 +193,7 @@ struct CMUXExtensionKitTests {
                     unreadCount: 2,
                     latestNotification: "Tests failed",
                     listeningPorts: [3000],
-                    pullRequestURLs: ["https://github.com/manaflow-ai/cmux/pull/4994"]
+                    pullRequestURLs: ["https://github.com/emergent-inc/cmux/pull/4994"]
                 ),
             ]
         )
@@ -299,7 +299,7 @@ struct CMUXExtensionKitTests {
                     unreadCount: 9,
                     latestNotification: "Sensitive notification",
                     listeningPorts: [8080],
-                    pullRequestURLs: ["https://github.com/manaflow-ai/cmux/pull/4994"],
+                    pullRequestURLs: ["https://github.com/emergent-inc/cmux/pull/4994"],
                     surfaces: [
                         CmuxSidebarSurface(id: UUID(), title: "Private Surface", kind: .terminal),
                     ]

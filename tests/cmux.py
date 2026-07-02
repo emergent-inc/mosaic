@@ -48,7 +48,7 @@ class cmuxError(Exception):
 # The control socket, markers, and password live in the non-TCC cmux state
 # directory (~/.local/state/cmux), not Application Support, so the separately
 # signed cmux CLI can touch them without the macOS "access data from other apps"
-# prompt (https://github.com/manaflow-ai/cmux/issues/5146).
+# prompt (https://github.com/emergent-inc/cmux/issues/5146).
 _STATE_DIR = os.path.expanduser("~/.local/state/cmux")
 _STABLE_SOCKET_PATH = os.path.join(_STATE_DIR, "cmux.sock")
 _LEGACY_STABLE_SOCKET_PATH = "/tmp/cmux.sock"

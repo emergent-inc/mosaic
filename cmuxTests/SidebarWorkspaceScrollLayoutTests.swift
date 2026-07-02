@@ -35,7 +35,7 @@ struct SidebarWorkspaceScrollLayoutTests {
         // `document + insets` a sub-point past the viewport, so the content
         // becomes (barely) scrollable and the auto-hiding overlay scroller is
         // shown even when only a single workspace is present — the phantom
-        // sidebar scrollbar (https://github.com/manaflow-ai/cmux/issues/3241).
+        // sidebar scrollbar (https://github.com/emergent-inc/cmux/issues/3241).
         //
         // Guard the invariant directly: the content height must stay point
         // aligned. Rounding up to a whole point is a conservative

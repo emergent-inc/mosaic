@@ -130,7 +130,7 @@ public final class UpdateStateModel {
             retry: { [weak self] in self?.setOverrideState(nil) },
             dismiss: { [weak self] in self?.setOverrideState(nil) },
             technicalDetails: "debug scenario: \(scenario.rawValue)",
-            feedURLString: "https://github.com/manaflow-ai/cmux/releases/latest/download/appcast.xml"
+            feedURLString: "https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml"
         )))
     }
     #endif

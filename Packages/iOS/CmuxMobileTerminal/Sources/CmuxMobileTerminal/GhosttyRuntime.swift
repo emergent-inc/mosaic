@@ -6,7 +6,7 @@ import GhosttyKit
 import OSLog
 import UIKit
 
-private let log = Logger(subsystem: "ai.manaflow.cmux.ios", category: "ghostty.runtime")
+private let log = Logger(subsystem: "ai.emergent.inc.cmux.ios", category: "ghostty.runtime")
 
 // lint:allow free-function — @convention(c) trampoline: libghostty takes a C
 // function pointer, which cannot capture context or live on a Swift type.

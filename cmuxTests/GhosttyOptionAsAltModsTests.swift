@@ -8,7 +8,7 @@ import Testing
     @testable import cmux
 #endif
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/5993:
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/5993:
 /// cmux ignored `macos-option-as-alt` left/right and captured Option before
 /// character composition.
 ///

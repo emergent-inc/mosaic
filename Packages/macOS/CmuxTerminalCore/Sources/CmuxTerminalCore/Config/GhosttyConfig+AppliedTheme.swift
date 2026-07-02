@@ -20,7 +20,7 @@ extension GhosttyConfig {
     /// cmux painted a light theme's near-white background under Ghostty's default
     /// near-white foreground in the mismatched appearance — the unreadable
     /// white-on-white regression in
-    /// https://github.com/manaflow-ai/cmux/issues/6411. Resolving the same way the
+    /// https://github.com/emergent-inc/cmux/issues/6411. Resolving the same way the
     /// surface does keeps the host background and terminal foreground consistent.
     public static func appliedThemeName(
         from rawThemeValue: String,

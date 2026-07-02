@@ -14,7 +14,7 @@ import Foundation
 /// found regardless of how the app was launched.
 ///
 /// Resolution order is **dogfood account first, then agent account**, so the
-/// dog Mac comes up as the human dogfood account (`lawrence@manaflow.ai`) even
+/// dog Mac comes up as the human dogfood account (`lawrence@emergent.inc`) even
 /// when an agent's `CMUX_UITEST_*` creds are also present (the iOS dogfood flow
 /// commonly leaves those in the environment / `~/.secrets`). Within each
 /// account, env wins over `~/.secrets/cmuxterm-dev.env`, which wins over

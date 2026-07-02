@@ -20,7 +20,7 @@ import {
 const THREAD_HEADER = "X-Entity-Ref-ID";
 
 const baseParams = {
-  from: "Austin Wang <austin@manaflow.ai>",
+  from: "Austin Wang <austin@emergent.inc>",
   customerName: "Ada Lovelace",
 } as const;
 
@@ -90,7 +90,7 @@ describe("buildFoundersWelcomeEmail", () => {
     expect(email.to).toEqual(["customer@example.com"]);
     expect(email.cc).toEqual(FOUNDER_CC);
     expect(email.replyTo).toBe(REPLY_TO);
-    expect(email.from).toBe("Austin Wang <austin@manaflow.ai>");
+    expect(email.from).toBe("Austin Wang <austin@emergent.inc>");
   });
 
   test("greets by first name and falls back to a friendly default", () => {

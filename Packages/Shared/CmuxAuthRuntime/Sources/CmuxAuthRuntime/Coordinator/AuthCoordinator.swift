@@ -3,7 +3,7 @@ import Foundation
 public import Observation
 import OSLog
 
-private let authLog = Logger(subsystem: "ai.manaflow.cmux", category: "auth")
+private let authLog = Logger(subsystem: "ai.emergent.inc.cmux", category: "auth")
 
 /// The shared, injected auth orchestrator for cmux.
 ///

@@ -8,7 +8,7 @@ import Foundation
 /// canonical identity must come from the launch surface, **not** the focused pane: stamping the focused
 /// pane desyncs `CMUX_SURFACE_ID` from the inherited `CMUX_PANEL_ID`, so an agent launched in surface B
 /// while surface A is focused records surface A and later restores into the wrong surface
-/// (https://github.com/manaflow-ai/cmux/issues/4920, the codex "jumble after reload" symptom).
+/// (https://github.com/emergent-inc/cmux/issues/4920, the codex "jumble after reload" symptom).
 ///
 /// This type is a stateless value; construct one at the call site (`AgentSpawnIdentity()`).
 ///

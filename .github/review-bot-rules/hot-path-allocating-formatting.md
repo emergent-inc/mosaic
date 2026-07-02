@@ -2,7 +2,7 @@
 
 Apply this rule to production Swift in hot, concurrent, or per-element paths: git index/path/signature encoding, terminal input/rendering, sidebar/feed/list rows, snapshot builders, and any loop or concurrent map that runs per byte, per row, per keystroke, or per frame. This is the formatting-specific sibling of `algorithmic-complexity.md`.
 
-The lesson is from cmux PR https://github.com/manaflow-ai/cmux/pull/5347: building byte-to-hex signatures with `String(format:)` in the concurrent git-index snapshot path allocated per call and was extremely slow, causing unbounded memory growth and crashes on users' machines. The fix used a fixed hex lookup table written into a preallocated buffer.
+The lesson is from cmux PR https://github.com/emergent-inc/cmux/pull/5347: building byte-to-hex signatures with `String(format:)` in the concurrent git-index snapshot path allocated per call and was extremely slow, causing unbounded memory growth and crashes on users' machines. The fix used a fixed hex lookup table written into a preallocated buffer.
 
 ## Fail
 

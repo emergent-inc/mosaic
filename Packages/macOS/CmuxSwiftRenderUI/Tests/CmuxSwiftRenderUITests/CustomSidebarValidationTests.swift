@@ -160,7 +160,7 @@ struct CustomSidebarValidationTests {
                 "pr": .object([
                     "number": .int(5812),
                     "label": .string("PR 5812"),
-                    "url": .string("https://github.com/manaflow-ai/cmux/pull/5812"),
+                    "url": .string("https://github.com/emergent-inc/cmux/pull/5812"),
                     "status": .string("open"),
                     "stale": .bool(false),
                     "branch": .string("fix-crash-on-launch"),
@@ -218,7 +218,7 @@ struct CustomSidebarValidationTests {
                 "pr": .object([
                     "number": .int(5801),
                     "label": .string("PR 5801"),
-                    "url": .string("https://github.com/manaflow-ai/cmux/pull/5801"),
+                    "url": .string("https://github.com/emergent-inc/cmux/pull/5801"),
                     "status": .string("merged"),
                     "stale": .bool(false),
                     "branch": .string("feat-sidebar"),

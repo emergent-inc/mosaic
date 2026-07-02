@@ -144,7 +144,7 @@ final class CLINotifyProcessIntegrationRegressionTests: XCTestCase {
         XCTAssertTrue(assistantPreamble.hasPrefix("recent assistant response"), "\(feedContext)")
     }
 
-    // https://github.com/manaflow-ai/cmux/issues/6606
+    // https://github.com/emergent-inc/cmux/issues/6606
     //
     // With `--dangerously-skip-permissions` Claude Code renders the blocking
     // ExitPlanMode plan-approval prompt WITHOUT firing PermissionRequest or
@@ -206,7 +206,7 @@ final class CLINotifyProcessIntegrationRegressionTests: XCTestCase {
         )
     }
 
-    // https://github.com/manaflow-ai/cmux/issues/6606
+    // https://github.com/emergent-inc/cmux/issues/6606
     //
     // Under `--dangerously-skip-permissions` PreToolUse fires for AskUserQuestion
     // (confirmed: tool_name=AskUserQuestion, permission_mode=bypassPermissions) but
@@ -601,7 +601,7 @@ final class CLINotifyProcessIntegrationRegressionTests: XCTestCase {
         )
     }
 
-    // MARK: - Forked conversation restore (https://github.com/manaflow-ai/cmux/issues/5908)
+    // MARK: - Forked conversation restore (https://github.com/emergent-inc/cmux/issues/5908)
     //
     // `claude --resume <parent> --fork-session` fires SessionStart with the PARENT
     // session id; the forked session id is only minted at the first UserPromptSubmit.

@@ -16,7 +16,7 @@ import CmuxSidebarProviderKit
 /// switch between. #4994 ("Replace sidebar extension kit contract") swept that
 /// menu behind the experimental Extensions beta flag and stubbed the built-in
 /// providers out, so on a default install (beta off) the menu and every one of
-/// its views disappeared (https://github.com/manaflow-ai/cmux/issues/5173).
+/// its views disappeared (https://github.com/emergent-inc/cmux/issues/5173).
 ///
 /// These tests pin the two guarantees the regression broke: the built-in views
 /// are available regardless of the experimental flag, and a selected view

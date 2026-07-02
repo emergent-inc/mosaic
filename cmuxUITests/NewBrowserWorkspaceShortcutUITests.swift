@@ -2,7 +2,7 @@ import XCTest
 import Foundation
 
 /// End-to-end coverage for the "New Browser Workspace" action
-/// (https://github.com/manaflow-ai/cmux/issues/5918): Option+Cmd+N creates a
+/// (https://github.com/emergent-inc/cmux/issues/5918): Option+Cmd+N creates a
 /// workspace whose initial surface is a browser pane in its default new-tab
 /// state with the address bar focused, so a URL can be typed immediately.
 final class NewBrowserWorkspaceShortcutUITests: XCTestCase {

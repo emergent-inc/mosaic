@@ -28,7 +28,7 @@ import Observation
 /// underlying `NotificationCenter.notifications(named:)` sequence. A bare
 /// `weak self` inside the loop is **not** enough — the task is parked at the
 /// `await` and never re-checks `self` for an idle key, leaking the
-/// subscription (see https://github.com/manaflow-ai/cmux/issues/5302).
+/// subscription (see https://github.com/emergent-inc/cmux/issues/5302).
 @MainActor
 @Observable
 public final class DefaultsValueModel<Value: SettingCodable> {

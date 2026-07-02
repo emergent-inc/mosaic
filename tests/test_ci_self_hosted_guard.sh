@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression test for https://github.com/manaflow-ai/cmux/issues/385.
+# Regression test for https://github.com/emergent-inc/cmux/issues/385.
 # Ensures paid CI jobs use a paid macOS runner (Blacksmith or WarpBuild, routed
 # through the MACOS_RUNNER_15 / MACOS_RUNNER_26 repo variables), never a free
 # GitHub-hosted runner. Flip Blacksmith<->Warp by editing those repo variables;

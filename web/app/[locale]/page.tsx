@@ -167,7 +167,7 @@ function HomeContent() {
               <span>
                 <strong className="font-medium">
                   <a
-                    href="https://github.com/manaflow-ai/cmux#founders-edition"
+                    href="https://github.com/emergent-inc/cmux#founders-edition"
                     className={linkClass}
                   >
                     {t("feature.ios")}
@@ -226,7 +226,7 @@ function HomeContent() {
                 {t.rich("faqIosA", {
                   foundersLink: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux#founders-edition"
+                      href="https://github.com/emergent-inc/cmux#founders-edition"
                       className={linkClass}
                     >
                       {chunks}
@@ -326,7 +326,7 @@ function HomeContent() {
                 {t.rich("faqSkillsA", {
                   skillsLink: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux-skills"
+                      href="https://github.com/emergent-inc/cmux-skills"
                       className={linkClass}
                     >
                       {chunks}
@@ -409,7 +409,7 @@ function HomeContent() {
                 {t.rich("faqFreeA", {
                   link: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux"
+                      href="https://github.com/emergent-inc/cmux"
                       className={linkClass}
                     >
                       {chunks}
@@ -424,7 +424,7 @@ function HomeContent() {
                 {t.rich("faqSupportA", {
                   foundersLink: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux#founders-edition"
+                      href="https://github.com/emergent-inc/cmux#founders-edition"
                       className={linkClass}
                     >
                       {chunks}
@@ -439,7 +439,7 @@ function HomeContent() {
                 {t.rich("faqFeatureA", {
                   issuesLink: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux/issues"
+                      href="https://github.com/emergent-inc/cmux/issues"
                       className={linkClass}
                     >
                       {chunks}
@@ -447,7 +447,7 @@ function HomeContent() {
                   ),
                   prLink: (chunks) => (
                     <a
-                      href="https://github.com/manaflow-ai/cmux/pulls"
+                      href="https://github.com/emergent-inc/cmux/pulls"
                       className={linkClass}
                     >
                       {chunks}
@@ -455,7 +455,7 @@ function HomeContent() {
                   ),
                   mailLink: (chunks) => (
                     <a
-                      href="mailto:founders@manaflow.com?subject=%5Bcmux%20feature%20request%20landing%5D&body=Hi%20cmux%20team%2C%20"
+                      href="mailto:contact@emergent.inc?subject=%5Bcmux%20feature%20request%20landing%5D&body=Hi%20cmux%20team%2C%20"
                       className={linkClass}
                     >
                       {chunks}

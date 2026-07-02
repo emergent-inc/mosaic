@@ -12,7 +12,7 @@ The codebase already reserved the seams for this:
 - `CmxAttachEndpoint.peer(id:relayHint:directAddrs:relayURL:)` already carries exactly what an iroh dial needs.
 - `MobileShellRouteAuthPolicy` already classifies `(.iroh, .peer)` as an encrypted route that may carry Stack tokens (`Packages/iOS/CmuxMobileShellModel/Sources/CmuxMobileShellModel/MobileShellRouteAuthPolicy.swift`).
 - The phone builds transports through `CmxRouteTransportFactory` keyed by route kind; adding a kind is one registration in `ios/cmux/cmuxApp.swift`.
-- The device registry (merged, https://github.com/manaflow-ai/cmux/pull/5626) stores `CmxAttachRoute` lists as opaque jsonb, so an `iroh` route needs zero schema change, and the phone's `DeviceRegistryService` already skips unknown route kinds on old builds (forward compatible).
+- The device registry (merged, https://github.com/emergent-inc/cmux/pull/5626) stores `CmxAttachRoute` lists as opaque jsonb, so an `iroh` route needs zero schema change, and the phone's `DeviceRegistryService` already skips unknown route kinds on old builds (forward compatible).
 - Settings diagnostics already have a localized "Iroh" route label (`Sources/HostSettingsActions.swift`).
 
 ## Spike results (gating risk: retired)
@@ -48,7 +48,7 @@ One new transport, one registration:
 1. User signs into the iOS app (Stack).
 2. `DeviceRegistryService` lists the account's Macs; each instance's routes jsonb now includes the iroh route with the Mac's EndpointId.
 3. Phone dials by EndpointId. n0 discovery finds the Mac through its home relay; QUIC holepunches to a direct path when possible, relay carries traffic otherwise. No VPN, no LAN requirement, no QR.
-4. Every RPC still carries the Stack access token; the Mac verifies same-account server-side. The registry is rendezvous, never authority (unchanged from https://github.com/manaflow-ai/cmux/pull/5626).
+4. Every RPC still carries the Stack access token; the Mac verifies same-account server-side. The registry is rendezvous, never authority (unchanged from https://github.com/emergent-inc/cmux/pull/5626).
 
 QR pairing remains exactly what it is today: first-trust UX and the fallback when the registry is unreachable. The QR payload's routes list simply includes the iroh route, so a QR pair also yields an EndpointId the phone can keep dialing from anywhere.
 
@@ -101,7 +101,7 @@ cmuxterm-hq `plans/feat-hive/DESIGN.md` assumed "Tailscale is the substrate the 
 
 - The hive node contract (frame codec, Stack auth, capabilities, render-grid, registry) does not name a transport; an iroh route is just another `CmxAttachRoute` kind in the registry's opaque routes jsonb.
 - Linux hive nodes get iroh almost free: the host body is the Go `cmuxd-remote`, which can cgo the same C FFI staticlib (it is the same Rust crate, built for linux targets), or n0's Go path if that is cleaner at implementation time. The "headless box needs its own Stack credential" problem from hive is unchanged and orthogonal.
-- Hive's "verify, don't manage" Tailscale UX (the phone-side `TailscaleStatus` detector, https://github.com/manaflow-ai/cmux/pull/5722) becomes the opt-in lane's diagnostics instead of the default lane's.
+- Hive's "verify, don't manage" Tailscale UX (the phone-side `TailscaleStatus` detector, https://github.com/emergent-inc/cmux/pull/5722) becomes the opt-in lane's diagnostics instead of the default lane's.
 - Hive's P1 "tailnet-only, WireGuard is the encryption" security story is superseded on the default lane by iroh's QUIC raw-public-key TLS, which is stronger in one respect: it is end to end per-peer rather than per-network.
 
 The hive doc should be updated to say: default connectivity = registry routes dialed iroh-first; Tailscale/LAN = opt-in fallback routes. Nothing else in it changes.

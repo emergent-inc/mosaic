@@ -1269,7 +1269,7 @@ final class MultiWindowNotificationsUITests: XCTestCase {
 
     private func stableSocketPath() -> String {
         // Mirrors CmuxStateDirectory.url() + cmux.sock (non-TCC ~/.local/state/cmux;
-        // see https://github.com/manaflow-ai/cmux/issues/5146).
+        // see https://github.com/emergent-inc/cmux/issues/5146).
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".local/state/cmux", isDirectory: true)
             .appendingPathComponent("cmux.sock", isDirectory: false)

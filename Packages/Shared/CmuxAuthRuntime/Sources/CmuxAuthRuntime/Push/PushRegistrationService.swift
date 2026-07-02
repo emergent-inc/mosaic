@@ -1,7 +1,7 @@
 public import Foundation
 import OSLog
 
-private let pushLog = Logger(subsystem: "ai.manaflow.cmux", category: "push")
+private let pushLog = Logger(subsystem: "ai.emergent.inc.cmux", category: "push")
 
 /// Owns the push opt-in state and the device-token sync with the cmux web API.
 ///

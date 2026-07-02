@@ -10,7 +10,7 @@ import Foundation
 /// pasteboard server. When a clipboard-history manager (Paste, Raycast, Maccy,
 /// Pastebot, …) is mid-read of cmux's promised clipboard data, that round-trip
 /// can wedge for ~30s on the main thread until the OS force-kills the app
-/// (https://github.com/manaflow-ai/cmux/issues/6758). The same structural gap —
+/// (https://github.com/emergent-inc/cmux/issues/6758). The same structural gap —
 /// quit having no global "return within N seconds no matter what" guard —
 /// produced #6415 (`PostHogAnalytics.flush()`) and #6381 (`ghostty` lock).
 ///

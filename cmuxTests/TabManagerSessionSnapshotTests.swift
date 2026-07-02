@@ -3227,7 +3227,7 @@ final class TabManagerSessionSnapshotTests: XCTestCase {
         XCTAssertEqual(configuration.terminalStartupCommand, "ssh -tt dev@example.com")
     }
 
-    /// Regression for https://github.com/manaflow-ai/cmux/issues/5931 — a restored
+    /// Regression for https://github.com/emergent-inc/cmux/issues/5931 — a restored
     /// terminal pane header showed the default "Terminal" title instead of its real
     /// title until a command ran. `applySessionPanelMetadata` wrote the restored title
     /// into `panelTitles` but never pushed it to the bonsplit tab header.

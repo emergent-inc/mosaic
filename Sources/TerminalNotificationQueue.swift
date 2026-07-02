@@ -439,7 +439,7 @@ extension TerminalNotificationStore {
     ///
     /// A user who explicitly turned cmux notifications off (`.denied`) asked
     /// for silence, so the direct `NSSound` fallback must not punch through
-    /// the denial (https://github.com/manaflow-ai/cmux/issues/5650). Every
+    /// the denial (https://github.com/emergent-inc/cmux/issues/5650). Every
     /// other state keeps the audible fallback: fresh installs
     /// (`.notDetermined`) have expressed no preference, and granted states
     /// only reach the fallback when delivery itself failed.

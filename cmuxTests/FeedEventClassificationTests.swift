@@ -15,7 +15,7 @@ import Testing
 /// pattern-matching that maps a *tool-starting* lifecycle event to an
 /// approval, over-triggering the notification.
 ///
-/// https://github.com/manaflow-ai/cmux/issues/4985
+/// https://github.com/emergent-inc/cmux/issues/4985
 @Suite("Feed event classification")
 struct FeedEventClassificationTests {
     private func classify(_ source: String, _ event: String, tool: String = "")

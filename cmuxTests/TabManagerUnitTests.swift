@@ -868,7 +868,7 @@ final class TabManagerPullRequestProbeTests: XCTestCase {
             return
         }
 
-        let staleURL = try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/371"))
+        let staleURL = try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/371"))
         workspace.updatePanelGitBranch(panelId: mainPanelId, branch: "main", isDirty: false)
         workspace.updatePanelPullRequest(
             panelId: mainPanelId,
@@ -1231,7 +1231,7 @@ final class TabManagerPullRequestProbeTests: XCTestCase {
             panelId: panelId,
             number: 1052,
             label: "PR",
-            url: try XCTUnwrap(URL(string: "https://github.com/manaflow-ai/cmux/pull/1052")),
+            url: try XCTUnwrap(URL(string: "https://github.com/emergent-inc/cmux/pull/1052")),
             status: .open,
             branch: "feature/sidebar-pr"
         )

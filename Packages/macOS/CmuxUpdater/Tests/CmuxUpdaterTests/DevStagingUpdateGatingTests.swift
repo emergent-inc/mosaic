@@ -3,7 +3,7 @@ import Sparkle
 import Testing
 @testable import CmuxUpdater
 
-/// Regression coverage for https://github.com/manaflow-ai/cmux/issues/6292: tagged DEV and
+/// Regression coverage for https://github.com/emergent-inc/cmux/issues/6292: tagged DEV and
 /// staging builds are produced from local source and are not on the public release train, so
 /// they must never surface Sparkle's "Update Available" pill from the public appcast.
 @MainActor

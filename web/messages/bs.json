@@ -39,7 +39,7 @@
     "discord": "Discord",
     "contact": "Kontakt",
     "nightly": "Nightly",
-    "copyright": "© {year} Manaflow",
+    "copyright": "© {year} emergent.inc",
     "language": "Jezik",
     "assets": "Materijali",
     "openSource": "Otvoreni kod",
@@ -254,7 +254,7 @@
       "p075": "Instalirajte puni AI stack (cmux + Ghostty + Zed + Starship + JetBrainsMono) preko jedne formule Homebrew sa idempotentnim ponovnim izvođenjem i načinom rada na suho - pokretanje okruženja programera s jednom komandom",
       "p076": "Napravite Chromium sadržajnu ljusku za cmux-ov pretraživač s unaprijed izgrađenim preuzimanjima okvira za programere dodataka",
       "p077": "Obezbedite veštine koje se mogu instalirati za bilo koje Agent Skills-kompatibilno vreme izvođenja, pokrivajući CLI kontrolu, podešavanja, automatizaciju pretraživača, artefakte, reference radnog prostora i prilagođavanje iz jednog održavanog javnog izvora",
-      "p078": "Obezbedite zvaničnu Homebrew slavinu za cmux sa stabilnim i noćnim bačvama koje održava Manaflow",
+      "p078": "Obezbedite zvaničnu Homebrew slavinu za cmux sa stabilnim i noćnim bačvama koje održava emergent.inc",
       "p079": "Naučite Claude Code automatizaciju pretraživača kroz četiri datoteke vještina za automatsku sinhronizaciju koje pokrivaju popunjavanje obrazaca, snimke ekrana i snimanje prozora za otklanjanje grešaka - strukturirano kao paket vještina s više datoteka, a ne kao jedan monolitni dokument",
       "p080": "Implementirajte obrazac master-worker koristeći stabla rada, cmux radne prostore i Agent Teams (vodeći+tester+recenzent+sigurnost) sa determinističkom alokacijom portova - jedinstveno dodjeljuje fiksne portove po ulozi agenta",
       "p081": "Zamjena za GSD/Pi @gsd/cmux modul dodavanjem WezTerm kao drugog pozadinskog dijela multipleksora sa korisničkim varijablama OSC 1337 i Windows obavještenjima o tostu - jedini dodatak Pi koji podržava dualne multiplekserske ciljeve",
@@ -1472,7 +1472,7 @@
       "data3": "Metapodaci o uparivanju i uređaju, za povezivanje vašeg telefona s vašim Mac-om.",
       "dataNot": "Vaša interaktivna terminalska sesija, njen sadržaj i pritisci tipki teku direktno između vašeg telefona i vašeg Mac-a putem vaše vlastite mreže i ne prenose se kroz cmux servere niti se na njima pohranjuju. Jedini izuzetak je proslijeđeni tekst notifikacije, koji prolazi kroz cmux i Appleov push servis da bi stigao do vašeg telefona, osim ako ne omogućite Hide content (pogledajte Notifikacije iznad).",
       "enterpriseTitle": "Enterprise i samostalno hostovanje",
-      "enterpriseDesc": "Za samostalno hostovanu ili air-gapped implementaciju, kontaktirajte <link>founders@manaflow.com</link>."
+      "enterpriseDesc": "Za samostalno hostovanu ili air-gapped implementaciju, kontaktirajte <link>contact@emergent.inc</link>."
     }
   },
   "legal": {

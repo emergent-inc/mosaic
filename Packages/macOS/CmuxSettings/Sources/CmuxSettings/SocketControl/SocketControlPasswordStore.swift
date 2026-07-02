@@ -223,7 +223,7 @@ public struct SocketControlPasswordStore: Sendable {
     /// defaults to ``CmuxStateDirectory`` (`~/.local/state/cmux`). The file lives
     /// outside Application Support so the separately-signed `cmux` CLI can read it
     /// on the agent hook path without triggering the macOS Sequoia "access data
-    /// from other apps" prompt (https://github.com/manaflow-ai/cmux/issues/5146).
+    /// from other apps" prompt (https://github.com/emergent-inc/cmux/issues/5146).
     ///
     /// The `fileManager` is injected (no ambient default) so the resolution has no
     /// hidden global state; composition roots pass `.default`.

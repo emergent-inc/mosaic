@@ -1063,7 +1063,7 @@ public struct GhosttyConfig {
     /// override only for explicitly specified sides, because ghostty mis-applies
     /// the conditional form (the background lands but the foreground/palette stay
     /// at the default colors — see
-    /// https://github.com/manaflow-ai/cmux/issues/3459). Injecting for an unset
+    /// https://github.com/emergent-inc/cmux/issues/3459). Injecting for an unset
     /// side would clobber the user's inherited/default theme for that appearance.
     public static func explicitConditionalThemeName(
         from rawThemeValue: String,

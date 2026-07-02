@@ -50,7 +50,7 @@ func newTestWebSocketPTYServer(t *testing.T, leasePath string) (*httptest.Server
 // /dev/ptmx cannot be opened) is reported loudly: the error returned to the
 // client names the failing device and explains the devpts cause, and the daemon
 // records the failure instead of leaving a 0-byte log. This is the regression
-// for https://github.com/manaflow-ai/cmux/issues/5185, where the failure
+// for https://github.com/emergent-inc/cmux/issues/5185, where the failure
 // collapsed into a generic "remote PTY attach failed" with an empty daemon log.
 func TestAttachRPCSurfacesPTYAllocationFailure(t *testing.T) {
 	stderr := &bytes.Buffer{}

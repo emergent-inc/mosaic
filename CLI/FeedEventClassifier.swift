@@ -16,7 +16,7 @@ import Foundation
 /// tool-*starting* lifecycle event can never be mistaken for an approval
 /// request — and unknown / future event names default to non-actionable
 /// telemetry that never notifies. Conflating a tool-start with an approval
-/// is the bug behind https://github.com/manaflow-ai/cmux/issues/4985.
+/// is the bug behind https://github.com/emergent-inc/cmux/issues/4985.
 struct FeedEventClassifier {
     /// Classifies a raw agent hook event into our wire `hook_event_name`
     /// plus an `isActionable` flag that drives whether the Feed bridge

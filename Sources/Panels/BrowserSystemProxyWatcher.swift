@@ -16,7 +16,7 @@ extension Notification.Name {
 /// Without this, a pane would hold a stale mirror until its next webview
 /// rebind: a cleared system proxy would leave traffic pointed at a dead
 /// proxy, and a newly enabled one would reintroduce the loopback bug
-/// (https://github.com/manaflow-ai/cmux/issues/5888).
+/// (https://github.com/emergent-inc/cmux/issues/5888).
 @MainActor
 final class BrowserSystemProxyWatcher {
     static let shared = BrowserSystemProxyWatcher()
