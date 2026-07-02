@@ -1018,6 +1018,7 @@
 		C5B6A10000000000000000B1 /* TabManager+SidebarGitHosting.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B6A10000000000000000B2 /* TabManager+SidebarGitHosting.swift */; };
 		604500100000000000000007 /* TabManager+WindowTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604500100000000000000008 /* TabManager+WindowTitle.swift */; };
 		A5001003 /* TabManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001013 /* TabManager.swift */; };
+		A6C0110A0000000000000001 /* TabManagerAutomaticWelcomeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C0110A0000000000000002 /* TabManagerAutomaticWelcomeTests.swift */; };
 		C0DE64160000000000000001 /* TabManagerNotificationFocusRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64160000000000000002 /* TabManagerNotificationFocusRegressionTests.swift */; };
 		2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */; };
 		C06552030000000000000001 /* TabManagerTitleUpdateStalenessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06552030000000000000002 /* TabManagerTitleUpdateStalenessTests.swift */; };
@@ -2244,6 +2245,7 @@
 		C5B6A10000000000000000B2 /* TabManager+SidebarGitHosting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabManager+SidebarGitHosting.swift"; sourceTree = "<group>"; };
 		604500100000000000000008 /* TabManager+WindowTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabManager+WindowTitle.swift"; sourceTree = "<group>"; };
 		A5001013 /* TabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManager.swift; sourceTree = "<group>"; };
+		A6C0110A0000000000000002 /* TabManagerAutomaticWelcomeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerAutomaticWelcomeTests.swift; sourceTree = "<group>"; };
 		C0DE64160000000000000002 /* TabManagerNotificationFocusRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerNotificationFocusRegressionTests.swift; sourceTree = "<group>"; };
 		10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerSessionSnapshotTests.swift; sourceTree = "<group>"; };
 		C06552030000000000000002 /* TabManagerTitleUpdateStalenessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerTitleUpdateStalenessTests.swift; sourceTree = "<group>"; };
@@ -3711,6 +3713,7 @@
 				D7AB00000000000000B020 /* NotificationDismissSyncTests.swift */,
 				4E5F60720000000000000002 /* NotificationSoundSettingsTests.swift */,
 				C0DE64160000000000000002 /* TabManagerNotificationFocusRegressionTests.swift */,
+				A6C0110A0000000000000002 /* TabManagerAutomaticWelcomeTests.swift */,
 				C06552030000000000000002 /* TabManagerTitleUpdateStalenessTests.swift */,
 				C06552020000000000000002 /* TabManagerTitleUpdateTests.swift */,
 				42092CDB2109E250F7F2A76E /* TabManagerUnitTests.swift */,
@@ -5351,6 +5354,7 @@
 						B6285B71BA6F82AF8F945E00 /* SSHPTYAttachReconnectInputFilterTests.swift in Sources */,
 				F6355600A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift in Sources */,
 				FBE660ABA1854983B84368C6 /* SystemWideHotkeyShortcutPolicyTests.swift in Sources */,
+				A6C0110A0000000000000001 /* TabManagerAutomaticWelcomeTests.swift in Sources */,
 				C0DE64160000000000000001 /* TabManagerNotificationFocusRegressionTests.swift in Sources */,
 				2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */,
 				C06552030000000000000001 /* TabManagerTitleUpdateStalenessTests.swift in Sources */,
