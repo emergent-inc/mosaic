@@ -168,13 +168,13 @@ private struct DockEmptyPaneView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
-                Button(action: onNewTerminal) {
+                TrackedButton("dockpanelview_button_171", action: onNewTerminal) {
                     Label(
                         String(localized: "dock.action.newTerminal", defaultValue: "New Terminal"),
                         systemImage: "terminal.fill"
                     )
                 }
-                Button(action: onNewBrowser) {
+                TrackedButton("dockpanelview_button_177", action: onNewBrowser) {
                     Label(
                         String(localized: "dock.action.newBrowser", defaultValue: "New Browser"),
                         systemImage: "globe"
@@ -212,7 +212,7 @@ private struct DockTrustView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
                 .truncationMode(.middle)
-            Button(String(localized: "dock.trust.action", defaultValue: "Trust and Start")) {
+            TrackedButton("dockpanelview_button_215", String(localized: "dock.trust.action", defaultValue: "Trust and Start")) {
                 onTrust()
             }
             .buttonStyle(.borderedProminent)

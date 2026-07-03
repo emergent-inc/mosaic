@@ -208,7 +208,7 @@ struct PanelHeaderIconButton: View {
     @State private var isHovering = false
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("panelcontentview_button_211", action: action) {
             PanelHeaderIconGlyph(systemName: systemName)
                 .background {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)

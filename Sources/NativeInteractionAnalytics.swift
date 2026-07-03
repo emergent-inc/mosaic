@@ -24,6 +24,7 @@ final class NativeInteractionAnalytics {
     private func installEventMonitors() {
         let mouseMask: NSEvent.EventTypeMask = [
             .leftMouseDown,
+            .leftMouseUp,
             .rightMouseDown,
             .otherMouseDown,
             .leftMouseDragged,
@@ -92,6 +93,9 @@ final class NativeInteractionAnalytics {
     private func track(_ event: NSEvent) {
         guard let properties = Self.properties(for: event) else { return }
         PostHogAnalytics.shared.capture(.uiInteraction, properties: properties)
+        if let buttonProperties = Self.buttonTapProperties(for: event) {
+            PostHogAnalytics.shared.capture("button_tapped", properties: buttonProperties)
+        }
     }
 
     private func trackMenuAction(_ notification: Notification) {
@@ -111,6 +115,12 @@ final class NativeInteractionAnalytics {
             properties["is_enabled"] = item.isEnabled
         }
         PostHogAnalytics.shared.capture(.uiInteraction, properties: properties)
+        if let buttonProperties = Self.menuButtonTapProperties(from: menu) {
+            PostHogAnalytics.shared.trackButtonTap(
+                buttonName: buttonProperties.buttonName,
+                properties: buttonProperties.properties
+            )
+        }
     }
 
     private func trackTextEditing(_ notification: Notification, phase: String) {
@@ -161,6 +171,16 @@ final class NativeInteractionAnalytics {
         return properties
     }
 
+    nonisolated static func buttonTapProperties(for event: NSEvent) -> [String: Any]? {
+        guard event.type == .leftMouseUp, let window = event.window else { return nil }
+        guard let view = viewHitBy(event, in: window) else { return nil }
+        guard let buttonContext = nearestButtonContext(from: view) else { return nil }
+        var properties = viewProperties(for: view)
+        properties["button_name"] = buttonContext.name
+        properties["is_enabled"] = buttonContext.isEnabled
+        return properties
+    }
+
     nonisolated static func viewProperties(for view: NSView?) -> [String: Any] {
         var properties: [String: Any] = [
             "surface": surfaceName(for: view),
@@ -182,6 +202,72 @@ final class NativeInteractionAnalytics {
             properties["control_id"] = identifier
         }
         return properties
+    }
+
+    nonisolated private static func viewHitBy(_ event: NSEvent, in window: NSWindow) -> NSView? {
+        guard let contentView = window.contentView else { return nil }
+        let point = contentView.convert(event.locationInWindow, from: nil)
+        return contentView.hitTest(point)
+    }
+
+    nonisolated private static func nearestButtonContext(from view: NSView?) -> (name: String, isEnabled: Bool)? {
+        var current = view
+        var depth = 0
+        while let candidate = current, depth < 10 {
+            if let control = candidate as? NSControl,
+               isButtonLike(control) {
+                return (buttonName(for: control), control.isEnabled)
+            }
+            if let role = candidate.accessibilityRole()?.rawValue,
+               role.localizedCaseInsensitiveContains("button") {
+                return (buttonName(for: candidate), true)
+            }
+            current = candidate.superview
+            depth += 1
+        }
+        return nil
+    }
+
+    nonisolated private static func isButtonLike(_ control: NSControl) -> Bool {
+        if control is NSButton { return true }
+        let className = safeClassName(control).lowercased()
+        return className.contains("button")
+    }
+
+    nonisolated private static func buttonName(for view: NSView) -> String {
+        if let identifier = nearestAccessibilityIdentifier(from: view) {
+            return snakeCase(identifier)
+        }
+        if let control = view as? NSControl, let action = control.action {
+            return snakeCase(NSStringFromSelector(action))
+        }
+        return snakeCase(safeClassName(view))
+    }
+
+    nonisolated private static func menuButtonTapProperties(
+        from menu: NSMenu
+    ) -> (buttonName: String, properties: [String: Any])? {
+        guard let item = menu.highlightedItem else { return nil }
+        var properties: [String: Any] = [
+            "surface": "menu",
+            "interaction_type": "menu_action",
+            "view_class": safeClassName(menu),
+            "is_enabled": item.isEnabled,
+        ]
+        if let identifier = item.identifier?.rawValue, !identifier.isEmpty {
+            properties["control_id"] = "menu.\(identifier)"
+            return (snakeCase(identifier), properties)
+        }
+        if let action = item.action {
+            let actionID = NSStringFromSelector(action)
+            properties["action_id"] = actionID
+            properties["control_id"] = "menu.action.\(actionID)"
+            return (snakeCase(actionID), properties)
+        }
+        let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return ("menu_item", properties) }
+        properties["menu_title_length"] = title.count
+        return (snakeCase(title), properties)
     }
 
     nonisolated static func nearestAccessibilityIdentifier(from view: NSView?) -> String? {
@@ -259,6 +345,8 @@ final class NativeInteractionAnalytics {
         switch eventType {
         case .leftMouseDown:
             "left_mouse_down"
+        case .leftMouseUp:
+            "left_mouse_up"
         case .rightMouseDown:
             "right_mouse_down"
         case .otherMouseDown:
@@ -299,5 +387,27 @@ final class NativeInteractionAnalytics {
         }
         let output = String(allowed)
         return output.isEmpty ? "unknown" : output
+    }
+
+    nonisolated private static func snakeCase(_ value: String) -> String {
+        let scalars = value.unicodeScalars
+        var output = ""
+        var previousWasSeparator = true
+        for scalar in scalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                let string = String(scalar)
+                if scalar.properties.isUppercase, !previousWasSeparator, !output.hasSuffix("_") {
+                    output.append("_")
+                }
+                output.append(string.lowercased())
+                previousWasSeparator = false
+            } else if !previousWasSeparator {
+                output.append("_")
+                previousWasSeparator = true
+            }
+            if output.count >= 96 { break }
+        }
+        let trimmed = output.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return trimmed.isEmpty ? "unknown_button" : trimmed
     }
 }

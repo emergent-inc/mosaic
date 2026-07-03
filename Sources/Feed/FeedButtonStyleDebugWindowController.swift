@@ -921,7 +921,7 @@ private struct FeedButtonStyleDebugView: View {
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(String(localized: "feed.buttonDebug.reset", defaultValue: "Reset")) {
+            TrackedButton("feedbuttonstyledebugwindowcontroller_button_924", String(localized: "feed.buttonDebug.reset", defaultValue: "Reset")) {
                 FeedButtonDebugSettings.reset()
                 styleRaw = FeedButtonDebugVisualStyle.solid.rawValue
                 paletteRaw = FeedButtonDebugPalettePreset.system.rawValue
@@ -970,9 +970,9 @@ private struct FeedButtonStyleDebugView: View {
     }
 
     private func paletteButton(_ palette: FeedButtonDebugPalettePreset) -> some View {
-        Button {
+        TrackedButton("feedbuttonstyledebugwindowcontroller_button_973", action: {
             applyPalette(palette)
-        } label: {
+        }) {
             HStack(spacing: 7) {
                 Image(systemName: palette == activePalette ? "checkmark.circle.fill" : "circle")
                     .cmuxFont(size: 11, weight: .medium)
@@ -1188,9 +1188,9 @@ private struct FeedButtonStyleDebugView: View {
     }
 
     private func presetButton(_ preset: FeedButtonDebugPreset) -> some View {
-        Button {
+        TrackedButton("feedbuttonstyledebugwindowcontroller_button_1191", action: {
             applyPreset(preset)
-        } label: {
+        }) {
             HStack(spacing: 6) {
                 Image(systemName: preset == activePreset ? "checkmark.circle.fill" : "circle")
                     .cmuxFont(size: 11, weight: .medium)

@@ -176,7 +176,7 @@ struct MobilePairingView: View {
                 destination: Self.tailscaleDownloadURL
             )
             .buttonStyle(.borderedProminent)
-            Button(String(localized: "mobile.pairing.refresh", defaultValue: "Refresh Code")) {
+            TrackedButton("mobilepairingview_button_179", String(localized: "mobile.pairing.refresh", defaultValue: "Refresh Code")) {
                 Task { await model.refresh() }
             }
             .buttonStyle(.bordered)
@@ -201,7 +201,7 @@ struct MobilePairingView: View {
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button(String(localized: "mobile.pairing.signIn.button", defaultValue: "Sign In")) {
+            TrackedButton("mobilepairingview_button_204", String(localized: "mobile.pairing.signIn.button", defaultValue: "Sign In")) {
                 model.signIn()
             }
             .buttonStyle(.borderedProminent)
@@ -243,10 +243,10 @@ struct MobilePairingView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
 
-            Button {
+            TrackedButton("mobilepairingview_button_246", action: {
                 guard let url = browserSignIn?.activeAttemptSignInURL else { return }
                 NSWorkspace.shared.open(url)
-            } label: {
+            }) {
                 Text(String(
                     localized: "mobile.pairing.signIn.openInBrowser",
                     defaultValue: "Open in Browser"
@@ -265,7 +265,7 @@ struct MobilePairingView: View {
             Text(message)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-            Button(String(localized: "mobile.pairing.retry", defaultValue: "Try Again")) {
+            TrackedButton("mobilepairingview_button_268", String(localized: "mobile.pairing.retry", defaultValue: "Try Again")) {
                 Task { await model.refresh() }
             }
             .buttonStyle(.borderedProminent)
@@ -308,7 +308,7 @@ struct MobilePairingView: View {
 
         HStack {
             Spacer()
-            Button(String(localized: "mobile.pairing.refresh", defaultValue: "Refresh Code")) {
+            TrackedButton("mobilepairingview_button_311", String(localized: "mobile.pairing.refresh", defaultValue: "Refresh Code")) {
                 Task { await model.refresh() }
             }
             .buttonStyle(.bordered)
@@ -401,12 +401,12 @@ struct MobilePairingView: View {
     /// One of the two manual-entry copy controls. Copies `value` to the
     /// general pasteboard and briefly swaps its label to a "Copied" check.
     private func copyButton(label: String, value: String) -> some View {
-        Button {
+        TrackedButton("mobilepairingview_button_404", action: {
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
             pasteboard.setString(value, forType: .string)
             flashCopied(value)
-        } label: {
+        }) {
             HStack(spacing: 4) {
                 Image(systemName: copiedValue == value ? "checkmark" : "doc.on.doc")
                 Text(

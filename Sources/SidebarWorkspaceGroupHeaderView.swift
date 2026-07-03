@@ -188,7 +188,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 canCloseWorkspace: true,
                 shortcutHintModeActive: showsShortcutHint
             )
-            Button(action: onTapPlus) {
+            TrackedButton("sidebarworkspacegroupheaderview_button_191", action: onTapPlus) {
                 CmuxSystemSymbolImage(
                     systemName: "plus",
                     pointSize: metrics.plusFontSize,
@@ -209,7 +209,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 defaultValue: "New workspace in group"
             )))
             .contextMenu {
-                Button(
+                TrackedButton("sidebarworkspacegroupheaderview_button_212", 
                     String(
                         localized: "workspaceGroup.plus.contextMenu.newWorkspace",
                         defaultValue: "New Workspace in Group"
@@ -229,21 +229,21 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                         case .separator:
                             Divider()
                         case .action(let action):
-                            Button(action.title) {
+                            TrackedButton("sidebarworkspacegroupheaderview_button_232", action.title) {
                                 onRunResolvedItem(action)
                             }
                         }
                     }
                 }
                 Divider()
-                Button(
+                TrackedButton("sidebarworkspacegroupheaderview_button_239", 
                     String(
                         localized: "workspaceGroup.plus.contextMenu.editConfig",
                         defaultValue: "Edit Group Config..."
                     ),
                     action: onEditConfig
                 )
-                Button(
+                TrackedButton("sidebarworkspacegroupheaderview_button_246", 
                     String(
                         localized: "workspaceGroup.plus.contextMenu.openDocs",
                         defaultValue: "Open Workspace Groups Docs"
@@ -305,7 +305,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
             rowInteractionState.setPointerHovering(false)
         }
         .contextMenu {
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_308", 
                 String(
                     localized: "workspaceGroup.plus.contextMenu.newWorkspace",
                     defaultValue: "New Workspace in Group"
@@ -319,14 +319,14 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 rowInteractionState.contextMenuDidDisappear()
             }
             Divider()
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_322", 
                 String(
                     localized: "workspaceGroup.contextMenu.rename",
                     defaultValue: "Rename Group..."
                 ),
                 action: onRename
             )
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_329", 
                 isPinned
                     ? String(
                         localized: "workspaceGroup.contextMenu.unpin",
@@ -339,7 +339,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 action: onTogglePinned
             )
             Divider()
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_342", 
                 String(
                     localized: "workspaceGroup.contextMenu.markRead",
                     defaultValue: "Mark Group as Read"
@@ -347,7 +347,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 action: onMarkRead
             )
             .disabled(!canMarkRead)
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_350", 
                 String(
                     localized: "workspaceGroup.contextMenu.markUnread",
                     defaultValue: "Mark Group as Unread"
@@ -355,7 +355,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 action: onMarkUnread
             )
             .disabled(!canMarkUnread)
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_358", 
                 String(
                     localized: "workspaceGroup.contextMenu.clearLatestNotifications",
                     defaultValue: "Clear Latest Notifications"
@@ -364,7 +364,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
             )
             .disabled(!hasLatestNotifications)
             Divider()
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_367", 
                 String(
                     localized: "workspaceGroup.contextMenu.markAllRead",
                     defaultValue: "Mark All Workspaces in Group as Read"
@@ -372,7 +372,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 action: onMarkAllRead
             )
             .disabled(!canMarkAllRead)
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_375", 
                 String(
                     localized: "workspaceGroup.contextMenu.markAllUnread",
                     defaultValue: "Mark All Workspaces in Group as Unread"
@@ -381,14 +381,14 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
             )
             .disabled(!canMarkAllUnread)
             Divider()
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_384", 
                 String(
                     localized: "workspaceGroup.contextMenu.editConfig",
                     defaultValue: "Edit Group Config..."
                 ),
                 action: onEditConfig
             )
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_391", 
                 String(
                     localized: "workspaceGroup.contextMenu.openDocs",
                     defaultValue: "Open Workspace Groups Docs"
@@ -396,14 +396,14 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                 action: onOpenDocs
             )
             Divider()
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_399", 
                 String(
                     localized: "workspaceGroup.contextMenu.ungroup",
                     defaultValue: "Ungroup (Keep Workspaces)"
                 ),
                 action: onUngroup
             )
-            Button(
+            TrackedButton("sidebarworkspacegroupheaderview_button_406", 
                 role: .destructive,
                 action: onDelete
             ) {

@@ -52,7 +52,7 @@ private struct FeedPreviewRootView: View {
                 .cmuxFont(size: 12, weight: .semibold)
                 .foregroundColor(.secondary)
             Spacer()
-            Button("Inject all into Feed") {
+            TrackedButton("feedpreviewwindowcontroller_button_55", "Inject all into Feed") {
                 injectAllIntoLiveStore()
             }
         }

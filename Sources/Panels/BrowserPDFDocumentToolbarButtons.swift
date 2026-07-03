@@ -7,7 +7,7 @@ struct BrowserPDFDocumentToolbarButtons: View {
 
     var body: some View {
         if panel.renderedPDFDocumentURL != nil {
-            Button(action: {
+            TrackedButton("browserpdfdocumenttoolbarbuttons_button_10", action: {
                 panel.downloadRenderedPDFDocument()
             }) {
                 CmuxSystemSymbolImage(systemName: "square.and.arrow.down", pointSize: iconPointSize, weight: .medium)
@@ -18,7 +18,7 @@ struct BrowserPDFDocumentToolbarButtons: View {
             .safeHelp(String(localized: "browser.pdf.download", defaultValue: "Download PDF"))
             .accessibilityLabel(String(localized: "browser.pdf.download", defaultValue: "Download PDF"))
 
-            Button(action: {
+            TrackedButton("browserpdfdocumenttoolbarbuttons_button_21", action: {
                 panel.printRenderedPDFDocument()
             }) {
                 CmuxSystemSymbolImage(systemName: "printer", pointSize: iconPointSize, weight: .medium)

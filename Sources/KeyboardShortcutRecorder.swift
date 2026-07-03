@@ -52,7 +52,7 @@ struct KeyboardShortcutRecorder: View {
                     .disabled(isDisabled)
 
                 let canRestoreShortcut = shortcut.isUnbound && restoreShortcut != nil
-                Button {
+                TrackedButton("keyboardshortcutrecorder_button_55", action: {
                     KeyboardShortcutRecorderActivity.stopAllRecording()
 
                     if canRestoreShortcut, let restoreShortcut {
@@ -64,7 +64,7 @@ struct KeyboardShortcutRecorder: View {
                     }
 
                     onRecorderFeedbackChanged(nil)
-                } label: {
+                }) {
                     Image(systemName: canRestoreShortcut ? "arrow.counterclockwise.circle.fill" : "xmark.circle.fill")
                         .imageScale(.medium)
                 }
@@ -95,13 +95,13 @@ struct KeyboardShortcutRecorder: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let validationButtonTitle, let onValidationButtonPressed {
-                        Button(validationButtonTitle, action: onValidationButtonPressed)
+                        TrackedButton("keyboardshortcutrecorder_button_98", validationButtonTitle, action: onValidationButtonPressed)
                             .buttonStyle(.link)
                             .cmuxFont(.caption)
                     }
 
                     if let undoButtonTitle, let onUndoButtonPressed {
-                        Button(undoButtonTitle, action: onUndoButtonPressed)
+                        TrackedButton("keyboardshortcutrecorder_button_104", undoButtonTitle, action: onUndoButtonPressed)
                             .buttonStyle(.link)
                             .cmuxFont(.caption)
                     }

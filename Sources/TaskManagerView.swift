@@ -58,9 +58,9 @@ struct CmuxTaskManagerView: View {
             )
             .toggleStyle(.checkbox)
 
-            Button {
+            TrackedButton("taskmanagerview_button_61", action: {
                 model.refresh(force: true)
-            } label: {
+            }) {
                 Label(String(localized: "taskManager.refresh", defaultValue: "Refresh"), systemImage: "arrow.clockwise")
             }
         }
@@ -153,9 +153,9 @@ struct CmuxTaskManagerView: View {
         maxWidth: CGFloat? = nil,
         alignment: Alignment
     ) -> some View {
-        Button {
+        TrackedButton("taskmanagerview_button_156", action: {
             model.sort(by: column)
-        } label: {
+        }) {
             HStack(spacing: 3) {
                 Text(title)
                     .lineLimit(1)
@@ -383,7 +383,7 @@ struct CmuxTaskManagerRowView: View, Equatable {
     var body: some View {
         Group {
             if row.canViewWorkspace || row.canViewTerminal {
-                Button(action: onActivate) {
+                TrackedButton("taskmanagerview_button_386", action: onActivate) {
                     rowContent
                 }
                 .buttonStyle(.plain)
@@ -393,9 +393,9 @@ struct CmuxTaskManagerRowView: View, Equatable {
         }
         .contextMenu {
             if row.canViewWorkspace {
-                Button {
+                TrackedButton("taskmanagerview_button_396", action: {
                     onViewWorkspace()
-                } label: {
+                }) {
                     Label(
                         String(localized: "taskManager.contextMenu.viewWorkspace", defaultValue: "View Workspace"),
                         systemImage: "rectangle.stack"
@@ -403,9 +403,9 @@ struct CmuxTaskManagerRowView: View, Equatable {
                 }
             }
             if row.canViewTerminal {
-                Button {
+                TrackedButton("taskmanagerview_button_406", action: {
                     onViewTerminal()
-                } label: {
+                }) {
                     Label(
                         String(localized: "taskManager.contextMenu.viewTerminal", defaultValue: "View Terminal"),
                         systemImage: "terminal"
@@ -416,9 +416,9 @@ struct CmuxTaskManagerRowView: View, Equatable {
                 if row.canViewWorkspace || row.canViewTerminal {
                     Divider()
                 }
-                Button {
+                TrackedButton("taskmanagerview_button_419", action: {
                     onKillProcess()
-                } label: {
+                }) {
                     Label(
                         String(localized: "taskManager.contextMenu.killProcess", defaultValue: "Kill Process..."),
                         systemImage: "xmark.octagon"
