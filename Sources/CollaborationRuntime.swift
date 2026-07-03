@@ -32,6 +32,7 @@ private struct CollaborationPeerWire: Codable {
     let participantID: String?
     let displayName: String
     let color: String
+    let imageURL: String?
 
     var stableParticipantID: String {
         participantID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? peerID
@@ -674,7 +675,8 @@ final class CollaborationRuntime {
                 CollaborationWorkspaceParticipantSnapshot.remote(
                     peerID: peer.peerID,
                     displayName: peer.displayName,
-                    colorHex: peer.color
+                    colorHex: peer.color,
+                    imageURL: peer.imageURL
                 )
             }
         return [local] + peers
@@ -705,7 +707,8 @@ final class CollaborationRuntime {
         return CollaborationParticipantAvatarSnapshot.remote(
             peerID: peer.peerID,
             displayName: peer.displayName,
-            colorHex: peer.color
+            colorHex: peer.color,
+            imageURL: peer.imageURL
         )
     }
 
@@ -937,7 +940,8 @@ final class CollaborationRuntime {
         peerIdentity = CollaborationPeerIdentity.authenticatedParticipant(
             peerID: peerIdentity.peerID,
             userID: user.id,
-            displayName: displayName
+            displayName: displayName,
+            imageURL: user.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
     }
 
@@ -1257,7 +1261,8 @@ final class CollaborationRuntime {
             peerID: peerID,
             participantID: nil,
             displayName: peerID,
-            color: peerIdentity.color
+            color: peerIdentity.color,
+            imageURL: nil
         )
     }
 
@@ -2110,6 +2115,7 @@ final class CollaborationRuntime {
     }
 
     private func connect(sessionID: String, code: String) async -> CollaborationRelayConnection? {
+        refreshPeerIdentityFromAuth()
         let normalizedCode = Self.normalizedSessionCode(from: code)
         if let existing = connectionsBySessionCode[normalizedCode] {
             sessionCode = normalizedCode
@@ -2162,6 +2168,9 @@ final class CollaborationRuntime {
             URLQueryItem(name: "displayName", value: peerIdentity.displayName),
             URLQueryItem(name: "color", value: peerIdentity.color),
         ]
+        if let imageURL = peerIdentity.imageURL {
+            components.queryItems?.append(URLQueryItem(name: "imageURL", value: imageURL))
+        }
         return components.url
     }
 
