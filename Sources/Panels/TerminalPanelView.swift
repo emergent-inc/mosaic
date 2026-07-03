@@ -19,6 +19,7 @@ struct TerminalPanelView: View {
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
     @State private var isTerminalSessionPopoverPresented = false
     @State private var isTerminalRecipientPopoverPresented = false
+    @State private var isTerminalSessionPillHovered = false
     @State private var isAgentRoomButtonHovered = false
     let paneId: PaneID
     let isFocused: Bool
@@ -185,32 +186,50 @@ struct TerminalPanelView: View {
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalSessionPillLabel(state: state)
+        let hoverColor = Color.orange
+        let foregroundColor = isTerminalSessionPillHovered
+            ? hoverColor
+            : (state.workspaceSessionCode == nil ? Color.secondary : Color.accentColor)
+        let backgroundColor = isTerminalSessionPillHovered
+            ? hoverColor.opacity(0.14)
+            : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.06 : 0.10)
+        let borderColor = isTerminalSessionPillHovered
+            ? hoverColor.opacity(0.24)
+            : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.10 : 0.16)
         return Button {
-            isTerminalSessionPopoverPresented = true
+            if CollaborationRuntime.shared.ensureSignedInForCollaboration(continue: {
+                isTerminalSessionPopoverPresented = true
+            }) {
+                isTerminalSessionPopoverPresented = true
+            }
         } label: {
             HStack(spacing: 5) {
-                CmuxSystemSymbolImage(systemName: state.workspaceSessionCode == nil ? "plus.circle" : "link", pointSize: 10, weight: .semibold)
+                CmuxSystemSymbolImage(systemName: state.workspaceSessionCode == nil ? "person.2" : "link", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
                 Text(label)
                     .cmuxFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
-            .foregroundStyle(state.workspaceSessionCode == nil ? Color.secondary : Color.accentColor)
+            .foregroundStyle(foregroundColor)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background {
                 Capsule()
-                    .fill(Color.primary.opacity(state.workspaceSessionCode == nil ? 0.06 : 0.10))
+                    .fill(backgroundColor)
             }
             .overlay {
                 Capsule()
-                    .stroke(Color.primary.opacity(state.workspaceSessionCode == nil ? 0.10 : 0.16), lineWidth: 0.5)
+                    .stroke(borderColor, lineWidth: 0.5)
             }
         }
         .buttonStyle(.plain)
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TerminalCollaborationSessionPill")
+        .onHover { hovering in
+            isTerminalSessionPillHovered = hovering
+        }
+        .cmuxCursorOnHover(.pointingHand)
         .popover(isPresented: $isTerminalSessionPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationSessionPopoverContent(
                 sessionCode: state.workspaceSessionCode,
@@ -391,7 +410,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     }
                 }
 
-                VStack(alignment: .trailing, spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
                     Button(CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
@@ -402,14 +421,14 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                         onLeave()
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text(CollaborationStrings.sessionNotJoinedDetail)
                     .cmuxFont(size: 11)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                VStack(alignment: .trailing, spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
                     Button(CollaborationStrings.createSession) {
                         onCreate()
                     }
@@ -419,7 +438,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                         onJoin()
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(14)

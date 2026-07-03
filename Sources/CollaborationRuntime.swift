@@ -806,7 +806,7 @@ final class CollaborationRuntime {
         let state = state(for: panel)
         if isSharing {
             if state.isShared { return }
-            guard ensureSignedInForSharing(continue: { [weak panel] in
+            guard ensureSignedInForCollaboration(continue: { [weak panel] in
                 guard let panel else { return }
                 self.setSharing(true, for: panel)
             }) else {
@@ -853,7 +853,7 @@ final class CollaborationRuntime {
                 workspaceHasSession: workspaceSessionCode != nil
             ) {
             case .presentSessionChooser, .shareInWorkspaceSession:
-                guard ensureSignedInForSharing(continue: { [weak terminal] in
+                guard ensureSignedInForCollaboration(continue: { [weak terminal] in
                     guard let terminal else { return }
                     self.setSharing(true, for: terminal)
                 }) else {
@@ -900,7 +900,7 @@ final class CollaborationRuntime {
         }
     }
 
-    private func ensureSignedInForSharing(continue action: @escaping @MainActor () -> Void) -> Bool {
+    func ensureSignedInForCollaboration(continue action: @escaping @MainActor () -> Void) -> Bool {
         guard let auth = AppDelegate.shared?.auth else {
             NSSound.beep()
             return false
@@ -971,10 +971,22 @@ final class CollaborationRuntime {
     }
 
     func createWorkspaceSession(for terminal: TerminalPanel) {
+        guard ensureSignedInForCollaboration(continue: { [weak terminal] in
+            guard let terminal else { return }
+            self.createWorkspaceSession(for: terminal)
+        }) else {
+            return
+        }
         Task { await createSessionAndBindWorkspace(for: terminal) }
     }
 
     func joinWorkspaceSession(for terminal: TerminalPanel) {
+        guard ensureSignedInForCollaboration(continue: { [weak terminal] in
+            guard let terminal else { return }
+            self.joinWorkspaceSession(for: terminal)
+        }) else {
+            return
+        }
         presentJoinDialog(thenBindWorkspaceFor: terminal)
     }
 
@@ -3420,7 +3432,7 @@ enum CollaborationStrings {
     }
 
     static var startSession: String {
-        String(localized: "collaboration.action.startSession", defaultValue: "Start Session")
+        String(localized: "collaboration.action.startSession", defaultValue: "Start session")
     }
 
     static var sessionPopoverTitle: String {
