@@ -12,9 +12,10 @@ let userId: string | null;
 const getUser = mock(async (...args: unknown[]) => {
   const id = args[0] as string;
   return {
-  id,
-  fullName: "Test User",
-  primaryEmailAddress: { emailAddress: "test@example.com" },
+    id,
+    fullName: "Test User",
+    imageUrl: "https://img.example/test-user.png",
+    primaryEmailAddress: { emailAddress: "test@example.com" },
   };
 });
 
@@ -26,6 +27,7 @@ const GET = makeAfterSignInHandler({
   getUser: async (id) => getUser(id) as Promise<{
     id: string;
     fullName: string;
+    imageUrl: string;
     primaryEmailAddress: { emailAddress: string };
   }>,
   getCookieStore: async () => ({
@@ -89,12 +91,14 @@ describe("after sign-in native handoff", () => {
       userId: "user_1",
       displayName: "Test User",
       primaryEmail: "test@example.com",
+      imageURL: "https://img.example/test-user.png",
       selectedTeamId: "org-1",
       teamIds: ["org-1"],
     });
     expect(refreshClaims).toMatchObject({
       kind: "refresh",
       userId: "user_1",
+      imageURL: "https://img.example/test-user.png",
       selectedTeamId: "org-1",
     });
     const setCookie = response.headers.get("set-cookie");

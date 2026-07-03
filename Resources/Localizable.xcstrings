@@ -38042,7 +38042,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop Sharing Terminal"
+            "value": "Stop session"
           }
         }
       }

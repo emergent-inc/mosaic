@@ -66,11 +66,13 @@ final class HostAccountFlow: AccountFlow {
 
     private static func identity(from user: CMUXAuthUser?) -> AccountIdentity? {
         guard let user else { return nil }
+        let trimmedImageURL = user.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let avatarURL = trimmedImageURL.isEmpty ? nil : URL(string: trimmedImageURL)
         return AccountIdentity(
             id: user.id,
             displayName: user.displayName ?? "",
             email: user.primaryEmail ?? "",
-            avatarURL: nil
+            avatarURL: avatarURL
         )
     }
 }
