@@ -112,9 +112,9 @@ struct CommandPaletteCommandListRowsView: View {
                             ? cmuxAccentColor().opacity(0.12)
                             : (isHovered ? Color.primary.opacity(0.08) : .clear)
 
-                        Button {
+                        TrackedButton("commandpaletteoverlay_button_115", action: {
                             onRunResult(row.id)
-                        } label: {
+                        }) {
                             ContentView.commandPaletteRenderResultLabelContent(
                                 title: row.title,
                                 matchedIndices: row.matchedIndices,

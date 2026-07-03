@@ -42,7 +42,7 @@ struct ProjectSchemesTabView: View {
     @ViewBuilder
     private func schemeRow(_ scheme: SchemeSummary, module: ProjectModule) -> some View {
         let isSelected = panel.selectedSchemeName == scheme.name
-        Button(action: { panel.selectedSchemeName = scheme.name }) {
+        TrackedButton("projectschemestabview_button_45", action: { panel.selectedSchemeName = scheme.name }) {
             HStack(spacing: 8) {
                 Image(systemName: "play.rectangle")
                     .foregroundStyle(Color.accentColor)

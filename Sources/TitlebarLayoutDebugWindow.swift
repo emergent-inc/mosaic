@@ -158,14 +158,14 @@ private struct TitlebarLayoutDebugView: View {
 
                 GroupBox(String(localized: "debug.titlebarLayoutDebug.actions", defaultValue: "Actions")) {
                     HStack(spacing: 10) {
-                        Button(String(localized: "debug.titlebarLayoutDebug.reset", defaultValue: "Reset")) {
+                        TrackedButton("titlebarlayoutdebugwindow_button_161", String(localized: "debug.titlebarLayoutDebug.reset", defaultValue: "Reset")) {
                             TitlebarLayoutDebugSettingsSnapshot.reset()
                             TitlebarLayoutDebugSettingsSnapshot.applyToOpenWindows()
                         }
-                        Button(String(localized: "debug.titlebarLayoutDebug.apply", defaultValue: "Apply")) {
+                        TrackedButton("titlebarlayoutdebugwindow_button_165", String(localized: "debug.titlebarLayoutDebug.apply", defaultValue: "Apply")) {
                             TitlebarLayoutDebugSettingsSnapshot.applyToOpenWindows()
                         }
-                        Button(String(localized: "debug.titlebarLayoutDebug.copyConfig", defaultValue: "Copy Config")) {
+                        TrackedButton("titlebarlayoutdebugwindow_button_168", String(localized: "debug.titlebarLayoutDebug.copyConfig", defaultValue: "Copy Config")) {
                             TitlebarLayoutDebugSettingsSnapshot.copyToPasteboard()
                         }
                     }

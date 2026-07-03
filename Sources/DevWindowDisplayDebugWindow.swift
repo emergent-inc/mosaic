@@ -64,9 +64,9 @@ private struct DevWindowDisplayDebugView: View {
             GroupBox {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(displays, id: \.self) { name in
-                        Button {
+                        TrackedButton("devwindowdisplaydebugwindow_button_67", action: {
                             write(name)
-                        } label: {
+                        }) {
                             HStack(spacing: 8) {
                                 Image(systemName: current == name ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(current == name ? Color.accentColor : Color.secondary)
@@ -82,12 +82,12 @@ private struct DevWindowDisplayDebugView: View {
             }
 
             HStack {
-                Button(String(localized: "debug.devWindowDisplay.refresh", defaultValue: "Refresh displays")) {
+                TrackedButton("devwindowdisplaydebugwindow_button_85", String(localized: "debug.devWindowDisplay.refresh", defaultValue: "Refresh displays")) {
                     displays = NSScreen.screens.map(\.localizedName)
                     current = AppDelegate.shared?.settingsRuntime.flatMap(DevWindowDisplayDefault.current)
                 }
                 Spacer()
-                Button(String(localized: "debug.devWindowDisplay.clear", defaultValue: "Clear (system default)")) {
+                TrackedButton("devwindowdisplaydebugwindow_button_90", String(localized: "debug.devWindowDisplay.clear", defaultValue: "Clear (system default)")) {
                     write(nil)
                 }
             }

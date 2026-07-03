@@ -1294,7 +1294,7 @@ struct BrowserPanelView: View {
 
     private var addressBarButtonBar: some View {
         return HStack(spacing: 0) {
-            Button(action: {
+            TrackedButton("browserpanelview_button_1297", action: {
                 #if DEBUG
                 cmuxDebugLog("browser.back panel=\(panel.id.uuidString.prefix(5))")
                 #endif
@@ -1309,7 +1309,7 @@ struct BrowserPanelView: View {
             .opacity(panel.canGoBack ? 1.0 : 0.4)
             .safeHelp(String(localized: "browser.goBack", defaultValue: "Go Back"))
 
-            Button(action: {
+            TrackedButton("browserpanelview_button_1312", action: {
                 #if DEBUG
                 cmuxDebugLog("browser.forward panel=\(panel.id.uuidString.prefix(5))")
                 #endif
@@ -1324,17 +1324,17 @@ struct BrowserPanelView: View {
             .opacity(panel.canGoForward ? 1.0 : 0.4)
             .safeHelp(String(localized: "browser.goForward", defaultValue: "Go Forward"))
 
-            Button(action: handleReloadOrStopButtonAction) {
+            TrackedButton("browserpanelview_button_1327", action: handleReloadOrStopButtonAction) {
                 CmuxSystemSymbolImage(systemName: panel.isLoading ? "xmark" : "arrow.clockwise", pointSize: chromeMetrics.navigationIconFontSize, weight: .medium)
                     .frame(width: addressBarButtonHitSize, height: addressBarButtonHitSize, alignment: .center)
                     .contentShape(Rectangle())
             }
             .buttonStyle(OmnibarAddressButtonStyle())
             .contextMenu {
-                Button(String(localized: "browser.reload", defaultValue: "Reload")) {
+                TrackedButton("browserpanelview_button_1334", String(localized: "browser.reload", defaultValue: "Reload")) {
                     handleReloadButtonContextMenuAction()
                 }
-                Button(String(localized: "menu.view.hardRefresh", defaultValue: "Hard Refresh")) {
+                TrackedButton("browserpanelview_button_1337", String(localized: "menu.view.hardRefresh", defaultValue: "Hard Refresh")) {
                     handleHardRefreshButtonAction()
                 }
             }
@@ -1361,7 +1361,7 @@ struct BrowserPanelView: View {
     }
 
     private var screenshotPageButton: some View {
-        Button(action: handleScreenshotPageButtonAction) {
+        TrackedButton("browserpanelview_button_1364", action: handleScreenshotPageButtonAction) {
             CmuxSystemSymbolImage(systemName: screenshotPageCopied ? "checkmark" : "camera", pointSize: devToolsButtonIconSize, weight: .medium)
                 .foregroundStyle(screenshotPageButtonColor)
                 .frame(width: addressBarButtonSize, height: addressBarButtonSize, alignment: .center)
@@ -1413,7 +1413,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserFocusModeButton: some View {
-        Button(action: handleBrowserFocusModeButtonAction) {
+        TrackedButton("browserpanelview_button_1416", action: handleBrowserFocusModeButtonAction) {
             HStack(spacing: 5) {
                 CmuxSystemSymbolImage(systemName: "keyboard", pointSize: devToolsButtonIconSize, weight: .medium)
                     .scaleEffect(panel.isBrowserFocusModeActive ? 1.08 : 1.0)
@@ -1456,7 +1456,7 @@ struct BrowserPanelView: View {
     }
 
     private var reactGrabButton: some View {
-        Button(action: {
+        TrackedButton("browserpanelview_button_1459", action: {
             panel.clearReactGrabRoundTrip(reason: "toolbarButton.manualStart")
             Task { await panel.toggleOrInjectReactGrab() }
         }) {
@@ -1471,7 +1471,7 @@ struct BrowserPanelView: View {
     }
 
     private var developerToolsButton: some View {
-        Button(action: {
+        TrackedButton("browserpanelview_button_1474", action: {
             openDevTools()
         }) {
             CmuxSystemSymbolImage(systemName: devToolsIconOption.rawValue, pointSize: devToolsButtonIconSize, weight: .medium)
@@ -1485,7 +1485,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserProfileButton: some View {
-        Button(action: {
+        TrackedButton("browserpanelview_button_1488", action: {
             isBrowserProfileMenuPresented.toggle()
         }) {
             CmuxSystemSymbolImage(systemName: "person.crop.circle", pointSize: devToolsButtonIconSize, weight: .medium)
@@ -1514,7 +1514,7 @@ struct BrowserPanelView: View {
     /// Profile and theme stay as visible buttons since they anchor popovers.
     private var browserOverflowMenu: some View {
         Menu {
-            Button(action: handleBrowserFocusModeButtonAction) {
+            TrackedButton("browserpanelview_button_1517", action: handleBrowserFocusModeButtonAction) {
                 Label(
                     panel.isBrowserFocusModeActive
                         ? String(localized: "browser.focusMode.active", defaultValue: "Focus Mode")
@@ -1524,7 +1524,7 @@ struct BrowserPanelView: View {
             }
             .disabled(!panel.canToggleBrowserFocusMode)
 
-            Button(action: handleScreenshotPageButtonAction) {
+            TrackedButton("browserpanelview_button_1527", action: handleScreenshotPageButtonAction) {
                 Label(
                     String(localized: "browser.screenshotPage.copy.help", defaultValue: "Screenshot Page to Clipboard"),
                     systemImage: "camera"
@@ -1532,17 +1532,17 @@ struct BrowserPanelView: View {
             }
             .disabled(!panel.shouldRenderWebView)
 
-            Button {
+            TrackedButton("browserpanelview_button_1535", action: {
                 panel.clearReactGrabRoundTrip(reason: "overflowMenu.manualStart")
                 Task { await panel.toggleOrInjectReactGrab() }
-            } label: {
+            }) {
                 Label(
                     String(localized: "browser.reactGrab", defaultValue: "Inject React Grab"),
                     systemImage: "cursorarrow.click.2"
                 )
             }
 
-            Button(action: { openDevTools() }) {
+            TrackedButton("browserpanelview_button_1545", action: { openDevTools() }) {
                 Label(developerToolsButtonHelp, systemImage: devToolsIconOption.rawValue)
             }
         } label: {
@@ -1558,7 +1558,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserThemeModeButton: some View {
-        Button(action: {
+        TrackedButton("browserpanelview_button_1561", action: {
             isBrowserThemeMenuPresented.toggle()
         }) {
             CmuxSystemSymbolImage(systemName: browserThemeMode.iconName, pointSize: devToolsButtonIconSize, weight: .medium)
@@ -1583,7 +1583,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserImportHintToolbarChip: some View {
-        Button(action: {
+        TrackedButton("browserpanelview_button_1586", action: {
             isBrowserImportHintPopoverPresented.toggle()
         }) {
             HStack(spacing: 4) {
@@ -1612,9 +1612,9 @@ struct BrowserPanelView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(browserProfileStore.profiles) { profile in
-                    Button {
+                    TrackedButton("browserpanelview_button_1615", action: {
                         applyBrowserProfileSelection(profile.id)
-                    } label: {
+                    }) {
                         HStack(spacing: 8) {
                             CmuxSystemSymbolImage(systemName: profile.id == panel.profileID ? "checkmark" : "circle", pointSize: 10, weight: .semibold)
                                 .opacity(profile.id == panel.profileID ? 1.0 : 0.0)
@@ -1637,28 +1637,28 @@ struct BrowserPanelView: View {
 
             Divider()
 
-            Button {
+            TrackedButton("browserpanelview_button_1640", action: {
                 isBrowserProfileMenuPresented = false
                 presentCreateBrowserProfilePrompt()
-            } label: {
+            }) {
                 Text(String(localized: "browser.profile.new", defaultValue: "New Profile..."))
                     .cmuxFont(size: 12)
             }
             .buttonStyle(.plain)
 
-            Button {
+            TrackedButton("browserpanelview_button_1649", action: {
                 presentImportDialogFromProfileMenu()
-            } label: {
+            }) {
                 Text(String(localized: "menu.view.importFromBrowser", defaultValue: "Import Browser Data…"))
                     .cmuxFont(size: 12)
             }
             .buttonStyle(.plain)
 
             if browserProfileStore.canRenameProfile(id: panel.profileID) {
-                Button {
+                TrackedButton("browserpanelview_button_1658", action: {
                     isBrowserProfileMenuPresented = false
                     presentRenameBrowserProfilePrompt()
-                } label: {
+                }) {
                     Text(String(localized: "browser.profile.rename", defaultValue: "Rename Current Profile..."))
                         .cmuxFont(size: 12)
                 }
@@ -1673,10 +1673,10 @@ struct BrowserPanelView: View {
     private var browserThemeModePopover: some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(BrowserThemeMode.allCases) { mode in
-                Button {
+                TrackedButton("browserpanelview_button_1676", action: {
                     applyBrowserThemeModeSelection(mode)
                     isBrowserThemeMenuPresented = false
-                } label: {
+                }) {
                     HStack(spacing: 8) {
                         CmuxSystemSymbolImage(systemName: mode == browserThemeMode ? "checkmark" : "circle", pointSize: 10, weight: .semibold)
                             .opacity(mode == browserThemeMode ? 1.0 : 0.0)
@@ -1892,7 +1892,7 @@ struct BrowserPanelView: View {
         ZStack {
             Color(nsColor: browserChromeBackgroundColor)
                 .opacity(0.92)
-            Button(action: {
+            TrackedButton("browserpanelview_button_1895", action: {
                 panel.recoverTerminatedWebContent(reason: "overlayButton")
             }) {
                 Label(
@@ -2303,7 +2303,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserImportHintPrimaryButton: some View {
-        Button(String(localized: "browser.import.hint.import", defaultValue: "Import…")) {
+        TrackedButton("browserpanelview_button_2306", String(localized: "browser.import.hint.import", defaultValue: "Import…")) {
             presentImportDialogFromHint()
         }
         .buttonStyle(.bordered)
@@ -2312,7 +2312,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserImportHintSettingsButton: some View {
-        Button(String(localized: "browser.import.hint.settings", defaultValue: "Browser Settings")) {
+        TrackedButton("browserpanelview_button_2315", String(localized: "browser.import.hint.settings", defaultValue: "Browser Settings")) {
             openBrowserImportSettings()
         }
         .buttonStyle(.plain)
@@ -2321,7 +2321,7 @@ struct BrowserPanelView: View {
     }
 
     private var browserImportHintDismissButton: some View {
-        Button(String(localized: "browser.import.hint.dismiss", defaultValue: "Hide Hint")) {
+        TrackedButton("browserpanelview_button_2324", String(localized: "browser.import.hint.dismiss", defaultValue: "Hide Hint")) {
             dismissBrowserImportHint()
         }
         .buttonStyle(.plain)
@@ -5286,7 +5286,7 @@ struct OmnibarSuggestionsView: View {
     private var rowsView: some View {
         VStack(spacing: rowSpacing) {
             ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
-            Button {
+            TrackedButton("browserpanelview_button_5289", action: {
                 #if DEBUG
                 let suggestionKind: String = {
                     switch item.kind {
@@ -5305,7 +5305,7 @@ struct OmnibarSuggestionsView: View {
                 cmuxDebugLog("browser.suggestionClick index=\(idx) kind=\(suggestionKind) textBytes=\(item.listText.utf8.count)")
                 #endif
                 onCommit(item)
-            } label: {
+            }) {
                 HStack(spacing: 6) {
                         Text(item.listText)
                             .cmuxFont(size: 11)

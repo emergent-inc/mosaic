@@ -45,7 +45,7 @@ struct ProjectTargetsTabView: View {
     @ViewBuilder
     private func targetRow(_ target: TargetSummary, in module: ProjectModule) -> some View {
         let isSelected = panel.selectedTargetID == target.id
-        Button(action: { panel.selectedTargetID = target.id }) {
+        TrackedButton("projecttargetstabview_button_48", action: { panel.selectedTargetID = target.id }) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: glyph(for: target.productType))
                     .foregroundStyle(Color.accentColor)
@@ -198,10 +198,10 @@ struct ProjectTargetsTabView: View {
                         .cmuxFont(size: 11)
                 }
                 .foregroundStyle(.secondary)
-                Button {
+                TrackedButton("projecttargetstabview_button_201", action: {
                     panel.selectedTargetID = selected.target.id
                     panel.activeTab = .buildSettings
-                } label: {
+                }) {
                     Label("Open in Build Settings", systemImage: "arrow.right.circle")
                         .cmuxFont(size: 11, weight: .medium)
                 }

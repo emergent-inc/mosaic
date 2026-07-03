@@ -13,13 +13,13 @@ extension TabItemView {
         )
         let canCreateEmptyWorkspaceGroup = tabManager.selectedTab?.isRemoteTmuxMirror != true
         if let key = newWorkspaceGroupShortcut.keyEquivalent {
-            Button(newWorkspaceGroupLabel) {
+            TrackedButton("tabitemview_workspacegroups_button_16", newWorkspaceGroupLabel) {
                 _ = AppDelegate.shared?.createEmptyWorkspaceGroup(tabManager: tabManager)
             }
             .keyboardShortcut(key, modifiers: newWorkspaceGroupShortcut.eventModifiers)
             .disabled(!canCreateEmptyWorkspaceGroup)
         } else {
-            Button(newWorkspaceGroupLabel) {
+            TrackedButton("tabitemview_workspacegroups_button_22", newWorkspaceGroupLabel) {
                 _ = AppDelegate.shared?.createEmptyWorkspaceGroup(tabManager: tabManager)
             }
             .disabled(!canCreateEmptyWorkspaceGroup)
@@ -54,12 +54,12 @@ extension TabItemView {
                     defaultValue: "New Group from Workspace"
                 )
             if let key = groupSelectedShortcut.keyEquivalent {
-                Button(groupSelectedLabel) {
+                TrackedButton("tabitemview_workspacegroups_button_57", groupSelectedLabel) {
                     promptNewWorkspaceGroup(workspaceIds: eligibleTargetIds)
                 }
                 .keyboardShortcut(key, modifiers: groupSelectedShortcut.eventModifiers)
             } else {
-                Button(groupSelectedLabel) {
+                TrackedButton("tabitemview_workspacegroups_button_62", groupSelectedLabel) {
                     promptNewWorkspaceGroup(workspaceIds: eligibleTargetIds)
                 }
             }
@@ -71,7 +71,7 @@ extension TabItemView {
             if moveToGroupMenuState.rendersSubmenu {
                 Menu(moveToGroupLabel) {
                     ForEach(groups) { group in
-                        Button(group.name) {
+                        TrackedButton("tabitemview_workspacegroups_button_74", group.name) {
                             for id in eligibleTargetIds {
                                 tabManager.addWorkspaceToGroup(workspaceId: id, groupId: group.id)
                             }
@@ -80,12 +80,12 @@ extension TabItemView {
                     }
                 }
             } else {
-                Button(moveToGroupLabel) {}
+                TrackedButton("tabitemview_workspacegroups_button_83", moveToGroupLabel) {}
                     .disabled(true)
             }
 
             if hasAnyGroupedTarget {
-                Button(
+                TrackedButton("tabitemview_workspacegroups_button_88", 
                     String(
                         localized: "contextMenu.workspaceGroup.remove",
                         defaultValue: "Remove from Group"

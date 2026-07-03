@@ -3550,7 +3550,7 @@ struct ContentView: View {
             )
 
             // Keep Esc-to-close behavior without showing footer controls.
-            Button(action: { dismissCommandPalette() }) {
+            TrackedButton("contentview_button_3553", action: { dismissCommandPalette() }) {
                 EmptyView()
             }
             .buttonStyle(.plain)
@@ -3700,7 +3700,7 @@ struct ContentView: View {
                 .padding(.horizontal, 9)
                 .padding(.vertical, 6)
 
-            Button(action: {
+            TrackedButton("contentview_button_3703", action: {
                 continueRenameFlow(target: target)
             }) {
                 EmptyView()
@@ -3741,7 +3741,7 @@ struct ContentView: View {
                 .padding(.horizontal, 9)
                 .padding(.vertical, 6)
 
-            Button(action: {
+            TrackedButton("contentview_button_3744", action: {
                 applyRenameFlow(target: target, proposedName: proposedName)
             }) {
                 EmptyView()
@@ -11426,7 +11426,7 @@ struct VerticalTabsSidebar: View {
                 }
             }
 
-            Button(action: onNewTab) {
+            TrackedButton("contentview_button_11429", action: onNewTab) {
                 HStack(spacing: 9) {
                     CmuxSystemSymbolImage(magnified: "plus", pointSize: 15, weight: .regular)
                         .frame(width: 22, height: 22)
@@ -11509,9 +11509,9 @@ struct VerticalTabsSidebar: View {
     ) -> some View {
         let targetRowHeight: CGFloat = 54
 
-        return Button {
+        return TrackedButton("contentview_button_11512", action: {
             selectExtensionSidebarWorkspace(row.workspaceId)
-        } label: {
+        }) {
             extensionBrowserStackIcon(row.leadingIcon, size: 28)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
@@ -11582,9 +11582,9 @@ struct VerticalTabsSidebar: View {
     ) -> some View {
         let targetRowHeight: CGFloat = compact ? 34 : 38
 
-        return Button {
+        return TrackedButton("contentview_button_11585", action: {
             selectExtensionSidebarWorkspace(row.workspaceId)
-        } label: {
+        }) {
             HStack(spacing: 9) {
                 extensionBrowserStackIcon(row.leadingIcon, size: compact ? 22 : 24)
                 Text(row.title)
@@ -11667,10 +11667,10 @@ struct VerticalTabsSidebar: View {
 
     @ViewBuilder
     private func extensionBrowserStackReorderMenu(row: CmuxSidebarProviderRow) -> some View {
-        Button(String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
+        TrackedButton("contentview_button_11670", String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
             moveExtensionBrowserStackWorkspace(row.workspaceId, by: -1)
         }
-        Button(String(localized: "contextMenu.moveDown", defaultValue: "Move Down")) {
+        TrackedButton("contentview_button_11673", String(localized: "contextMenu.moveDown", defaultValue: "Move Down")) {
             moveExtensionBrowserStackWorkspace(row.workspaceId, by: 1)
         }
     }
@@ -11813,7 +11813,7 @@ struct VerticalTabsSidebar: View {
 
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 7) {
-                Button {
+                TrackedButton("contentview_button_11816", action: {
                     withAnimation(Self.extensionSidebarDisclosureAnimation) {
                         if isCollapsed {
                             collapsedExtensionSidebarSectionIds.remove(section.id)
@@ -11821,7 +11821,7 @@ struct VerticalTabsSidebar: View {
                             collapsedExtensionSidebarSectionIds.insert(section.id)
                         }
                     }
-                } label: {
+                }) {
                     CmuxSystemSymbolImage(magnified: isCollapsed ? "folder" : "folder.fill", pointSize: 13, weight: .regular)
                         .offset(y: -0.5)
                 }
@@ -11840,9 +11840,9 @@ struct VerticalTabsSidebar: View {
                     let worktreeButtonSymbol = extensionSidebarWorktreeCreationInFlightSectionIds.contains(section.id)
                         ? "clock"
                         : "plus"
-                    Button {
+                    TrackedButton("contentview_button_11843", action: {
                         createExtensionWorktreeWorkspace(for: section.treeSection)
-                    } label: {
+                    }) {
                         CmuxSystemSymbolImage(magnified: worktreeButtonSymbol, pointSize: 11, weight: .regular)
                             .frame(width: 18, height: 18)
                     }
@@ -12813,12 +12813,12 @@ private struct SidebarFooterButtons: View {
             // The puzzle button opens the extensions browser; it only shows
             // while the experimental Extensions feature is enabled.
             if extensionsExperimentalEnabled {
-                Button {
+                TrackedButton("contentview_button_12816", action: {
                     _ = AppDelegate.shared?.openSidebarExtensionBrowser(
                         from: extensionBrowserAnchorView,
                         title: String(localized: "sidebar.extensions.browser.title", defaultValue: "Sidebar Extensions")
                     )
-                } label: {
+                }) {
                     CmuxSystemSymbolImage(magnified: "puzzlepiece.extension", pointSize: 12, weight: .medium)
                         .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                         .frame(width: 22, height: 22, alignment: .center)
@@ -12890,9 +12890,9 @@ private struct SidebarAccountButton: View {
     }
 
     var body: some View {
-        Button {
+        TrackedButton("contentview_button_12893", action: {
             openAccountSettings()
-        } label: {
+        }) {
             ZStack(alignment: .topTrailing) {
                 CmuxSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
                     .foregroundStyle(iconColor)
@@ -12959,9 +12959,9 @@ private struct SidebarHelpMenuButton: View {
     }
 
     var body: some View {
-        Button {
+        TrackedButton("contentview_button_12962", action: {
             isPopoverPresented.toggle()
-        } label: {
+        }) {
             CmuxSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
                 .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .frame(width: buttonSize, height: buttonSize, alignment: .center)
@@ -13044,10 +13044,10 @@ private struct SidebarHelpMenuButton: View {
         shortcutHint: String? = nil,
         trailingSystemImage: String? = nil
     ) -> some View {
-        Button {
+        TrackedButton("contentview_button_13047", action: {
             isPopoverPresented = false
             perform(action)
-        } label: {
+        }) {
             HStack(spacing: 8) {
                 Text(title)
                     .cmuxFont(size: 12)
@@ -13258,12 +13258,12 @@ private extension View {
                 defaultValue: "New Empty Workspace Group"
             )
             if let key = newWorkspaceGroupShortcut.keyEquivalent {
-                Button(newWorkspaceGroupLabel) {
+                TrackedButton("contentview_button_13261", newWorkspaceGroupLabel) {
                     _ = AppDelegate.shared?.createEmptyWorkspaceGroup(tabManager: tabManager)
                 }
                 .keyboardShortcut(key, modifiers: newWorkspaceGroupShortcut.eventModifiers)
             } else {
-                Button(newWorkspaceGroupLabel) {
+                TrackedButton("contentview_button_13266", newWorkspaceGroupLabel) {
                     _ = AppDelegate.shared?.createEmptyWorkspaceGroup(tabManager: tabManager)
                 }
             }
@@ -13836,9 +13836,9 @@ struct TabItemView: View, Equatable {
                         .lineLimit(1)
 
                     if workspaceSnapshot.showsRemoteReconnectAffordance {
-                        Button {
+                        TrackedButton("contentview_button_13839", action: {
                             tab.reconnectRemoteConnection()
-                        } label: {
+                        }) {
                             Label(
                                 String(localized: "sidebar.remote.reconnect.button", defaultValue: "Reconnect"),
                                 systemImage: "arrow.clockwise"
@@ -13870,6 +13870,12 @@ struct TabItemView: View, Equatable {
 
     private func copyWorkspaceLinksToPasteboard(_ ids: [UUID]) {
         WorkspaceSurfaceIdentifierClipboardText.copyWorkspaceLinks(ids)
+#if DEBUG
+        print("[PostHog] firing: workspace_link_copied")
+#endif
+        PostHogAnalytics.shared.capture("workspace_link_copied", properties: [
+            "link_count": ids.count,
+        ])
     }
 
     private var visibleAuxiliaryDetails: SidebarWorkspaceAuxiliaryDetailVisibility {
@@ -14016,7 +14022,7 @@ struct TabItemView: View, Equatable {
                 // when the workspace is closable, so the title wraps/truncates
                 // before this corner instead of flowing under the x.
                 if canCloseWorkspace {
-                    Button(action: {
+                    TrackedButton("contentview_button_14022", action: {
                         #if DEBUG
                         cmuxDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=button")
                         #endif
@@ -14313,7 +14319,7 @@ struct TabItemView: View, Equatable {
             ? String(localized: "contextMenu.moveWorkspacesToWindow", defaultValue: "Move Workspaces to Window")
             : String(localized: "contextMenu.moveWorkspaceToWindow", defaultValue: "Move Workspace to Window")
 
-        Button(pinLabel) {
+        TrackedButton("contentview_button_14319", pinLabel) {
             guard let contextMenuPinState else {
                 NSSound.beep()
                 return
@@ -14331,36 +14337,36 @@ struct TabItemView: View, Equatable {
         Divider()
 
         if let key = renameWorkspaceShortcut.keyEquivalent {
-            Button(String(localized: "contextMenu.renameWorkspace", defaultValue: "Rename Workspace…")) {
+            TrackedButton("contentview_button_14337", String(localized: "contextMenu.renameWorkspace", defaultValue: "Rename Workspace…")) {
                 promptRename()
             }
             .keyboardShortcut(key, modifiers: renameWorkspaceShortcut.eventModifiers)
         } else {
-            Button(String(localized: "contextMenu.renameWorkspace", defaultValue: "Rename Workspace…")) {
+            TrackedButton("contentview_button_14342", String(localized: "contextMenu.renameWorkspace", defaultValue: "Rename Workspace…")) {
                 promptRename()
             }
         }
 
         if tab.hasCustomTitle {
-            Button(String(localized: "contextMenu.removeCustomWorkspaceName", defaultValue: "Remove Custom Workspace Name")) {
+            TrackedButton("contentview_button_14348", String(localized: "contextMenu.removeCustomWorkspaceName", defaultValue: "Remove Custom Workspace Name")) {
                 tabManager.clearCustomTitle(tabId: tab.id)
             }
         }
 
         if !isMulti {
             if let key = editWorkspaceDescriptionShortcut.keyEquivalent {
-                Button(String(localized: "contextMenu.editWorkspaceDescription", defaultValue: "Edit Workspace Description…")) {
+                TrackedButton("contentview_button_14355", String(localized: "contextMenu.editWorkspaceDescription", defaultValue: "Edit Workspace Description…")) {
                     beginWorkspaceDescriptionEditFromContextMenu()
                 }
                 .keyboardShortcut(key, modifiers: editWorkspaceDescriptionShortcut.eventModifiers)
             } else {
-                Button(String(localized: "contextMenu.editWorkspaceDescription", defaultValue: "Edit Workspace Description…")) {
+                TrackedButton("contentview_button_14360", String(localized: "contextMenu.editWorkspaceDescription", defaultValue: "Edit Workspace Description…")) {
                     beginWorkspaceDescriptionEditFromContextMenu()
                 }
             }
 
             if tab.hasCustomDescription {
-                Button(String(localized: "contextMenu.clearWorkspaceDescription", defaultValue: "Clear Workspace Description")) {
+                TrackedButton("contentview_button_14366", String(localized: "contextMenu.clearWorkspaceDescription", defaultValue: "Clear Workspace Description")) {
                     tabManager.clearCustomDescription(tabId: tab.id)
                 }
             }
@@ -14369,14 +14375,14 @@ struct TabItemView: View, Equatable {
         if !remoteContextMenuWorkspaceIds.isEmpty {
             Divider()
 
-            Button(reconnectLabel) {
+            TrackedButton("contentview_button_14375", reconnectLabel) {
                 for workspace in remoteContextMenuWorkspaces() {
                     workspace.reconnectRemoteConnection()
                 }
             }
             .disabled(allRemoteContextMenuTargetsConnecting)
 
-            Button(disconnectLabel) {
+            TrackedButton("contentview_button_14382", disconnectLabel) {
                 for workspace in remoteContextMenuWorkspaces() {
                     workspace.disconnectRemoteConnection(clearConfiguration: false)
                 }
@@ -14388,16 +14394,16 @@ struct TabItemView: View, Equatable {
             let tabColorPalette = WorkspaceTabColorSettings.palette()
 
             if tab.customColor != nil {
-                Button {
+                TrackedButton("contentview_button_14394", action: {
                     applyTabColor(nil, targetIds: targetIds)
-                } label: {
+                }) {
                     Label(String(localized: "contextMenu.clearColor", defaultValue: "Clear Color"), systemImage: "xmark.circle")
                 }
             }
 
-            Button {
+            TrackedButton("contentview_button_14401", action: {
                 promptCustomColor(targetIds: targetIds)
-            } label: {
+            }) {
                 Label(String(localized: "contextMenu.chooseCustomColor", defaultValue: "Choose Custom Color…"), systemImage: "paintpalette")
             }
 
@@ -14406,9 +14412,9 @@ struct TabItemView: View, Equatable {
             }
 
             ForEach(tabColorPalette, id: \.id) { entry in
-                Button {
+                TrackedButton("contentview_button_14412", action: {
                     applyTabColor(entry.hex, targetIds: targetIds)
-                } label: {
+                }) {
                     Label {
                         Text(entry.name)
                     } icon: {
@@ -14421,31 +14427,31 @@ struct TabItemView: View, Equatable {
         if let copyableSidebarSSHError = workspaceSnapshot.copyableSidebarSSHError {
             Divider()
 
-            Button(String(localized: "contextMenu.copySshError", defaultValue: "Copy SSH Error")) {
+            TrackedButton("contentview_button_14427", String(localized: "contextMenu.copySshError", defaultValue: "Copy SSH Error")) {
                 WorkspaceSurfaceIdentifierClipboardText.copy(copyableSidebarSSHError)
             }
         }
 
         Divider()
 
-        Button(String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
+        TrackedButton("contentview_button_14434", String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
             moveBy(-1)
         }
         .disabled(index == 0)
 
-        Button(String(localized: "contextMenu.moveDown", defaultValue: "Move Down")) {
+        TrackedButton("contentview_button_14439", String(localized: "contextMenu.moveDown", defaultValue: "Move Down")) {
             moveBy(1)
         }
         .disabled(index >= tabManager.tabs.count - 1)
 
-        Button(String(localized: "contextMenu.moveToTop", defaultValue: "Move to Top")) {
+        TrackedButton("contentview_button_14444", String(localized: "contextMenu.moveToTop", defaultValue: "Move to Top")) {
             tabManager.moveTabsToTop(Set(targetIds))
             syncSelectionAfterMutation()
         }
         .disabled(targetIds.isEmpty)
 
         Menu(moveMenuTitle) {
-            Button(String(localized: "contextMenu.newWindow", defaultValue: "New Window")) {
+            TrackedButton("contentview_button_14451", String(localized: "contextMenu.newWindow", defaultValue: "New Window")) {
                 moveWorkspacesToNewWindow(targetIds)
             }
             .disabled(targetIds.isEmpty)
@@ -14455,7 +14461,7 @@ struct TabItemView: View, Equatable {
             }
 
             ForEach(windowMoveTargets) { target in
-                Button(target.label) {
+                TrackedButton("contentview_button_14461", target.label) {
                     moveWorkspaces(targetIds, toWindow: target.windowId)
                 }
                 .disabled(target.isCurrentWindow || targetIds.isEmpty)
@@ -14466,64 +14472,64 @@ struct TabItemView: View, Equatable {
         Divider()
 
         if let key = closeWorkspaceShortcut.keyEquivalent {
-            Button(closeLabel) {
+            TrackedButton("contentview_button_14472", closeLabel) {
                 closeTabs(targetIds, allowPinned: true)
             }
             .keyboardShortcut(key, modifiers: closeWorkspaceShortcut.eventModifiers)
             .disabled(targetIds.isEmpty)
         } else {
-            Button(closeLabel) {
+            TrackedButton("contentview_button_14478", closeLabel) {
                 closeTabs(targetIds, allowPinned: true)
             }
             .disabled(targetIds.isEmpty)
         }
 
-        Button(String(localized: "contextMenu.closeOtherWorkspaces", defaultValue: "Close Other Workspaces")) {
+        TrackedButton("contentview_button_14484", String(localized: "contextMenu.closeOtherWorkspaces", defaultValue: "Close Other Workspaces")) {
             closeOtherTabs(targetIds)
         }
         .disabled(tabManager.tabs.count <= 1 || targetIds.count == tabManager.tabs.count)
 
-        Button(String(localized: "contextMenu.closeWorkspacesBelow", defaultValue: "Close Workspaces Below")) {
+        TrackedButton("contentview_button_14489", String(localized: "contextMenu.closeWorkspacesBelow", defaultValue: "Close Workspaces Below")) {
             closeTabsBelow(tabId: tab.id)
         }
         .disabled(index >= tabManager.tabs.count - 1)
 
-        Button(String(localized: "contextMenu.closeWorkspacesAbove", defaultValue: "Close Workspaces Above")) {
+        TrackedButton("contentview_button_14494", String(localized: "contextMenu.closeWorkspacesAbove", defaultValue: "Close Workspaces Above")) {
             closeTabsAbove(tabId: tab.id)
         }
         .disabled(index == 0)
 
         Divider()
 
-        Button(markReadLabel) {
+        TrackedButton("contentview_button_14501", markReadLabel) {
             markTabsRead(targetIds)
         }
         .disabled(!notificationStore.canMarkWorkspaceRead(forTabIds: targetIds))
 
-        Button(markUnreadLabel) {
+        TrackedButton("contentview_button_14506", markUnreadLabel) {
             markTabsUnread(targetIds)
         }
         .disabled(!notificationStore.canMarkWorkspaceUnread(forTabIds: targetIds))
 
-        Button(clearLatestNotificationLabel) {
+        TrackedButton("contentview_button_14511", clearLatestNotificationLabel) {
             clearLatestNotifications(targetIds)
         }
         .disabled(!hasLatestNotifications(in: targetIds))
 
         Divider()
 
-        Button(copyWorkspaceIDLabel) {
+        TrackedButton("contentview_button_14518", copyWorkspaceIDLabel) {
             copyWorkspaceIdsToPasteboard(targetIds)
         }
         .disabled(targetIds.isEmpty)
 
-        Button(copyWorkspaceLinkLabel) {
+        TrackedButton("contentview_button_14523", copyWorkspaceLinkLabel) {
             copyWorkspaceLinksToPasteboard(targetIds)
         }
         .disabled(targetIds.isEmpty)
 
         if !isMulti {
-            Button(String(localized: "contextMenu.showWorkspaceInFinder", defaultValue: "Show in Finder")) {
+            TrackedButton("contentview_button_14529", String(localized: "contextMenu.showWorkspaceInFinder", defaultValue: "Show in Finder")) {
                 let url = workspaceSnapshot.finderDirectoryPath
                     .map { URL(fileURLWithPath: $0, isDirectory: true) }
                 workspaceFinderDirectoryOpenRequest = WorkspaceFinderDirectoryOpenRequest(directoryURL: url)
@@ -15372,7 +15378,7 @@ private struct SidebarMetadataRows: View {
             }
 
             if shouldShowToggle {
-                Button(isExpanded ? String(localized: "sidebar.metadata.showLess", defaultValue: "Show less") : String(localized: "sidebar.metadata.showMore", defaultValue: "Show more")) {
+                TrackedButton("contentview_button_15378", isExpanded ? String(localized: "sidebar.metadata.showLess", defaultValue: "Show less") : String(localized: "sidebar.metadata.showMore", defaultValue: "Show more")) {
                     onFocus()
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isExpanded.toggle()
@@ -15415,10 +15421,10 @@ private struct SidebarMetadataEntryRow: View {
     var body: some View {
         Group {
             if let url = entry.url {
-                Button {
+                TrackedButton("contentview_button_15421", action: {
                     onFocus()
                     NSWorkspace.shared.open(url)
-                } label: {
+                }) {
                     rowContent(underlined: true)
                 }
                 .buttonStyle(.plain)
@@ -15528,7 +15534,7 @@ private struct SidebarMetadataMarkdownBlocks: View {
             }
 
             if shouldShowToggle {
-                Button(isExpanded ? String(localized: "sidebar.metadata.showLessDetails", defaultValue: "Show less details") : String(localized: "sidebar.metadata.showMoreDetails", defaultValue: "Show more details")) {
+                TrackedButton("contentview_button_15534", isExpanded ? String(localized: "sidebar.metadata.showLessDetails", defaultValue: "Show less details") : String(localized: "sidebar.metadata.showMoreDetails", defaultValue: "Show more details")) {
                     onFocus()
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isExpanded.toggle()

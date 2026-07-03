@@ -28,9 +28,9 @@ struct BrowserDownloadsToolbarButton: View {
     }
 
     var body: some View {
-        Button {
+        TrackedButton("browserdownloadstoolbarbutton_button_31", action: {
             isPresented.toggle()
-        } label: {
+        }) {
             ZStack(alignment: .topTrailing) {
                 // Monochrome to match the rest of the omnibar — motion carries
                 // the state instead of a persistent accent tint: a spinner while
@@ -102,7 +102,7 @@ private struct BrowserDownloadsPopoverContent: View {
                     .font(.headline)
                 Spacer()
                 if !downloads.isEmpty {
-                    Button(String(localized: "browser.downloads.clear", defaultValue: "Clear")) {
+                    TrackedButton("browserdownloadstoolbarbutton_button_105", String(localized: "browser.downloads.clear", defaultValue: "Clear")) {
                         onClear()
                     }
                     .buttonStyle(.borderless)
@@ -160,15 +160,15 @@ private struct BrowserDownloadRow: View {
             Spacer(minLength: 8)
 
             if record.state == .saved {
-                Button(String(localized: "browser.downloads.open", defaultValue: "Open")) {
+                TrackedButton("browserdownloadstoolbarbutton_button_163", String(localized: "browser.downloads.open", defaultValue: "Open")) {
                     onOpen(record)
                 }
                 .buttonStyle(.borderless)
                 .font(.callout)
 
-                Button {
+                TrackedButton("browserdownloadstoolbarbutton_button_169", action: {
                     onReveal(record)
-                } label: {
+                }) {
                     Image(systemName: "magnifyingglass")
                 }
                 .buttonStyle(.borderless)
