@@ -18,7 +18,7 @@ struct NativeAuthClientTests {
         NativeAuthClientURLProtocol.handler = { request in
             #expect(request.url?.path == "/api/auth/native/me")
             #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer access-1")
-            return Self.jsonResponse([
+            return try Self.jsonResponse([
                 "user": [
                     "id": "user_clerk",
                     "displayName": "Clerk User",
@@ -56,10 +56,10 @@ struct NativeAuthClientTests {
                 meRequests += 1
                 if meRequests == 1 {
                     #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer expired-access")
-                    return Self.emptyResponse(status: 401, request: request)
+                    return try Self.emptyResponse(status: 401, request: request)
                 }
                 #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer fresh-access")
-                return Self.jsonResponse([
+                return try Self.jsonResponse([
                     "user": [
                         "id": "user_clerk",
                         "displayName": "Clerk User",
@@ -70,14 +70,14 @@ struct NativeAuthClientTests {
                 ])
             case "/api/auth/native/refresh":
                 #expect(request.httpMethod == "POST")
-                #expect(request.value(forHTTPHeaderField: "X-Cmux-Refresh-Token") == "refresh-1")
-                return Self.jsonResponse([
+                #expect(request.value(forHTTPHeaderField: "X-Mosaic-Refresh-Token") == "refresh-1")
+                return try Self.jsonResponse([
                     "accessToken": "fresh-access",
                     "refreshToken": "fresh-refresh",
                 ])
             default:
                 Issue.record("Unexpected native auth request: \(request.url?.absoluteString ?? "<nil>")")
-                return Self.emptyResponse(status: 404, request: request)
+                return try Self.emptyResponse(status: 404, request: request)
             }
         }
         defer { NativeAuthClientURLProtocol.reset() }
@@ -103,11 +103,11 @@ struct NativeAuthClientTests {
         NativeAuthClientURLProtocol.handler = { request in
             switch request.url?.path {
             case "/api/auth/native/me":
-                return Self.emptyResponse(status: 401, request: request)
+                return try Self.emptyResponse(status: 401, request: request)
             case "/api/auth/native/refresh":
-                return Self.emptyResponse(status: 401, request: request)
+                return try Self.emptyResponse(status: 401, request: request)
             default:
-                return Self.emptyResponse(status: 404, request: request)
+                return try Self.emptyResponse(status: 404, request: request)
             }
         }
         defer { NativeAuthClientURLProtocol.reset() }

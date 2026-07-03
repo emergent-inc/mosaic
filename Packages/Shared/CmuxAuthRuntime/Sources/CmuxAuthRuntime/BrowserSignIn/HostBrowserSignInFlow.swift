@@ -467,7 +467,7 @@ public final class HostBrowserSignInFlow {
     private func authCallbackState(from url: URL) -> String? {
         URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value
     }
 

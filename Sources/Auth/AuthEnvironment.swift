@@ -35,21 +35,21 @@ enum AuthEnvironment {
             return overridden
         }
         if isDebugBuild {
-            // Untagged Debug builds register cmux-dev:// so they can coexist
+            // Untagged Debug builds register mosaic-dev:// so they can coexist
             // with the installed stable app. Tagged Debug builds use
-            // cmux-dev-<tag>://.
+            // mosaic-dev-<tag>://.
             if let tag = environment["CMUX_TAG"]?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
                !tag.isEmpty,
                let schemeTag = sanitizedCallbackSchemeTag(tag) {
-                return "cmux-dev-\(schemeTag)"
+                return "mosaic-dev-\(schemeTag)"
             }
-            return "cmux-dev"
+            return "mosaic-dev"
         }
         if bundleIdentifier == "com.cmuxterm.app.nightly" {
-            return "cmux-nightly"
+            return "mosaic-nightly"
         }
-        return "cmux"
+        return "mosaic"
     }
 
     static func sanitizedCallbackSchemeTag(_ rawTag: String) -> String? {
@@ -187,11 +187,7 @@ enum AuthEnvironment {
            !origin.isEmpty {
             return origin
         }
-        #if DEBUG
-        return "http://localhost:\(resolvedCmuxPort(environment: environment))"
-        #else
         return "https://cmux.com"
-        #endif
     }
 
     private static var defaultVMAPIOrigin: String {
@@ -208,11 +204,7 @@ enum AuthEnvironment {
            !url.isEmpty {
             return url
         }
-        #if DEBUG
-        return "http://localhost:\(cmuxPort)"
-        #else
-        return "https://api.cmux.sh"
-        #endif
+        return "https://cmux.com"
     }
 
     static var stackBaseURL: URL {
@@ -285,8 +277,8 @@ enum AuthEnvironment {
         callbackURL: URL
     ) -> URL {
         // Build the after-sign-in callback URL that includes the native app return scheme.
-        // The after-sign-in handler extracts tokens from the Stack Auth session
-        // and redirects to the native app via the cmux:// callback scheme.
+        // The after-sign-in handler exchanges the Clerk browser session for
+        // Mosaic-native tokens, then redirects to the app callback scheme.
         var afterSignInComponents = URLComponents(
             url: afterSignInOrigin.appendingPathComponent("handler/after-sign-in", isDirectory: false),
             resolvingAgainstBaseURL: false
@@ -294,30 +286,38 @@ enum AuthEnvironment {
         var nativeCallbackComponents = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)!
         if let callbackState {
             nativeCallbackComponents.queryItems = [
-                URLQueryItem(name: "cmux_auth_state", value: callbackState),
+                URLQueryItem(name: "mosaic_auth_state", value: callbackState),
             ]
         }
 
-        afterSignInComponents.queryItems = [
-            URLQueryItem(
-                name: "native_app_return_to",
-                value: nativeCallbackComponents.url!.absoluteString
-            ),
-        ]
+        afterSignInComponents.percentEncodedQuery = encodedQuery([
+            ("native_app_return_to", nativeCallbackComponents.url!.absoluteString),
+        ])
 
-        // Enter through cmux's native sign-in wrapper, which sets a short-lived
-        // server-side handoff nonce before redirecting to Stack's /sign-in.
+        // Enter through Mosaic's native sign-in wrapper, which sets a short-lived
+        // server-side handoff nonce before redirecting to Clerk's /sign-in.
         var components = URLComponents(
             url: afterSignInOrigin.appendingPathComponent("handler/native-sign-in", isDirectory: false),
             resolvingAgainstBaseURL: false
         )!
-        components.queryItems = [
-            URLQueryItem(
-                name: "after_auth_return_to",
-                value: afterSignInComponents.url!.absoluteString
-            ),
-        ]
+        components.percentEncodedQuery = encodedQuery([
+            ("after_auth_return_to", afterSignInComponents.url!.absoluteString),
+        ])
         return components.url!
+    }
+
+    private static func encodedQuery(_ items: [(String, String)]) -> String {
+        items
+            .map { name, value in
+                "\(strictQueryEncode(name))=\(strictQueryEncode(value))"
+            }
+            .joined(separator: "&")
+    }
+
+    private static func strictQueryEncode(_ value: String) -> String {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: ":/?#[]@!$&'()*+,;=")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
     }
 
     private static func resolvedURL(environmentKey: String, fallback: String) -> URL {

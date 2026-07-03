@@ -1767,7 +1767,7 @@ struct TabBarView: View {
         )
         ZStack(alignment: .trailing) {
             ScrollView(.horizontal, showsIndicators: false) {
-                splitButtonRow(buttons: buttons)
+                splitButtonRow(buttons: buttons, showsHoverHighlight: true)
                     .fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: laneWidth, alignment: .trailing)
                     .background(SplitButtonLaneWidthReader())
@@ -1848,6 +1848,8 @@ struct TabBarView: View {
             ForEach(buttons.indices, id: \.self) { index in
                 let button = buttons[index]
                 SplitActionButtonChrome(
+                    action: button.action,
+                    hoverHighlightSquareSide: tabBarLayout.splitActionButtonHeight,
                     registersHitRegion: registersHitRegions,
                     showsHoverHighlight: showsHoverHighlight
                 ) {
@@ -2204,17 +2206,26 @@ private struct SplitActionButtonStyle: ButtonStyle {
 }
 
 private struct SplitActionButtonChrome<Content: View>: View {
+    let action: BonsplitConfiguration.SplitActionButton.Action
+    let hoverHighlightSquareSide: CGFloat
     let registersHitRegion: Bool
     let showsHoverHighlight: Bool
     @ViewBuilder var content: Content
     @State private var isHovering = false
+    @State private var cursorPushed = false
 
     var body: some View {
         content
             .background {
                 if showsHoverHighlight {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(Color.white.opacity(isHovering ? 0.14 : 0))
+                    if action == .newTerminal {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.white.opacity(isHovering ? 0.14 : 0))
+                            .frame(width: hoverHighlightSquareSide, height: hoverHighlightSquareSide)
+                    } else {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.white.opacity(isHovering ? 0.14 : 0))
+                    }
                 }
             }
             .background {
@@ -2223,10 +2234,40 @@ private struct SplitActionButtonChrome<Content: View>: View {
                 }
             }
             .onHover { hovering in
-                guard showsHoverHighlight else { return }
-                isHovering = hovering
+                if showsHoverHighlight {
+                    isHovering = hovering
+                }
+                if hovering, usesPointingHandCursor {
+                    pushCursorIfNeeded()
+                } else {
+                    popCursorIfNeeded()
+                }
+            }
+            .onDisappear {
+                popCursorIfNeeded()
             }
             .tabBarButtonAnimationsDisabled()
+    }
+
+    private var usesPointingHandCursor: Bool {
+        switch action {
+        case .newTerminal, .newBrowser, .splitRight, .splitDown:
+            return true
+        case .custom:
+            return false
+        }
+    }
+
+    private func pushCursorIfNeeded() {
+        guard !cursorPushed else { return }
+        NSCursor.pointingHand.push()
+        cursorPushed = true
+    }
+
+    private func popCursorIfNeeded() {
+        guard cursorPushed else { return }
+        NSCursor.pop()
+        cursorPushed = false
     }
 }
 

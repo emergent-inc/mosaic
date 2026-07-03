@@ -41,7 +41,7 @@ struct MacAuthComposition {
         self.tokenStore = tokenStore
 
         let client = NativeAuthClient(
-            apiBaseURL: AuthEnvironment.vmAPIBaseURL,
+            apiBaseURL: AuthEnvironment.apiBaseURL,
             tokenStore: tokenStore
         )
 

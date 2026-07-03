@@ -1,4 +1,6 @@
 import AppKit
+import CMUXAuthCore
+import CmuxAuthRuntime
 import CmuxAppKitSupportUI
 import CmuxCommandPalette
 import CmuxCore
@@ -12717,6 +12719,14 @@ private struct SidebarFooterButtons: View {
 
     var body: some View {
         HStack(spacing: 4) {
+            if let auth = AppDelegate.shared?.auth {
+                SidebarAccountButton(
+                    coordinator: auth.coordinator,
+                    browserSignIn: auth.browserSignIn
+                )
+            } else {
+                SidebarAccountButton(coordinator: nil, browserSignIn: nil)
+            }
             SidebarHelpMenuButton(onSendFeedback: onSendFeedback)
             // The puzzle button opens the extensions browser; it only shows
             // while the experimental Extensions feature is enabled.
@@ -12743,6 +12753,99 @@ private struct SidebarFooterButtons: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SidebarAccountButton: View {
+    let coordinator: AuthCoordinator?
+    let browserSignIn: HostBrowserSignInFlow?
+    private let buttonSize: CGFloat = 22
+    private let iconSize: CGFloat = 12
+
+    private var currentUser: CMUXAuthUser? {
+        coordinator?.currentUser
+    }
+
+    private var isSignedIn: Bool {
+        coordinator?.isAuthenticated == true && currentUser != nil
+    }
+
+    private var isWorkingOnAuth: Bool {
+        coordinator?.isLoading == true ||
+            coordinator?.isRestoringSession == true ||
+            browserSignIn?.isSigningIn == true
+    }
+
+    private var symbolName: String {
+        isSignedIn ? "person.crop.circle.fill" : "person.crop.circle"
+    }
+
+    private var accessibilityLabel: String {
+        SettingsNavigationTarget.account.title
+    }
+
+    private var helpText: String {
+        if isWorkingOnAuth {
+            return SettingsNavigationTarget.account.title
+        }
+        if let identity = displayIdentity {
+            return "\(SettingsNavigationTarget.account.title): \(identity)"
+        }
+        return String(localized: "settings.account.signedOut.title", defaultValue: "Not signed in")
+    }
+
+    private var displayIdentity: String? {
+        guard let currentUser else { return nil }
+        if let email = currentUser.primaryEmail?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !email.isEmpty {
+            return email
+        }
+        if let name = currentUser.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        return nil
+    }
+
+    var body: some View {
+        Button {
+            openAccountSettings()
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                CmuxSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
+                    .foregroundStyle(iconColor)
+                    .frame(width: buttonSize, height: buttonSize, alignment: .center)
+                if isWorkingOnAuth {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .scaleEffect(0.45)
+                        .frame(width: 7, height: 7)
+                        .offset(x: 1, y: -1)
+                }
+            }
+        }
+        .buttonStyle(SidebarFooterIconButtonStyle())
+        .frame(width: buttonSize, height: buttonSize, alignment: .center)
+        .safeHelp(helpText)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(helpText)
+        .accessibilityIdentifier("SidebarAccountButton")
+    }
+
+    private var iconColor: Color {
+        isSignedIn ? cmuxAccentColor() : Color(nsColor: .secondaryLabelColor)
+    }
+
+    private func openAccountSettings() {
+        if let appDelegate = AppDelegate.shared {
+            appDelegate.openPreferencesWindow(
+                debugSource: "sidebar.account",
+                navigationTarget: .account
+            )
+        } else {
+            AppDelegate.presentPreferencesWindow(navigationTarget: .account)
+        }
     }
 }
 

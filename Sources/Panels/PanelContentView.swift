@@ -199,26 +199,60 @@ struct PanelHeaderIconButton: View {
     let systemName: String
     let label: String
     var isDisabled: Bool = false
+    var hoverCursor: NSCursor = .pointingHand
+    var hoverBackgroundColor: Color = .primary
+    var hoverForegroundColor: Color? = nil
+    var isHoverForced: Bool = false
     let action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
             PanelHeaderIconGlyph(systemName: systemName)
                 .background {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(Color.primary.opacity(isEnabled ? 0.08 : 0.04))
+                        .fill(backgroundColor)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(Color.primary.opacity(isEnabled ? 0.14 : 0.06), lineWidth: 0.5)
+                        .stroke(borderColor, lineWidth: 0.5)
                 }
         }
         .buttonStyle(.plain)
-        .foregroundColor(.secondary)
+        .foregroundColor(foregroundColor)
         .disabled(isDisabled)
         .help(label)
         .accessibilityLabel(label)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .cmuxCursorOnHover(hoverCursor, enabled: !isDisabled && isEnabled)
+    }
+
+    private var effectiveIsHovering: Bool {
+        (isHovering || isHoverForced) && isEnabled && !isDisabled
+    }
+
+    private var backgroundColor: Color {
+        if effectiveIsHovering {
+            return hoverBackgroundColor.opacity(0.14)
+        }
+        return Color.primary.opacity(isEnabled ? 0.08 : 0.04)
+    }
+
+    private var borderColor: Color {
+        if effectiveIsHovering {
+            return hoverBackgroundColor.opacity(0.24)
+        }
+        return Color.primary.opacity(isEnabled ? 0.14 : 0.06)
+    }
+
+    private var foregroundColor: Color {
+        if effectiveIsHovering, let hoverForegroundColor {
+            return hoverForegroundColor
+        }
+        return .secondary
     }
 }
 
@@ -229,5 +263,48 @@ struct PanelHeaderIconGlyph: View {
         CmuxSystemSymbolImage(systemName: systemName, pointSize: 13)
             .frame(width: 20, height: 20, alignment: .center)
             .contentShape(Rectangle())
+    }
+}
+
+struct CmuxHoverCursorModifier: ViewModifier {
+    let cursor: NSCursor
+    let enabled: Bool
+    @State private var cursorPushed = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering in
+                if hovering, enabled {
+                    pushIfNeeded()
+                } else {
+                    popIfNeeded()
+                }
+            }
+            .onChange(of: enabled) { _, nextEnabled in
+                if !nextEnabled {
+                    popIfNeeded()
+                }
+            }
+            .onDisappear {
+                popIfNeeded()
+            }
+    }
+
+    private func pushIfNeeded() {
+        guard !cursorPushed else { return }
+        cursor.push()
+        cursorPushed = true
+    }
+
+    private func popIfNeeded() {
+        guard cursorPushed else { return }
+        NSCursor.pop()
+        cursorPushed = false
+    }
+}
+
+extension View {
+    func cmuxCursorOnHover(_ cursor: NSCursor, enabled: Bool = true) -> some View {
+        modifier(CmuxHoverCursorModifier(cursor: cursor, enabled: enabled))
     }
 }

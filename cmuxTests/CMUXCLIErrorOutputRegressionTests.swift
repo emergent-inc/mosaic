@@ -651,7 +651,7 @@ import Testing
         let resourcesURL = root.appendingPathComponent("resources", isDirectory: true)
         let themesURL = resourcesURL.appendingPathComponent("themes", isDirectory: true)
         try fileManager.createDirectory(at: themesURL, withIntermediateDirectories: true)
-        try writeTheme(named: "Cursor Dark", background: "#141414", to: themesURL)
+        try writeTheme(named: "Anysphere Dark", background: "#141414", to: themesURL)
 
         var environment = ProcessInfo.processInfo.environment
         for key in Array(environment.keys) where key.hasPrefix("CMUX_") {
@@ -677,10 +677,10 @@ import Testing
             result.stdout
         )
         XCTAssertEqual(payload["managed"] as? Bool, true)
-        XCTAssertEqual(payload["fixed_theme"] as? String, "Cursor Dark")
+        XCTAssertEqual(payload["fixed_theme"] as? String, "Anysphere Dark")
         let current = try XCTUnwrap(payload["current"] as? [String: Any], result.stdout)
-        XCTAssertEqual(current["light"] as? String, "Cursor Dark")
-        XCTAssertEqual(current["dark"] as? String, "Cursor Dark")
+        XCTAssertEqual(current["light"] as? String, "Anysphere Dark")
+        XCTAssertEqual(current["dark"] as? String, "Anysphere Dark")
     }
 
     @Test func testBareInteractiveThemesDoesNotLaunchPicker() throws {
@@ -726,7 +726,7 @@ import Testing
 
         XCTAssertFalse(result.timedOut, result.stdout)
         XCTAssertEqual(result.status, 0, result.stdout)
-        XCTAssertTrue(result.stdout.contains("Current theme: Cursor Dark"), result.stdout)
+        XCTAssertTrue(result.stdout.contains("Current theme: Anysphere Dark"), result.stdout)
         XCTAssertFalse(result.stdout.contains("theme picker should not launch"), result.stdout)
     }
 

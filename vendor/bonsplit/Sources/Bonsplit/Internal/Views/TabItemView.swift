@@ -17,6 +17,10 @@ extension View {
         }
     }
 
+    func tabBarCursorOnHover(_ cursor: NSCursor, enabled: Bool = true) -> some View {
+        modifier(TabBarHoverCursorModifier(cursor: cursor, enabled: enabled))
+    }
+
     /// Imposes a minimum width on the tab row only when `minWidth` is non-nil.
     ///
     /// Used by the tab strip's fill mode to force the horizontal `ScrollView` to hand
@@ -30,6 +34,43 @@ extension View {
         } else {
             self
         }
+    }
+}
+
+private struct TabBarHoverCursorModifier: ViewModifier {
+    let cursor: NSCursor
+    let enabled: Bool
+    @State private var cursorPushed = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering in
+                if hovering, enabled {
+                    pushIfNeeded()
+                } else {
+                    popIfNeeded()
+                }
+            }
+            .onChange(of: enabled) { _, nextEnabled in
+                if !nextEnabled {
+                    popIfNeeded()
+                }
+            }
+            .onDisappear {
+                popIfNeeded()
+            }
+    }
+
+    private func pushIfNeeded() {
+        guard !cursorPushed else { return }
+        cursor.push()
+        cursorPushed = true
+    }
+
+    private func popIfNeeded() {
+        guard cursorPushed else { return }
+        NSCursor.pop()
+        cursorPushed = false
     }
 }
 
@@ -391,6 +432,7 @@ struct TabItemView: View {
                         }
                     }
                     .saturation(saturation)
+                    .tabBarCursorOnHover(.pointingHand)
                     .safeHelp(audioLabel)
                     .accessibilityLabel(audioLabel)
                     .tabBarButtonAnimationsDisabled()
@@ -424,6 +466,7 @@ struct TabItemView: View {
                         }
                     }
                     .saturation(saturation)
+                    .tabBarCursorOnHover(.pointingHand)
                     .accessibilityLabel("Exit zoom")
                     .tabBarButtonAnimationsDisabled()
                 }
@@ -879,6 +922,7 @@ struct TabItemView: View {
                         isCloseHovered = hovering
                     }
                 }
+                .tabBarCursorOnHover(.pointingHand)
                 .saturation(saturation)
             }
         }
