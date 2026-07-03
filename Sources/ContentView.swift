@@ -39,13 +39,13 @@ let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier(
 private enum MosaicSidebarStyle {
     static let background = Color(nsColor: MosaicChromePalette.sidebarBackgroundColor)
     static let selectedRow = Color(nsColor: MosaicChromePalette.selectedSidebarRowColor)
-    static let hoverRow = Color.white.opacity(0.045)
-    static let selectedBorder = Color.white.opacity(0.055)
-    static let primaryText = Color(red: 0xEC / 255, green: 0xE8 / 255, blue: 0xF3 / 255)
-    static let secondaryText = Color(red: 0xB9 / 255, green: 0xB4 / 255, blue: 0xC8 / 255)
-    static let inactiveText = Color(red: 0x84 / 255, green: 0x7D / 255, blue: 0x94 / 255)
-    static let mutedText = Color(red: 0x57 / 255, green: 0x51 / 255, blue: 0x6A / 255)
-    static let sectionText = Color(red: 0x57 / 255, green: 0x51 / 255, blue: 0x6A / 255)
+    static let hoverRow = Color(red: 0x32 / 255, green: 0x32 / 255, blue: 0x32 / 255)
+    static let selectedBorder = Color(red: 0x43 / 255, green: 0x43 / 255, blue: 0x43 / 255)
+    static let primaryText = Color(red: 0xD0 / 255, green: 0xD0 / 255, blue: 0xD0 / 255)
+    static let secondaryText = Color(red: 0x90 / 255, green: 0x90 / 255, blue: 0x90 / 255)
+    static let inactiveText = Color(red: 0x70 / 255, green: 0x70 / 255, blue: 0x70 / 255)
+    static let mutedText = Color(red: 0x60 / 255, green: 0x60 / 255, blue: 0x60 / 255)
+    static let sectionText = Color(red: 0x60 / 255, green: 0x60 / 255, blue: 0x60 / 255)
 }
 
 @MainActor
