@@ -16614,6 +16614,10 @@ private extension NSApplication {
         }
 #endif
         if event.type == .leftMouseDown,
+           AppDelegate.shared?.handleNativeTitlebarGapMouseDown(event: event) == true {
+            return
+        }
+        if event.type == .leftMouseDown,
            AppDelegate.shared?.handleMinimalModeTitlebarDoubleClickMouseDown(event: event) == true {
             return
         }
@@ -16791,6 +16795,18 @@ private extension AppDelegate {
         }
 
         return panels
+    }
+
+    @discardableResult
+    func handleNativeTitlebarGapMouseDown(event: NSEvent) -> Bool {
+        guard event.type == .leftMouseDown,
+              let window = event.window ?? (event.windowNumber > 0 ? NSApp.window(withWindowNumber: event.windowNumber) : nil),
+              isMainTerminalWindow(window),
+              !WorkspacePresentationModeSettings.isMinimal(),
+              !window.styleMask.contains(.fullScreen) else {
+            return false
+        }
+        return performNativeTitlebarGapMouseDown(window: window, event: event)
     }
 
     @discardableResult
