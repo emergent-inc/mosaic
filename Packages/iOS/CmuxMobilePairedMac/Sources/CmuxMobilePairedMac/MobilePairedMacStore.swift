@@ -3,7 +3,7 @@ public import Foundation
 import SQLite3
 import os
 
-private let pairedMacStoreLog = Logger(subsystem: "com.cmuxterm.app", category: "PairedMacStore")
+private let pairedMacStoreLog = Logger(subsystem: "mosaic.com.emergent.app", category: "PairedMacStore")
 
 /// SQLite-backed store of paired Macs. Schema migrations gated on
 /// `PRAGMA user_version`.

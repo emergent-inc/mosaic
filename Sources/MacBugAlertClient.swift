@@ -72,7 +72,7 @@ actor MacBugAlertClient {
            let url = URL(string: override.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return url
         }
-        return URL(string: "https://cmux.com/api/bug-alerts")!
+        return URL(string: "https://mosaic.inc/api/bug-alerts")!
     }
 
     private static func defaultSharedSecret() -> String? {

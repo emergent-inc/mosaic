@@ -33,12 +33,12 @@ fi
 case "$CHANNEL" in
   stable)
     EXPECTED_NAME="cmux"
-    EXPECTED_BUNDLE_ID="com.cmuxterm.app"
+    EXPECTED_BUNDLE_ID="mosaic.com.emergent.app"
     EXPECTED_ICON_NAME="AppIcon"
     ;;
   nightly)
     EXPECTED_NAME="cmux NIGHTLY"
-    EXPECTED_BUNDLE_ID="com.cmuxterm.app.nightly"
+    EXPECTED_BUNDLE_ID="mosaic.com.emergent.app.nightly"
     EXPECTED_ICON_NAME="AppIcon-Nightly"
     ;;
   *)

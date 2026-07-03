@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import os.log
 
-nonisolated private let menuBarProfilingLogger = Logger(subsystem: "com.cmuxterm.app", category: "MenuBarProfiling")
+nonisolated private let menuBarProfilingLogger = Logger(subsystem: "mosaic.com.emergent.app", category: "MenuBarProfiling")
 
 enum MenuBarProfilingLauncher {
     static let defaultDurationSeconds = 15

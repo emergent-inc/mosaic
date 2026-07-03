@@ -15,7 +15,7 @@ public struct BrowserClientCertificateCredentialStore {
     ])
 
     private let logger = Logger(
-        subsystem: "com.cmuxterm.app",
+        subsystem: "mosaic.com.emergent.app",
         category: "BrowserClientCertificate"
     )
 

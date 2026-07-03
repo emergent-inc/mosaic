@@ -67,7 +67,7 @@ export async function generateMetadata({
       description: t("ogDescription"),
     },
     alternates,
-    metadataBase: new URL("https://cmux.com"),
+    metadataBase: new URL("https://mosaic.inc"),
   };
 }
 
@@ -100,7 +100,7 @@ export default async function LocaleLayout({
     name: "cmux",
     operatingSystem: "macOS",
     applicationCategory: "DeveloperApplication",
-    url: "https://cmux.com",
+    url: "https://mosaic.inc",
     downloadUrl: DOWNLOAD_URL,
     description:
       "Free and open source native macOS terminal built on Ghostty. Works with Claude Code, Codex, OpenCode, Gemini CLI, Kiro, Aider, and any CLI tool. Vertical tabs, notification rings, split panes, and a socket API.",

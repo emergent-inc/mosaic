@@ -9,6 +9,7 @@ import {
   type DocsSearchResult,
   type PagefindResultData,
 } from "./docs-search-utils";
+import { captureWebAcquisitionEvent } from "../../lib/web-analytics";
 
 type PagefindModule = {
   init: () => Promise<void> | void;
@@ -120,10 +121,23 @@ export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
       setResults(normalizedResults);
       setActiveIndex(normalizedResults.length ? 0 : -1);
       setStatus("ready");
+      captureWebAcquisitionEvent("web_docs_search_performed", {
+        entrypoint: "docs_search",
+        result: "completed",
+        locale,
+        query_length: trimmedQuery.length,
+        result_count: normalizedResults.length,
+      });
     } catch {
       if (requestIdRef.current !== requestId) return;
       setStatus("error");
       setResults([]);
+      captureWebAcquisitionEvent("web_docs_search_performed", {
+        entrypoint: "docs_search",
+        result: "failed",
+        locale,
+        query_length: trimmedQuery.length,
+      });
     }
   }
 
@@ -186,6 +200,12 @@ export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
       event.preventDefault();
       const result = results[activeIndex];
       if (!result) return;
+      captureWebAcquisitionEvent("web_docs_search_result_selected", {
+        entrypoint: "docs_search",
+        result: "completed",
+        locale,
+        result_index: activeIndex,
+      });
       router.push(result.href);
       clearAndNavigate();
     }

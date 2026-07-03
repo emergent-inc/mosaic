@@ -417,7 +417,7 @@ export const changelogMedia: Record<string, VersionMedia> = {
       {
         title: "SSH Files Polish",
         description:
-          "The Files sidebar now follows SSH workspaces and shows the remote root instead of the local macOS path. SSH workspace descriptors restore on relaunch, and new guarded cmux://ssh deep links prompt before launching ssh so unfamiliar links can't run arbitrary commands.",
+          "The Files sidebar now follows SSH workspaces and shows the remote root instead of the local macOS path. SSH workspace descriptors restore on relaunch, and new guarded mosaic://ssh deep links prompt before launching ssh so unfamiliar links can't run arbitrary commands.",
       },
       {
         title: "Vault Pi and Hermes",

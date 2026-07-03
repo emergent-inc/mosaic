@@ -25,6 +25,14 @@ import Testing
         #expect(!resolution.isNightly)
     }
 
+    @Test func defaultFallbackUsesMosaicStableAppcast() {
+        let resolver = UpdateFeedResolver()
+        let resolution = resolver.resolve(infoFeedURL: nil)
+        #expect(resolution.url == "https://updates.mosaic.inc/stable/appcast.xml")
+        #expect(resolution.usedFallback)
+        #expect(!resolution.isNightly)
+    }
+
     @Test func nightlyInfoFeedURLIsClassifiedNightly() {
         let resolver = UpdateFeedResolver()
         let resolution = resolver.resolve(infoFeedURL: "https://example.com/nightly/appcast.xml")

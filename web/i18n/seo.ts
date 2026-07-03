@@ -1,6 +1,6 @@
 import { locales } from "./routing";
 
-const BASE = "https://cmux.com";
+const BASE = "https://mosaic.inc";
 
 /**
  * Build the full alternates object (canonical + hreflang languages)

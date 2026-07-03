@@ -348,7 +348,7 @@ jobs:
           fi
           NIGHTLY_MARKETING_VERSION="${BASE_MARKETING}-nightly.${NIGHTLY_BUILD}"
 
-          NIGHTLY_DMG_IMMUTABLE="cmux-nightly-macos-${NIGHTLY_BUILD}.dmg"
+          NIGHTLY_DMG_IMMUTABLE="mosaic-nightly-macos-${NIGHTLY_BUILD}.dmg"
           {
             echo "NIGHTLY_BUILD=${NIGHTLY_BUILD}"
             echo "NIGHTLY_MARKETING_VERSION=${NIGHTLY_MARKETING_VERSION}"
@@ -371,7 +371,7 @@ jobs:
               echo "Expected CFBundleURLTypes[1] to be the auth URL type, found: $url_type_name" >&2
               exit 1
             fi
-            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:1:CFBundleURLSchemes:0 cmux-nightly" "$app_plist"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:1:CFBundleURLSchemes:0 mosaic-nightly" "$app_plist"
             /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" "$app_plist" >/dev/null 2>&1 || true
             /usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$app_plist" >/dev/null 2>&1 || true
             /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string ${SPARKLE_PUBLIC_KEY}" "$app_plist"
@@ -385,11 +385,11 @@ jobs:
 
           prepare_variant \
             "$APP_DIR" \
-            "com.cmuxterm.app.nightly" \
-            "https://files.cmux.com/nightly/appcast.xml"
+            "mosaic.com.emergent.app.nightly" \
+            "https://updates.mosaic.inc/nightly/appcast.xml"
 
           echo "Nightly app name: cmux NIGHTLY"
-          echo "Nightly bundle ID: com.cmuxterm.app.nightly"
+          echo "Nightly bundle ID: mosaic.com.emergent.app.nightly"
           echo "Nightly marketing version: ${NIGHTLY_MARKETING_VERSION}"
           echo "Nightly build number: ${NIGHTLY_BUILD}"
           echo "Nightly immutable DMG: ${NIGHTLY_DMG_IMMUTABLE}"
@@ -471,9 +471,14 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || (steps.current_head_prebuild.outputs.still_current == 'true' && steps.current_head_postbuild.outputs.still_current == 'true')
         env:
           APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64" ]; then
             echo "Missing APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64 secret" >&2
+            exit 1
+          fi
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "Missing APPLE_TEAM_ID secret" >&2
             exit 1
           fi
 
@@ -487,7 +492,7 @@ jobs:
           security cms -D -i "$TMP_PROFILE" > "$TMP_PLIST"
 
           APP_ID="$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" "$TMP_PLIST")"
-          if [ "$APP_ID" != "7WLXT3NR37.com.cmuxterm.app.nightly" ]; then
+          if [ "$APP_ID" != "${APPLE_TEAM_ID}.mosaic.com.emergent.app.nightly" ]; then
             echo "Nightly provisioning profile targets unexpected app ID: $APP_ID" >&2
             exit 1
           fi
@@ -510,17 +515,27 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || (steps.current_head_prebuild.outputs.still_current == 'true' && steps.current_head_postbuild.outputs.still_current == 'true')
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_SIGNING_IDENTITY" ]; then
             echo "Missing APPLE_SIGNING_IDENTITY secret" >&2
             exit 1
           fi
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "Missing APPLE_TEAM_ID secret" >&2
+            exit 1
+          fi
           for APP_PATH in \
             "build-universal/Build/Products/Release/cmux NIGHTLY.app"
           do
+            ENTITLEMENTS="$RUNNER_TEMP/mosaic.nightly.entitlements"
+            ./scripts/resolve-app-entitlements.sh \
+              cmux.nightly.entitlements \
+              "$ENTITLEMENTS" \
+              "mosaic.com.emergent.app.nightly"
             ./scripts/sign-cmux-bundle.sh \
               "$APP_PATH" \
-              cmux.nightly.entitlements \
+              "$ENTITLEMENTS" \
               "$APPLE_SIGNING_IDENTITY"
           done
 
@@ -595,7 +610,7 @@ jobs:
 
           notarize_and_package \
             "build-universal/Build/Products/Release/cmux NIGHTLY.app" \
-            "cmux-nightly-macos.dmg" \
+            "mosaic-nightly-macos.dmg" \
             "$NIGHTLY_DMG_IMMUTABLE"
 
       - name: Upload dSYMs to Sentry
@@ -622,7 +637,8 @@ jobs:
             echo "Missing SPARKLE_PRIVATE_KEY secret" >&2
             exit 1
           fi
-          ./scripts/sparkle_generate_appcast.sh "$NIGHTLY_DMG_IMMUTABLE" nightly appcast.xml
+          DOWNLOAD_URL_PREFIX="https://download.mosaic.inc/nightly/" \
+            ./scripts/sparkle_generate_appcast.sh "$NIGHTLY_DMG_IMMUTABLE" nightly appcast.xml
           # Keep the legacy universal feed alive long enough for older nightly
           # installs to migrate onto the unified nightly appcast.
           cp appcast.xml appcast-universal.xml
@@ -659,7 +675,7 @@ jobs:
         with:
           name: cmux-nightly-${{ needs.decide.outputs.short_sha }}
           path: |
-            cmux-nightly-macos*.dmg
+            mosaic-nightly-macos*.dmg
             appcast.xml
             remote-daemon-assets/cmuxd-remote-*
             appcast-universal.xml
@@ -706,20 +722,20 @@ jobs:
             Automated nightly build for `${{ needs.decide.outputs.short_sha }}`.
 
             **cmux NIGHTLY** is published as a universal app:
-            - bundle ID `com.cmuxterm.app.nightly`
+            - bundle ID `mosaic.com.emergent.app.nightly`
             - feed `appcast.xml`
             - compatibility feed `appcast-universal.xml` for older universal nightlies
 
-            [Download cmux-nightly-macos.dmg](https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg)
+            [Download mosaic-nightly-macos.dmg](https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg)
           files: |
-            cmux-nightly-macos-${{ github.run_id }}*.dmg
-            cmux-nightly-macos.dmg
+            mosaic-nightly-macos-${{ github.run_id }}*.dmg
+            mosaic-nightly-macos.dmg
             appcast.xml
             remote-daemon-assets/cmuxd-remote-*
             appcast-universal.xml
           overwrite_files: true
 
-      - name: Upload nightly appcast to R2
+      - name: Upload nightly assets to R2
         if: needs.decide.outputs.should_publish == 'true' && steps.current_head_prebuild.outputs.still_current == 'true' && steps.current_head_postbuild.outputs.still_current == 'true'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
@@ -733,13 +749,29 @@ jobs:
           # a DMG that doesn't exist yet. R2 PutObject is atomic, so the appcast
           # is either the old version or the new one, never missing.
           python3 scripts/ci/upload-r2-object.py \
+            --file "$NIGHTLY_DMG_IMMUTABLE" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket mosaic-binaries \
+            --key "nightly/${NIGHTLY_DMG_IMMUTABLE}" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          python3 scripts/ci/upload-r2-object.py \
+            --file mosaic-nightly-macos.dmg \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket mosaic-binaries \
+            --key nightly/mosaic-nightly-macos.dmg \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+          python3 scripts/ci/upload-r2-object.py \
             --file appcast.xml \
             --endpoint-url "$R2_ENDPOINT" \
-            --bucket cmux-binaries \
+            --bucket mosaic-binaries \
             --key nightly/appcast.xml \
             --cache-control "no-cache, no-store, must-revalidate"
 
-          echo "R2 appcast upload complete: https://files.cmux.com/nightly/appcast.xml"
+          echo "R2 nightly upload complete:"
+          echo "  Appcast: https://updates.mosaic.inc/nightly/appcast.xml"
+          echo "  Download: https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg"
 
       - name: Cleanup keychain
         if: always()

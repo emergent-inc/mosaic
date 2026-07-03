@@ -11,7 +11,7 @@ describe("docs search utilities", () => {
       "/docs/getting-started",
     );
     expect(
-      normalizePagefindUrl("https://cmux.com/ja/docs/api/index.html#surface"),
+      normalizePagefindUrl("https://mosaic.inc/ja/docs/api/index.html#surface"),
     ).toBe("/ja/docs/api#surface");
     expect(normalizePagefindUrl("/docs/configuration/index.html")).toBe(
       "/docs/configuration",

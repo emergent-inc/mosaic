@@ -1582,7 +1582,7 @@ private enum TopTextFormat: Equatable {
 }
 
 enum SocketPasswordResolver {
-    private static let service = "com.cmuxterm.app.socket-control"
+    private static let service = "mosaic.com.emergent.app.socket-control"
     private static let account = "local-socket-password"
 
     static func resolve(explicit: String?, socketPath: String) -> String? {
@@ -2913,7 +2913,7 @@ struct CMUXCLI {
     }
 
     private static let browserDisabledDefaultsKey = "browserDisabledOverride"
-    private static let defaultBrowserSettingsDomain = "com.cmuxterm.app"
+    private static let defaultBrowserSettingsDomain = "mosaic.com.emergent.app"
 
     private static func containingAppBundleIdentifier() -> String? {
         normalizedEnvValue(CLIExecutableLocator.enclosingAppBundle()?.bundleIdentifier)
@@ -34271,7 +34271,7 @@ export default CMUXSessionRestore;
         print()
         print(shortcuts)
         print()
-        print("  \(bold)Docs\(reset)\(subdued)                https://cmux.com/docs\(reset)")
+        print("  \(bold)Docs\(reset)\(subdued)                https://mosaic.inc/docs\(reset)")
         print("  \(bold)Discord\(reset)\(subdued)             https://discord.gg/zmWHDeZffZ\(reset)")
         print("  \(bold)GitHub\(reset)\(subdued)              https://github.com/emergent-inc/cmux (please leave a star ⭐)\(reset)")
         print("  \(bold)Email\(reset)\(subdued)               contact@emergent.inc\(reset)")

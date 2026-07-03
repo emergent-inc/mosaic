@@ -17,7 +17,7 @@ export const projects = {
     orgId: "team_KndpHsJ15gO2OoAP2SO0thYn",
     projectName: "cmux",
     label: "production",
-    url: "https://cmux.com",
+    url: "https://mosaic.inc",
     stackLabel: "prod",
   },
 };

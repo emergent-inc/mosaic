@@ -2,7 +2,7 @@ public import CmuxMobilePairedMac
 public import Foundation
 import os
 
-private let pairedMacRestoreLog = Logger(subsystem: "com.cmuxterm.app", category: "PairedMacRestore")
+private let pairedMacRestoreLog = Logger(subsystem: "mosaic.com.emergent.app", category: "PairedMacRestore")
 
 /// Restores a user's backed-up saved hosts into the local
 /// ``MobilePairedMacStore`` on sign-in (the mirror image of

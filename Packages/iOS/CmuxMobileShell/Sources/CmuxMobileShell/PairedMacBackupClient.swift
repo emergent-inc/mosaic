@@ -1,7 +1,7 @@
 public import Foundation
 import os
 
-private let pairedMacBackupLog = Logger(subsystem: "com.cmuxterm.app", category: "PairedMacBackup")
+private let pairedMacBackupLog = Logger(subsystem: "mosaic.com.emergent.app", category: "PairedMacBackup")
 
 /// HTTP client for the per-user paired-Mac backup on the presence worker
 /// (`/v1/sync/paired-macs`). Auth mirrors ``PresenceClient`` /

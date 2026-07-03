@@ -1,7 +1,7 @@
 "use strict";
 
 const IMMUTABLE_RELEASE_ASSETS = [
-  "cmux-macos.dmg",
+  "mosaic-macos.dmg",
   "appcast.xml",
   "cmuxd-remote-darwin-arm64",
   "cmuxd-remote-darwin-amd64",

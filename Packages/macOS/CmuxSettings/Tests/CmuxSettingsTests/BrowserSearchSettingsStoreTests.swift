@@ -64,7 +64,7 @@ struct BrowserSearchSettingsStoreTests {
         #expect(appendedURL.absoluteString.contains("q=c%2B%2B%20%26%26%20swift"))
         #expect(!appendedURL.absoluteString.contains("q=c++"))
         #expect(store.isValidSearchURLTemplate("https://search.example.test/find?q={query}"))
-        #expect(!store.isValidSearchURLTemplate("cmux://search?q={query}"))
+        #expect(!store.isValidSearchURLTemplate("mosaic://search?q={query}"))
         #expect(store.searchURL(fromTemplate: "file:///tmp/search?q={query}", query: "hello world") == nil)
     }
 

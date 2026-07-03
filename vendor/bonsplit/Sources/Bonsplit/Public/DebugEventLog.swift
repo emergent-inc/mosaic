@@ -46,7 +46,7 @@ public final class DebugEventLog: @unchecked Sendable {
         }
 
         if let bundleId = Bundle.main.bundleIdentifier,
-           bundleId != "com.cmuxterm.app.debug" {
+           bundleId != "mosaic.com.emergent.app.debug" {
             return "/tmp/cmux-debug-\(sanitizePathToken(bundleId)).log"
         }
 

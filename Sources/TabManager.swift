@@ -23,7 +23,7 @@ import CmuxTerminal
 // The old Tab class is replaced by Workspace
 typealias Tab = Workspace
 
-private let tabManagerLogger = Logger(subsystem: "com.cmuxterm.app", category: "TabManager")
+private let tabManagerLogger = Logger(subsystem: "mosaic.com.emergent.app", category: "TabManager")
 
 enum WorkspaceOrderChangeNotificationKey {
     static let movedWorkspaceIds = "movedWorkspaceIds"
@@ -1797,13 +1797,28 @@ class TabManager: ObservableObject {
         selectAnchor: Bool = true,
         collapseSidebarSelection: Bool = true
     ) -> UUID? {
-        workspaceGrouping.createWorkspaceGroup(
+        let groupId = workspaceGrouping.createWorkspaceGroup(
             name: name,
             childWorkspaceIds: childWorkspaceIds,
             anchorWorkingDirectory: anchorWorkingDirectory,
             selectAnchor: selectAnchor,
             collapseSidebarSelection: collapseSidebarSelection
         )
+        if let groupId {
+            ProductAnalytics.shared.trackSemantic(
+                .workspaceGroupCreated,
+                featureArea: .workspace,
+                entrypoint: .system,
+                result: .completed,
+                properties: [
+                    "workspace_group_id_hash": ProductAnalyticsPrivacy.hashIdentifier(groupId.uuidString),
+                    "workspace_count": tabs.count,
+                    "child_workspace_count": childWorkspaceIds.count,
+                    "selected": selectAnchor,
+                ]
+            )
+        }
+        return groupId
     }
 
     @discardableResult
@@ -1814,13 +1829,28 @@ class TabManager: ObservableObject {
         select: Bool = true,
         initialSurface: NewWorkspaceInitialSurface = .terminal
     ) -> Workspace? {
-        workspaceGrouping.createWorkspaceInGroup(
+        let workspace = workspaceGrouping.createWorkspaceInGroup(
             groupId: groupId,
             placement: explicitPlacement,
             referenceWorkspaceId: referenceWorkspaceId,
             select: select,
             initialSurface: initialSurface
         )
+        if let workspace {
+            ProductAnalytics.shared.trackSemantic(
+                .workspaceGroupWorkspaceAdded,
+                featureArea: .workspace,
+                entrypoint: .system,
+                result: .completed,
+                properties: [
+                    "workspace_group_id_hash": ProductAnalyticsPrivacy.hashIdentifier(groupId.uuidString),
+                    "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier(workspace.id.uuidString),
+                    "workspace_count": tabs.count,
+                    "selected": select,
+                ]
+            )
+        }
+        return workspace
     }
 
     func addWorkspaceToGroup(
@@ -1829,16 +1859,44 @@ class TabManager: ObservableObject {
         placement: WorkspaceGroupNewPlacement? = nil,
         referenceWorkspaceId: UUID? = nil
     ) {
+        let previousGroupId = tabs.first(where: { $0.id == workspaceId })?.groupId
         workspaceGrouping.addWorkspaceToGroup(
             workspaceId: workspaceId,
             groupId: groupId,
             placement: placement,
             referenceWorkspaceId: referenceWorkspaceId
         )
+        guard tabs.first(where: { $0.id == workspaceId })?.groupId == groupId,
+              previousGroupId != groupId else { return }
+        ProductAnalytics.shared.trackSemantic(
+            .workspaceGroupWorkspaceAdded,
+            featureArea: .workspace,
+            entrypoint: .system,
+            result: .completed,
+            properties: [
+                "workspace_group_id_hash": ProductAnalyticsPrivacy.hashIdentifier(groupId.uuidString),
+                "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier(workspaceId.uuidString),
+                "workspace_count": tabs.count,
+            ]
+        )
     }
 
     func removeWorkspaceFromGroup(workspaceId: UUID) {
+        let previousGroupId = tabs.first(where: { $0.id == workspaceId })?.groupId
         workspaceGrouping.removeWorkspaceFromGroup(workspaceId: workspaceId)
+        guard let previousGroupId,
+              tabs.first(where: { $0.id == workspaceId })?.groupId != previousGroupId else { return }
+        ProductAnalytics.shared.trackSemantic(
+            .workspaceGroupWorkspaceRemoved,
+            featureArea: .workspace,
+            entrypoint: .system,
+            result: .completed,
+            properties: [
+                "workspace_group_id_hash": ProductAnalyticsPrivacy.hashIdentifier(previousGroupId.uuidString),
+                "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier(workspaceId.uuidString),
+                "workspace_count": tabs.count,
+            ]
+        )
     }
 
     func ungroupWorkspaceGroup(groupId: UUID) {
@@ -3965,6 +4023,35 @@ class TabManager: ObservableObject {
     ) -> UUID? {
         guard BrowserAvailabilitySettings.isEnabled() else { return nil }
         guard let workspace = tabs.first(where: { $0.id == tabId }) else { return nil }
+        let baseBrowserProperties: [String: Any] = [
+            "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier(tabId.uuidString),
+            "prefer_split_right": preferSplitRight,
+            "insert_at_end": insertAtEnd,
+            "destination_present": url != nil,
+        ]
+        ProductAnalytics.shared.trackSemantic(
+            .browserButtonClicked,
+            featureArea: .browser,
+            entrypoint: .button,
+            result: .started,
+            surface: "browser_panel",
+            properties: baseBrowserProperties
+        )
+        let trackBrowserOpenResult: (UUID?, Bool) -> Void = { surfaceId, didSplit in
+            var properties = baseBrowserProperties
+            if let surfaceId {
+                properties["surface_id_hash"] = ProductAnalyticsPrivacy.hashIdentifier(surfaceId.uuidString)
+            }
+            properties["did_split"] = didSplit
+            ProductAnalytics.shared.trackSemantic(
+                .browserOpened,
+                featureArea: .browser,
+                entrypoint: .button,
+                result: surfaceId == nil ? .failed : .completed,
+                surface: "browser_panel",
+                properties: properties
+            )
+        }
         if selectedTabId != tabId {
             selectWorkspaceId(tabId, notificationDismissalContext: .explicitWorkspaceResume)
         }
@@ -3979,6 +4066,7 @@ class TabManager: ObservableObject {
                    preferredProfileID: preferredProfileID
                ) {
                 rememberFocusedSurface(tabId: tabId, surfaceId: browserPanel.id)
+                trackBrowserOpenResult(browserPanel.id, false)
                 return browserPanel.id
             }
 
@@ -4006,6 +4094,7 @@ class TabManager: ObservableObject {
                    focus: true
                ) {
                 rememberFocusedSurface(tabId: tabId, surfaceId: browserPanel.id)
+                trackBrowserOpenResult(browserPanel.id, true)
                 return browserPanel.id
             }
         }
@@ -4018,9 +4107,11 @@ class TabManager: ObservableObject {
                   insertAtEnd: insertAtEnd,
                   preferredProfileID: preferredProfileID
               ) else {
+            trackBrowserOpenResult(nil, false)
             return nil
         }
         rememberFocusedSurface(tabId: tabId, surfaceId: browserPanel.id)
+        trackBrowserOpenResult(browserPanel.id, false)
         return browserPanel.id
     }
 

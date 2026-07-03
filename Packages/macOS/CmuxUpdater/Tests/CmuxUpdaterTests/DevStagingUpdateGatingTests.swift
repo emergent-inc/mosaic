@@ -44,18 +44,18 @@ import Testing
     }
 
     @Test func classifiesDebugAndStagingBundlesAsDevLike() {
-        #expect(UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.debug"))
-        #expect(UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.debug.my-tag"))
-        #expect(UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.staging"))
-        #expect(UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.staging.my-tag"))
+        #expect(UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.debug"))
+        #expect(UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.debug.my-tag"))
+        #expect(UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.staging"))
+        #expect(UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.staging.my-tag"))
     }
 
     @Test func doesNotClassifyPublicOrNightlyOrNilAsDevLike() {
-        #expect(!UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app"))
+        #expect(!UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app"))
         #expect(!UpdateController.isDevLikeBundleIdentifier(nil))
         // A look-alike that is neither the exact base id nor a dotted suffix must not match.
-        #expect(!UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.debugger"))
-        #expect(!UpdateController.isDevLikeBundleIdentifier("com.cmuxterm.app.stagingx"))
+        #expect(!UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.debugger"))
+        #expect(!UpdateController.isDevLikeBundleIdentifier("mosaic.com.emergent.app.stagingx"))
     }
 
     /// A manual "Check for Updates" on a DEV/staging build must not query the public appcast or

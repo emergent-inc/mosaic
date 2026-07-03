@@ -2,7 +2,7 @@ import XCTest
 
 final class SidebarPullRequestInteractivityUITests: XCTestCase {
     private var socketPath = ""
-    private let defaultsDomain = "com.cmuxterm.app.debug"
+    private let defaultsDomain = "mosaic.com.emergent.app.debug"
     private let launchTag = "ui-tests-sidebar-pr-interactivity"
     private let pullRequestNumber = 123
     private var pullRequestURL: String {

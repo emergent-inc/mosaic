@@ -31,6 +31,17 @@ private func sentryCaptureMessage(
             scope.setContext(value: data, key: contextKey ?? category)
         }
     }
+    let analyticsSeverity: MacAnalyticsSeverity = level == .error ? .error : .warning
+    var analyticsProperties = data ?? [:]
+    analyticsProperties["sentry_level"] = level == .error ? "error" : "warning"
+    analyticsProperties["context_key"] = contextKey ?? category
+    PostHogAnalytics.shared.trackError(
+        errorKind: "sentry.\(category)",
+        severity: analyticsSeverity,
+        source: "SentryHelper",
+        properties: analyticsProperties,
+        flush: level == .error
+    )
     sentryRequestMemoryContextRefresh(reason: "capture.\(category)")
 }
 

@@ -13,6 +13,10 @@ permissions:
 
 env:
   CREATE_DMG_VERSION: 8.0.0
+  MOSAIC_STABLE_APPCAST_URL: https://updates.mosaic.inc/stable/appcast.xml
+  MOSAIC_STABLE_DOWNLOAD_URL: https://download.mosaic.inc/mosaic-macos.dmg
+  MOSAIC_RELEASE_DOWNLOAD_URL_BASE: https://download.mosaic.inc/releases
+  MOSAIC_R2_BUCKET: mosaic-binaries
 
 jobs:
   build-ghostty-cli-helper:
@@ -337,7 +341,7 @@ jobs:
           echo "Adding SUPublicEDKey to Info.plist..."
           /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string ${SPARKLE_PUBLIC_KEY}" "$APP_PLIST"
           echo "Adding SUFeedURL to Info.plist..."
-          /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml" "$APP_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :SUFeedURL string ${MOSAIC_STABLE_APPCAST_URL}" "$APP_PLIST"
           echo "Verifying:"
           /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$APP_PLIST"
           /usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$APP_PLIST"
@@ -371,9 +375,14 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         env:
           APPLE_RELEASE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_RELEASE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_RELEASE_PROVISIONING_PROFILE_BASE64" ]; then
             echo "Missing APPLE_RELEASE_PROVISIONING_PROFILE_BASE64 secret" >&2
+            exit 1
+          fi
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "Missing APPLE_TEAM_ID secret" >&2
             exit 1
           fi
           APP_PATH="build-universal/Build/Products/Release/cmux.app"
@@ -384,7 +393,7 @@ jobs:
           echo "$APPLE_RELEASE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$TMP_PROFILE"
           security cms -D -i "$TMP_PROFILE" > "$TMP_PLIST"
           APP_ID="$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" "$TMP_PLIST")"
-          if [ "$APP_ID" != "7WLXT3NR37.com.cmuxterm.app" ]; then
+          if [ "$APP_ID" != "${APPLE_TEAM_ID}.mosaic.com.emergent.app" ]; then
             echo "Release provisioning profile targets unexpected app ID: $APP_ID" >&2
             exit 1
           fi
@@ -404,15 +413,25 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_SIGNING_IDENTITY" ]; then
             echo "Missing APPLE_SIGNING_IDENTITY secret" >&2
             exit 1
           fi
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "Missing APPLE_TEAM_ID secret" >&2
+            exit 1
+          fi
           APP_PATH="build-universal/Build/Products/Release/cmux.app"
+          ENTITLEMENTS="$RUNNER_TEMP/mosaic.release.entitlements"
+          ./scripts/resolve-app-entitlements.sh \
+            cmux.release.entitlements \
+            "$ENTITLEMENTS" \
+            "mosaic.com.emergent.app"
           ./scripts/sign-cmux-bundle.sh \
             "$APP_PATH" \
-            cmux.release.entitlements \
+            "$ENTITLEMENTS" \
             "$APPLE_SIGNING_IDENTITY"
 
       - name: Notarize app
@@ -429,7 +448,7 @@ jobs:
           fi
           APP_PATH="build-universal/Build/Products/Release/cmux.app"
           ZIP_SUBMIT="cmux-notary.zip"
-          DMG_RELEASE="cmux-macos.dmg"
+          DMG_RELEASE="mosaic-macos.dmg"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_SUBMIT"
           APP_SUBMIT_JSON="$(xcrun notarytool submit "$ZIP_SUBMIT" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --output-format json)"
           APP_SUBMIT_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<<"$APP_SUBMIT_JSON")"
@@ -492,7 +511,8 @@ jobs:
             echo "Missing SPARKLE_PRIVATE_KEY secret" >&2
             exit 1
           fi
-          ./scripts/sparkle_generate_appcast.sh cmux-macos.dmg "$GITHUB_REF_NAME" appcast.xml
+          DOWNLOAD_URL_PREFIX="${MOSAIC_RELEASE_DOWNLOAD_URL_BASE}/${GITHUB_REF_NAME}/" \
+            ./scripts/sparkle_generate_appcast.sh mosaic-macos.dmg "$GITHUB_REF_NAME" appcast.xml
 
       - name: Attest remote daemon release assets
         id: attest-remote-daemon-release-assets
@@ -526,7 +546,7 @@ jobs:
         with:
           name: cmux-release-dry-run
           path: |
-            cmux-macos.dmg
+            mosaic-macos.dmg
             appcast.xml
             remote-daemon-assets/cmuxd-remote-*
           if-no-files-found: error
@@ -536,7 +556,7 @@ jobs:
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: |
-            cmux-macos.dmg
+            mosaic-macos.dmg
             appcast.xml
             remote-daemon-assets/cmuxd-remote-darwin-arm64
             remote-daemon-assets/cmuxd-remote-darwin-amd64
@@ -547,7 +567,7 @@ jobs:
           generate_release_notes: true
           overwrite_files: false
 
-      - name: Upload release appcast to R2
+      - name: Upload release assets to R2
         if: steps.guard_release_assets.outputs.skip_upload != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -569,16 +589,46 @@ jobs:
           fi
 
           # Upload after GitHub Release publish so the appcast never references
-          # a DMG that doesn't exist yet. R2 PutObject is atomic, so the appcast
-          # is either the old version or the new one, never missing.
+          # a DMG that doesn't exist yet. Versioned release artifacts are
+          # immutable; stable aliases are only updated for the highest semver tag.
+          python3 scripts/ci/upload-r2-object.py \
+            --file mosaic-macos.dmg \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket "$MOSAIC_R2_BUCKET" \
+            --key "releases/${GITHUB_REF_NAME}/mosaic-macos.dmg" \
+            --cache-control "public, max-age=31536000, immutable"
+
           python3 scripts/ci/upload-r2-object.py \
             --file appcast.xml \
             --endpoint-url "$R2_ENDPOINT" \
-            --bucket cmux-binaries \
+            --bucket "$MOSAIC_R2_BUCKET" \
+            --key "releases/${GITHUB_REF_NAME}/appcast.xml" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          python3 scripts/ci/upload-r2-object.py \
+            --file appcast.xml \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket "$MOSAIC_R2_BUCKET" \
             --key stable/appcast.xml \
             --cache-control "no-cache, no-store, must-revalidate"
 
-          echo "R2 appcast upload complete: https://files.cmux.com/stable/appcast.xml"
+          python3 scripts/ci/upload-r2-object.py \
+            --file mosaic-macos.dmg \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket "$MOSAIC_R2_BUCKET" \
+            --key stable/mosaic-macos.dmg \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+          python3 scripts/ci/upload-r2-object.py \
+            --file mosaic-macos.dmg \
+            --endpoint-url "$R2_ENDPOINT" \
+            --bucket "$MOSAIC_R2_BUCKET" \
+            --key mosaic-macos.dmg \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+          echo "R2 release upload complete:"
+          echo "  Appcast: ${MOSAIC_STABLE_APPCAST_URL}"
+          echo "  Download: ${MOSAIC_STABLE_DOWNLOAD_URL}"
 
       - name: Cleanup keychain
         if: always()

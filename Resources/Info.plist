@@ -253,7 +253,7 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml</string>
+	<string>https://updates.mosaic.inc/stable/appcast.xml</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 	<key>SUSendProfileInfo</key>

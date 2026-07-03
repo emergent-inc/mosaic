@@ -107,7 +107,7 @@ class SettingsUITestCase: XCTestCase {
 
     /// Deletes UserDefaults keys from the debug suite so a test starts
     /// from the known default. Pass the raw `userDefaultsKey`s.
-    func resetDefaults(_ keys: [String], suite: String = "com.cmuxterm.app.debug") {
+    func resetDefaults(_ keys: [String], suite: String = "mosaic.com.emergent.app.debug") {
         for key in keys {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")

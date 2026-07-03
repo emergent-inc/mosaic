@@ -3,10 +3,10 @@ import type { Locale } from "../../../i18n/routing";
 import { locales, routing } from "../../../i18n/routing";
 import { mintNativeSessionTokenPair } from "../../../services/auth/nativeSession";
 
-const NATIVE_SCHEME = "cmux://";
-const NATIVE_SCHEMES = new Set(["cmux", "cmux-nightly"]);
-const NATIVE_HANDOFF_COOKIE = "cmux-native-auth-handoff";
-const NATIVE_HANDOFF_PARAM = "cmux_auth_handoff";
+const NATIVE_SCHEME = "mosaic://";
+const NATIVE_SCHEMES = new Set(["mosaic", "mosaic-nightly"]);
+const NATIVE_HANDOFF_COOKIE = "mosaic-native-auth-handoff";
+const NATIVE_HANDOFF_PARAM = "mosaic_auth_handoff";
 
 type AfterSignInMessages = {
   title: string;
@@ -65,7 +65,7 @@ function localAllowedNativeSchemes(): Set<string> {
   for (const value of values) {
     for (const raw of value?.split(/[\s,]+/) ?? []) {
       const scheme = raw.trim().replace(/:\/\/.*$/, "").replace(/:$/, "");
-      if (/^cmux-dev-[a-z0-9-]+$/.test(scheme)) schemes.add(scheme);
+      if (/^mosaic-dev-[a-z0-9-]+$/.test(scheme)) schemes.add(scheme);
     }
   }
   return schemes;
@@ -78,7 +78,7 @@ function isAllowedNativeReturnTo(href: string, request: NextRequest): boolean {
     if (url.pathname !== "" && url.pathname !== "/") return false;
     const scheme = url.protocol.replace(":", "");
     if (NATIVE_SCHEMES.has(scheme)) return true;
-    if (scheme === "cmux-dev") return isLocalRequest(request);
+    if (scheme === "mosaic-dev") return isLocalRequest(request);
     return isLocalRequest(request) && localAllowedNativeSchemes().has(scheme);
   } catch {
     return false;
@@ -94,17 +94,17 @@ function buildNativeHref(
   const href = baseHref ?? `${NATIVE_SCHEME}auth-callback`;
   try {
     const url = new URL(href);
-    url.searchParams.set("cmux_refresh", refreshToken);
-    url.searchParams.set("cmux_access", accessToken);
+    url.searchParams.set("mosaic_refresh", refreshToken);
+    url.searchParams.set("mosaic_access", accessToken);
     return url.toString();
   } catch {
-    return `${NATIVE_SCHEME}auth-callback?cmux_refresh=${encodeURIComponent(refreshToken)}&cmux_access=${encodeURIComponent(accessToken)}`;
+    return `${NATIVE_SCHEME}auth-callback?mosaic_refresh=${encodeURIComponent(refreshToken)}&mosaic_access=${encodeURIComponent(accessToken)}`;
   }
 }
 
 function hasAuthState(href: string): boolean {
   try {
-    return new URL(href).searchParams.has("cmux_auth_state");
+    return new URL(href).searchParams.has("mosaic_auth_state");
   } catch {
     return false;
   }

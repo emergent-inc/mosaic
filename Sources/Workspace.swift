@@ -2053,7 +2053,7 @@ final class SharedLiveAgentIndex: ObservableObject {
     private static let minEventReloadInterval: TimeInterval = 2.0
 
     private var directoryWatchSource: DispatchSourceFileSystemObject?
-    private let watchQueue = DispatchQueue(label: "com.cmuxterm.app.sharedLiveAgentIndexWatch")
+    private let watchQueue = DispatchQueue(label: "mosaic.com.emergent.app.sharedLiveAgentIndexWatch")
 
     private init() {}
 

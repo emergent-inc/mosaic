@@ -10,10 +10,10 @@ const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 function cmuxMiddleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
 
-  // 301 redirect cmux.dev (and www.cmux.dev) to cmux.com, preserving path and query
+  // 301 redirect cmux.dev (and www.cmux.dev) to mosaic.inc, preserving path and query
   if (host === "cmux.dev" || host === "www.cmux.dev") {
     const url = new URL(request.url);
-    url.host = "cmux.com";
+    url.host = "mosaic.inc";
     url.protocol = "https:";
     return NextResponse.redirect(url.toString(), 301);
   }

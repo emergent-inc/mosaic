@@ -107,7 +107,7 @@ public struct KeyboardShortcutsSection: View {
             HStack(spacing: 8) {
                 Link(
                     String(localized: "settings.shortcuts.chords.docsButton", defaultValue: "Chord docs"),
-                    destination: URL(string: "https://cmux.com/docs/keyboard-shortcuts#shortcut-chords")!
+                    destination: URL(string: "https://mosaic.inc/docs/keyboard-shortcuts#shortcut-chords")!
                 )
                 .cmuxFont(.caption)
                 .accessibilityIdentifier("SettingsKeyboardShortcutsChordDocsLink")

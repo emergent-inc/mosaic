@@ -98,7 +98,7 @@ struct DockEmptyView: View {
             Set up cmux Dock controls for the current context.
 
             First, learn the feature before editing:
-            1. Run `cmux docs dock` if the cmux CLI is available. If it is not, read https://cmux.com/docs/dock.
+            1. Run `cmux docs dock` if the cmux CLI is available. If it is not, read https://mosaic.inc/docs/dock.
             2. Inspect the repository or current directory to understand the project type, scripts, package manager, dev servers, logs, task runners, test commands, and any existing TUI tools.
             3. If the desired Dock is ambiguous, ask the user what they want monitored or controlled before writing files.
 

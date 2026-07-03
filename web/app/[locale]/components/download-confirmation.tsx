@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { DOWNLOAD_URL, DOWNLOAD_INTENT_PARAM } from "../../lib/download";
+import { captureWebAcquisitionEvent } from "../../lib/web-analytics";
 import { OfficialLinks } from "./official-links";
 
 function triggerDownload() {
@@ -38,6 +39,12 @@ export function DownloadConfirmation() {
       posthog.capture("cmuxterm_download_started", {
         location: "download_confirmation",
         platform: "mac",
+      });
+      captureWebAcquisitionEvent("web_download_started", {
+        entrypoint: "download_confirmation",
+        result: "started",
+        location: "download_confirmation",
+        platform_name: "mac",
       });
       triggerDownload();
       params.delete(DOWNLOAD_INTENT_PARAM);
