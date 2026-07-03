@@ -343,9 +343,8 @@ struct TerminalPanelView: View {
                     CollaborationRuntime.shared.copyTerminalSessionInviteCode(for: panel)
                     isTerminalRecipientPopoverPresented = false
                 },
-                onShare: { selectedIDs in
+                onSelectionChanged: { selectedIDs in
                     CollaborationRuntime.shared.applyRecipientSelection(selectedIDs, for: panel)
-                    isTerminalRecipientPopoverPresented = false
                 },
                 onStopSharing: {
                     CollaborationRuntime.shared.setSharing(false, for: panel)
@@ -520,19 +519,19 @@ private struct CollaborationParticipantAvatarView: View {
 private struct TerminalCollaborationRecipientPopoverContent: View {
     let recipients: [CollaborationTerminalRecipientSnapshot]
     let onCopyInviteCode: () -> Void
-    let onShare: (Set<String>) -> Void
+    let onSelectionChanged: (Set<String>) -> Void
     let onStopSharing: () -> Void
     @State private var selectedParticipantIDs: Set<String>
 
     init(
         recipients: [CollaborationTerminalRecipientSnapshot],
         onCopyInviteCode: @escaping () -> Void,
-        onShare: @escaping (Set<String>) -> Void,
+        onSelectionChanged: @escaping (Set<String>) -> Void,
         onStopSharing: @escaping () -> Void
     ) {
         self.recipients = recipients
         self.onCopyInviteCode = onCopyInviteCode
-        self.onShare = onShare
+        self.onSelectionChanged = onSelectionChanged
         self.onStopSharing = onStopSharing
         _selectedParticipantIDs = State(initialValue: Set(
             recipients
@@ -585,18 +584,12 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     }
                 }
 
-                if model.showsShareAction {
+                if model.showsStopSharingAction {
                     HStack {
-                        if model.showsStopSharingAction {
-                            TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
-                                onStopSharing()
-                            }
+                        TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
+                            onStopSharing()
                         }
                         Spacer()
-                        TrackedButton("terminal_share_confirm", CollaborationStrings.share) {
-                            onShare(selectedParticipantIDs)
-                        }
-                        .keyboardShortcut(.defaultAction)
                     }
                 }
             }
@@ -616,6 +609,10 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                 } else {
                     selectedParticipantIDs.remove(participantID)
                 }
+                // Checking/unchecking applies immediately: share with the person
+                // on check, stop sharing with them on uncheck. There is no
+                // separate confirm button.
+                onSelectionChanged(selectedParticipantIDs)
             }
         )
     }

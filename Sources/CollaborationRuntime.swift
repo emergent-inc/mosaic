@@ -1004,6 +1004,7 @@ final class CollaborationRuntime {
     }
 
     func recipientSnapshots(for terminal: TerminalPanel) -> [CollaborationTerminalRecipientSnapshot] {
+        _ = workspaceParticipantSnapshotRevision
         let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
         guard let terminalID, let connection = connection(forTerminalID: terminalID) else { return [] }
         let selectedIDs = selectedRecipientParticipantIDs(for: terminalID, connection: connection)
@@ -1144,6 +1145,9 @@ final class CollaborationRuntime {
         )
         let removedIDs = previousIDs.subtracting(nextIDs)
         let addedIDs = nextIDs.subtracting(previousIDs)
+        // Selection now applies directly from checkbox toggles (no confirm button),
+        // so bump the revision to refresh readers like the header's "Shared to N".
+        workspaceParticipantSnapshotRevision &+= 1
         trackCollaboration(
             .recipientsUpdated,
             shareKind: .terminal,
