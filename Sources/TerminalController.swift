@@ -1113,8 +1113,14 @@ class TerminalController {
             }
         case "collaboration.session.create":
             let relayURL = request.params["relay_url"] as? String
+            let workspaceID = request.params["workspace_id"] as? String
+            let surfaceID = request.params["surface_id"] as? String
             return v2AsyncResultCall(id: request.id, timeoutSeconds: 30) {
-                let payload = await CollaborationRuntime.shared.createSessionForAutomation(relayURL: relayURL)
+                let payload = await CollaborationRuntime.shared.createSessionForAutomation(
+                    relayURL: relayURL,
+                    workspaceID: workspaceID,
+                    surfaceID: surfaceID
+                )
                 return .ok(payload)
             }
         case "collaboration.session.join":
@@ -1925,9 +1931,15 @@ class TerminalController {
             return v2Ok(id: id, result: CollaborationRuntime.shared.statusPayload())
         case "collaboration.session.create":
             let relayURL = params["relay_url"] as? String
+            let workspaceID = params["workspace_id"] as? String
+            let surfaceID = params["surface_id"] as? String
             return v2Result(
                 id: id,
-                .ok(CollaborationRuntime.shared.createSessionForAutomationRequest(relayURL: relayURL))
+                .ok(CollaborationRuntime.shared.createSessionForAutomationRequest(
+                    relayURL: relayURL,
+                    workspaceID: workspaceID,
+                    surfaceID: surfaceID
+                ))
             )
         case "collaboration.session.join":
             guard let code = params["session_code"] as? String else {

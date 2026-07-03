@@ -20,6 +20,39 @@ struct AuthEnvironmentTests {
         )
     }
 
+    @Test("debug callback scheme falls back to tagged bundle id")
+    func debugCallbackSchemeFallsBackToTaggedBundleID() {
+        #expect(
+            AuthEnvironment.callbackScheme(
+                environment: [:],
+                bundleIdentifier: "com.cmuxterm.app.debug.clerk.auth",
+                isDebugBuild: true
+            ) == "mosaic-dev-clerk-auth"
+        )
+    }
+
+    @Test("callback scheme treats tagged debug bundle as debug build")
+    func callbackSchemeTreatsTaggedDebugBundleAsDebugBuild() {
+        #expect(
+            AuthEnvironment.callbackScheme(
+                environment: [:],
+                bundleIdentifier: "com.cmuxterm.app.debug.clerk.auth"
+            ) == "mosaic-dev-clerk-auth"
+        )
+    }
+
+    @Test("debug callback scheme can come from registered URL scheme")
+    func debugCallbackSchemeCanComeFromRegisteredURLScheme() {
+        #expect(
+            AuthEnvironment.callbackScheme(
+                environment: [:],
+                bundleIdentifier: "com.cmuxterm.app.debug",
+                registeredURLSchemes: ["http", "https", "mosaic-dev-clerk-auth"],
+                isDebugBuild: true
+            ) == "mosaic-dev-clerk-auth"
+        )
+    }
+
     @Test("release callback scheme ignores ambient tag")
     func releaseCallbackSchemeIgnoresAmbientTag() {
         #expect(
