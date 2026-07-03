@@ -585,12 +585,12 @@ private struct SessionRow: View, Equatable {
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
-            deleteButton
             Spacer(minLength: 8)
             Text(relativeTime(entry.modified))
                 .cmuxFont(size: 11, weight: .light, monospacedDigit: true)
                 .foregroundColor(.secondary.opacity(0.65))
                 .fixedSize()
+            deleteButton
         }
         .padding(.leading, 32)
         .padding(.trailing, 8)
@@ -2581,9 +2581,9 @@ private struct PopoverRow: View, Equatable {
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
-            deleteButton
             Spacer(minLength: 8)
             modifiedText
+            deleteButton
         }
         .padding(.leading, 12)
         .padding(.trailing, 8)

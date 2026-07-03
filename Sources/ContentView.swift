@@ -13766,10 +13766,7 @@ struct TabItemView: View, Equatable {
     }
 
     private var showCloseButton: Bool {
-        rowInteractionState.shouldShowCloseButton(
-            canCloseWorkspace: canCloseWorkspace,
-            shortcutHintModeActive: showsModifierShortcutHints || alwaysShowShortcutHints
-        )
+        canCloseWorkspace && !(showsModifierShortcutHints || alwaysShowShortcutHints)
     }
 
     private var workspaceShortcutLabel: String? {
@@ -14033,15 +14030,13 @@ struct TabItemView: View, Equatable {
 
                 // The close button is a sibling that always reserves its width
                 // when the workspace is closable, so the title wraps/truncates
-                // before this corner instead of flowing under the hover x. Its
-                // visibility toggles via opacity so hover never re-lays-out the
-                // row. (Matches the group-header plus-button pattern.)
+                // before this corner instead of flowing under the x.
                 if canCloseWorkspace {
                     Button(action: {
                         #if DEBUG
                         cmuxDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=button")
                         #endif
-                        tabManager.closeWorkspaceWithConfirmation(tab)
+                        tabManager.closeWorkspaceFromTabCloseButton(tab)
                     }) {
                         CmuxSystemSymbolImage(magnified: "xmark", pointSize: scaledFontSize(9), weight: .medium)
                             .foregroundColor(activeSecondaryColor(0.7))
