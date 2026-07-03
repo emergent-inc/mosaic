@@ -18,6 +18,7 @@ enum HeaderChromeIconStyle {
     static let disabledOpacity = 0.34
     static let weight: Font.Weight = .regular
     static let foregroundColor = Color(nsColor: .secondaryLabelColor)
+    static let closeHoverBackgroundColor = Color(nsColor: .controlBackgroundColor).opacity(0.5)
     static let sidebarGlyphStrokeWidth: CGFloat = 1
 
     static func iconFrameSize(forIconSize iconSize: CGFloat) -> CGFloat {
@@ -182,11 +183,13 @@ struct RightSidebarChromeBottomBorderModifier: ViewModifier {
 
 struct RightSidebarHeaderIconButtonStyle: ButtonStyle {
     var iconGeometryKeyPrefix: String? = nil
+    var usesCircularHoverBackground = false
 
     func makeBody(configuration: Configuration) -> some View {
         RightSidebarHeaderIconButtonStyleBody(
             configuration: configuration,
-            iconGeometryKeyPrefix: iconGeometryKeyPrefix
+            iconGeometryKeyPrefix: iconGeometryKeyPrefix,
+            usesCircularHoverBackground: usesCircularHoverBackground
         )
     }
 }
@@ -194,6 +197,7 @@ struct RightSidebarHeaderIconButtonStyle: ButtonStyle {
 private struct RightSidebarHeaderIconButtonStyleBody: View {
     let configuration: ButtonStyle.Configuration
     let iconGeometryKeyPrefix: String?
+    let usesCircularHoverBackground: Bool
     @State private var isHovering = false
     @Environment(\.isEnabled) private var isEnabled
 
@@ -214,7 +218,10 @@ private struct RightSidebarHeaderIconButtonStyleBody: View {
             )
             .foregroundStyle(HeaderChromeIconStyle.foregroundColor.opacity(foregroundOpacity))
             .background {
-                if backgroundOpacity > 0 {
+                if usesCircularHoverBackground, backgroundOpacity > 0 {
+                    Circle()
+                        .fill(HeaderChromeIconStyle.closeHoverBackgroundColor)
+                } else if backgroundOpacity > 0 {
                     RoundedRectangle(cornerRadius: RightSidebarChromeMetrics.headerControlCornerRadius, style: .continuous)
                         .fill(Color.primary.opacity(backgroundOpacity))
                 }
