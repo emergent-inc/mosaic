@@ -1,14 +1,14 @@
 public import Foundation
 
-/// Recognizes and parses cmux auth callback URLs.
+/// Recognizes and parses Mosaic auth callback URLs.
 ///
-/// Accepts the built-in cmux callback schemes (`cmux`, `cmux-nightly`,
-/// `cmux-dev`) plus an optional runtime override (e.g. a per-tag Debug build's
+/// Accepts the built-in Mosaic callback schemes (`mosaic`, `mosaic-nightly`,
+/// `mosaic-dev`) plus an optional runtime override (e.g. a per-tag Debug build's
 /// unique scheme), injected at construction so the type never reads the
 /// process environment itself. A pure value; construct it once at the
 /// composition root and inject it.
 public struct AuthCallbackRouter: Sendable {
-    private static let builtInSchemes: Set<String> = ["cmux", "cmux-nightly", "cmux-dev"]
+    private static let builtInSchemes: Set<String> = ["mosaic", "mosaic-nightly", "mosaic-dev"]
     private let extraAllowedScheme: String?
 
     /// Creates a router.
@@ -19,7 +19,7 @@ public struct AuthCallbackRouter: Sendable {
         self.extraAllowedScheme = extraAllowedScheme?.lowercased()
     }
 
-    /// Whether `url` is a cmux auth callback (`<scheme>://auth-callback`).
+    /// Whether `url` is a Mosaic auth callback (`<scheme>://auth-callback`).
     public func isAuthCallbackURL(_ url: URL) -> Bool {
         guard isAllowedScheme(url.scheme) else { return false }
         return Self.callbackTarget(for: url) == "auth-callback"
@@ -33,10 +33,10 @@ public struct AuthCallbackRouter: Sendable {
             return nil
         }
 
-        guard let refreshToken = Self.queryValue(named: "cmux_refresh", in: components)?
+        guard let refreshToken = Self.queryValue(named: "mosaic_refresh", in: components)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
               !refreshToken.isEmpty,
-              let accessToken = Self.queryValue(named: "cmux_access", in: components)?
+              let accessToken = Self.queryValue(named: "mosaic_access", in: components)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
               !accessToken.isEmpty else {
             return nil
@@ -68,7 +68,7 @@ public struct AuthCallbackRouter: Sendable {
 
     private static func queryValue(named name: String, in components: URLComponents) -> String? {
         // Use the first matching query item so a maliciously appended
-        // duplicate (`?cmux_refresh=real&cmux_refresh=attacker`) can't
+        // duplicate (`?mosaic_refresh=real&mosaic_refresh=attacker`) can't
         // override the legitimate value.
         components.queryItems?
             .first(where: { $0.name == name })?

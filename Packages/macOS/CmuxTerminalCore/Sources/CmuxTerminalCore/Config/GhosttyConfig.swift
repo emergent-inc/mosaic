@@ -20,7 +20,7 @@ public struct GhosttyConfig {
     public typealias ColorSchemePreference = TerminalColorSchemePreference
 
     /// The terminal theme cmux enforces for every user-facing terminal surface.
-    public static let cmuxEnforcedThemeName = "Cursor Dark"
+    public static let cmuxEnforcedThemeName = "Anysphere Dark"
     /// Native fallback light theme name used when resolving cmux-managed colors.
     public static let cmuxDefaultLightThemeName = cmuxEnforcedThemeName
     /// Native fallback dark theme name used when resolving cmux-managed colors.
@@ -453,28 +453,28 @@ public struct GhosttyConfig {
         preferredColorScheme _: ColorSchemePreference
     ) -> String {
         """
-        palette = 0=#2a2a2a
-        palette = 1=#bf616a
-        palette = 2=#a3be8c
-        palette = 3=#ebcb8b
-        palette = 4=#81a1c1
-        palette = 5=#b48ead
-        palette = 6=#88c0d0
-        palette = 7=#d8dee9
-        palette = 8=#505050
-        palette = 9=#bf616a
-        palette = 10=#a3be8c
-        palette = 11=#ebcb8b
-        palette = 12=#81a1c1
-        palette = 13=#b48ead
-        palette = 14=#88c0d0
-        palette = 15=#ffffff
+        palette = 0=#242424
+        palette = 1=#FC6B83
+        palette = 2=#3FA266
+        palette = 3=#D2943E
+        palette = 4=#81A1C1
+        palette = 5=#B48EAD
+        palette = 6=#88C0D0
+        palette = 7=#F0F0F0
+        palette = 8=#989898
+        palette = 9=#FC6B83
+        palette = 10=#70B489
+        palette = 11=#F1B467
+        palette = 12=#87A6C4
+        palette = 13=#B48EAD
+        palette = 14=#88C0D0
+        palette = 15=#FFFFFF
         background = #141414
-        foreground = #ffffff
-        cursor-color = #ffffff
+        foreground = #F0F0F0
+        cursor-color = #F0F0F0
         cursor-text = #141414
         selection-background = #303030
-        selection-foreground = #ffffff
+        selection-foreground = #F0F0F0
         """
     }
 

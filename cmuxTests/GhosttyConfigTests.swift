@@ -273,9 +273,9 @@ final class GhosttyConfigTests: XCTestCase {
         let themes = try XCTUnwrap(payload["themes"] as? [[String: Any]])
         XCTAssertTrue(themes.contains { ($0["name"] as? String) == "Zag Light" }, result.output)
         let current = try XCTUnwrap(payload["current"] as? [String: Any])
-        XCTAssertEqual(current["light"] as? String, "Cursor Dark")
-        XCTAssertEqual(current["dark"] as? String, "Cursor Dark")
-        XCTAssertEqual(payload["fixed_theme"] as? String, "Cursor Dark")
+        XCTAssertEqual(current["light"] as? String, "Anysphere Dark")
+        XCTAssertEqual(current["dark"] as? String, "Anysphere Dark")
+        XCTAssertEqual(payload["fixed_theme"] as? String, "Anysphere Dark")
         XCTAssertEqual(payload["managed"] as? Bool, true)
         XCTAssert(current["source_path"] is NSNull)
     }
@@ -294,10 +294,10 @@ final class GhosttyConfigTests: XCTestCase {
         try fileManager.createDirectory(at: firstThemeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: secondThemeDir, withIntermediateDirectories: true)
 
-        let firstTheme = firstThemeDir.appendingPathComponent("Cursor Dark", isDirectory: false)
+        let firstTheme = firstThemeDir.appendingPathComponent("Anysphere Dark", isDirectory: false)
         try Data([0xff, 0xfe]).write(to: firstTheme)
 
-        let secondTheme = secondThemeDir.appendingPathComponent("Cursor Dark", isDirectory: false)
+        let secondTheme = secondThemeDir.appendingPathComponent("Anysphere Dark", isDirectory: false)
         let expected = "foreground = #123456\n"
         try expected.write(to: secondTheme, atomically: true, encoding: .utf8)
 

@@ -7,7 +7,7 @@ extension CMUXCLI {
     static let cmuxThemesBlockStart = "# cmux themes start"
     static let cmuxThemesBlockEnd = "# cmux themes end"
     static let cmuxThemesReloadNotificationName = "com.cmuxterm.themes.reload-config"
-    static let cmuxEnforcedTerminalThemeName = "Cursor Dark"
+    static let cmuxEnforcedTerminalThemeName = "Anysphere Dark"
     static let cmuxThemeChangesDisabledMessage = String(
         localized: "cli.themes.disabled",
         defaultValue: "Terminal theme is managed by cmux and cannot be changed."
@@ -316,7 +316,7 @@ extension CMUXCLI {
         print(
             String(
                 localized: "cli.themes.currentManaged",
-                defaultValue: "Current theme: Cursor Dark (managed by cmux)"
+                defaultValue: "Current theme: Anysphere Dark (managed by cmux)"
             )
         )
         print(Self.cmuxThemeChangesDisabledMessage)
