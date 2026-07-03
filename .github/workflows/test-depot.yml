@@ -62,7 +62,7 @@ jobs:
           GHOSTTY_SHA=$(git -C ghostty rev-parse HEAD)
           BUILD_FLAVOR="crashsubdir-cmux-crash-v1"
           TAG="xcframework-$GHOSTTY_SHA-$BUILD_FLAVOR"
-          URL="https://github.com/emergent-inc/ghostty/releases/download/$TAG/GhosttyKit.xcframework.tar.gz"
+          URL="https://github.com/manaflow-ai/ghostty/releases/download/$TAG/GhosttyKit.xcframework.tar.gz"
           echo "Downloading xcframework for ghostty $GHOSTTY_SHA"
           MAX_RETRIES=30
           RETRY_DELAY=20
