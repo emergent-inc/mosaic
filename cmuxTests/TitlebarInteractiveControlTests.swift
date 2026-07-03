@@ -38,6 +38,18 @@ struct TitlebarInteractiveControlTests {
         return event
     }
 
+    private static func attachedTitlebarAccessoryContainers(
+        in window: NSWindow
+    ) -> [TitlebarAccessoryContainerView] {
+        window.titlebarAccessoryViewControllers.compactMap {
+            $0.isHidden ? nil : $0.view as? TitlebarAccessoryContainerView
+        }
+    }
+
+    private static func windowFrame(of container: TitlebarAccessoryContainerView) -> NSRect {
+        container.convert(container.bounds, to: nil)
+    }
+
     /// `titlebarInteractiveControl()` registers the control's region (without
     /// reparenting it). The explicit `WindowDragHandleView` must yield to that
     /// registered region so a click toggles the control instead of starting a
@@ -236,5 +248,111 @@ struct TitlebarInteractiveControlTests {
             !hitView.mouseDownCanMoveWindow,
             "Registered SwiftUI titlebar controls must not degrade into hosting-view drag hits."
         )
+    }
+
+    @Test func nativeTitlebarGapUsesExplicitWindowDragPath() {
+        _ = NSApplication.shared
+
+        let window = RecordingDragWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_020, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        window.identifier = NSUserInterfaceItemIdentifier("cmux.main.titlebar-gap-test")
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.contentView = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        configureCmuxMainWindowDragBehavior(window)
+
+        let controller = UpdateTitlebarAccessoryController(updateLog: UpdateLogStore(), settingsRuntime: nil)
+        controller.attach(to: window)
+
+        let containers = Self.attachedTitlebarAccessoryContainers(in: window)
+        #expect(
+            containers.count >= 2,
+            "The real main-window accessory controller should install both left controls and the right logo."
+        )
+        let frames = containers
+            .map(Self.windowFrame(of:))
+            .sorted { $0.minX < $1.minX }
+        guard let leftFrame = frames.first,
+              let rightFrame = frames.last,
+              leftFrame.maxX < rightFrame.minX else {
+            Issue.record("Expected distinct left and right titlebar accessories with a native titlebar gap between them")
+            return
+        }
+
+        let titlebarY = (leftFrame.midY + rightFrame.midY) / 2
+        let samplePoints = stride(from: leftFrame.maxX + 12, through: rightFrame.minX - 12, by: 80)
+            .map { NSPoint(x: $0, y: titlebarY) }
+        #expect(!samplePoints.isEmpty, "Expected to sample at least one point in the native titlebar gap")
+
+        for (index, point) in samplePoints.enumerated() {
+            #expect(
+                isNativeTitlebarDragGap(window: window, locationInWindow: point),
+                "Expected sampled point \(point) to be classified as empty native titlebar gap."
+            )
+            let handled = performNativeTitlebarGapMouseDown(
+                window: window,
+                event: Self.makeLeftMouseDownEvent(location: point, window: window)
+            )
+            #expect(handled, "Expected native titlebar gap point \(point) to start explicit window dragging.")
+            #expect(window.performDragCallCount == index + 1)
+            #expect(
+                window.isMovableDuringPerformDrag == true,
+                "Native titlebar gap dragging should temporarily enable main-window movement before performDrag(with:)."
+            )
+            #expect(!window.isMovable)
+        }
+
+    }
+
+    @Test func attachedRightLogoAccessoryUsesExplicitWindowDragPath() {
+        _ = NSApplication.shared
+
+        let window = RecordingDragWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 420),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        window.identifier = NSUserInterfaceItemIdentifier("cmux.main.titlebar-control-test")
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.contentView = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        configureCmuxMainWindowDragBehavior(window)
+
+        let controller = UpdateTitlebarAccessoryController(updateLog: UpdateLogStore(), settingsRuntime: nil)
+        controller.attach(to: window)
+
+        let controlContainers = Self.attachedTitlebarAccessoryContainers(in: window)
+        guard let logoContainer = controlContainers.max(by: {
+            Self.windowFrame(of: $0).maxX < Self.windowFrame(of: $1).maxX
+        }) else {
+            Issue.record("Expected the right logo accessory to be installed")
+            return
+        }
+
+        let localPoint = NSPoint(x: logoContainer.bounds.midX, y: logoContainer.bounds.midY)
+        let controlPoint = logoContainer.convert(localPoint, to: nil)
+        #expect(
+            !isNativeTitlebarDragGap(window: window, locationInWindow: controlPoint),
+            "The native gap handler must not claim points owned by the right logo accessory."
+        )
+        guard let hitView = logoContainer.hitTest(localPoint) else {
+            Issue.record("Expected the right logo accessory to receive empty titlebar drag hits")
+            return
+        }
+        #expect(
+            hitView === logoContainer,
+            "The decorative right logo should be transparent to hit-testing so its accessory container owns window dragging."
+        )
+        hitView.mouseDown(with: Self.makeLeftMouseDownEvent(location: controlPoint, window: window))
+        #expect(window.performDragCallCount == 1)
+        #expect(window.isMovableDuringPerformDrag == true)
+        #expect(!window.isMovable)
     }
 }
