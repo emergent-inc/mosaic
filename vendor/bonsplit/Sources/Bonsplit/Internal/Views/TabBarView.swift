@@ -1849,7 +1849,7 @@ struct TabBarView: View {
                 let button = buttons[index]
                 SplitActionButtonChrome(
                     action: button.action,
-                    hoverHighlightSquareSide: tabBarLayout.splitActionButtonHeight,
+                    hoverHighlightSquareSide: TabBarStyling.splitActionButtonReservedWidth,
                     registersHitRegion: registersHitRegions,
                     showsHoverHighlight: showsHoverHighlight
                 ) {
