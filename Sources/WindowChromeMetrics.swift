@@ -3,12 +3,12 @@ import CmuxFoundation
 import CoreGraphics
 
 enum MosaicChromePalette {
-    static let sidebarBackgroundHex = "#252525"
-    static let workspaceBackgroundHex = "#1E1E1E"
-    static let chromeBackgroundHex = "#252525"
-    static let selectedSurfaceHex = "#2D2D2D"
-    static let selectedSidebarRowHex = "#37383D"
-    static let borderHex = "#3C3C3C"
+    static let sidebarBackgroundHex = "#141414"
+    static let workspaceBackgroundHex = "#181818"
+    static let chromeBackgroundHex = "#1D1D1DCC"
+    static let selectedSurfaceHex = "#1D1D1DCC"
+    static let selectedSidebarRowHex = "#1C1C1C"
+    static let borderHex = "#303030"
     static let accentHex = "#0E639C"
 
     static let sidebarBackgroundColor = NSColor(hex: sidebarBackgroundHex) ?? .black

@@ -844,10 +844,10 @@ struct TabItemView: View {
     private var tabBackground: some View {
         ZStack(alignment: .top) {
             if isSelected {
-                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
+                Rectangle()
                     .fill(TabBarColors.activeTabBackground(for: appearance))
             } else if TabItemStyling.shouldShowHoverBackground(isHovered: isHovered, isSelected: isSelected) {
-                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
+                Rectangle()
                     .fill(TabBarColors.hoveredTabBackground(for: appearance))
             } else {
                 Color.clear
