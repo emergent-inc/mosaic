@@ -191,6 +191,9 @@ struct SessionIndexView: View {
         let loadSnapshotFn: DirectorySnapshotFn = { cwd in
             await store.loadDirectorySnapshot(cwd: cwd)
         }
+        let deleteFn: SessionDeleteFn = { entry in
+            store.delete(entry)
+        }
 
         return ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -233,6 +236,7 @@ struct SessionIndexView: View {
                                 }
                             },
                             onResume: onResumeClosure,
+                            onDelete: deleteFn,
                             search: searchFn,
                             loadSnapshot: loadSnapshotFn
                         )
@@ -321,6 +325,10 @@ typealias SessionSearchFn = @MainActor (
 /// becomes an in-memory slice instead of repeated store round-trips.
 typealias DirectorySnapshotFn = @MainActor (_ cwd: String?) async -> DirectorySnapshot
 
+/// Delete callback for session rows. Kept as a closure so lazy-list row
+/// subtrees do not observe `SessionIndexStore` directly.
+typealias SessionDeleteFn = @MainActor (_ entry: SessionEntry) -> Bool
+
 /// Callback bundle handed to `IndexSectionView` in place of a store reference.
 /// Every capability the row needs is expressed as a closure so no child view
 /// below the snapshot boundary can subscribe to broad store updates;
@@ -331,6 +339,7 @@ struct IndexSectionActions {
     let onPreviewEntry: (SessionEntry) -> Void
     let onDismissPreview: (SessionEntry.ID) -> Void
     let onResume: ((SessionEntry) -> Void)?
+    let onDelete: SessionDeleteFn
     let search: SessionSearchFn
     let loadSnapshot: DirectorySnapshotFn
 }
@@ -386,9 +395,9 @@ private struct IndexSectionView: View, Equatable {
                                 actions.onDismissPreview(entry.id)
                             }
                         },
-                        onResume: actions.onResume
+                        onResume: actions.onResume,
+                        onDelete: actions.onDelete
                     )
-                        .equatable()
                         .id(entry.id)
                 }
                 if section.shouldOfferShowMore(rowLimit: rowLimit) {
@@ -420,7 +429,8 @@ private struct IndexSectionView: View, Equatable {
                 section: section,
                 search: actions.search,
                 loadSnapshot: actions.loadSnapshot,
-                onResume: actions.onResume
+                onResume: actions.onResume,
+                onDelete: actions.onDelete
             )
         )
     }
@@ -432,7 +442,7 @@ private struct IndexSectionView: View, Equatable {
             HStack(spacing: 8) {
                 sectionIconView
                 Text(section.title)
-                    .cmuxFont(size: 13, weight: .regular)
+                    .font(.system(size: 13, weight: .light, design: .default))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -456,7 +466,7 @@ private struct IndexSectionView: View, Equatable {
             HStack(spacing: 8) {
                 sectionIconView
                 Text(section.title)
-                    .cmuxFont(size: 13)
+                    .font(.system(size: 13, weight: .light, design: .default))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -556,7 +566,9 @@ private struct SessionRow: View, Equatable {
     let isPreviewPresented: Bool
     let onPreviewPresentationChange: (Bool) -> Void
     let onResume: ((SessionEntry) -> Void)?
+    let onDelete: SessionDeleteFn
     @State private var isHovered: Bool = false
+    @State private var isDeleteHovered: Bool = false
 
     static func == (lhs: SessionRow, rhs: SessionRow) -> Bool {
         // Skip body re-eval during scroll when the entry is unchanged.
@@ -569,24 +581,30 @@ private struct SessionRow: View, Equatable {
         HStack(spacing: 6) {
             AgentIconImage(agent: entry.agent, size: 12)
             Text(entry.displayTitle)
-                .cmuxFont(size: 13)
+                .font(.system(size: 13, weight: .light, design: .default))
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 8)
             Text(relativeTime(entry.modified))
-                .cmuxFont(size: 12, monospacedDigit: true)
+                .cmuxFont(size: 11, weight: .light, monospacedDigit: true)
                 .foregroundColor(.secondary.opacity(0.65))
                 .fixedSize()
+            deleteButton
         }
         .padding(.leading, 32)
-        .padding(.trailing, 12)
+        .padding(.trailing, 8)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .background(rowBackground)
         .background(previewPopoverHost)
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            isHovered = hovering
+            if !hovering {
+                isDeleteHovered = false
+            }
+        }
         .help(helpText)
         .onTapGesture(count: 2) {
             onPreviewPresentationChange(true)
@@ -597,7 +615,7 @@ private struct SessionRow: View, Equatable {
             HStack(spacing: 6) {
                 AgentIconImage(agent: entry.agent, size: 12)
                 Text(entry.displayTitle)
-                    .cmuxFont(size: 12, weight: .medium)
+                    .font(.system(size: 13, weight: .light, design: .default))
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -606,7 +624,31 @@ private struct SessionRow: View, Equatable {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .contextMenu {
-            sessionRowMenuItems(entry: entry, onResume: onResume)
+            sessionRowMenuItems(entry: entry, onResume: onResume, onDelete: onDelete)
+        }
+    }
+
+    @ViewBuilder
+    private var deleteButton: some View {
+        if entry.fileURL != nil {
+            Button(role: .destructive) {
+                _ = onDelete(entry)
+            } label: {
+                Image(systemName: "xmark")
+                    .cmuxFont(size: 9, weight: .bold)
+                    .foregroundColor(deleteForegroundColor)
+                    .frame(width: 16, height: 16)
+                    .background(
+                        Circle()
+                            .fill(isDeleteHovered ? HeaderChromeIconStyle.closeHoverBackgroundColor : Color.clear)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "sessionIndex.row.delete.tooltip", defaultValue: "Delete Session"))
+            .accessibilityLabel(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
+            .fixedSize()
+            .onHover { isDeleteHovered = $0 }
         }
     }
 
@@ -624,14 +666,18 @@ private struct SessionRow: View, Equatable {
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 4, style: .continuous)
+        Rectangle()
             .fill(rowBackgroundColor)
             .padding(.horizontal, 6)
     }
 
+    private var deleteForegroundColor: Color {
+        return isDeleteHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
+    }
+
     private var rowBackgroundColor: Color {
         if isHovered {
-            return Color.primary.opacity(0.05)
+            return Color.primary.opacity(0.08)
         }
         if isPreviewPresented {
             return Color.primary.opacity(0.07)
@@ -663,7 +709,11 @@ private struct SessionRow: View, Equatable {
 /// free `@ViewBuilder` so SessionRow and PopoverRow both attach the same set
 /// without duplicating the button list or the action helpers.
 @ViewBuilder
-private func sessionRowMenuItems(entry: SessionEntry, onResume: ((SessionEntry) -> Void)?) -> some View {
+private func sessionRowMenuItems(
+    entry: SessionEntry,
+    onResume: ((SessionEntry) -> Void)?,
+    onDelete: SessionDeleteFn?
+) -> some View {
     if let onResume {
         Button {
             onResume(entry)
@@ -716,6 +766,14 @@ private func sessionRowMenuItems(entry: SessionEntry, onResume: ((SessionEntry) 
             Text(String(localized: "sessionIndex.row.openPR", defaultValue: "Open Pull Request"))
         }
     }
+    if let onDelete, entry.fileURL != nil {
+        Divider()
+        Button(role: .destructive) {
+            _ = onDelete(entry)
+        } label: {
+            Text(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
+        }
+    }
 }
 
 // MARK: - Session transcript preview
@@ -755,7 +813,7 @@ private struct SessionTranscriptPreviewView: View {
             AgentIconImage(agent: entry.agent, size: 14)
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.displayTitle)
-                    .cmuxFont(size: 13, weight: .semibold)
+                    .cmuxFont(size: 13, weight: .light)
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -773,10 +831,10 @@ private struct SessionTranscriptPreviewView: View {
                 .foregroundColor(closeIsHovered ? .primary : .secondary)
                 .frame(width: 20, height: 20)
                 .background(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(closeIsHovered ? Color.primary.opacity(0.08) : Color.clear)
+                    Circle()
+                        .fill(closeIsHovered ? Color.primary.opacity(0.18) : Color.clear)
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .contentShape(Circle())
                 .onHover { closeIsHovered = $0 }
                 .onTapGesture {
                     onDismiss()
@@ -2122,6 +2180,7 @@ private struct SectionPopoverView: View {
     /// is an in-memory array slice, not repeated store round-trips.
     let loadSnapshot: DirectorySnapshotFn
     let onResume: ((SessionEntry) -> Void)?
+    let onDelete: SessionDeleteFn
     let onDismiss: () -> Void
 
     @State private var query: String = ""
@@ -2152,7 +2211,7 @@ private struct SectionPopoverView: View {
             HStack(spacing: 8) {
                 sectionIconView
                 Text(section.title)
-                    .cmuxFont(size: 13, weight: .semibold)
+                    .cmuxFont(size: 13, weight: .light)
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -2228,11 +2287,16 @@ private struct SectionPopoverView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         ForEach(loaded) { entry in
-                            PopoverRow(entry: entry) {
-                                onResume?(entry)
-                                onDismiss()
-                            }
-                            .equatable()
+                            PopoverRow(
+                                entry: entry,
+                                onActivate: {
+                                    onResume?(entry)
+                                    onDismiss()
+                                },
+                                onDelete: {
+                                    delete(entry)
+                                }
+                            )
                         }
                         if hasMore {
                             // Always visible while more pages exist. Serves
@@ -2358,6 +2422,19 @@ private struct SectionPopoverView: View {
         }
     }
 
+    @discardableResult
+    private func delete(_ entry: SessionEntry) -> Bool {
+        if onDelete(entry) {
+            loaded.removeAll { $0.id == entry.id }
+            fullSnapshot?.removeAll { $0.id == entry.id }
+            if loaded.isEmpty {
+                hasMore = false
+            }
+            return true
+        }
+        return false
+    }
+
     private var loadingRow: some View {
         HStack(spacing: 6) {
             ProgressView().controlSize(.small)
@@ -2370,7 +2447,6 @@ private struct SectionPopoverView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
     /// Append the next page to `loaded`. Triggered by the sentinel row's
     /// onAppear. In snapshot mode (empty-query directory scope) this is a
     /// pure in-memory array slice with zero store calls. In typed-query mode
@@ -2458,8 +2534,10 @@ private struct SectionPopoverView: View {
 private struct PopoverRow: View, Equatable {
     let entry: SessionEntry
     let onActivate: () -> Void
+    let onDelete: () -> Bool
 
     @State private var isHovered: Bool = false
+    @State private var isDeleteHovered: Bool = false
 
     static func == (lhs: PopoverRow, rhs: PopoverRow) -> Bool {
         lhs.entry == rhs.entry
@@ -2499,27 +2577,62 @@ private struct PopoverRow: View, Equatable {
             // always constrain a Text that has hard line breaks in the
             // source string.
             Text(Self.flatten(entry.displayTitle))
-                .cmuxFont(size: 12)
+                .cmuxFont(size: 11, weight: .light)
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 8)
             modifiedText
+            deleteButton
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, 12)
+        .padding(.trailing, 8)
         .padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
-        .onHover { isHovered = $0 }
+        .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+        .onHover { hovering in
+            isHovered = hovering
+            if !hovering {
+                isDeleteHovered = false
+            }
+        }
         .onTapGesture(count: 2) { onActivate() }
         .onDrag {
             sessionDragItemProvider(for: entry)
         }
         .help(entry.cwdLabel ?? entry.displayTitle)
         .contextMenu {
-            sessionRowMenuItems(entry: entry, onResume: { _ in onActivate() })
+            sessionRowMenuItems(entry: entry, onResume: { _ in onActivate() }, onDelete: { _ in onDelete() })
         }
+    }
+
+    @ViewBuilder
+    private var deleteButton: some View {
+        if entry.fileURL != nil {
+            Button(role: .destructive) {
+                _ = onDelete()
+            } label: {
+                Image(systemName: "xmark")
+                    .cmuxFont(size: 9, weight: .bold)
+                    .foregroundColor(deleteForegroundColor)
+                    .frame(width: 16, height: 16)
+                    .background(
+                        Circle()
+                            .fill(isDeleteHovered ? HeaderChromeIconStyle.closeHoverBackgroundColor : Color.clear)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "sessionIndex.row.delete.tooltip", defaultValue: "Delete Session"))
+            .accessibilityLabel(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
+            .fixedSize()
+            .onHover { isDeleteHovered = $0 }
+        }
+    }
+
+    private var deleteForegroundColor: Color {
+        return isDeleteHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
     }
 }
 
@@ -2636,6 +2749,7 @@ struct SectionPopoverHost: NSViewRepresentable {
     let search: SessionSearchFn
     let loadSnapshot: DirectorySnapshotFn
     let onResume: ((SessionEntry) -> Void)?
+    let onDelete: SessionDeleteFn
 
     func makeCoordinator() -> Coordinator {
         Coordinator(isPresented: $isPresented)
@@ -2655,7 +2769,8 @@ struct SectionPopoverHost: NSViewRepresentable {
             section: section,
             search: search,
             loadSnapshot: loadSnapshot,
-            onResume: onResume
+            onResume: onResume,
+            onDelete: onDelete
         )
         if isPresented {
             coordinator.present()
@@ -2694,6 +2809,7 @@ struct SectionPopoverHost: NSViewRepresentable {
         private var currentSearch: SessionSearchFn?
         private var currentLoadSnapshot: DirectorySnapshotFn?
         private var currentOnResume: ((SessionEntry) -> Void)?
+        private var currentOnDelete: SessionDeleteFn?
         private var lastRenderedSection: IndexSection?
         private var lastRenderedPresentationCount: Int?
         /// Bumped on every present(). Used as the SwiftUI view identity so each
@@ -2708,12 +2824,14 @@ struct SectionPopoverHost: NSViewRepresentable {
             section: IndexSection,
             search: @escaping SessionSearchFn,
             loadSnapshot: @escaping DirectorySnapshotFn,
-            onResume: ((SessionEntry) -> Void)?
+            onResume: ((SessionEntry) -> Void)?,
+            onDelete: @escaping SessionDeleteFn
         ) {
             currentSection = section
             currentSearch = search
             currentLoadSnapshot = loadSnapshot
             currentOnResume = onResume
+            currentOnDelete = onDelete
             // When hidden, defer rebuilding the hosting view until `present()`.
             // Rewriting rootView + forcing layout on every parent re-render was
             // the 100% CPU loop behind #3010.
@@ -2730,7 +2848,8 @@ struct SectionPopoverHost: NSViewRepresentable {
         private func refreshContent() {
             guard let section = currentSection,
                   let search = currentSearch,
-                  let loadSnapshot = currentLoadSnapshot else { return }
+                  let loadSnapshot = currentLoadSnapshot,
+                  let onDelete = currentOnDelete else { return }
             debugRefreshContentCallCount += 1
             let onResume = currentOnResume
             let identity = presentationCount
@@ -2739,7 +2858,8 @@ struct SectionPopoverHost: NSViewRepresentable {
                     section: section,
                     search: search,
                     loadSnapshot: loadSnapshot,
-                    onResume: onResume
+                    onResume: onResume,
+                    onDelete: onDelete
                 ) { [weak self] in
                     self?.closeFromContent()
                 }
