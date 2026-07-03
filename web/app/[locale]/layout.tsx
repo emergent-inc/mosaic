@@ -92,8 +92,6 @@ export default async function LocaleLayout({
 
   const messages = await getMessages();
 
-  const dir = locale === "ar" ? "rtl" : "ltr";
-
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -113,7 +111,7 @@ export default async function LocaleLayout({
   const jsonLdScript = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html lang={locale} dir="ltr" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content={darkThemeColor} />
         <script type="application/ld+json">{jsonLdScript}</script>

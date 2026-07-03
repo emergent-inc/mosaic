@@ -210,7 +210,7 @@ export function buildLlmsText(origin: string): string {
       `  - Text: ${origin}${variantPathForPage(path, "txt")}`,
     ]),
     "",
-    "Localized pages use the same extension pattern with the locale prefix, for example `/ja/docs/getting-started.md`.",
+    "English pages use the same extension pattern, for example `/docs/getting-started.md`.",
     "",
   ];
 

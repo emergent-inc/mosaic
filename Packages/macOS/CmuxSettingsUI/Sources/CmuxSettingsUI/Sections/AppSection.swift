@@ -111,14 +111,8 @@ public struct AppSection: View {
     private static let columnWidth: CGFloat = 196
     private static let notificationSoundControlWidth: CGFloat = 280
 
-    /// Languages legacy `AppLanguage` exposes (cmuxApp.swift line
-    /// 4338). The shared `CmuxSettings.AppLanguage` adds `.vi` for a
-    /// future Vietnamese localization that the legacy in-app picker
-    /// doesn't surface yet; filter it out here so the Settings UI
-    /// matches the legacy menu shape exactly.
     private static let legacyLanguageCases: [AppLanguage] = [
-        .system, .en, .ar, .bs, .zhHans, .zhHant, .da, .de, .es, .fr,
-        .it, .ja, .ko, .nb, .pl, .ptBR, .ru, .th, .tr,
+        .system, .en,
     ]
 
     public var body: some View {
@@ -807,30 +801,9 @@ public struct AppSection: View {
     }
 
     private func languageDisplayName(_ language: AppLanguage) -> String {
-        // Mirrors legacy AppLanguage.displayName: native name plus an
-        // English suffix in parentheses, except for English and
-        // Portuguese (Brasil) which already carry the locale name.
         switch language {
         case .system: return String(localized: "language.system", defaultValue: "System")
         case .en: return "English"
-        case .ar: return "\u{200E}العربية (Arabic)"
-        case .bs: return "Bosanski (Bosnian)"
-        case .zhHans: return "简体中文 (Chinese Simplified)"
-        case .zhHant: return "繁體中文 (Chinese Traditional)"
-        case .da: return "Dansk (Danish)"
-        case .de: return "Deutsch (German)"
-        case .es: return "Español (Spanish)"
-        case .fr: return "Français (French)"
-        case .it: return "Italiano (Italian)"
-        case .ja: return "日本語 (Japanese)"
-        case .ko: return "한국어 (Korean)"
-        case .nb: return "Norsk (Norwegian)"
-        case .pl: return "Polski (Polish)"
-        case .ptBR: return "Português (Brasil)"
-        case .ru: return "Русский (Russian)"
-        case .th: return "ไทย (Thai)"
-        case .tr: return "Türkçe (Turkish)"
-        case .vi: return "Tiếng Việt (Vietnamese)"
         }
     }
 
