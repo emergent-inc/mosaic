@@ -97,6 +97,16 @@ enum WorkspaceActionDispatcher {
             workspaceIds: targetWorkspaceIds,
             pinned: state.pinned
         )
+        PostHogAnalytics.shared.capture(
+            .contextMenuActionPerformed,
+            properties: [
+                "action_id": state.pinned ? "workspace.pin" : "workspace.unpin",
+                "surface": "workspace_sidebar",
+                "entrypoint": "context_menu",
+                "target_count": targetWorkspaceIds.count,
+                "changed_count": changedWorkspaceIds.count,
+            ]
+        )
 
         return PinResult(
             targetWorkspaceIds: targetWorkspaceIds,

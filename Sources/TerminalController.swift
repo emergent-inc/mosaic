@@ -1113,8 +1113,14 @@ class TerminalController {
             }
         case "collaboration.session.create":
             let relayURL = request.params["relay_url"] as? String
+            let workspaceID = request.params["workspace_id"] as? String
+            let surfaceID = request.params["surface_id"] as? String
             return v2AsyncResultCall(id: request.id, timeoutSeconds: 30) {
-                let payload = await CollaborationRuntime.shared.createSessionForAutomation(relayURL: relayURL)
+                let payload = await CollaborationRuntime.shared.createSessionForAutomation(
+                    relayURL: relayURL,
+                    workspaceID: workspaceID,
+                    surfaceID: surfaceID
+                )
                 return .ok(payload)
             }
         case "collaboration.session.join":
@@ -1698,6 +1704,15 @@ class TerminalController {
             if let coordinatorV1 = controlCommandCoordinator.handleSidebarV1(command: cmd, args: args)
                 ?? controlCommandCoordinator.handleBrowserPanelV1(command: cmd, args: args)
                 ?? controlCommandCoordinator.handleDebugV1(command: cmd, args: args) {
+                PostHogAnalytics.shared.capture(
+                    .socketCommandPerformed,
+                    properties: [
+                        "action_id": cmd,
+                        "surface": "control_socket",
+                        "entrypoint": "v1",
+                        "source": "ControlCommandCoordinator",
+                    ]
+                )
                 return coordinatorV1
             }
             switch cmd {
@@ -1913,6 +1928,15 @@ class TerminalController {
             // switch below. processV2Command already runs on main, so the
             // coordinator's bodies need no per-read v2MainSync hop.
             if let coordinatorResult = controlCommandCoordinator.handle(request) {
+                PostHogAnalytics.shared.capture(
+                    .socketCommandPerformed,
+                    properties: [
+                        "action_id": request.method,
+                        "surface": "control_socket",
+                        "entrypoint": "v2",
+                        "source": "ControlCommandCoordinator",
+                    ]
+                )
                 return Self.v2Encoder.response(id: request.id, coordinatorResult)
             }
 
@@ -1925,9 +1949,15 @@ class TerminalController {
             return v2Ok(id: id, result: CollaborationRuntime.shared.statusPayload())
         case "collaboration.session.create":
             let relayURL = params["relay_url"] as? String
+            let workspaceID = params["workspace_id"] as? String
+            let surfaceID = params["surface_id"] as? String
             return v2Result(
                 id: id,
-                .ok(CollaborationRuntime.shared.createSessionForAutomationRequest(relayURL: relayURL))
+                .ok(CollaborationRuntime.shared.createSessionForAutomationRequest(
+                    relayURL: relayURL,
+                    workspaceID: workspaceID,
+                    surfaceID: surfaceID
+                ))
             )
         case "collaboration.session.join":
             guard let code = params["session_code"] as? String else {
@@ -5214,10 +5244,22 @@ class TerminalController {
         Task {
             let resolved: V2CallResult
             do {
+                ProductAnalytics.shared.trackFeedback(
+                    actionID: .submit,
+                    entrypoint: .socket,
+                    result: .started,
+                    properties: ["attachment_count": imagePaths.count]
+                )
                 let attachmentCount = try await FeedbackComposerBridge().submit(
                     email: email,
                     message: body,
                     imagePaths: imagePaths
+                )
+                ProductAnalytics.shared.trackFeedback(
+                    actionID: .submit,
+                    entrypoint: .socket,
+                    result: .completed,
+                    properties: ["attachment_count": attachmentCount]
                 )
                 resolved = .ok([
                     "submitted": true,
@@ -5231,8 +5273,40 @@ class TerminalController {
                 case .submissionFailed:
                     code = "request_failed"
                 }
+                ProductAnalytics.shared.trackFeedback(
+                    actionID: .submit,
+                    entrypoint: .socket,
+                    result: .failed,
+                    properties: [
+                        "attachment_count": imagePaths.count,
+                        "error_kind": "feedback.submit_failed",
+                        "error_code": code,
+                    ]
+                )
+                PostHogAnalytics.shared.trackError(
+                    errorKind: "feedback.submit_failed",
+                    severity: .warning,
+                    source: "TerminalController.feedback.submit",
+                    properties: ["error_code": code]
+                )
                 resolved = .err(code: code, message: error.localizedDescription, data: nil)
             } catch {
+                ProductAnalytics.shared.trackFeedback(
+                    actionID: .submit,
+                    entrypoint: .socket,
+                    result: .failed,
+                    properties: [
+                        "attachment_count": imagePaths.count,
+                        "error_kind": "feedback.submit_failed",
+                        "error_code": "internal_error",
+                    ]
+                )
+                PostHogAnalytics.shared.trackError(
+                    errorKind: "feedback.submit_failed",
+                    severity: .warning,
+                    source: "TerminalController.feedback.submit",
+                    properties: ["error_code": "internal_error"]
+                )
                 resolved = .err(code: "internal_error", message: error.localizedDescription, data: nil)
             }
 
