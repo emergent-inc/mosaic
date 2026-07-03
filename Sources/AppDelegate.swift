@@ -1674,21 +1674,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
-    private func presentTutorialVideoOnFirstLaunchIfNeeded(
-        isRunningUnderXCTest: Bool,
-        environment: [String: String]
-    ) {
-        guard TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-            isRunningUnderXCTest: isRunningUnderXCTest,
-            environment: environment
-        ) else {
-            return
-        }
-        Task { @MainActor in
-            TutorialVideoWindowController.shared.show()
-        }
-    }
-
     private static func uiTestStringValue(_ value: Any?) -> String {
         switch value {
         case let value as String:
@@ -1821,6 +1806,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         self.writeUITestDiagnosticsIfNeeded(stage: "afterMoveToTargetDisplay")
     }
 #endif
+
+    private func presentTutorialVideoOnFirstLaunchIfNeeded(
+        isRunningUnderXCTest: Bool,
+        environment: [String: String]
+    ) {
+        guard TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
+            isRunningUnderXCTest: isRunningUnderXCTest,
+            environment: environment
+        ) else {
+            return
+        }
+        Task { @MainActor in
+            TutorialVideoWindowController.shared.show()
+        }
+    }
 
     func applicationWillBecomeActive(_ notification: Notification) { if !hasVisibleMainTerminalWindow() { _ = mainWindowVisibilityController.orderFrontApplicationWindowsBeforeActivation(windows: mainWindowsForVisibilityController(), reason: .applicationWillBecomeActive) } }
 
