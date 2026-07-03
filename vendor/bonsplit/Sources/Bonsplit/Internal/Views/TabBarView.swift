@@ -612,6 +612,28 @@ struct TabBarLayout: Equatable {
             height: TabBarMetrics.activeIndicatorHeight
         )
     }
+
+    func selectedFillFrame(
+        selectedTabFrame: CGRect?,
+        totalWidth: CGFloat,
+        includesLeadingPadding: Bool = false
+    ) -> CGRect? {
+        guard let gap = selectedSeparatorGap(
+            selectedTabFrame: selectedTabFrame,
+            totalWidth: totalWidth
+        ) else { return nil }
+
+        let minX: CGFloat = includesLeadingPadding ? 0 : gap.lowerBound
+        let width = max(0, gap.upperBound - minX)
+        guard width > 0 else { return nil }
+
+        return CGRect(
+            x: minX,
+            y: 0,
+            width: width,
+            height: barHeight
+        )
+    }
 }
 
 struct TabBarActionLaneGeometry: Equatable {
@@ -968,6 +990,7 @@ struct TabBarView: View {
     @State private var splitButtonScrollOffset: CGFloat = 0
     @State private var splitButtonContentWidth: CGFloat = 0
     @State private var splitButtonViewportWidth: CGFloat = 0
+    @State private var tabDragClosedHandCursorPushed = false
     @StateObject private var controlKeyMonitor = TabControlShortcutKeyMonitor()
     @StateObject private var scrollViewBridge = TabBarScrollViewBridge()
 
@@ -1097,6 +1120,11 @@ struct TabBarView: View {
             selectedTabId: pane.selectedTabId,
             tabFrames: tabFramesInBar
         )
+    }
+
+    private var selectedTabIsFirst: Bool {
+        guard let selectedTabId = pane.selectedTabId else { return false }
+        return pane.tabs.first?.id == selectedTabId
     }
 
     private var leadingScrollAnchorId: String {
@@ -1340,6 +1368,13 @@ struct TabBarView: View {
                 dropLifecycle = .idle
             }
         }
+        .onChange(of: splitViewController.activeDragTab) { _, newValue in
+            if newValue != nil {
+                pushTabDragClosedHandCursorIfNeeded()
+            } else {
+                popTabDragClosedHandCursorIfNeeded()
+            }
+        }
         .onAppear {
             controlKeyMonitor.start()
         }
@@ -1353,6 +1388,7 @@ struct TabBarView: View {
         }
         .onDisappear {
             controlKeyMonitor.stop()
+            popTabDragClosedHandCursorIfNeeded()
         }
     }
 
@@ -1362,6 +1398,18 @@ struct TabBarView: View {
         withTransaction(Transaction(animation: nil)) {
             isHoveringTabBar = hovering
         }
+    }
+
+    private func pushTabDragClosedHandCursorIfNeeded() {
+        guard !tabDragClosedHandCursorPushed else { return }
+        NSCursor.closedHand.push()
+        tabDragClosedHandCursorPushed = true
+    }
+
+    private func popTabDragClosedHandCursorIfNeeded() {
+        guard tabDragClosedHandCursorPushed else { return }
+        NSCursor.pop()
+        tabDragClosedHandCursorPushed = false
     }
 
     @ViewBuilder
@@ -1377,6 +1425,7 @@ struct TabBarView: View {
             appearance: appearance,
             fillsWidth: fillsTabsToWidth,
             saturation: tabBarSaturation,
+            leadingBackgroundExtension: index == 0 ? TabBarMetrics.barPadding : 0,
             trailingSeparatorBottomInset: isImmediatelyBeforeSelected
                 ? TabBarMetrics.selectedTabLeftSeparatorBottomInset
                 : 0,
@@ -1436,6 +1485,7 @@ struct TabBarView: View {
                     )
             }
         )
+        .tabBarCursorOnHover(.openHand, enabled: controller.configuration.allowTabReordering)
         .onDrag {
             createItemProvider(for: tab)
         } preview: {
@@ -1849,6 +1899,7 @@ struct TabBarView: View {
                 let button = buttons[index]
                 SplitActionButtonChrome(
                     action: button.action,
+                    hoverCursor: splitActionButtonCursor(button),
                     hoverHighlightSquareSide: TabBarStyling.splitActionButtonReservedWidth,
                     registersHitRegion: registersHitRegions,
                     showsHoverHighlight: showsHoverHighlight
@@ -1908,6 +1959,28 @@ struct TabBarView: View {
             return "paneTabBarControl.splitDown"
         case .custom(let identifier):
             return "paneTabBarControl.custom.\(identifier)"
+        }
+    }
+
+    private func splitActionButtonCursor(_ button: BonsplitConfiguration.SplitActionButton) -> NSCursor? {
+        switch button.action {
+        case .newTerminal, .newBrowser, .splitRight, .splitDown:
+            return .pointingHand
+        case .custom:
+            return splitActionButtonLooksLikeGrabHandle(button) ? .openHand : nil
+        }
+    }
+
+    private func splitActionButtonLooksLikeGrabHandle(_ button: BonsplitConfiguration.SplitActionButton) -> Bool {
+        switch button.icon {
+        case .systemImage(let name):
+            let lowercased = name.lowercased()
+            return lowercased.contains("grid")
+                || lowercased.contains("circle.grid")
+                || lowercased.contains("square.grid")
+                || lowercased.contains("rectangle.grid")
+        case .emoji, .imageData:
+            return false
         }
     }
 
@@ -2044,9 +2117,19 @@ struct TabBarView: View {
 
     @ViewBuilder
     private var tabBarSurface: some View {
-        TabBarLayerBackedColor(color: chromeSnapshot.barColor)
-            .frame(maxWidth: .infinity)
-            .frame(height: tabBarHeight)
+        GeometryReader { geometry in
+            ZStack(alignment: .topLeading) {
+                TabBarLayerBackedColor(color: chromeSnapshot.barColor)
+                    .frame(width: geometry.size.width, height: tabBarHeight)
+                ZStack(alignment: .topLeading) {
+                    selectedTabFill(totalWidth: geometry.size.width)
+                }
+                .frame(width: geometry.size.width, height: tabBarHeight, alignment: .topLeading)
+                    .mask(combinedMask)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: tabBarHeight)
     }
 
     @ViewBuilder
@@ -2073,6 +2156,17 @@ struct TabBarView: View {
     }
 
     @ViewBuilder
+    private func selectedTabFill(totalWidth: CGFloat) -> some View {
+        if let frame = selectedFillFrame(totalWidth: totalWidth) {
+            Rectangle()
+                .fill(TabBarColors.activeTabBackground(for: appearance))
+                .saturation(tabBarSaturation)
+                .frame(width: frame.width, height: frame.height)
+                .offset(x: frame.minX, y: frame.minY)
+        }
+    }
+
+    @ViewBuilder
     private func tabBarBottomSeparator(totalWidth: CGFloat) -> some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
@@ -2086,9 +2180,14 @@ struct TabBarView: View {
                     totalWidth: totalWidth,
                     gap: gapRange
                 )
-                Rectangle()
-                    .fill(separator)
-                    .frame(width: segments.left, height: 1)
+                if selectedTabIsFirst {
+                    Color.clear
+                        .frame(width: segments.left, height: 1)
+                } else {
+                    Rectangle()
+                        .fill(separator)
+                        .frame(width: segments.left, height: 1)
+                }
                 Spacer(minLength: 0)
                 Rectangle()
                     .fill(separator)
@@ -2101,6 +2200,14 @@ struct TabBarView: View {
         tabBarLayout.selectedIndicatorFrame(
             selectedTabFrame: selectedTabFrameInBar,
             totalWidth: totalWidth
+        )
+    }
+
+    private func selectedFillFrame(totalWidth: CGFloat) -> CGRect? {
+        tabBarLayout.selectedFillFrame(
+            selectedTabFrame: selectedTabFrameInBar,
+            totalWidth: totalWidth,
+            includesLeadingPadding: selectedTabIsFirst
         )
     }
 }
@@ -2207,6 +2314,7 @@ private struct SplitActionButtonStyle: ButtonStyle {
 
 private struct SplitActionButtonChrome<Content: View>: View {
     let action: BonsplitConfiguration.SplitActionButton.Action
+    let hoverCursor: NSCursor?
     let hoverHighlightSquareSide: CGFloat
     let registersHitRegion: Bool
     let showsHoverHighlight: Bool
@@ -2218,14 +2326,9 @@ private struct SplitActionButtonChrome<Content: View>: View {
         content
             .background {
                 if showsHoverHighlight {
-                    if action == .newTerminal {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Color.white.opacity(isHovering ? 0.14 : 0))
-                            .frame(width: hoverHighlightSquareSide, height: hoverHighlightSquareSide)
-                    } else {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Color.white.opacity(isHovering ? 0.14 : 0))
-                    }
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.white.opacity(isHovering ? 0.14 : 0))
+                        .frame(width: hoverHighlightSquareSide, height: hoverHighlightSquareSide)
                 }
             }
             .background {
@@ -2237,7 +2340,7 @@ private struct SplitActionButtonChrome<Content: View>: View {
                 if showsHoverHighlight {
                     isHovering = hovering
                 }
-                if hovering, usesPointingHandCursor {
+                if hovering, let hoverCursor {
                     pushCursorIfNeeded()
                 } else {
                     popCursorIfNeeded()
@@ -2249,18 +2352,9 @@ private struct SplitActionButtonChrome<Content: View>: View {
             .tabBarButtonAnimationsDisabled()
     }
 
-    private var usesPointingHandCursor: Bool {
-        switch action {
-        case .newTerminal, .newBrowser, .splitRight, .splitDown:
-            return true
-        case .custom:
-            return false
-        }
-    }
-
     private func pushCursorIfNeeded() {
         guard !cursorPushed else { return }
-        NSCursor.pointingHand.push()
+        hoverCursor?.push()
         cursorPushed = true
     }
 
@@ -2948,6 +3042,7 @@ struct TabBarDragZoneView: NSViewRepresentable {
         var performWindowDrag: ((NSEvent) -> Bool)?
         private var pendingWindowDragEvent: NSEvent?
         private var pendingWindowDragStart: NSPoint?
+        private var closedHandCursorPushed = false
 
         private static let windowDragStartDistanceSquared: CGFloat = 16
 
@@ -3146,6 +3241,10 @@ struct TabBarDragZoneView: NSViewRepresentable {
         }
 
         private func startWindowDrag(with event: NSEvent, in window: NSWindow) {
+            pushClosedHandCursorIfNeeded()
+            defer {
+                popClosedHandCursorIfNeeded()
+            }
             if let performWindowDrag, performWindowDrag(event) {
 #if DEBUG
                 dlog("tab.bar.dragZone.dragStart action=testHook")
@@ -3161,12 +3260,28 @@ struct TabBarDragZoneView: NSViewRepresentable {
 #endif
         }
 
+        private func pushClosedHandCursorIfNeeded() {
+            guard !closedHandCursorPushed else { return }
+            NSCursor.closedHand.push()
+            closedHandCursorPushed = true
+        }
+
+        private func popClosedHandCursorIfNeeded() {
+            guard closedHandCursorPushed else { return }
+            NSCursor.pop()
+            closedHandCursorPushed = false
+        }
+
         private func performTitlebarDoubleClickAction(in window: NSWindow) {
             let action = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleActionOnDoubleClick"] as? String
             switch action {
             case "Minimize": window.miniaturize(nil)
             default: window.zoom(nil)
             }
+        }
+
+        deinit {
+            popClosedHandCursorIfNeeded()
         }
     }
 }

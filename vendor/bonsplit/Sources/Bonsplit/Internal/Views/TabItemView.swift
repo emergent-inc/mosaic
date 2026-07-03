@@ -258,6 +258,7 @@ struct TabItemView: View {
     /// the enclosing tab strip distributes (see ``BonsplitConfiguration/Appearance/tabWidthMode``).
     let fillsWidth: Bool
     let saturation: Double
+    let leadingBackgroundExtension: CGFloat
     let trailingSeparatorBottomInset: CGFloat
     let controlShortcutDigit: Int?
     /// Whether tab keyboard-shortcut hints are enabled at all (a global setting,
@@ -309,8 +310,8 @@ struct TabItemView: View {
         // titles). Fill mode keeps the flexible behavior so tabs share the strip.
         // Icon-only pinned tabs always size to their fixed compact width.
         .fixedSize(horizontal: isIconOnlyPinned || !fillsWidth, vertical: false)
-        .background(tabBackground.saturation(saturation))
         .padding(.vertical, max(0, (appearance.tabBarHeight - tabHeight) / 2))
+        .background(tabBackground.saturation(saturation))
         .tabControlShortcutHintVisibilityAnimation(value: showsShortcutHint)
         .contentShape(Rectangle().inset(by: -BonsplitTabItemHitTesting.horizontalSlop))
         // Middle click to close (macOS convention).
@@ -843,14 +844,21 @@ struct TabItemView: View {
     @ViewBuilder
     private var tabBackground: some View {
         ZStack(alignment: .top) {
-            if isSelected {
-                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
-                    .fill(TabBarColors.activeTabBackground(for: appearance))
-            } else if TabItemStyling.shouldShowHoverBackground(isHovered: isHovered, isSelected: isSelected) {
-                RoundedRectangle(cornerRadius: TabBarMetrics.tabCornerRadius, style: .continuous)
-                    .fill(TabBarColors.hoveredTabBackground(for: appearance))
-            } else {
-                Color.clear
+            GeometryReader { geometry in
+                let extensionWidth = max(0, leadingBackgroundExtension)
+                Group {
+                    if isSelected {
+                        Rectangle()
+                            .fill(TabBarColors.activeTabBackground(for: appearance))
+                    } else if TabItemStyling.shouldShowHoverBackground(isHovered: isHovered, isSelected: isSelected) {
+                        Rectangle()
+                            .fill(TabBarColors.hoveredTabBackground(for: appearance))
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width + extensionWidth, height: geometry.size.height)
+                .offset(x: -extensionWidth)
             }
 
             // Right border separator
