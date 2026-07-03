@@ -1425,6 +1425,7 @@ struct TabBarView: View {
             appearance: appearance,
             fillsWidth: fillsTabsToWidth,
             saturation: tabBarSaturation,
+            leadingBackgroundExtension: index == 0 ? TabBarMetrics.barPadding : 0,
             trailingSeparatorBottomInset: isImmediatelyBeforeSelected
                 ? TabBarMetrics.selectedTabLeftSeparatorBottomInset
                 : 0,
@@ -2179,9 +2180,14 @@ struct TabBarView: View {
                     totalWidth: totalWidth,
                     gap: gapRange
                 )
-                Rectangle()
-                    .fill(separator)
-                    .frame(width: segments.left, height: 1)
+                if selectedTabIsFirst {
+                    Color.clear
+                        .frame(width: segments.left, height: 1)
+                } else {
+                    Rectangle()
+                        .fill(separator)
+                        .frame(width: segments.left, height: 1)
+                }
                 Spacer(minLength: 0)
                 Rectangle()
                     .fill(separator)
