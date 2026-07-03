@@ -11,7 +11,7 @@ import Testing
 
         let attempt = Task { await harness.flow.signIn(timeout: 60) }
         await harness.waitForSession()
-        harness.factory.sessions[0].deliver(URL(string: "cmux-dev://auth-callback?other=1&cmux_auth_state=\(harness.callbackState(harness.factory.sessions[0]))")!)
+        harness.factory.sessions[0].deliver(URL(string: "mosaic-dev://auth-callback?other=1&mosaic_auth_state=\(harness.callbackState(harness.factory.sessions[0]))")!)
 
         #expect(await attempt.value == false)
         #expect(harness.coordinator.isAuthenticated == false)

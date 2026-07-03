@@ -591,7 +591,7 @@ reload_finalize() {
     echo "  $CMUX_DEV_ORIGIN"
     if [[ -n "${TAG_SLUG:-}" ]]; then
       echo "Dev web command:"
-      echo "  cd web && CMUX_PORT=$CMUX_DEV_PORT CMUX_PORT_RANGE=$CMUX_DEV_PORT_RANGE CMUX_PORT_END=$CMUX_DEV_PORT_END CMUX_AUTH_CALLBACK_SCHEME=cmux-dev-$TAG_SLUG bun dev"
+      echo "  cd web && CMUX_PORT=$CMUX_DEV_PORT CMUX_PORT_RANGE=$CMUX_DEV_PORT_RANGE CMUX_PORT_END=$CMUX_DEV_PORT_END CMUX_AUTH_CALLBACK_SCHEME=mosaic-dev-$TAG_SLUG bun dev"
     fi
   fi
   if [[ -x "${CLI_PATH:-}" ]]; then
@@ -927,7 +927,7 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
       CMUXD_SOCKET="${APP_SUPPORT_DIR}/cmuxd-dev-${TAG_SLUG}.sock"
       CMUX_SOCKET_PATH_VALUE="/tmp/cmux-debug-${TAG_SLUG}.sock"
       CMUX_DEBUG_LOG="/tmp/cmux-debug-${TAG_SLUG}.log"
-      CMUX_AUTH_CALLBACK_SCHEME_VALUE="cmux-dev-${TAG_SLUG}"
+      CMUX_AUTH_CALLBACK_SCHEME_VALUE="mosaic-dev-${TAG_SLUG}"
       write_last_socket_path "$CMUX_SOCKET_PATH_VALUE"
       echo "$CMUX_DEBUG_LOG" > /tmp/cmux-last-debug-log-path || true
       /usr/libexec/PlistBuddy -c "Add :LSEnvironment dict" "$INFO_PLIST" 2>/dev/null || true
@@ -948,9 +948,13 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
       set_plist_env "$INFO_PLIST" CMUX_PORT_END "$CMUX_DEV_PORT_END"
       set_plist_env "$INFO_PLIST" CMUX_PORT_RANGE "$CMUX_DEV_PORT_RANGE"
       set_plist_env "$INFO_PLIST" PORT "$CMUX_DEV_PORT"
-      set_plist_env "$INFO_PLIST" CMUX_AUTH_WWW_ORIGIN "$CMUX_DEV_ORIGIN"
-      set_plist_env "$INFO_PLIST" CMUX_API_BASE_URL "$CMUX_DEV_ORIGIN"
       set_plist_env "$INFO_PLIST" CMUX_VM_API_BASE_URL "$CMUX_DEV_ORIGIN"
+      if [[ -n "${CMUX_AUTH_WWW_ORIGIN:-}" ]]; then
+        set_plist_env "$INFO_PLIST" CMUX_AUTH_WWW_ORIGIN "$CMUX_AUTH_WWW_ORIGIN"
+      fi
+      if [[ -n "${CMUX_API_BASE_URL:-}" ]]; then
+        set_plist_env "$INFO_PLIST" CMUX_API_BASE_URL "$CMUX_API_BASE_URL"
+      fi
       if [[ -S "$CMUXD_SOCKET" ]]; then
         for PID in $(lsof -t "$CMUXD_SOCKET" 2>/dev/null); do
           kill "$PID" 2>/dev/null || true
@@ -1090,9 +1094,9 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   # password into the long-lived GUI process environment would leak it to every
   # child terminal/CLI it spawns, for zero added coverage, so we deliberately do
   # not set CMUX_UITEST_STACK_* here.
-  LAUNCH_AUTH_CALLBACK_SCHEME="cmux-dev"
+  LAUNCH_AUTH_CALLBACK_SCHEME="mosaic-dev"
   if [[ -n "${TAG_SLUG:-}" ]]; then
-    LAUNCH_AUTH_CALLBACK_SCHEME="cmux-dev-${TAG_SLUG}"
+    LAUNCH_AUTH_CALLBACK_SCHEME="mosaic-dev-${TAG_SLUG}"
   fi
   TAG_LAUNCH_ENV=(
     CMUX_TAG="${TAG_SLUG:-}"
@@ -1109,10 +1113,14 @@ if [[ "$LAUNCH" -eq 1 ]]; then
     CMUX_PORT_END="$CMUX_DEV_PORT_END"
     CMUX_PORT_RANGE="$CMUX_DEV_PORT_RANGE"
     PORT="$CMUX_DEV_PORT"
-    CMUX_AUTH_WWW_ORIGIN="$CMUX_DEV_ORIGIN"
-    CMUX_API_BASE_URL="$CMUX_DEV_ORIGIN"
     CMUX_VM_API_BASE_URL="$CMUX_DEV_ORIGIN"
   )
+  if [[ -n "${CMUX_AUTH_WWW_ORIGIN:-}" ]]; then
+    TAG_LAUNCH_ENV+=(CMUX_AUTH_WWW_ORIGIN="$CMUX_AUTH_WWW_ORIGIN")
+  fi
+  if [[ -n "${CMUX_API_BASE_URL:-}" ]]; then
+    TAG_LAUNCH_ENV+=(CMUX_API_BASE_URL="$CMUX_API_BASE_URL")
+  fi
 
   LAUNCH_CMD=()
   LAUNCH_RETRY_CMD=()

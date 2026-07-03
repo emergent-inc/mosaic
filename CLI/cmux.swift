@@ -14540,12 +14540,12 @@ struct CMUXCLI {
             Usage: cmux themes
                    cmux themes list
 
-            Terminal colors are fixed to Cursor Dark and cannot be changed.
+            Terminal colors are fixed to Anysphere Dark and cannot be changed.
             Use `cmux themes list` to inspect bundled themes and the managed
             current theme.
 
             Commands:
-              list                      List available themes and mark Cursor Dark as managed
+              list                      List available themes and mark Anysphere Dark as managed
 
             Examples:
               cmux themes

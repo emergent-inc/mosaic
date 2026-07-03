@@ -133,7 +133,7 @@ import Testing
     @Test func slowSignInSurfacesBrowserFallback() async {
         // A popup that never delivers a callback models the issue #6015 hang:
         // ASWebAuthenticationSession opens its Safari window but the hosted
-        // page never redirects to cmux://auth-callback, so the user is left
+        // page never redirects to mosaic://auth-callback, so the user is left
         // staring at a dead window. Past the slow threshold the flow must flip
         // `signInIsSlow` so the account UI can offer the "open in your default
         // browser" fallback instead of an indefinite spinner.
@@ -176,12 +176,12 @@ import Testing
         let fallbackURL = harness.flow.activeAttemptSignInURL
         #expect(fallbackURL != nil)
         // The default-browser fallback must carry the same callback state as
-        // the popup so the cmux:// deep link routes back to THIS attempt —
-        // handleCallbackURL matches on cmux_auth_state.
+        // the popup so the mosaic:// deep link routes back to THIS attempt —
+        // handleCallbackURL matches on mosaic_auth_state.
         let fallbackState = fallbackURL.flatMap {
             URLComponents(url: $0, resolvingAgainstBaseURL: false)?
                 .queryItems?
-                .first(where: { $0.name == "cmux_auth_state" })?
+                .first(where: { $0.name == "mosaic_auth_state" })?
                 .value
         }
         #expect(fallbackState == harness.callbackState(harness.factory.sessions[0]))
@@ -196,7 +196,7 @@ import Testing
         let fallbackURL = try #require(harness.flow.activeAttemptSignInURL)
         let fallbackState = try #require(URLComponents(url: fallbackURL, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value)
 
         harness.factory.sessions[0].cancel()
@@ -228,7 +228,7 @@ import Testing
         let manualURL = harness.flow.manualSignInURL
         let manualState = try #require(URLComponents(url: manualURL, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value)
 
         // auth.begin_sign_in: start the popup attempt, which consumes that state
@@ -262,13 +262,13 @@ import Testing
         let fallbackURL = try #require(harness.flow.activeAttemptSignInURL)
         let fallbackState = try #require(URLComponents(url: fallbackURL, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value)
 
         harness.factory.sessions[0].cancel()
         await harness.waitForCondition { harness.flow.isSigningIn == false }
 
-        let failedRetry = URL(string: "cmux-dev://auth-callback?other=1&cmux_auth_state=\(fallbackState)")!
+        let failedRetry = URL(string: "mosaic-dev://auth-callback?other=1&mosaic_auth_state=\(fallbackState)")!
         #expect(await harness.flow.handleCallbackURL(failedRetry) == false)
         #expect(harness.flow.lastFailure == .invalidCallback)
         #expect(harness.coordinator.isAuthenticated == false)
@@ -292,7 +292,7 @@ import Testing
         let fallbackURL = try #require(harness.flow.activeAttemptSignInURL)
         let fallbackState = try #require(URLComponents(url: fallbackURL, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value)
 
         harness.factory.sessions[0].cancel()
