@@ -1,13 +1,13 @@
-// Server-side policy for the iOS analytics proxy. Keeps event-name validation
-// and forwarding config in one place so the route handler stays thin.
+// Server-side policy for the native analytics proxy. Keeps event-name
+// validation and forwarding config in one place so the route handler stays thin.
 
 /** The PostHog project key. Public (already shipped in the web client bundle),
  * overridable via env so dev/preview can point at a separate project. */
 export const POSTHOG_PROJECT_KEY =
-  process.env.POSTHOG_PROJECT_KEY ?? "phc_opOVu7oFzR9wD3I6ZahFGOV2h3mqGpl5EHyQvmHciDP";
+  process.env.POSTHOG_PROJECT_KEY ?? "phc_rRRqoNMdWb5ikbnHwC7EXWKBmYY7VvKJVCLaDqTm97ep";
 
 /** The PostHog capture host (no trailing slash). */
-export const POSTHOG_HOST = (process.env.POSTHOG_HOST ?? "https://r.cmux.com").replace(/\/$/, "");
+export const POSTHOG_HOST = (process.env.POSTHOG_HOST ?? "https://us.i.posthog.com").replace(/\/$/, "");
 
 /** Max request size for an analytics batch. */
 export const MAX_ANALYTICS_REQUEST_BYTES = 64 * 1024;
@@ -18,8 +18,8 @@ export const MAX_ANALYTICS_BATCH_EVENTS = 100;
 /** Max property keys allowed on a single event. */
 export const MAX_ANALYTICS_EVENT_PROPERTIES = 64;
 
-// Every event the iOS app may emit. Server-side allowlist so a compromised or
-// buggy client cannot pollute the project with arbitrary event names. Keep in
+// Every event the native apps may emit. Server-side allowlist so a compromised
+// or buggy client cannot pollute the project with arbitrary event names. Keep in
 // sync with the P0/P1/P2 catalog as new events ship.
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set([
   "$identify",
@@ -58,6 +58,35 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set([
   "ios_push_deeplink_resolved",
   "ios_push_deeplink_failed",
   "ios_crash",
+  // Shared native app activity
+  "cmux_daily_active",
+  "cmux_hourly_active",
+  // macOS product actions
+  "mac_action_performed",
+  "mac_button_clicked",
+  "mac_command_palette_command_performed",
+  "mac_keyboard_shortcut_performed",
+  "mac_menu_action_performed",
+  "mac_context_menu_action_performed",
+  "mac_socket_command_performed",
+  // macOS notifications + errors
+  "mac_notification_shown",
+  "mac_error_notification_shown",
+  "mac_modal_alert_shown",
+  "mac_error_captured",
+  // macOS collaboration/share funnel
+  "mac_collaboration_share_initiated",
+  "mac_collaboration_session_created",
+  "mac_collaboration_session_joined",
+  "mac_collaboration_terminal_shared",
+  "mac_collaboration_document_shared",
+  "mac_collaboration_invite_code_copied",
+  "mac_collaboration_recipients_updated",
+  "mac_collaboration_share_stopped",
+  // macOS external linking funnel
+  "mac_linking_started",
+  "mac_linking_completed",
+  "mac_linking_failed",
 ]);
 
 /** Whether the proxy will forward the given event name to PostHog. */

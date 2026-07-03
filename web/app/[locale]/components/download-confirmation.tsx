@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { DOWNLOAD_URL, DOWNLOAD_INTENT_PARAM } from "../../lib/download";
 import { OfficialLinks } from "./official-links";
 
@@ -34,6 +35,10 @@ export function DownloadConfirmation() {
     // or navigating back to this page does not re-trigger the download.
     const params = new URLSearchParams(window.location.search);
     if (params.get(DOWNLOAD_INTENT_PARAM) === "1") {
+      posthog.capture("cmuxterm_download_started", {
+        location: "download_confirmation",
+        platform: "mac",
+      });
       triggerDownload();
       params.delete(DOWNLOAD_INTENT_PARAM);
       const query = params.toString();
