@@ -12215,6 +12215,8 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didReorderTabsInPane pane: PaneID, orderedTabIds: [TabID]) {
+        publishTerminalLayoutChanged(trigger: .paneMoved)
+
         // A remote tmux mirror tab reorder propagates to tmux window order.
         guard isRemoteTmuxMirror else { return }
         let orderedPanelIds = orderedTabIds.compactMap { panelIdFromSurfaceId($0) }
@@ -12276,6 +12278,7 @@ extension Workspace: BonsplitDelegate {
         if !isDetachingCloseTransaction {
             scheduleFocusReconcile()
         }
+        publishTerminalLayoutChanged(trigger: .paneMoved)
     }
 
     func splitTabBar(_ controller: BonsplitController, didFocusPane pane: PaneID) {
@@ -12428,6 +12431,7 @@ extension Workspace: BonsplitDelegate {
             normalizePinnedTabs(in: originalPane)
             normalizePinnedTabs(in: newPane)
             scheduleTerminalGeometryReconcile()
+            publishTerminalLayoutChanged(trigger: orientation == .horizontal ? .splitHorizontal : .splitVertical)
             return
         }
 
@@ -12512,6 +12516,7 @@ extension Workspace: BonsplitDelegate {
             normalizePinnedTabs(in: originalPane)
             normalizePinnedTabs(in: newPane)
             scheduleTerminalGeometryReconcile()
+            publishTerminalLayoutChanged(trigger: orientation == .horizontal ? .splitHorizontal : .splitVertical)
             return
         }
 
@@ -12562,6 +12567,7 @@ extension Workspace: BonsplitDelegate {
         bindSurface(newTabId, toPanelId: newPanel.id)
         normalizePinnedTabs(in: newPane)
         publishCmuxSplitCreated(newPane, sourcePaneId: originalPane, orientation: orientation, surfaceId: newPanel.id, kind: "terminal", origin: "ui_split", focused: true)
+        publishTerminalLayoutChanged(trigger: orientation == .horizontal ? .splitHorizontal : .splitVertical)
 #if DEBUG
         cmuxDebugLog(
             "split.didSplit.autoCreate.done pane=\(newPane.id.uuidString.prefix(5)) " +

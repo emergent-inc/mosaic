@@ -32680,6 +32680,17 @@
         }
       }
     },
+    "sidebar.tutorialVideo.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replay Tutorial Video"
+          }
+        }
+      }
+    },
     "sidebar.workspace.accessibilityHint": {
       "extractionState": "manual",
       "localizations": {
@@ -35668,6 +35679,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Task Manager"
+          }
+        }
+      }
+    },
+    "tutorial.video.missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The tutorial video is missing from this app build."
+          }
+        }
+      }
+    },
+    "tutorial.video.window.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to mosaic"
           }
         }
       }

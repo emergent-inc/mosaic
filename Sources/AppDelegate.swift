@@ -1475,6 +1475,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         StartupBreadcrumbLog.append("appDelegate.didFinish.bootstrap.begin")
         scheduleInitialMainWindowBootstrap(debugSource: "didFinishLaunching")
+        presentTutorialVideoOnFirstLaunchIfNeeded(
+            isRunningUnderXCTest: isRunningUnderXCTest,
+            environment: env
+        )
         StartupBreadcrumbLog.append("appDelegate.didFinish.complete")
 #if DEBUG
         UpdateTestSupport(model: updateController.model, log: updateLog).applyIfNeeded()
@@ -1667,6 +1671,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             for (key, value) in totals {
                 payload["portal_\(key)"] = Self.uiTestStringValue(value)
             }
+        }
+    }
+
+    private func presentTutorialVideoOnFirstLaunchIfNeeded(
+        isRunningUnderXCTest: Bool,
+        environment: [String: String]
+    ) {
+        guard TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
+            isRunningUnderXCTest: isRunningUnderXCTest,
+            environment: environment
+        ) else {
+            return
+        }
+        Task { @MainActor in
+            TutorialVideoWindowController.shared.show()
         }
     }
 
@@ -4718,6 +4737,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
 
         let didApplyStartupSessionRestore = attemptStartupSessionRestoreIfNeeded(primaryWindow: window)
+        tabManager.publishTerminalLayoutLaunchSnapshotsIfNeeded()
         if Self.shouldSaveSessionSnapshotAfterMainWindowRegistration(
             isTerminatingApp: isTerminatingApp,
             didApplyStartupSessionRestore: didApplyStartupSessionRestore,
