@@ -394,14 +394,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                             .cmuxFont(size: 11, weight: .semibold)
                         ForEach(participants) { participant in
                             HStack(spacing: 7) {
-                                Text(participant.initials)
-                                    .cmuxFont(size: 9, weight: .bold)
-                                    .foregroundStyle(Color.white)
-                                    .frame(width: 18, height: 18)
-                                    .background {
-                                        Circle()
-                                            .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
-                                    }
+                                CollaborationParticipantAvatarView(participant: participant)
                                 Text(participant.displayName)
                                     .cmuxFont(size: 11)
                                     .lineLimit(1)
@@ -443,6 +436,42 @@ private struct TerminalCollaborationSessionPopoverContent: View {
         }
         .padding(14)
         .frame(width: 260)
+    }
+}
+
+private struct CollaborationParticipantAvatarView: View {
+    let participant: CollaborationWorkspaceParticipantSnapshot
+
+    var body: some View {
+        Group {
+            if let url = participant.imageURL.flatMap(URL.init(string:)) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case let .success(image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        fallback
+                    }
+                }
+            } else {
+                fallback
+            }
+        }
+        .frame(width: 18, height: 18)
+        .clipShape(Circle())
+    }
+
+    private var fallback: some View {
+        Text(participant.initials)
+            .cmuxFont(size: 9, weight: .bold)
+            .foregroundStyle(Color.white)
+            .frame(width: 18, height: 18)
+            .background {
+                Circle()
+                    .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
+            }
     }
 }
 
@@ -601,19 +630,33 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         }
         let trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.activeInActiveApp, .inVisibleRect, .mouseEnteredAndExited, .cursorUpdate],
+            options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved, .cursorUpdate],
             owner: self
         )
         addTrackingArea(trackingArea)
         self.trackingArea = trackingArea
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.invalidateCursorRects(for: self)
+    }
+
     override func mouseEntered(with event: NSEvent) {
         setHovering(true)
+        activeCursor.set()
     }
 
     override func mouseExited(with event: NSEvent) {
         setHovering(false)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        activeCursor.set()
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        activeCursor.set()
     }
 
     override func resetCursorRects() {
@@ -621,17 +664,10 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         addCursorRect(bounds, cursor: .openHand)
     }
 
-    override func cursorUpdate(with event: NSEvent) {
-        if dragSessionActive {
-            NSCursor.closedHand.set()
-        } else {
-            NSCursor.openHand.set()
-        }
-    }
-
     override func mouseDown(with event: NSEvent) {
         mouseDownEvent = event
         dragSessionActive = false
+        pushClosedHandCursorIfNeeded()
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -656,7 +692,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     }
 
     override func mouseUp(with event: NSEvent) {
-        defer { mouseDownEvent = nil }
+        defer {
+            mouseDownEvent = nil
+            if !dragSessionActive {
+                popClosedHandCursorIfNeeded()
+            }
+        }
         guard !dragSessionActive else { return }
         onClick?()
     }
@@ -694,14 +735,21 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         closedHandCursorPushed = true
     }
 
+    private var activeCursor: NSCursor {
+        closedHandCursorPushed ? .closedHand : .openHand
+    }
+
+    private func popClosedHandCursorIfNeeded() {
+        guard closedHandCursorPushed else { return }
+        NSCursor.pop()
+        closedHandCursorPushed = false
+    }
+
     private func endDragSession() {
         mouseDownEvent = nil
         dragSessionActive = false
         CollaborationRuntime.shared.endAgentRoomWireDrag()
-        if closedHandCursorPushed {
-            NSCursor.pop()
-            closedHandCursorPushed = false
-        }
+        popClosedHandCursorIfNeeded()
     }
 
     private func setHovering(_ nextValue: Bool) {

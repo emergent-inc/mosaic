@@ -3546,6 +3546,14 @@ struct CMUXCLI {
                 }
                 var params: [String: Any] = [:]
                 if let relayURL { params["relay_url"] = relayURL }
+                if let workspaceID = processEnv["CMUX_WORKSPACE_ID"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !workspaceID.isEmpty {
+                    params["workspace_id"] = workspaceID
+                }
+                if let surfaceID = processEnv["CMUX_SURFACE_ID"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !surfaceID.isEmpty {
+                    params["surface_id"] = surfaceID
+                }
                 let response = try client.sendV2(
                     method: "collaboration.session.create",
                     params: params,

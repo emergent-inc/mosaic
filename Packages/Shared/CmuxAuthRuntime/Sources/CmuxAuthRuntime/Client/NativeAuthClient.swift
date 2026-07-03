@@ -13,6 +13,7 @@ public actor NativeAuthClient: AuthClient {
             let id: String
             let displayName: String?
             let primaryEmail: String?
+            let imageURL: String?
         }
 
         struct Team: Decodable {
@@ -72,7 +73,8 @@ public actor NativeAuthClient: AuthClient {
         return CMUXAuthUser(
             id: response.user.id,
             primaryEmail: response.user.primaryEmail,
-            displayName: response.user.displayName
+            displayName: response.user.displayName,
+            imageURL: response.user.imageURL
         )
     }
 

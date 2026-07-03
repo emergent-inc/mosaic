@@ -32,6 +32,7 @@ private struct CollaborationPeerWire: Codable {
     let participantID: String?
     let displayName: String
     let color: String
+    let imageURL: String?
 
     var stableParticipantID: String {
         participantID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? peerID
@@ -614,6 +615,7 @@ final class CollaborationRuntime {
     @ObservationIgnored private var agentRoomWireAnchorsBySurfaceID: [UUID: AgentRoomWireAnchor] = [:]
     @ObservationIgnored private let agentRoomWireOverlay = AgentRoomWireOverlayController()
     @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
+    @ObservationIgnored private let productAnalytics = ProductAnalytics.shared
     private var latestAgentRoomID: String?
     private let agentRoomActiveDispatchPromptBuilder = AgentRoomActiveDispatchPromptBuilder()
 
@@ -674,7 +676,8 @@ final class CollaborationRuntime {
                 CollaborationWorkspaceParticipantSnapshot.remote(
                     peerID: peer.peerID,
                     displayName: peer.displayName,
-                    colorHex: peer.color
+                    colorHex: peer.color,
+                    imageURL: peer.imageURL
                 )
             }
         return [local] + peers
@@ -705,7 +708,8 @@ final class CollaborationRuntime {
         return CollaborationParticipantAvatarSnapshot.remote(
             peerID: peer.peerID,
             displayName: peer.displayName,
-            colorHex: peer.color
+            colorHex: peer.color,
+            imageURL: peer.imageURL
         )
     }
 
@@ -798,22 +802,36 @@ final class CollaborationRuntime {
         )
     }
 
-    func configureOrShare(panel: any CollaborationEditablePanel) {
-        setSharing(true, for: panel)
+    func configureOrShare(
+        panel: any CollaborationEditablePanel,
+        entrypoint: CollaborationAnalyticsEntrypoint = .documentHeaderButton
+    ) {
+        setSharing(true, for: panel, entrypoint: entrypoint)
     }
 
-    func setSharing(_ isSharing: Bool, for panel: any CollaborationEditablePanel) {
+    func setSharing(
+        _ isSharing: Bool,
+        for panel: any CollaborationEditablePanel,
+        entrypoint: CollaborationAnalyticsEntrypoint = .documentHeaderButton
+    ) {
         let state = state(for: panel)
         if isSharing {
             if state.isShared { return }
             guard ensureSignedInForCollaboration(continue: { [weak panel] in
                 guard let panel else { return }
-                self.setSharing(true, for: panel)
+                self.setSharing(true, for: panel, entrypoint: entrypoint)
             }) else {
                 return
             }
+            trackCollaboration(
+                .shareInitiated,
+                shareKind: .document,
+                entrypoint: entrypoint,
+                result: .started,
+                properties: ["workspace_has_session": sessionCode != nil]
+            )
             if activeConnection != nil {
-                share(panel: panel)
+                share(panel: panel, entrypoint: entrypoint)
             } else {
                 scheduleStartDialog(thenShare: panel)
             }
@@ -840,13 +858,21 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID[terminal.id] != nil
     }
 
-    func configureOrShare(terminal: TerminalPanel) {
-        setSharing(true, for: terminal)
+    func configureOrShare(
+        terminal: TerminalPanel,
+        entrypoint: CollaborationAnalyticsEntrypoint = .terminalHeaderButton
+    ) {
+        setSharing(true, for: terminal, entrypoint: entrypoint)
     }
 
-    func setSharing(_ isSharing: Bool, for terminal: TerminalPanel) {
+    func setSharing(
+        _ isSharing: Bool,
+        for terminal: TerminalPanel,
+        entrypoint: CollaborationAnalyticsEntrypoint = .terminalHeaderButton
+    ) {
         let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
-        let role = state(for: terminal).sharingRole
+        let currentState = state(for: terminal)
+        let role = currentState.sharingRole
         if isSharing {
             switch CollaborationTerminalShareAction.primaryAction(
                 role: role,
@@ -855,10 +881,21 @@ final class CollaborationRuntime {
             case .presentSessionChooser, .shareInWorkspaceSession:
                 guard ensureSignedInForCollaboration(continue: { [weak terminal] in
                     guard let terminal else { return }
-                    self.setSharing(true, for: terminal)
+                    self.setSharing(true, for: terminal, entrypoint: entrypoint)
                 }) else {
                     return
                 }
+                trackCollaboration(
+                    .shareInitiated,
+                    shareKind: .terminal,
+                    entrypoint: entrypoint,
+                    result: .started,
+                    properties: [
+                        "workspace_has_session": workspaceSessionCode != nil,
+                        "was_already_shared": currentState.isShared,
+                        "can_manage_recipients": canManageRecipients(for: terminal),
+                    ]
+                )
                 switch CollaborationTerminalShareAction.primaryAction(
                     role: role,
                     workspaceHasSession: workspaceSessionCode != nil
@@ -873,12 +910,12 @@ final class CollaborationRuntime {
                     if let connection = connectionsBySessionCode[workspaceSessionCode] {
                         sessionCode = workspaceSessionCode
                         connectionLabel = connection.connectionLabel
-                        share(terminal: terminal, via: connection)
+                        share(terminal: terminal, via: connection, entrypoint: entrypoint)
                         return
                     }
                     Task {
-                        if let connection = await joinSession(code: workspaceSessionCode) {
-                            share(terminal: terminal, via: connection)
+                        if let connection = await joinSession(code: workspaceSessionCode, entrypoint: entrypoint) {
+                            share(terminal: terminal, via: connection, entrypoint: entrypoint)
                         }
                     }
                 case .stopSharingHostedTerminal, .stopViewingRemoteTerminal, .presentParticipantPicker:
@@ -936,7 +973,8 @@ final class CollaborationRuntime {
         peerIdentity = CollaborationPeerIdentity.authenticatedParticipant(
             peerID: peerIdentity.peerID,
             userID: user.id,
-            displayName: displayName
+            displayName: displayName,
+            imageURL: user.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
     }
 
@@ -967,6 +1005,12 @@ final class CollaborationRuntime {
         guard !normalizedCode.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+        trackCollaboration(
+            .inviteCodeCopied,
+            shareKind: .terminal,
+            entrypoint: .recipientPopover,
+            result: .completed
+        )
     }
 
     func createWorkspaceSession(for terminal: TerminalPanel) {
@@ -976,7 +1020,7 @@ final class CollaborationRuntime {
         }) else {
             return
         }
-        Task { await createSessionAndBindWorkspace(for: terminal) }
+        Task { await createSessionAndShare(terminal: terminal) }
     }
 
     func joinWorkspaceSession(for terminal: TerminalPanel) {
@@ -1035,6 +1079,18 @@ final class CollaborationRuntime {
         )
         let removedIDs = previousIDs.subtracting(nextIDs)
         let addedIDs = nextIDs.subtracting(previousIDs)
+        trackCollaboration(
+            .recipientsUpdated,
+            shareKind: .terminal,
+            entrypoint: .recipientPopover,
+            result: .completed,
+            properties: [
+                "peer_count": knownIDs.count,
+                "recipient_count": nextIDs.count,
+                "recipient_count_added": addedIDs.count,
+                "recipient_count_removed": removedIDs.count,
+            ]
+        )
         Task {
             if !removedIDs.isEmpty {
                 try? await send(
@@ -1097,6 +1153,12 @@ final class CollaborationRuntime {
                 try? await send(.terminalClose(terminalID: terminalID), via: connection)
             }
         }
+        trackCollaboration(
+            .shareStopped,
+            shareKind: .terminal,
+            entrypoint: .terminalHeaderButton,
+            result: .completed
+        )
     }
 
     func noteTerminalOutput(surfaceID: UUID, data: Data) {
@@ -1256,7 +1318,8 @@ final class CollaborationRuntime {
             peerID: peerID,
             participantID: nil,
             displayName: peerID,
-            color: peerIdentity.color
+            color: peerIdentity.color,
+            imageURL: nil
         )
     }
 
@@ -1301,6 +1364,12 @@ final class CollaborationRuntime {
         Task {
             _ = try? await connection.session.close(file: descriptor)
         }
+        trackCollaboration(
+            .shareStopped,
+            shareKind: .document,
+            entrypoint: .documentHeaderButton,
+            result: .completed
+        )
     }
 
     func noteLocalTextChange(panel: any CollaborationEditablePanel, previousText: String, nextText: String) {
@@ -1456,6 +1525,52 @@ final class CollaborationRuntime {
             },
         ]
         return payload
+    }
+
+    private func trackCollaboration(
+        _ event: CollaborationAnalyticsEvent,
+        shareKind: CollaborationAnalyticsShareKind? = nil,
+        entrypoint: CollaborationAnalyticsEntrypoint,
+        result: CollaborationAnalyticsResult,
+        properties: [String: Any] = [:],
+        flush: Bool = false
+    ) {
+        var eventProperties = collaborationAnalyticsProperties()
+        eventProperties.merge(properties) { _, new in new }
+        productAnalytics.trackCollaboration(
+            event,
+            shareKind: shareKind,
+            entrypoint: entrypoint,
+            result: result,
+            properties: eventProperties,
+            flush: flush
+        )
+    }
+
+    private func collaborationAnalyticsProperties() -> [String: Any] {
+        [
+            "peer_count": activeConnection?.peersByID.count ?? 0,
+            "shared_documents_count": statesByDocumentID.values.filter(\.isShared).count,
+            "shared_terminals_count": terminalStatesByID.values.filter(\.isShared).count,
+            "session_count": connectionsBySessionCode.count,
+            "relay_url_is_custom": relayURLString != Self.defaultRelayURLString,
+        ]
+    }
+
+    private func trackCollaborationError(
+        errorKind: String,
+        operation: String,
+        error: any Error
+    ) {
+        PostHogAnalytics.shared.trackError(
+            errorKind: errorKind,
+            severity: .warning,
+            source: "CollaborationRuntime",
+            properties: [
+                "operation": operation,
+                "error_name": String(describing: type(of: error)),
+            ]
+        )
     }
 
     func agentRoomStatusPayload() async -> [String: Any] {
@@ -1755,19 +1870,47 @@ final class CollaborationRuntime {
         return ["requested": true]
     }
 
-    func createSessionForAutomation(relayURL: String?) async -> [String: Any] {
+    func createSessionForAutomation(
+        relayURL: String?,
+        workspaceID: String? = nil,
+        surfaceID: String? = nil
+    ) async -> [String: Any] {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
         }
         do {
             let response = try await createSession()
-            await connect(sessionID: response.sessionID, code: response.sessionCode)
+            let connection = await connect(sessionID: response.sessionID, code: response.sessionCode)
+            var didShareTerminal = false
+            if let connection,
+               let terminal = terminalForAutomation(workspaceID: workspaceID, surfaceID: surfaceID) {
+                share(terminal: terminal, via: connection, entrypoint: .socketSession)
+                didShareTerminal = true
+            }
+            trackCollaboration(
+                .sessionCreated,
+                entrypoint: .socketSession,
+                result: .completed,
+                properties: ["session_code_present": true]
+            )
             var payload = statusPayload()
             payload["session_code"] = response.sessionCode
+            payload["shared_terminal"] = didShareTerminal
             return payload
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            trackCollaboration(
+                .sessionCreated,
+                entrypoint: .socketSession,
+                result: .failed,
+                properties: ["error_kind": "collaboration.session_create_failed"]
+            )
+            trackCollaborationError(
+                errorKind: "collaboration.session_create_failed",
+                operation: "createSessionForAutomation",
+                error: error
+            )
             return [
                 "connected": false,
                 "status": connectionLabel,
@@ -1776,9 +1919,17 @@ final class CollaborationRuntime {
         }
     }
 
-    func createSessionForAutomationRequest(relayURL: String?) -> [String: Any] {
+    func createSessionForAutomationRequest(
+        relayURL: String?,
+        workspaceID: String? = nil,
+        surfaceID: String? = nil
+    ) -> [String: Any] {
         Task { @MainActor in
-            _ = await createSessionForAutomation(relayURL: relayURL)
+            _ = await createSessionForAutomation(
+                relayURL: relayURL,
+                workspaceID: workspaceID,
+                surfaceID: surfaceID
+            )
         }
         return [
             "requested": true,
@@ -1786,11 +1937,28 @@ final class CollaborationRuntime {
         ]
     }
 
+    private func terminalForAutomation(workspaceID rawWorkspaceID: String?, surfaceID rawSurfaceID: String?) -> TerminalPanel? {
+        guard let rawSurfaceID,
+              let surfaceID = UUID(uuidString: rawSurfaceID.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return nil
+        }
+        let workspaceID = rawWorkspaceID
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap(UUID.init(uuidString:))
+        guard let location = AppDelegate.shared?.workspaceContainingPanel(
+            panelId: surfaceID,
+            preferredWorkspaceId: workspaceID
+        ) else {
+            return nil
+        }
+        return location.workspace.panels[surfaceID] as? TerminalPanel
+    }
+
     func joinSessionForAutomation(relayURL: String?, code: String) async -> [String: Any] {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
         }
-        await joinSession(code: code)
+        await joinSession(code: code, entrypoint: .socketSession)
         return statusPayload()
     }
 
@@ -1820,7 +1988,7 @@ final class CollaborationRuntime {
                 "error": CollaborationStrings.terminalShareFailed,
             ]
         }
-        configureOrShare(terminal: terminal)
+        configureOrShare(terminal: terminal, entrypoint: .socketShareSelected)
         return statusPayload()
     }
 
@@ -1851,6 +2019,11 @@ final class CollaborationRuntime {
         terminalSelectionLastSentAtBySurfaceID.removeAll()
         connectionLabel = CollaborationStrings.disconnected
         workspaceParticipantSnapshotRevision &+= 1
+        trackCollaboration(
+            .shareStopped,
+            entrypoint: .socketSession,
+            result: .completed
+        )
         return statusPayload()
     }
 
@@ -1898,7 +2071,7 @@ final class CollaborationRuntime {
 
     private func presentJoinDialog() {
         guard let code = runJoinCodeDialog() else { return }
-        Task { await joinSession(code: code) }
+        Task { await joinSession(code: code, entrypoint: .startDialogJoin) }
     }
 
     private func presentStartDialog(thenShare panel: any CollaborationEditablePanel) {
@@ -1943,15 +2116,15 @@ final class CollaborationRuntime {
     private func presentJoinDialog(thenShare panel: any CollaborationEditablePanel) {
         guard let code = runJoinCodeDialog() else { return }
         Task {
-            await joinSession(code: code)
-            share(panel: panel)
+            await joinSession(code: code, entrypoint: .startDialogJoin)
+            share(panel: panel, entrypoint: .startDialogJoin)
         }
     }
 
     private func presentJoinDialog(thenBindWorkspaceFor terminal: TerminalPanel) {
         guard let code = runJoinCodeDialog() else { return }
         Task {
-            if let connection = await joinSession(code: code) {
+            if let connection = await joinSession(code: code, entrypoint: .startDialogJoin) {
                 recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
             }
         }
@@ -1991,23 +2164,27 @@ final class CollaborationRuntime {
         do {
             let response = try await createSession()
             await connect(sessionID: response.sessionID, code: response.sessionCode)
+            trackCollaboration(
+                .sessionCreated,
+                entrypoint: .startDialogCreate,
+                result: .completed,
+                properties: ["session_code_present": true]
+            )
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
-        }
-    }
-
-    private func createSessionAndBindWorkspace(for terminal: TerminalPanel) async {
-        do {
-            let response = try await createSession()
-            if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
-                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
-            }
-            presentCreatedSessionDialog(code: response.sessionCode)
-        } catch {
-            lastErrorMessage = error.localizedDescription
-            connectionLabel = CollaborationStrings.connectionFailed
+            trackCollaboration(
+                .sessionCreated,
+                entrypoint: .startDialogCreate,
+                result: .failed,
+                properties: ["error_kind": "collaboration.session_create_failed"]
+            )
+            trackCollaborationError(
+                errorKind: "collaboration.session_create_failed",
+                operation: "createSessionAndPresentCode",
+                error: error
+            )
         }
     }
 
@@ -2015,11 +2192,30 @@ final class CollaborationRuntime {
         do {
             let response = try await createSession()
             await connect(sessionID: response.sessionID, code: response.sessionCode)
-            share(panel: panel)
+            trackCollaboration(
+                .sessionCreated,
+                shareKind: .document,
+                entrypoint: .startDialogCreate,
+                result: .completed,
+                properties: ["session_code_present": true]
+            )
+            share(panel: panel, entrypoint: .startDialogCreate)
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            trackCollaboration(
+                .sessionCreated,
+                shareKind: .document,
+                entrypoint: .startDialogCreate,
+                result: .failed,
+                properties: ["error_kind": "collaboration.session_create_failed"]
+            )
+            trackCollaborationError(
+                errorKind: "collaboration.session_create_failed",
+                operation: "createSessionAndShareDocument",
+                error: error
+            )
         }
     }
 
@@ -2027,12 +2223,31 @@ final class CollaborationRuntime {
         do {
             let response = try await createSession()
             if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
-                share(terminal: terminal, via: connection)
+                trackCollaboration(
+                    .sessionCreated,
+                    shareKind: .terminal,
+                    entrypoint: .startDialogCreate,
+                    result: .completed,
+                    properties: ["session_code_present": true]
+                )
+                share(terminal: terminal, via: connection, entrypoint: .startDialogCreate)
             }
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            trackCollaboration(
+                .sessionCreated,
+                shareKind: .terminal,
+                entrypoint: .startDialogCreate,
+                result: .failed,
+                properties: ["error_kind": "collaboration.session_create_failed"]
+            )
+            trackCollaborationError(
+                errorKind: "collaboration.session_create_failed",
+                operation: "createSessionAndShareTerminal",
+                error: error
+            )
         }
     }
 
@@ -2061,12 +2276,31 @@ final class CollaborationRuntime {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+        trackCollaboration(
+            .inviteCodeCopied,
+            entrypoint: .createdSessionDialog,
+            result: .completed,
+            properties: ["session_code_present": true]
+        )
     }
 
     @discardableResult
-    private func joinSession(code: String) async -> CollaborationRelayConnection? {
+    private func joinSession(
+        code: String,
+        entrypoint: CollaborationAnalyticsEntrypoint
+    ) async -> CollaborationRelayConnection? {
         let normalizedCode = Self.normalizedSessionCode(from: code)
-        return await connect(sessionID: normalizedCode, code: normalizedCode)
+        let connection = await connect(sessionID: normalizedCode, code: normalizedCode)
+        trackCollaboration(
+            .sessionJoined,
+            entrypoint: .startDialogJoin,
+            result: connection == nil ? .failed : .completed,
+            properties: [
+                "session_code_present": !normalizedCode.isEmpty,
+                "error_kind": connection == nil ? "collaboration.join_failed" : "",
+            ]
+        )
+        return connection
     }
 
     private func createSession() async throws -> CollaborationCreateSessionResponse {
@@ -2086,6 +2320,7 @@ final class CollaborationRuntime {
     }
 
     private func connect(sessionID: String, code: String) async -> CollaborationRelayConnection? {
+        refreshPeerIdentityFromAuth()
         let normalizedCode = Self.normalizedSessionCode(from: code)
         if let existing = connectionsBySessionCode[normalizedCode] {
             sessionCode = normalizedCode
@@ -2138,6 +2373,9 @@ final class CollaborationRuntime {
             URLQueryItem(name: "displayName", value: peerIdentity.displayName),
             URLQueryItem(name: "color", value: peerIdentity.color),
         ]
+        if let imageURL = peerIdentity.imageURL {
+            components.queryItems?.append(URLQueryItem(name: "imageURL", value: imageURL))
+        }
         return components.url
     }
 
@@ -2153,8 +2391,20 @@ final class CollaborationRuntime {
         }
     }
 
-    private func share(panel: any CollaborationEditablePanel) {
-        guard let connection = activeConnection else { return }
+    private func share(
+        panel: any CollaborationEditablePanel,
+        entrypoint: CollaborationAnalyticsEntrypoint = .documentHeaderButton
+    ) {
+        guard let connection = activeConnection else {
+            trackCollaboration(
+                .documentShared,
+                shareKind: .document,
+                entrypoint: entrypoint,
+                result: .failed,
+                properties: ["error_kind": "collaboration.share_failed"]
+            )
+            return
+        }
         let descriptor = descriptor(for: panel)
         let documentID = descriptor.documentID(sessionID: connection.sessionCode)
         panelsByDocumentID[documentID] = WeakCollaborationPanel(panel)
@@ -2176,18 +2426,50 @@ final class CollaborationRuntime {
                     try await sendSnapshotRequest(documentID: documentID, requestID: requestID, via: connection)
                     scheduleSnapshotFallback(descriptor: descriptor, documentID: documentID)
                 }
+                trackCollaboration(
+                    .documentShared,
+                    shareKind: .document,
+                    entrypoint: entrypoint,
+                    result: .completed,
+                    properties: ["session_code_present": true]
+                )
             } catch {
                 lastErrorMessage = error.localizedDescription
+                trackCollaboration(
+                    .documentShared,
+                    shareKind: .document,
+                    entrypoint: entrypoint,
+                    result: .failed,
+                    properties: ["error_kind": "collaboration.share_failed"]
+                )
+                trackCollaborationError(
+                    errorKind: "collaboration.share_failed",
+                    operation: "shareDocument",
+                    error: error
+                )
             }
         }
     }
 
     private func share(terminal: TerminalPanel) {
-        guard let connection = activeConnection else { return }
-        share(terminal: terminal, via: connection)
+        guard let connection = activeConnection else {
+            trackCollaboration(
+                .terminalShared,
+                shareKind: .terminal,
+                entrypoint: .terminalHeaderButton,
+                result: .failed,
+                properties: ["error_kind": "collaboration.share_failed"]
+            )
+            return
+        }
+        share(terminal: terminal, via: connection, entrypoint: .terminalHeaderButton)
     }
 
-    private func share(terminal: TerminalPanel, via connection: CollaborationRelayConnection) {
+    private func share(
+        terminal: TerminalPanel,
+        via connection: CollaborationRelayConnection,
+        entrypoint: CollaborationAnalyticsEntrypoint = .terminalHeaderButton
+    ) {
         let descriptor = terminalDescriptor(for: terminal)
         let terminalID = descriptor.terminalID(sessionID: connection.sessionCode)
         recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
@@ -2214,8 +2496,27 @@ final class CollaborationRuntime {
                     requireLiveScrollbackBottom: false,
                     via: connection
                 )
+                trackCollaboration(
+                    .terminalShared,
+                    shareKind: .terminal,
+                    entrypoint: entrypoint,
+                    result: .completed,
+                    properties: ["session_code_present": true]
+                )
             } catch {
                 lastErrorMessage = error.localizedDescription
+                trackCollaboration(
+                    .terminalShared,
+                    shareKind: .terminal,
+                    entrypoint: entrypoint,
+                    result: .failed,
+                    properties: ["error_kind": "collaboration.share_failed"]
+                )
+                trackCollaborationError(
+                    errorKind: "collaboration.share_failed",
+                    operation: "shareTerminal",
+                    error: error
+                )
             }
         }
     }

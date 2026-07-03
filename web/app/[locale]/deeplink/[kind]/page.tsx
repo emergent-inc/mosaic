@@ -1,9 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { buildAlternates } from "../../../../i18n/seo";
-import { Link } from "../../../../i18n/navigation";
 import { SiteHeader } from "../../components/site-header";
 import { DOWNLOAD_CONFIRMATION_HREF } from "../../../lib/download";
+import { DeeplinkTrackedLink } from "./deeplink-tracked-link";
 
 type SearchValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchValue>;
@@ -349,19 +349,25 @@ export default async function DeeplinkPage({
 
         {canOpen ? (
           <div className="mb-6 flex flex-wrap gap-3">
-            <a
+            <DeeplinkTrackedLink
               href={href}
+              event="cmuxterm_deeplink_opened"
+              kind={kind}
+              result="open_native"
               className="inline-flex items-center rounded-full bg-foreground px-5 py-2.5 text-[15px] font-medium transition-opacity hover:opacity-85"
               style={{ color: "var(--background)", textDecoration: "none" }}
             >
               {t("open")}
-            </a>
-            <Link
+            </DeeplinkTrackedLink>
+            <DeeplinkTrackedLink
               href={DOWNLOAD_CONFIRMATION_HREF}
+              event="cmuxterm_deeplink_opened"
+              kind={kind}
+              result="download_fallback"
               className="inline-flex items-center rounded-full border border-border px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-code-bg"
             >
               {t("download")}
-            </Link>
+            </DeeplinkTrackedLink>
           </div>
         ) : (
           <div className="mb-6 rounded-lg border border-border bg-code-bg px-4 py-3 text-[14px] text-muted">

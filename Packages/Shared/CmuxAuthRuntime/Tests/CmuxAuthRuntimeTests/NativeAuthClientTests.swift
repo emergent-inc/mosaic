@@ -23,6 +23,7 @@ struct NativeAuthClientTests {
                     "id": "user_clerk",
                     "displayName": "Clerk User",
                     "primaryEmail": "clerk@example.com",
+                    "imageURL": "https://img.example/clerk.png",
                 ],
                 "teams": [
                     ["id": "org_1", "displayName": "Team One"],
@@ -35,7 +36,12 @@ struct NativeAuthClientTests {
         let user = try await client.currentUser(throwOnMissing: true)
         let teams = try await client.listTeams()
 
-        #expect(user == CMUXAuthUser(id: "user_clerk", primaryEmail: "clerk@example.com", displayName: "Clerk User"))
+        #expect(user == CMUXAuthUser(
+            id: "user_clerk",
+            primaryEmail: "clerk@example.com",
+            displayName: "Clerk User",
+            imageURL: "https://img.example/clerk.png"
+        ))
         #expect(teams == [CMUXAuthTeam(id: "org_1", displayName: "Team One")])
     }
 

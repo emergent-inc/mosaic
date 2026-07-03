@@ -1192,7 +1192,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         // Before the auth graph is configured, fall back to a default router
         // (built-in cmux schemes) so dropped callbacks are still detected.
-        let callbackRouter = auth?.callbackRouter ?? AuthCallbackRouter()
+        let callbackRouter = auth?.callbackRouter ?? AuthCallbackRouter(
+            extraAllowedScheme: AuthEnvironment.callbackScheme
+        )
         let authCallbacks = urls.filter(callbackRouter.isAuthCallbackURL)
         #if DEBUG
         AuthDebugLog().log("auth.openURLs.authCallbacks count=\(authCallbacks.count)")
@@ -12331,6 +12333,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #endif
                 let shortcutStart = ProcessInfo.processInfo.systemUptime
                 let handledByShortcut = cmuxCloseFocusedTerminalFindForEscape(event: event, appDelegate: self) || self.handleCustomShortcut(event: event)
+                if handledByShortcut {
+                    PostHogAnalytics.shared.capture(
+                        .keyboardShortcutPerformed,
+                        properties: [
+                            "action_id": "keyboard.key.\(event.keyCode)",
+                            "surface": "app_shortcuts",
+                            "entrypoint": "local_monitor",
+                            "key_code": Int(event.keyCode),
+                            "modifier_flags": Int(event.modifierFlags.intersection(.deviceIndependentFlagsMask).rawValue),
+                        ]
+                    )
+                }
 #if DEBUG
                 shortcutMs = (ProcessInfo.processInfo.systemUptime - shortcutStart) * 1000.0
                 CmuxTypingTiming.logDuration(
@@ -15262,12 +15276,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         onExecuted: (() -> Void)? = nil,
         onCloudVMCompletion: ((CloudVMActionLauncher.Completion) -> Void)? = nil
     ) -> Bool {
+        let trackedOnExecuted = {
+            PostHogAnalytics.shared.trackAction(
+                actionID: action.id,
+                surface: "configured_action",
+                entrypoint: "cmux_config",
+                source: "AppDelegate.executeConfiguredCmuxAction"
+            )
+            PostHogAnalytics.shared.capture(
+                .buttonClicked,
+                properties: [
+                    "action_id": action.id,
+                    "surface": "configured_action",
+                    "entrypoint": "cmux_config",
+                ]
+            )
+            onExecuted?()
+        }
         switch action.action {
         case .builtIn(let builtIn):
             switch builtIn {
             case .newWorkspace:
                 context.tabManager.addWorkspace()
-                onExecuted?()
+                trackedOnExecuted()
                 return true
             case .cloudVM:
                 let didStart = performCloudVMAction(
@@ -15276,11 +15307,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     debugSource: "configured.cmux.cloudvm",
                     onCompletion: onCloudVMCompletion
                 )
-                if didStart { onExecuted?() }
+                if didStart { trackedOnExecuted() }
                 return didStart
             case .newTerminal:
                 context.tabManager.newSurface()
-                onExecuted?()
+                trackedOnExecuted()
                 return true
             case .newBrowser:
                 let previousTabManager = tabManager
@@ -15289,7 +15320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 guard openBrowserAndFocusAddressBar(insertAtEnd: true) != nil else {
                     return false
                 }
-                onExecuted?()
+                trackedOnExecuted()
                 return true
             case .splitRight:
                 if shouldSuppressSplitShortcutForTransientTerminalFocusState(
@@ -15302,7 +15333,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     direction: .right,
                     preferredWindow: preferredWindow ?? shortcutRoutingActiveWindow
                 )
-                if didSplit { onExecuted?() }
+                if didSplit { trackedOnExecuted() }
                 return didSplit
             case .splitDown:
                 if shouldSuppressSplitShortcutForTransientTerminalFocusState(
@@ -15315,7 +15346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     direction: .down,
                     preferredWindow: preferredWindow ?? shortcutRoutingActiveWindow
                 )
-                if didSplit { onExecuted?() }
+                if didSplit { trackedOnExecuted() }
                 return didSplit
             }
         case .command, .agent, .workspaceCommand:
@@ -15333,7 +15364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 baseCwd: baseCwd,
                 globalConfigPath: cmuxConfigStore.globalConfigPath,
                 presentingWindow: preferredWindow,
-                onExecuted: onExecuted
+                onExecuted: trackedOnExecuted
             )
         case .actionReference:
             return false

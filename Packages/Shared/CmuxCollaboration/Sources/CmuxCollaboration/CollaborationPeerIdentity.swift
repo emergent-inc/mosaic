@@ -15,6 +15,8 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     public let displayName: String
     /// The display color assigned to this peer.
     public let color: String
+    /// The profile image URL shown to collaborators, if available.
+    public let imageURL: String?
 
     /// Creates peer identity metadata.
     /// - Parameters:
@@ -22,11 +24,13 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     ///   - participantID: Stable participant identifier used for persisted user preferences.
     ///   - displayName: The display name shown to collaborators.
     ///   - color: The display color assigned to this peer.
-    public init(peerID: String, participantID: String? = nil, displayName: String, color: String) {
+    ///   - imageURL: The profile image URL shown to collaborators, if available.
+    public init(peerID: String, participantID: String? = nil, displayName: String, color: String, imageURL: String? = nil) {
         self.peerID = peerID
         self.participantID = participantID ?? peerID
         self.displayName = displayName
         self.color = color
+        self.imageURL = imageURL
     }
 
     /// Creates a fresh peer identity for a single running app process.
@@ -37,11 +41,13 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     /// process's collaboration connections.
     /// - Parameters:
     ///   - displayName: The display name shown to collaborators.
+    ///   - imageURL: The profile image URL shown to collaborators, if available.
     ///   - colorPalette: The palette used to derive the peer color.
     ///   - idProvider: Supplies the process-local peer UUID.
     /// - Returns: Fresh relay identity metadata for one app process.
     public static func ephemeral(
         displayName: String,
+        imageURL: String? = nil,
         colorPalette: [String] = Self.defaultColorPalette,
         idProvider: @Sendable () -> UUID = { UUID() }
     ) -> CollaborationPeerIdentity {
@@ -51,7 +57,8 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
             peerID: peerID,
             participantID: peerID,
             displayName: displayName,
-            color: palette[Self.colorIndex(for: peerID, count: palette.count)]
+            color: palette[Self.colorIndex(for: peerID, count: palette.count)],
+            imageURL: imageURL
         )
     }
 
@@ -61,6 +68,7 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     /// user preferences should survive app restarts.
     /// - Parameters:
     ///   - displayName: The display name shown to collaborators.
+    ///   - imageURL: The profile image URL shown to collaborators, if available.
     ///   - defaults: The defaults domain that persists the stable participant ID.
     ///   - participantIDKey: The key used to store the stable participant ID.
     ///   - colorPalette: The palette used to derive the peer color.
@@ -69,6 +77,7 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     /// - Returns: Relay identity metadata with distinct live and stable identifiers.
     public static func persistedParticipant(
         displayName: String,
+        imageURL: String? = nil,
         defaults: UserDefaults = .standard,
         participantIDKey: String = Self.defaultParticipantIDKey,
         colorPalette: [String] = Self.defaultColorPalette,
@@ -90,7 +99,8 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
             peerID: peerID,
             participantID: participantID,
             displayName: displayName,
-            color: palette[Self.colorIndex(for: participantID, count: palette.count)]
+            color: palette[Self.colorIndex(for: participantID, count: palette.count)],
+            imageURL: imageURL
         )
     }
 
@@ -103,12 +113,14 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
     ///   - peerID: The process-local relay identifier to keep using.
     ///   - userID: The signed-in account user ID.
     ///   - displayName: The display name shown to collaborators.
+    ///   - imageURL: The profile image URL shown to collaborators, if available.
     ///   - colorPalette: The palette used to derive the account color.
     /// - Returns: Relay identity metadata backed by an authenticated user.
     public static func authenticatedParticipant(
         peerID: String,
         userID: String,
         displayName: String,
+        imageURL: String? = nil,
         colorPalette: [String] = Self.defaultColorPalette
     ) -> CollaborationPeerIdentity {
         let palette = colorPalette.isEmpty ? Self.defaultColorPalette : colorPalette
@@ -116,7 +128,8 @@ public struct CollaborationPeerIdentity: Equatable, Sendable {
             peerID: peerID,
             participantID: userID,
             displayName: displayName,
-            color: palette[Self.colorIndex(for: userID, count: palette.count)]
+            color: palette[Self.colorIndex(for: userID, count: palette.count)],
+            imageURL: imageURL
         )
     }
 
