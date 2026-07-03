@@ -417,6 +417,29 @@ final class SessionIndexViewTests: XCTestCase {
         XCTAssertTrue(over.shouldOfferShowMore(rowLimit: 5))
     }
 
+    func testDeletingSessionRemovesEntryFromSections() {
+        preservingSessionIndexDefaults {
+            let store = SessionIndexStore()
+            let deleted = makeEntry(
+                title: "delete me",
+                cwd: "/project-a",
+                fileURL: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("missing-session-\(UUID().uuidString).jsonl")
+            )
+            let kept = makeEntry(title: "keep me", cwd: "/project-b")
+            store.replaceEntriesForTesting([deleted, kept])
+
+            XCTAssertTrue(store.delete(deleted))
+
+            XCTAssertEqual(store.entries, [kept])
+            XCTAssertFalse(
+                store.sectionsForCurrentGrouping()
+                    .flatMap(\.entries)
+                    .contains { $0.id == deleted.id }
+            )
+        }
+    }
+
     func testSectionPopoverHostCoordinatorSkipsHiddenRefreshes() {
         let harness = makeHarness()
         let coordinator = harness.host.makeCoordinator()
@@ -425,13 +448,15 @@ final class SessionIndexViewTests: XCTestCase {
             section: harness.section,
             search: harness.search,
             loadSnapshot: harness.loadSnapshot,
-            onResume: nil
+            onResume: nil,
+            onDelete: { _ in true }
         )
         coordinator.update(
             section: harness.section,
             search: harness.search,
             loadSnapshot: harness.loadSnapshot,
-            onResume: nil
+            onResume: nil,
+            onDelete: { _ in true }
         )
 
         XCTAssertEqual(coordinator.debugRefreshContentCallCount, 0)
@@ -465,7 +490,8 @@ final class SessionIndexViewTests: XCTestCase {
             section: harness.section,
             search: harness.search,
             loadSnapshot: harness.loadSnapshot,
-            onResume: nil
+            onResume: nil,
+            onDelete: { _ in true }
         )
         XCTAssertEqual(coordinator.debugRefreshContentCallCount, 0)
 
@@ -479,7 +505,8 @@ final class SessionIndexViewTests: XCTestCase {
             section: harness.section,
             search: harness.search,
             loadSnapshot: harness.loadSnapshot,
-            onResume: nil
+            onResume: nil,
+            onDelete: { _ in true }
         )
 
         XCTAssertEqual(coordinator.debugRefreshContentCallCount, 1)
@@ -508,7 +535,8 @@ final class SessionIndexViewTests: XCTestCase {
             section: section,
             search: search,
             loadSnapshot: loadSnapshot,
-            onResume: nil
+            onResume: nil,
+            onDelete: { _ in true }
         )
         return SessionPopoverHarness(host: host, section: section, search: search, loadSnapshot: loadSnapshot)
     }

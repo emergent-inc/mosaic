@@ -2833,6 +2833,7 @@ final class Workspace: Identifiable, ObservableObject {
         return .init(
             backgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             tabBarBackgroundHex: MosaicChromePalette.chromeBackgroundHex,
+            activeTabBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             splitButtonBackdropHex: MosaicChromePalette.selectedSurfaceHex,
             paneBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             borderHex: MosaicChromePalette.borderHex
@@ -2847,6 +2848,7 @@ final class Workspace: Identifiable, ObservableObject {
         return .init(
             backgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             tabBarBackgroundHex: MosaicChromePalette.chromeBackgroundHex,
+            activeTabBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             splitButtonBackdropHex: MosaicChromePalette.selectedSurfaceHex,
             paneBackgroundHex: MosaicChromePalette.workspaceBackgroundHex,
             borderHex: MosaicChromePalette.borderHex
@@ -2859,6 +2861,7 @@ final class Workspace: Identifiable, ObservableObject {
     ) -> Bool {
         lhs.backgroundHex == rhs.backgroundHex &&
             lhs.tabBarBackgroundHex == rhs.tabBarBackgroundHex &&
+            lhs.activeTabBackgroundHex == rhs.activeTabBackgroundHex &&
             lhs.splitButtonBackdropHex == rhs.splitButtonBackdropHex &&
             lhs.paneBackgroundHex == rhs.paneBackgroundHex &&
             lhs.borderHex == rhs.borderHex
@@ -2869,6 +2872,7 @@ final class Workspace: Identifiable, ObservableObject {
     ) -> String {
         "bg=\(colors.backgroundHex ?? "nil") " +
             "tabBarBg=\(colors.tabBarBackgroundHex ?? "nil") " +
+            "activeTabBg=\(colors.activeTabBackgroundHex ?? "nil") " +
             "splitBackdrop=\(colors.splitButtonBackdropHex ?? "nil") " +
             "paneBg=\(colors.paneBackgroundHex ?? "nil") " +
             "border=\(colors.borderHex ?? "nil")"

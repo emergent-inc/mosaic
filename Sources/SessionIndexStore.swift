@@ -552,6 +552,26 @@ final class SessionIndexStore: ObservableObject {
         }
     }
 
+    @discardableResult
+    func delete(_ entry: SessionEntry) -> Bool {
+        guard let fileURL = entry.fileURL else { return false }
+        let path = fileURL.path
+        do {
+            if FileManager.default.fileExists(atPath: path) {
+                try FileManager.default.trashItem(at: fileURL, resultingItemURL: nil)
+            }
+            entries.removeAll { candidate in
+                candidate.id == entry.id || candidate.fileURL?.path == path
+            }
+            directorySnapshotGeneration += 1
+            invalidateDirectorySnapshots()
+            return true
+        } catch {
+            sessionIndexLogger.error("Failed to delete session file \(path, privacy: .public): \(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
 #if DEBUG
     func replaceEntriesForTesting(_ entries: [SessionEntry]) {
         self.entries = entries
