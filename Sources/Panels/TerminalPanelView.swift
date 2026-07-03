@@ -21,6 +21,7 @@ struct TerminalPanelView: View {
     @State private var isTerminalRecipientPopoverPresented = false
     @State private var isTerminalSessionPillHovered = false
     @State private var isAgentRoomButtonHovered = false
+    @State private var isAgentRoomWireDropTargeted = false
     let paneId: PaneID
     let isFocused: Bool
     let isVisibleInUI: Bool
@@ -164,7 +165,42 @@ struct TerminalPanelView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
-        .background(Color.clear)
+        .background(isAgentRoomWireDropTargeted ? Color.accentColor.opacity(0.14) : Color.clear)
+        // The pane drop target only covers the terminal content area, so wire drops
+        // released over the header (including the link button itself — the natural
+        // button-to-button gesture) must be accepted here; otherwise the drop
+        // silently connects nothing and no room pill appears.
+        .onDrop(
+            of: [AgentRoomWireDragPayload.contentType],
+            isTargeted: $isAgentRoomWireDropTargeted
+        ) { providers in
+            handleAgentRoomWireHeaderDrop(providers)
+        }
+    }
+
+    private func handleAgentRoomWireHeaderDrop(_ providers: [NSItemProvider]) -> Bool {
+        let typeIdentifier = AgentRoomWireDragPayload.contentType.identifier
+        guard let provider = providers.first(where: {
+            $0.hasItemConformingToTypeIdentifier(typeIdentifier)
+        }) else {
+            return false
+        }
+        let targetSurfaceID = panel.id
+        provider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { data, _ in
+            guard let data,
+                  let raw = String(data: data, encoding: .utf8),
+                  let sourceUUID = UUID(uuidString: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  sourceUUID != targetSurfaceID else {
+                return
+            }
+            Task { @MainActor in
+                CollaborationRuntime.shared.connectAgentRoomWire(
+                    sourceSurfaceID: sourceUUID.uuidString,
+                    targetSurfaceID: targetSurfaceID
+                )
+            }
+        }
+        return true
     }
 
     @ViewBuilder
@@ -683,7 +719,18 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
             return
         }
         dragSessionActive = true
-        CollaborationRuntime.shared.beginAgentRoomWireDrag(sourcePanel: panel)
+        // Compute the wire's start point fresh from this view (it exactly overlays
+        // the link button) instead of trusting the layout-time anchor cache, which
+        // can hold a stale screen point after the window moves.
+        let buttonCenterInWindow = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
+        let buttonCenterOnScreen = window.map {
+            $0.convertToScreen(NSRect(origin: buttonCenterInWindow, size: .zero)).origin
+        }
+        CollaborationRuntime.shared.beginAgentRoomWireDrag(
+            sourcePanel: panel,
+            sourceScreenPoint: buttonCenterOnScreen,
+            sourceWindow: window
+        )
         pushClosedHandCursorIfNeeded()
 
         let pasteboardItem = NSPasteboardItem()
@@ -808,7 +855,7 @@ private final class AgentRoomWireAnchorView: NSView {
     func noteAnchorChanged() {
         guard let surfaceID else { return }
         guard let window else {
-            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID)
+            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID, ownerID: ObjectIdentifier(self))
             return
         }
         let centerInView = NSPoint(x: bounds.midX, y: bounds.midY)
@@ -817,14 +864,16 @@ private final class AgentRoomWireAnchorView: NSView {
         CollaborationRuntime.shared.updateAgentRoomWireAnchor(
             surfaceID: surfaceID,
             screenPoint: centerScreenRect.origin,
-            window: window
+            window: window,
+            ownerID: ObjectIdentifier(self)
         )
     }
 
     deinit {
         guard let surfaceID else { return }
+        let ownerID = ObjectIdentifier(self)
         Task { @MainActor in
-            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID)
+            CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID, ownerID: ownerID)
         }
     }
 }
