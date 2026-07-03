@@ -6,6 +6,7 @@ DerivedData/
 xcuserdata/
 *.xcworkspace/xcshareddata/
 
+.env.github.example
 
 *.dmg
 workers/**/dist/
