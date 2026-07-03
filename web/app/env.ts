@@ -57,11 +57,19 @@ export const env = createEnv({
     // Slack Incoming Webhook for the #website-waitlist channel. Optional: the
     // /api/waitlist route silently skips the Slack ping when it is unset.
     SLACK_WAITLIST_WEBHOOK_URL: z.string().url().optional(),
+    // Slack-compatible webhook for high-signal app bug/error notifications.
+    // Optional: /api/bug-alerts accepts and records the event but skips fan-out.
+    CMUX_BUG_ALERTS_WEBHOOK_URL: z.string().url().optional(),
+    // Optional shared secret required by /api/bug-alerts when configured.
+    CMUX_BUG_ALERTS_SHARED_SECRET: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_STACK_PROJECT_ID: z.string().min(1).optional(),
     NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+    NEXT_PUBLIC_POSTHOG_UI_HOST: z.string().url().optional(),
   },
   runtimeEnv: {
     RESEND_API_KEY: trimEnv(process.env.RESEND_API_KEY),
@@ -79,6 +87,8 @@ export const env = createEnv({
     STRIPE_FOUNDERS_WEBHOOK_SECRET: trimEnv(process.env.STRIPE_FOUNDERS_WEBHOOK_SECRET),
     CMUX_FOUNDERS_FROM_EMAIL: trimEnv(process.env.CMUX_FOUNDERS_FROM_EMAIL),
     SLACK_WAITLIST_WEBHOOK_URL: trimEnv(process.env.SLACK_WAITLIST_WEBHOOK_URL),
+    CMUX_BUG_ALERTS_WEBHOOK_URL: trimEnv(process.env.CMUX_BUG_ALERTS_WEBHOOK_URL),
+    CMUX_BUG_ALERTS_SHARED_SECRET: trimEnv(process.env.CMUX_BUG_ALERTS_SHARED_SECRET),
     NEXT_PUBLIC_STACK_PROJECT_ID: stackEnv(
       process.env.NEXT_PUBLIC_STACK_PROJECT_ID,
       "00000000-0000-4000-8000-000000000000"
@@ -87,6 +97,9 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,
       "preview-publishable-client-key"
     ),
+    NEXT_PUBLIC_POSTHOG_KEY: trimEnv(process.env.NEXT_PUBLIC_POSTHOG_KEY),
+    NEXT_PUBLIC_POSTHOG_HOST: trimEnv(process.env.NEXT_PUBLIC_POSTHOG_HOST),
+    NEXT_PUBLIC_POSTHOG_UI_HOST: trimEnv(process.env.NEXT_PUBLIC_POSTHOG_UI_HOST),
     STACK_SECRET_SERVER_KEY: stackEnv(
       process.env.STACK_SECRET_SERVER_KEY,
       "preview-secret-server-key"
