@@ -113,6 +113,10 @@ extension ContentView {
         WorkspaceSurfaceIdentifierClipboardText.copy(
             WorkspaceSurfaceIdentifierClipboardText.makeWorkspaceLink(workspaceId: workspaceId)
         )
+#if DEBUG
+        print("[PostHog] firing: workspace_link_copied")
+#endif
+        PostHogAnalytics.shared.capture("workspace_link_copied")
     }
 
     private func focusedPanelIdentifierContext() -> (workspaceId: UUID, paneId: UUID?, surfaceId: UUID)? {
@@ -144,6 +148,10 @@ extension ContentView {
                 paneId: paneId
             )
         )
+#if DEBUG
+        print("[PostHog] firing: pane_link_copied")
+#endif
+        PostHogAnalytics.shared.capture("pane_link_copied")
     }
 
     private func copyFocusedSurfaceIdentifier() {
@@ -165,6 +173,10 @@ extension ContentView {
                 surfaceId: context.surfaceId
             )
         )
+#if DEBUG
+        print("[PostHog] firing: surface_link_copied")
+#endif
+        PostHogAnalytics.shared.capture("surface_link_copied")
     }
 
     private func copyFocusedWorkspacePaneSurfaceIdentifiers() {

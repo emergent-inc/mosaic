@@ -136,7 +136,7 @@ private struct FeedTextEditorDebugView: View {
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(String(localized: "feed.textEditorDebug.reset", defaultValue: "Reset")) {
+            TrackedButton("feedtexteditordebugwindowcontroller_button_139", String(localized: "feed.textEditorDebug.reset", defaultValue: "Reset")) {
                 reset()
             }
         }
