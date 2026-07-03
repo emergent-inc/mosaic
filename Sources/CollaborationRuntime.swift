@@ -371,9 +371,16 @@ struct AgentRoomHeaderState: Equatable {
     var label = ""
 }
 
-private struct AgentRoomWireAnchor {
+private final class AgentRoomWireAnchor {
     let screenPoint: NSPoint
     weak var window: NSWindow?
+    let ownerID: ObjectIdentifier
+
+    init(screenPoint: NSPoint, window: NSWindow?, ownerID: ObjectIdentifier) {
+        self.screenPoint = screenPoint
+        self.window = window
+        self.ownerID = ownerID
+    }
 }
 
 @MainActor
@@ -381,10 +388,12 @@ private final class AgentRoomWireOverlayController {
     private var overlayWindow: NSWindow?
     private var overlayView: AgentRoomWireOverlayView?
     private var timer: Timer?
+    private var sourceScreenPoint: NSPoint = .zero
 
     func start(from sourceScreenPoint: NSPoint, in sourceWindow: NSWindow?) {
         stop()
         guard let sourceWindow else { return }
+        self.sourceScreenPoint = sourceScreenPoint
 
         let overlayView = AgentRoomWireOverlayView(frame: sourceWindow.frame)
         let overlayWindow = NSWindow(
@@ -434,6 +443,9 @@ private final class AgentRoomWireOverlayController {
         guard let overlayWindow, let overlayView else { return }
         overlayWindow.setFrame(overlayWindow.parent?.frame ?? overlayWindow.frame, display: false)
         overlayView.frame = NSRect(origin: .zero, size: overlayWindow.frame.size)
+        // Re-derive the source point from screen coordinates each tick so the wire
+        // stays pinned to the link button even if the overlay window's frame moves.
+        overlayView.sourcePoint = overlayView.viewPoint(forScreenPoint: sourceScreenPoint, in: overlayWindow)
         overlayView.endPoint = overlayView.viewPoint(forScreenPoint: NSEvent.mouseLocation, in: overlayWindow)
         overlayView.needsDisplay = true
     }
@@ -1494,9 +1506,18 @@ final class CollaborationRuntime {
         return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectClaudeRoom)
     }
 
-    func beginAgentRoomWireDrag(sourcePanel: TerminalPanel) {
+    func beginAgentRoomWireDrag(
+        sourcePanel: TerminalPanel,
+        sourceScreenPoint: NSPoint? = nil,
+        sourceWindow: NSWindow? = nil
+    ) {
         draggingAgentRoomSourceSurfaceID = sourcePanel.id
-        if let anchor = agentRoomWireAnchorsBySurfaceID[sourcePanel.id] {
+        // Prefer the anchor computed by the drag source at mouse-drag time: the
+        // cached anchor's screen point is only refreshed on layout, so it goes
+        // stale when the window moves without relayout.
+        if let sourceScreenPoint, let sourceWindow {
+            agentRoomWireOverlay.start(from: sourceScreenPoint, in: sourceWindow)
+        } else if let anchor = agentRoomWireAnchorsBySurfaceID[sourcePanel.id], anchor.window != nil {
             agentRoomWireOverlay.start(from: anchor.screenPoint, in: anchor.window)
         } else {
             agentRoomWireOverlay.start(from: NSEvent.mouseLocation, in: sourcePanel.surface.uiWindow)
@@ -1508,15 +1529,22 @@ final class CollaborationRuntime {
         agentRoomWireOverlay.stop()
     }
 
-    func updateAgentRoomWireAnchor(surfaceID: UUID, screenPoint: NSPoint, window: NSWindow?) {
+    func updateAgentRoomWireAnchor(surfaceID: UUID, screenPoint: NSPoint, window: NSWindow?, ownerID: ObjectIdentifier) {
         guard let window else {
-            agentRoomWireAnchorsBySurfaceID.removeValue(forKey: surfaceID)
+            removeAgentRoomWireAnchor(surfaceID: surfaceID, ownerID: ownerID)
             return
         }
-        agentRoomWireAnchorsBySurfaceID[surfaceID] = AgentRoomWireAnchor(screenPoint: screenPoint, window: window)
+        agentRoomWireAnchorsBySurfaceID[surfaceID] = AgentRoomWireAnchor(
+            screenPoint: screenPoint,
+            window: window,
+            ownerID: ownerID
+        )
     }
 
-    func removeAgentRoomWireAnchor(surfaceID: UUID) {
+    func removeAgentRoomWireAnchor(surfaceID: UUID, ownerID: ObjectIdentifier) {
+        // Owner-guarded so a deallocating stale anchor view (SwiftUI recreates them
+        // during pane churn) cannot clobber the anchor a newer view just registered.
+        guard agentRoomWireAnchorsBySurfaceID[surfaceID]?.ownerID == ownerID else { return }
         agentRoomWireAnchorsBySurfaceID.removeValue(forKey: surfaceID)
     }
 
