@@ -12015,7 +12015,7 @@ struct VerticalTabsSidebar: View {
         LazyVStack(spacing: tabRowSpacing) {
             Text(String(localized: "sidebar.sessions.section", defaultValue: "Sessions"))
                 .font(.system(size: 11, weight: .regular, design: .default))
-                .tracking(1.1)
+                .tracking(0.3)
                 .foregroundColor(MosaicSidebarStyle.sectionText)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)

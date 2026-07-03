@@ -305,7 +305,12 @@ struct RightSidebarPanelView: View {
             Button(action: onClose) {
                 HeaderChromeIconStyle.symbol("xmark")
             }
-            .buttonStyle(RightSidebarHeaderIconButtonStyle(iconGeometryKeyPrefix: "rightSidebarHeaderCloseIcon"))
+            .buttonStyle(
+                RightSidebarHeaderIconButtonStyle(
+                    iconGeometryKeyPrefix: "rightSidebarHeaderCloseIcon",
+                    usesCircularHoverBackground: true
+                )
+            )
             .frame(
                 width: RightSidebarChromeMetrics.headerControlSize,
                 height: RightSidebarChromeMetrics.headerControlSize
