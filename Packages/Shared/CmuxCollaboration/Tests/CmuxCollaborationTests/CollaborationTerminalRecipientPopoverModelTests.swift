@@ -14,6 +14,7 @@ struct CollaborationTerminalRecipientPopoverModelTests {
         #expect(model.showsInviteAction)
         #expect(!model.showsRecipientSelection)
         #expect(!model.showsShareAction)
+        #expect(model.showsStopSharingAction)
     }
 
     @Test(arguments: [
@@ -29,5 +30,6 @@ struct CollaborationTerminalRecipientPopoverModelTests {
         #expect(!model.showsInviteAction)
         #expect(model.showsRecipientSelection)
         #expect(model.showsShareAction)
+        #expect(model.showsStopSharingAction)
     }
 }
