@@ -59,7 +59,7 @@ struct FeedHistoryLoadMoreRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("feedpanelviewmodel_button_62", action: action) {
             HStack(spacing: 6) {
                 if isLoading {
                     ProgressView()

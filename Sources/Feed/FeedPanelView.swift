@@ -129,7 +129,7 @@ private struct FeedSecondaryFilterButton: View {
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("feedpanelview_button_132", action: action) {
             HStack(spacing: 3) {
                 Image(systemName: filter.symbolName)
                     .symbolRenderingMode(.monochrome)
@@ -1660,9 +1660,9 @@ struct FeedButton: View {
     }
 
     private var plainFeedButton: some View {
-        Button {
+        TrackedButton("feedpanelview_button_1663", action: {
             performAction()
-        } label: {
+        }) {
             labelContent
             .foregroundColor(foreground)
             .frame(maxWidth: fullWidth ? .infinity : nil)
@@ -1768,9 +1768,9 @@ struct FeedButton: View {
 
         @available(macOS 26.0, *)
         private var standardSystemGlassButtonBase: some View {
-            Button {
+            TrackedButton("feedpanelview_button_1771", action: {
                 performAction()
-            } label: {
+            }) {
                 standardLabelContent
                     .frame(maxWidth: fullWidth ? .infinity : nil)
             }
@@ -1785,9 +1785,9 @@ struct FeedButton: View {
 
         @available(macOS 26.0, *)
         private var systemGlassButtonBase: some View {
-            Button {
+            TrackedButton("feedpanelview_button_1788", action: {
                 performAction()
-            } label: {
+            }) {
                 labelContent
                     .foregroundStyle(systemGlassForeground)
                     .frame(maxWidth: fullWidth ? .infinity : nil)
@@ -2729,7 +2729,7 @@ private struct QuestionActionArea: View {
         option: WorkstreamQuestionOption
     ) -> some View {
         let selected = selections[questionId]?.contains(option.id) == true
-        return Button {
+        return TrackedButton("feedpanelview_button_2732", action: {
             guard status.isPending else { return }
             onActionRow()
             clearCustomAnswerFocus()
@@ -2744,7 +2744,7 @@ private struct QuestionActionArea: View {
                 current = [option.id]
             }
             selections[questionId] = current
-        } label: {
+        }) {
             HStack(alignment: .top, spacing: 10) {
                 Text("\(index)")
                     .cmuxFont(size: 11, weight: .bold, monospacedDigit: true)
@@ -3818,9 +3818,9 @@ private struct TodoListBody: View {
                 ForEach(pending, id: \.id) { row($0) }
                 ForEach(visibleDone, id: \.id) { row($0) }
                 if done.count > visibleDone.count {
-                    Button {
+                    TrackedButton("feedpanelview_button_3821", action: {
                         expanded.toggle()
-                    } label: {
+                    }) {
                         Text(String(
                             localized: "feed.todos.moreCompleted",
                             defaultValue: "... +\(done.count - visibleDone.count) completed"
@@ -3832,7 +3832,7 @@ private struct TodoListBody: View {
                     .buttonStyle(.plain)
                 }
                 if expanded && done.count > 2 {
-                    Button { expanded = false } label: {
+                    TrackedButton("feedpanelview_button_3835", action: { expanded = false }) {
                         Text(String(localized: "feed.todos.collapse", defaultValue: "Collapse"))
                             .cmuxFont(size: 11)
                             .foregroundColor(.secondary.opacity(0.8))

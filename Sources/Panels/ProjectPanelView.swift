@@ -37,9 +37,9 @@ struct ProjectPanelView: View {
                 schemePicker
                 configurationPicker
                 Spacer(minLength: 0)
-                Button {
+                TrackedButton("projectpanelview_button_40", action: {
                     panel.reload()
-                } label: {
+                }) {
                     Image(systemName: "arrow.clockwise")
                         .cmuxFont(size: 11, weight: .semibold)
                 }
@@ -55,9 +55,9 @@ struct ProjectPanelView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer()
-                    Button {
+                    TrackedButton("projectpanelview_button_58", action: {
                         panel.lastLoadError = nil
-                    } label: {
+                    }) {
                         Image(systemName: "xmark")
                             .cmuxFont(size: 9)
                     }
@@ -149,7 +149,7 @@ struct ProjectPanelView: View {
     private var tabStrip: some View {
         HStack(spacing: 2) {
             ForEach(ProjectPanelTab.allCases, id: \.self) { tab in
-                Button(action: { panel.activeTab = tab }) {
+                TrackedButton("projectpanelview_button_152", action: { panel.activeTab = tab }) {
                     Text(tab.displayLabel)
                         .cmuxFont(size: 11, weight: .medium)
                         .padding(.horizontal, 10)

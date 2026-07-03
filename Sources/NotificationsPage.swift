@@ -99,7 +99,7 @@ struct NotificationsPage: View {
             if notificationStore.notificationMenuSnapshot.hasNotifications {
                 jumpToUnreadButton
 
-                Button(String(localized: "notifications.clearAll", defaultValue: "Clear All")) {
+                TrackedButton("notificationspage_button_102", String(localized: "notifications.clearAll", defaultValue: "Clear All")) {
                     notificationStore.clearAll()
                 }
                 .buttonStyle(.bordered)
@@ -185,7 +185,7 @@ struct NotificationsPage: View {
     @ViewBuilder
     private var jumpToUnreadButton: some View {
         if let key = jumpToUnreadShortcut.keyEquivalent {
-            Button(action: {
+            TrackedButton("notificationspage_button_188", action: {
                 AppDelegate.shared?.jumpToLatestUnread()
             }) {
                 HStack(spacing: 6) {
@@ -198,7 +198,7 @@ struct NotificationsPage: View {
             .safeHelp(KeyboardShortcutSettings.Action.jumpToUnread.tooltip(String(localized: "notifications.jumpToLatestUnread", defaultValue: "Jump to Latest Unread")))
             .disabled(!hasUnreadNotifications)
         } else {
-            Button(action: {
+            TrackedButton("notificationspage_button_201", action: {
                 AppDelegate.shared?.jumpToLatestUnread()
             }) {
                 HStack(spacing: 6) {
@@ -275,7 +275,7 @@ struct NotificationRow: View, Equatable {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: onOpen) {
+            TrackedButton("notificationspage_button_278", action: onOpen) {
                 HStack(alignment: .top, spacing: 12) {
                     Circle()
                         .fill(notification.isRead ? Color.clear : cmuxAccentColor())
@@ -323,7 +323,7 @@ struct NotificationRow: View, Equatable {
             .focused(focusedNotificationId, equals: notification.id)
             .modifier(DefaultActionModifier(isActive: isFocused))
 
-            Button(action: onClear) {
+            TrackedButton("notificationspage_button_326", action: onClear) {
                 CmuxSystemSymbolImage(systemName: "xmark.circle.fill", pointSize: 14)
                     .foregroundColor(.secondary)
             }
