@@ -636,7 +636,7 @@ private struct SessionRow: View, Equatable {
                     .frame(width: 16, height: 16)
                     .background(
                         Circle()
-                            .fill(isDeleteHovered ? Color.primary.opacity(0.18) : Color.clear)
+                            .fill(isDeleteHovered ? Color.white.opacity(0.14) : Color.clear)
                     )
                     .contentShape(Rectangle())
             }
@@ -2612,7 +2612,7 @@ private struct PopoverRow: View, Equatable {
                     .frame(width: 16, height: 16)
                     .background(
                         Circle()
-                            .fill(isDeleteHovered ? Color.primary.opacity(0.18) : Color.clear)
+                            .fill(isDeleteHovered ? Color.white.opacity(0.14) : Color.clear)
                     )
                     .contentShape(Rectangle())
             }

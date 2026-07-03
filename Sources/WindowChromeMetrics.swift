@@ -5,8 +5,8 @@ import CoreGraphics
 enum MosaicChromePalette {
     static let sidebarBackgroundHex = "#141414"
     static let workspaceBackgroundHex = "#181818"
-    static let chromeBackgroundHex = "#1D1D1DCC"
-    static let selectedSurfaceHex = "#1D1D1DCC"
+    static let chromeBackgroundHex = "#202020CC"
+    static let selectedSurfaceHex = "#202020CC"
     static let selectedSidebarRowHex = "#1C1C1C"
     static let borderHex = "#303030"
     static let accentHex = "#0E639C"
