@@ -44,7 +44,7 @@ cmux_attach__bundle_seg() {
 
 # The tagged macOS Debug app's bundle id (the iOS pairing host lives on the Mac).
 cmux_attach_mac_bundle_id() {
-  printf 'com.cmuxterm.app.debug.%s' "$(cmux_attach__bundle_seg "$1")"
+  printf 'mosaic.com.emergent.app.debug.%s' "$(cmux_attach__bundle_seg "$1")"
 }
 
 # The tagged Mac app's debug socket path.

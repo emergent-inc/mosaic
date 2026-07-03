@@ -7,7 +7,7 @@ This document defines the supported ways to build cmux from this repository:
 1. A tagged isolated Debug app for local development and agent verification.
 2. The signed, notarized macOS DMG that real users download and run.
 
-The public installable is not a Debug build. It is the `cmux-macos.dmg` asset produced by the stable release pipeline and attached to a GitHub Release tag.
+The public installable is not a Debug build. It is the `mosaic-macos.dmg` asset produced by the stable release pipeline and attached to a GitHub Release tag.
 
 ## Outcomes
 
@@ -26,20 +26,20 @@ Use this when validating a worktree change on the same machine.
 
 Use this when producing the app others download.
 
-- Product: `cmux-macos.dmg`
+- Product: `mosaic-macos.dmg`
 - Contents: signed and notarized `cmux.app`
 - Configuration: Release, universal macOS app
-- Bundle ID: `com.cmuxterm.app`
+- Bundle ID: `mosaic.com.emergent.app`
 - Update feed: Sparkle `appcast.xml`
-- Download URL: `https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg`
+- Download URL: `https://download.mosaic.inc/mosaic-macos.dmg`
 - Release trigger: push a `v*` tag to GitHub
 
 Nightly has the same shape but a different channel:
 
-- Product: `cmux-nightly-macos.dmg`
+- Product: `mosaic-nightly-macos.dmg`
 - Contents: signed and notarized `cmux NIGHTLY.app`
-- Bundle ID: `com.cmuxterm.app.nightly`
-- Update feed: `https://files.cmux.com/nightly/appcast.xml`
+- Bundle ID: `mosaic.com.emergent.app.nightly`
+- Update feed: `https://updates.mosaic.inc/nightly/appcast.xml`
 - Release target: the mutable `nightly` GitHub Release
 
 ## Public Stable Release Path
@@ -93,7 +93,7 @@ Optional or adjacent release operations use:
 - `HOMEBREW_TAP_TOKEN`
 - `SENTRY_AUTH_TOKEN`
 
-The signing identity must be a Developer ID Application identity for emergent.inc. The release provisioning profile must match `com.cmuxterm.app` and include required entitlements such as WebAuthn.
+The signing identity must be a Developer ID Application identity for emergent.inc. The release provisioning profile must match `mosaic.com.emergent.app` and include required entitlements such as WebAuthn.
 
 ### Tag And Trigger
 
@@ -115,7 +115,7 @@ The public release path is tag-triggered. `workflow_dispatch` on `release.yml` i
 
 `scripts/release_asset_guard.js` checks immutable release assets:
 
-- `cmux-macos.dmg`
+- `mosaic-macos.dmg`
 - `appcast.xml`
 - `cmuxd-remote-darwin-arm64`
 - `cmuxd-remote-darwin-amd64`
@@ -149,7 +149,7 @@ build-universal/Build/Products/Release/cmux.app
 The workflow injects Sparkle metadata into `Info.plist`:
 
 - `SUPublicEDKey` derived from `SPARKLE_PRIVATE_KEY`
-- `SUFeedURL` set to `https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml`
+- `SUFeedURL` set to `https://updates.mosaic.inc/stable/appcast.xml`
 
 The workflow also embeds release channel metadata and removes Sparkle sandbox XPC services that do not apply to this non-sandboxed app.
 
@@ -164,7 +164,7 @@ cmux.app/Contents/embedded.provisionprofile
 CI validates that the profile app identifier matches:
 
 ```text
-7WLXT3NR37.com.cmuxterm.app
+7WLXT3NR37.mosaic.com.emergent.app
 ```
 
 ### 5. Sign The App
@@ -212,23 +212,23 @@ CI creates the drag-to-install disk image:
 
 ```bash
 create-dmg --no-code-sign "$APP_PATH" .
-mv ./cmux*.dmg cmux-macos.dmg
+mv ./cmux*.dmg mosaic-macos.dmg
 ```
 
 Then it signs and notarizes the DMG container itself:
 
 ```bash
-codesign --force --timestamp --keychain build.keychain --sign "$APPLE_SIGNING_IDENTITY" cmux-macos.dmg
-codesign --verify --verbose=2 cmux-macos.dmg
-xcrun notarytool submit cmux-macos.dmg --wait
-xcrun stapler staple cmux-macos.dmg
-xcrun stapler validate cmux-macos.dmg
+codesign --force --timestamp --keychain build.keychain --sign "$APPLE_SIGNING_IDENTITY" mosaic-macos.dmg
+codesign --verify --verbose=2 mosaic-macos.dmg
+xcrun notarytool submit mosaic-macos.dmg --wait
+xcrun stapler staple mosaic-macos.dmg
+xcrun stapler validate mosaic-macos.dmg
 ```
 
 Finally, it mounts and validates the final user artifact:
 
 ```bash
-./scripts/smoke-installable-artifact.sh --channel stable cmux-macos.dmg
+./scripts/smoke-installable-artifact.sh --channel stable mosaic-macos.dmg
 ```
 
 That final smoke is important: it checks what users download, not just the intermediate app bundle.
@@ -238,7 +238,7 @@ That final smoke is important: it checks what users download, not just the inter
 CI generates the stable update feed:
 
 ```bash
-./scripts/sparkle_generate_appcast.sh cmux-macos.dmg "$GITHUB_REF_NAME" appcast.xml
+./scripts/sparkle_generate_appcast.sh mosaic-macos.dmg "$GITHUB_REF_NAME" appcast.xml
 ```
 
 The appcast must reference the published DMG and must be signed with `SPARKLE_PRIVATE_KEY`.
@@ -247,7 +247,7 @@ The appcast must reference the published DMG and must be signed with `SPARKLE_PR
 
 On a `v*` tag push, CI uploads these assets to the GitHub Release:
 
-- `cmux-macos.dmg`
+- `mosaic-macos.dmg`
 - `appcast.xml`
 - remote daemon binaries
 - remote daemon checksums and manifest
@@ -255,7 +255,7 @@ On a `v*` tag push, CI uploads these assets to the GitHub Release:
 The README, localized READMEs, and web download code all assume the stable DMG is available at:
 
 ```text
-https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg
+https://download.mosaic.inc/mosaic-macos.dmg
 ```
 
 ### 11. Mirror Stable Appcast To R2
@@ -263,7 +263,7 @@ https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg
 If the tag is the highest semver release, CI mirrors `appcast.xml` to:
 
 ```text
-https://files.cmux.com/stable/appcast.xml
+https://updates.mosaic.inc/stable/appcast.xml
 ```
 
 Backport tags do not overwrite the stable R2 appcast.
@@ -273,7 +273,7 @@ Backport tags do not overwrite the stable R2 appcast.
 After the release workflow succeeds, `.github/workflows/update-homebrew.yml` updates the `emergent-inc/homebrew-cmux` cask. The cask points at:
 
 ```text
-https://github.com/emergent-inc/cmux/releases/download/v#{version}/cmux-macos.dmg
+https://download.mosaic.inc/releases/v#{version}/mosaic-macos.dmg
 ```
 
 and pins the DMG SHA256.
@@ -375,22 +375,22 @@ Nightly releases are produced by `.github/workflows/nightly.yml`.
 Nightly creates:
 
 ```text
-cmux-nightly-macos.dmg
+mosaic-nightly-macos.dmg
 ```
 
 and uploads it to the mutable `nightly` GitHub Release:
 
 ```text
-https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg
+https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg
 ```
 
 Nightly uses:
 
-- bundle ID `com.cmuxterm.app.nightly`
+- bundle ID `mosaic.com.emergent.app.nightly`
 - app display name `cmux NIGHTLY`
 - `cmux.nightly.entitlements`
 - `APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64`
-- Sparkle feed `https://files.cmux.com/nightly/appcast.xml`
+- Sparkle feed `https://updates.mosaic.inc/nightly/appcast.xml`
 
 The nightly workflow signs, notarizes, staples, validates, smoke-launches, mounts the DMG, verifies the artifact, generates appcasts, and mirrors the nightly appcast to R2.
 
@@ -511,7 +511,7 @@ open -n "/Volumes/cmux session code ui/cmux DEV session-code-ui.app"
 The debug artifact smoke should report:
 
 ```text
-installable artifact smoke OK: bundle=com.cmuxterm.app.debug.<tag> version=<version> build=<build>
+installable artifact smoke OK: bundle=mosaic.com.emergent.app.debug.<tag> version=<version> build=<build>
 ```
 
 If Finder reports `kLSNoExecutableErr`, compare the mounted app's `Info.plist` `CFBundleExecutable` with the file in `Contents/MacOS/`, verify it is executable (`0755`), detach all stale cmux volumes, and retry with a new DMG filename and volume name.
@@ -530,10 +530,10 @@ Before tagging a stable release:
 
 After release CI finishes:
 
-1. GitHub Release contains `cmux-macos.dmg` and `appcast.xml`.
-2. `cmux-macos.dmg` downloads from `releases/latest/download`.
-3. `xcrun stapler validate cmux-macos.dmg` passes on the downloaded artifact.
-4. `scripts/smoke-installable-artifact.sh --channel stable cmux-macos.dmg` passes.
+1. GitHub Release contains `mosaic-macos.dmg` and `appcast.xml`.
+2. `mosaic-macos.dmg` downloads from `https://download.mosaic.inc/mosaic-macos.dmg`.
+3. `xcrun stapler validate mosaic-macos.dmg` passes on the downloaded artifact.
+4. `scripts/smoke-installable-artifact.sh --channel stable mosaic-macos.dmg` passes.
 5. Sparkle appcast exists and references the new DMG.
 6. Homebrew cask update completes, or any intentional skip is documented.
 7. Production collaboration relay create/connect smoke passes.

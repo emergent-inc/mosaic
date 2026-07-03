@@ -5021,7 +5021,7 @@ final class BrowserSearchEngineTests: XCTestCase {
             fromTemplate: "file:///tmp/search?q={query}",
             query: "hello world"
         ))
-        XCTAssertFalse(store.isValidSearchURLTemplate("cmux://search?q={query}"))
+        XCTAssertFalse(store.isValidSearchURLTemplate("mosaic://search?q={query}"))
     }
 
     func testCurrentSearchConfigurationUsesCustomProvider() throws {

@@ -46,7 +46,7 @@ import Testing
 
     @Test func redactsEmailAddresses() {
         #expect(
-            scrubber.scrub("signed in as lawrence@cmux.com today")
+            scrubber.scrub("signed in as lawrence@mosaic.inc today")
                 == "signed in as <redacted-email> today"
         )
     }
@@ -322,7 +322,7 @@ import Testing
     @Test func scrubsNestedDictionaryValues() {
         let input: [String: Any] = [
             "cwd": "/Users/lawrence/dev/cmux",
-            "email": "lawrence@cmux.com",
+            "email": "lawrence@mosaic.inc",
             "count": 7,
             "nested": ["url": "https://x.com/?token=abcdef0123456789secret"] as [String: Any],
         ]
@@ -439,7 +439,7 @@ import Testing
     }
 
     @Test func combinedSecretEmailAndPathInOneString() {
-        let input = "user lawrence@cmux.com opened /Users/lawrence/secret.txt with token=abcdef0123456789zz"
+        let input = "user lawrence@mosaic.inc opened /Users/lawrence/secret.txt with token=abcdef0123456789zz"
         #expect(
             scrubber.scrub(input)
                 == "user <redacted-email> opened /Users/<redacted>/secret.txt with token=<redacted-secret>"

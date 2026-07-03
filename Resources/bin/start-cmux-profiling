@@ -412,16 +412,16 @@ system_info_value() {
 channel_for_bundle() {
   local bundle_id="$1"
   case "$bundle_id" in
-    com.cmuxterm.app)
+    mosaic.com.emergent.app)
       printf 'stable'
       ;;
-    com.cmuxterm.app.nightly|com.cmuxterm.app.nightly.*)
+    mosaic.com.emergent.app.nightly|mosaic.com.emergent.app.nightly.*)
       printf 'nightly'
       ;;
-    com.cmuxterm.app.staging|com.cmuxterm.app.staging.*)
+    mosaic.com.emergent.app.staging|mosaic.com.emergent.app.staging.*)
       printf 'staging'
       ;;
-    com.cmuxterm.app.debug|com.cmuxterm.app.debug.*)
+    mosaic.com.emergent.app.debug|mosaic.com.emergent.app.debug.*)
       printf 'dev'
       ;;
     *)

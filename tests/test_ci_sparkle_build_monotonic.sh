@@ -35,8 +35,9 @@ if [[ "$MISMATCHED" != "1" ]]; then
   exit 1
 fi
 
+LATEST_APPCAST_URL="${MOSAIC_STABLE_APPCAST_URL:-https://updates.mosaic.inc/stable/appcast.xml}"
 PUBLISHED_BUILD=$(curl -fsSL --max-time 15 \
-  https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml 2>/dev/null \
+  "$LATEST_APPCAST_URL" 2>/dev/null \
   | sed -n 's#.*<sparkle:version>\([0-9][0-9]*\)</sparkle:version>.*#\1#p' \
   | head -n1 || true)
 

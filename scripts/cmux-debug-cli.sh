@@ -81,6 +81,6 @@ unset CMUXD_UNIX_PATH
 unset CMUX_DEBUG_LOG
 export CMUX_SOCKET_PATH="$socket_path"
 export CMUX_TAG="$tag_slug"
-export CMUX_BUNDLE_ID="com.cmuxterm.app.debug.${tag_bundle_id}"
+export CMUX_BUNDLE_ID="mosaic.com.emergent.app.debug.${tag_bundle_id}"
 export CMUX_BUNDLED_CLI_PATH="$cli_path"
 exec "$cli_path" "$@"

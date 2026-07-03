@@ -20,7 +20,7 @@ private func helpMenuPollUntil(
 private func helpMenuResetMenuBarOnlyDefault() {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-    process.arguments = ["write", "com.cmuxterm.app.debug", "menuBarOnly", "-bool", "false"]
+    process.arguments = ["write", "mosaic.com.emergent.app.debug", "menuBarOnly", "-bool", "false"]
     do {
         try process.run()
         process.waitUntilExit()

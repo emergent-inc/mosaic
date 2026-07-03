@@ -6,7 +6,7 @@ process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_key";
 process.env.CLERK_SECRET_KEY = "sk_test_secret_key_that_is_long_enough_for_native_tokens";
 process.env.CMUX_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
 
-const HANDOFF_COOKIE = "cmux-native-auth-handoff";
+const HANDOFF_COOKIE = "mosaic-native-auth-handoff";
 let handoffCookie: string | undefined;
 let userId: string | null;
 const getUser = mock(async (...args: unknown[]) => {
@@ -41,7 +41,7 @@ function signInRequest(nativeReturnTo: string, handoffNonce: string): NextReques
   const encodedReturnTo = encodeURIComponent(nativeReturnTo);
   const encodedNonce = encodeURIComponent(handoffNonce);
   return new NextRequest(
-    `https://cmux.test/handler/after-sign-in?native_app_return_to=${encodedReturnTo}&cmux_auth_handoff=${encodedNonce}`,
+    `https://cmux.test/handler/after-sign-in?native_app_return_to=${encodedReturnTo}&mosaic_auth_handoff=${encodedNonce}`,
     {
       headers: {
         "accept-language": "en",
@@ -64,7 +64,7 @@ describe("after sign-in native handoff", () => {
 
   test("keeps a fallback page for verified native auto-open handoffs", async () => {
     handoffCookie = "handoff-nonce";
-    const nativeReturnTo = "cmux://auth-callback?cmux_auth_state=state-123";
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
 
     const response = await GET(signInRequest(nativeReturnTo, "handoff-nonce"));
 
@@ -77,13 +77,13 @@ describe("after sign-in native handoff", () => {
     expect(html).not.toContain("http-equiv=\"refresh\"");
 
     const callbackURL = new URL(returnHref(html));
-    expect(callbackURL.protocol).toBe("cmux:");
+    expect(callbackURL.protocol).toBe("mosaic:");
     expect(callbackURL.hostname).toBe("auth-callback");
-    expect(callbackURL.searchParams.get("cmux_auth_state")).toBe("state-123");
-    expect(callbackURL.searchParams.get("cmux_refresh")).toStartWith("cmuxv1.");
-    expect(callbackURL.searchParams.get("cmux_access")).toStartWith("cmuxv1.");
-    const accessClaims = verifyNativeAuthToken(callbackURL.searchParams.get("cmux_access")!);
-    const refreshClaims = verifyNativeAuthToken(callbackURL.searchParams.get("cmux_refresh")!);
+    expect(callbackURL.searchParams.get("mosaic_auth_state")).toBe("state-123");
+    expect(callbackURL.searchParams.get("mosaic_refresh")).toStartWith("cmuxv1.");
+    expect(callbackURL.searchParams.get("mosaic_access")).toStartWith("cmuxv1.");
+    const accessClaims = verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_access")!);
+    const refreshClaims = verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_refresh")!);
     expect(accessClaims).toMatchObject({
       kind: "access",
       userId: "user_1",
@@ -105,7 +105,7 @@ describe("after sign-in native handoff", () => {
 
   test("keeps the manual return page when the handoff nonce is not verified", async () => {
     handoffCookie = "different-nonce";
-    const nativeReturnTo = "cmux://auth-callback?cmux_auth_state=state-123";
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
 
     const response = await GET(signInRequest(nativeReturnTo, "handoff-nonce"));
 
@@ -114,13 +114,13 @@ describe("after sign-in native handoff", () => {
     expect(html).toContain("Signed in to cmux");
     expect(html).toContain("Return to cmux");
     expect(html).not.toContain("window.location.replace");
-    expect(returnHref(html)).toContain("cmux://auth-callback");
+    expect(returnHref(html)).toContain("mosaic://auth-callback");
   });
 
   test("redirects unauthenticated users to sign in", async () => {
     handoffCookie = "handoff-nonce";
     userId = null;
-    const nativeReturnTo = "cmux://auth-callback?cmux_auth_state=state-123";
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
 
     const response = await GET(signInRequest(nativeReturnTo, "handoff-nonce"));
 

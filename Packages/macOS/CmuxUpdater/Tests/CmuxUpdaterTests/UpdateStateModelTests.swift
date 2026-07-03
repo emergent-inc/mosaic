@@ -104,7 +104,7 @@ import Testing
             userInfo: [NSUnderlyingErrorKey: underlying]
         )
         #expect(UpdateStateModel.userFacingErrorTitle(for: err).contains("Start Updater"))
-        #expect(UpdateStateModel.manualDownloadURL(for: err)?.absoluteString.hasSuffix("cmux-macos.dmg") == true)
+        #expect(UpdateStateModel.manualDownloadURL(for: err)?.absoluteString == "https://download.mosaic.inc/mosaic-macos.dmg")
     }
 
     @Test func agentInvalidationErrorIsTreatedAsAgentFailure() {

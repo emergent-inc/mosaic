@@ -238,7 +238,7 @@ final class PresenceHeartbeatClient {
             "routes": routes.map(\.mobileHostJSONObject),
         ]
         // The app's bundle id lets the phone label the build channel on the
-        // Computers screen (com.cmuxterm.app = Stable, .nightly/.rc/.staging
+        // Computers screen (mosaic.com.emergent.app = Stable, .nightly/.rc/.staging
         // suffixes, dev.cmux.* = a DEV build — paired with `tag` for the dev tag).
         if let bundleID, !bundleID.isEmpty {
             bodyDict["bundleId"] = bundleID

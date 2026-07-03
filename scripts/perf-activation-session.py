@@ -170,7 +170,7 @@ class CmuxPerfRunner:
 
     def clean_persisted_state(self) -> None:
         app_support = pathlib.Path.home() / "Library/Application Support/cmux"
-        bundle_id = f"com.cmuxterm.app.debug.{self.tag_id}"
+        bundle_id = f"mosaic.com.emergent.app.debug.{self.tag_id}"
         for suffix in ("", "-previous"):
             (app_support / f"session-{bundle_id}{suffix}.json").unlink(missing_ok=True)
         self.socket_path.unlink(missing_ok=True)
@@ -215,7 +215,7 @@ class CmuxPerfRunner:
                 "CMUXD_UNIX_PATH": str(self.cmuxd_socket_path),
                 "CMUX_DEBUG_LOG": str(self.debug_log_path),
                 "CMUX_TAG": self.tag,
-                "CMUX_BUNDLE_ID": f"com.cmuxterm.app.debug.{self.tag_id}",
+                "CMUX_BUNDLE_ID": f"mosaic.com.emergent.app.debug.{self.tag_id}",
             }
         )
         return env
@@ -225,7 +225,7 @@ class CmuxPerfRunner:
         env["CMUX_SOCKET"] = str(self.socket_path)
         env["CMUX_SOCKET_PATH"] = str(self.socket_path)
         env["CMUX_TAG"] = self.tag
-        env["CMUX_BUNDLE_ID"] = f"com.cmuxterm.app.debug.{self.tag_id}"
+        env["CMUX_BUNDLE_ID"] = f"mosaic.com.emergent.app.debug.{self.tag_id}"
         env["CMUXTERM_CLI_RESPONSE_TIMEOUT_SEC"] = str(max(15, int(self.args.snapshot_timeout)))
         return env
 

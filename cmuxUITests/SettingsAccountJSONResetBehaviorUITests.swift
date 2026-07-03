@@ -205,7 +205,7 @@ final class SettingsAccountJSONResetBehaviorUITests: SettingsUITestCase {
     //   for presence above; the click effect is out of scope for e2e.
 
     // TIER 3 (not e2e): cmux.json "Open Docs" link (SettingsJSONDocsLink)
-    //   — a SwiftUI `Link` to https://cmux.com/docs/configuration#cmux-json that
+    //   — a SwiftUI `Link` to https://mosaic.inc/docs/configuration#cmux-json that
     //   opens in the system browser. Cross-app navigation with no cmux-side
     //   observable effect. Presence asserted above; the navigation itself is
     //   out of scope for e2e.

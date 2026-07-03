@@ -20,7 +20,7 @@
  * reflects the original page load.
  */
 export const DOWNLOAD_URL =
-  "https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg";
+  "https://download.mosaic.inc/mosaic-macos.dmg";
 
 export const DOWNLOAD_CONFIRMATION_PATH = "/download/confirmation";
 

@@ -138,7 +138,7 @@ private struct NoFontProbe: GhosttyFontProbing {
         let reader = FakeFileReader()
         let discovery = GhosttyConfigDiscovery(fileReader: reader, fontProbe: NoFontProbe())
         let paths = discovery.loadedGhosttyConfigScanPaths(
-            currentBundleIdentifier: "com.cmuxterm.app",
+            currentBundleIdentifier: "mosaic.com.emergent.app",
             appSupportDirectory: appSupport
         )
         #expect(paths.contains("~/.config/ghostty/config"))
@@ -154,7 +154,7 @@ private struct NoFontProbe: GhosttyFontProbing {
         ])
         let discovery = GhosttyConfigDiscovery(fileReader: reader, fontProbe: NoFontProbe())
         let paths = discovery.loadedGhosttyConfigScanPaths(
-            currentBundleIdentifier: "com.cmuxterm.app",
+            currentBundleIdentifier: "mosaic.com.emergent.app",
             appSupportDirectory: appSupport
         )
         #expect(paths.contains("/AppSupport/com.mitchellh.ghostty/config"))

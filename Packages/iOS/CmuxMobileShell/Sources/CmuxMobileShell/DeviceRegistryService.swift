@@ -3,7 +3,7 @@ public import CmuxMobileShellModel
 public import Foundation
 import os
 
-private let deviceRegistryLog = Logger(subsystem: "com.cmuxterm.app", category: "DeviceRegistry")
+private let deviceRegistryLog = Logger(subsystem: "mosaic.com.emergent.app", category: "DeviceRegistry")
 
 /// HTTP client for the team-scoped device registry (`/api/devices`).
 ///

@@ -789,6 +789,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     // `FocusedNotificationResolving`).
     /// The auth graph, injected once via `configure(...)` at app startup.
     private(set) var auth: MacAuthComposition?
+    private let authAnalyticsIdentityObserver = MacAuthAnalyticsIdentityObserver()
     /// Strongly-held observers for every active TabManager. Each observer owns
     /// Combine subscriptions that publish workspace.updated to mobile clients.
     private var mobileWorkspaceListObservers: [ObjectIdentifier: MobileWorkspaceListObserver] = [:]
@@ -1054,7 +1055,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var sessionAutosaveDeferredRetryPending = false
     private var processDetectedSessionSaveGeneration: UInt64 = 0
     private let sessionPersistenceQueue = DispatchQueue(
-        label: "com.cmuxterm.app.sessionPersistence",
+        label: "mosaic.com.emergent.app.sessionPersistence",
         qos: .utility
     )
     /// Session snapshot persistence (CmuxSession); composition-root owned.
@@ -1075,7 +1076,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// `BrowserPanel` wraps responder-churning devtools work in `withBypass(_:)`.
     nonisolated let browserFirstResponderBypass = BrowserFirstResponderBypass()
     private nonisolated static let launchServicesRegistrationQueue = DispatchQueue(
-        label: "com.cmuxterm.app.launchServicesRegistration",
+        label: "mosaic.com.emergent.app.launchServicesRegistration",
         qos: .utility
     )
     private nonisolated static func enqueueLaunchServicesRegistrationWork(_ work: @escaping @Sendable () -> Void) {
@@ -1415,6 +1416,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if telemetryEnabled && !isRunningUnderXCTest {
             StartupBreadcrumbLog.append("appDelegate.didFinish.posthog.begin")
             PostHogAnalytics.shared.startIfNeeded()
+            NativeInteractionAnalytics.shared.installIfNeeded()
             StartupBreadcrumbLog.append("appDelegate.didFinish.posthog.complete")
         }
 
@@ -2067,6 +2069,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         TerminalController.shared.attachAuth(coordinator: auth.coordinator, browserSignIn: auth.browserSignIn)
         TerminalController.shared.agentChatTranscriptService = agentChatTranscriptService
         auth.start()
+        authAnalyticsIdentityObserver.start(coordinator: auth.coordinator)
         ensureMobileWorkspaceListObserver(for: tabManager)
         MobileTerminalRenderObserver.shared.start()
         agentChatTranscriptService.start()
@@ -4834,6 +4837,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
               let destinationManager = tabManagerFor(windowId: windowId) else {
             return false
         }
+        let sourceWindowId = mainWindowContexts.first { $0.value.tabManager === sourceManager }?.value.windowId
 
         if sourceManager === destinationManager {
             if focus {
@@ -4846,6 +4850,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         guard let workspace = sourceManager.detachWorkspace(tabId: workspaceId) else { return false }
         destinationManager.attachWorkspace(workspace, at: atIndex, select: focus)
+        var properties: [String: Any] = [
+            "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier(workspaceId.uuidString),
+            "destination_window_id_hash": ProductAnalyticsPrivacy.hashIdentifier(windowId.uuidString),
+            "destination_workspace_count": destinationManager.tabs.count,
+            "source_workspace_count": sourceManager.tabs.count,
+            "focused": focus,
+        ]
+        if let sourceWindowId {
+            properties["source_window_id_hash"] = ProductAnalyticsPrivacy.hashIdentifier(sourceWindowId.uuidString)
+        }
+        if let atIndex {
+            properties["destination_index"] = atIndex
+        }
+        ProductAnalytics.shared.trackSemantic(
+            .workspaceWindowMoved,
+            featureArea: .windowing,
+            entrypoint: .system,
+            result: .completed,
+            properties: properties
+        )
 
         if focus {
             _ = focusMainWindow(windowId: windowId)

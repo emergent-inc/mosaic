@@ -5,7 +5,7 @@ import OSLog
 // Same subsystem/category as the original app-target ProcessPipeReader so
 // existing log queries keep working after the move into CmuxFoundation.
 nonisolated private let processPipeReaderLogger = Logger(
-    subsystem: "com.cmuxterm.app",
+    subsystem: "mosaic.com.emergent.app",
     category: "ProcessPipeReader"
 )
 

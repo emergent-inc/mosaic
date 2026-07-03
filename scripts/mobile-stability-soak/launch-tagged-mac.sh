@@ -20,7 +20,7 @@ if [[ ! -x "$bin" ]]; then
 fi
 
 exec env \
-  CMUX_BUNDLE_ID="com.cmuxterm.app.debug.${tag_bundle_id}" \
+  CMUX_BUNDLE_ID="mosaic.com.emergent.app.debug.${tag_bundle_id}" \
   CMUX_SOCKET_ENABLE=1 \
   CMUX_SOCKET_MODE=allowAll \
   CMUX_SOCKET_PATH="/tmp/cmux-debug-${tag}.sock" \

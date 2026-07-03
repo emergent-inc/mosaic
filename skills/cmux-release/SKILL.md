@@ -44,8 +44,8 @@ gh run watch --repo emergent-inc/cmux
 ## Notes
 
 - Requires GitHub secrets: `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
-- The release asset is `cmux-macos.dmg` attached to the tag.
-- README download button points to `releases/latest/download/cmux-macos.dmg`.
+- The release asset is `mosaic-macos.dmg` attached to the tag.
+- README download button points to `https://download.mosaic.inc/mosaic-macos.dmg`.
 - Bump the minor version for updates unless explicitly asked otherwise.
 - Update `CHANGELOG.md`; docs changelog is rendered from it.
 

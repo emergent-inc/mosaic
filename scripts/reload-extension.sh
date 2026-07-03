@@ -40,7 +40,7 @@ Usage: scripts/reload-extension.sh --tag <tag> [--host-bundle-id <id>] [--exampl
   --tag <tag>        Required. Same tag you pass to reload.sh, so the extension's
                      point id matches the tagged host's.
   --host-bundle-id   Host app bundle id when reload.sh used --bundle-id.
-                     Defaults to com.cmuxterm.app.debug.<sanitized-tag>.
+                     Defaults to mosaic.com.emergent.app.debug.<sanitized-tag>.
   --bundle-id        Alias for --host-bundle-id.
   --example <which>  sample (CMUX ExtKit Sample Sidebar), tabs (TabsVisibleSidebar),
                      or both (default).
@@ -89,7 +89,7 @@ sanitize_bundle() {
 
 TAG_ID="$(sanitize_bundle "$TAG")"
 [[ -z "$TAG_ID" ]] && { echo "error: --tag must contain at least one alphanumeric character" >&2; exit 1; }
-HOST_BUNDLE_ID="${HOST_BUNDLE_ID_OVERRIDE:-com.cmuxterm.app.debug.${TAG_ID}}"
+HOST_BUNDLE_ID="${HOST_BUNDLE_ID_OVERRIDE:-mosaic.com.emergent.app.debug.${TAG_ID}}"
 TAGGED_POINT_ID="${HOST_BUNDLE_ID}.${SIDEBAR_POINT_NAME}"
 
 # Each entry: project_path | scheme | app_name | app_bundle_id | appex_relpath | appex_bundle_id

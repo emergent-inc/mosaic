@@ -53,7 +53,7 @@ export default function NightlyPage() {
 
         {/* Download button */}
         <a
-          href="https://github.com/emergent-inc/cmux/releases/download/nightly/cmux-nightly-macos.dmg"
+          href="https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg"
           className="inline-flex items-center gap-2.5 rounded-full font-medium bg-foreground hover:opacity-85 transition-opacity px-5 py-2.5 text-[15px]"
           style={{ color: "var(--background)", textDecoration: "none" }}
         >

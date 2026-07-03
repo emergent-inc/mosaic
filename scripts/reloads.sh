@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="cmux STAGING"
-BUNDLE_ID="com.cmuxterm.app.staging"
+BUNDLE_ID="mosaic.com.emergent.app.staging"
 BASE_APP_NAME="cmux"
 DERIVED_DATA=""
 NAME_SET=0
@@ -36,8 +36,8 @@ write_last_socket_path() {
 staging_slug_from_bundle_id() {
   local bundle_id="$1"
   local suffix=""
-  if [[ "$bundle_id" == "com.cmuxterm.app.staging."* ]]; then
-    suffix="${bundle_id#com.cmuxterm.app.staging.}"
+  if [[ "$bundle_id" == "mosaic.com.emergent.app.staging."* ]]; then
+    suffix="${bundle_id#mosaic.com.emergent.app.staging.}"
   fi
   sanitize_path "$suffix"
 }
@@ -136,7 +136,7 @@ if [[ -n "$TAG" ]]; then
     APP_NAME="cmux STAGING ${TAG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
-    BUNDLE_ID="com.cmuxterm.app.staging.${TAG_ID}"
+    BUNDLE_ID="mosaic.com.emergent.app.staging.${TAG_ID}"
   fi
   if [[ "$DERIVED_SET" -eq 0 ]]; then
     DERIVED_DATA="/tmp/cmux-staging-${TAG_SLUG}"

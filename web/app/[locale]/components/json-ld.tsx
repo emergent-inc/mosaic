@@ -1,6 +1,6 @@
-const BASE = "https://cmux.com";
+const BASE = "https://mosaic.inc";
 
-/** Build an absolute cmux.com URL for a locale + path, matching i18n/seo.ts. */
+/** Build an absolute mosaic.inc URL for a locale + path, matching i18n/seo.ts. */
 export function localizedUrl(locale: string, path: string) {
   return locale === "en" ? `${BASE}${path}` : `${BASE}/${locale}${path}`;
 }

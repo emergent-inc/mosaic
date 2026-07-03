@@ -290,7 +290,7 @@ final class FeedbackComposerShortcutUITests: XCTestCase {
 
 final class CommandPaletteAllSurfacesUITests: XCTestCase {
     private var socketPath = ""
-    private let debugDefaultsDomain = "com.cmuxterm.app.debug"
+    private let debugDefaultsDomain = "mosaic.com.emergent.app.debug"
     private let hiddenSurfaceToken = "cmux-command-palette-hidden-surface"
     private let visibleSurfaceToken = "cmux-command-palette-visible-surface"
     private let noMatchWorkspaceQuery = "cmux-command-palette-no-match"

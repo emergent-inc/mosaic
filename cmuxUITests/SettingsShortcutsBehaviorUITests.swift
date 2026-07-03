@@ -329,7 +329,7 @@ final class SettingsShortcutsBehaviorUITests: SettingsUITestCase {
 //   the host action itself can be unit-tested against a fake SettingsHostActions.
 
 // TIER 3 (not e2e): SettingsKeyboardShortcutsChordDocsLink ("Chord docs") —
-//   A SwiftUI Link to https://cmux.com/docs/keyboard-shortcuts#shortcut-chords.
+//   A SwiftUI Link to https://mosaic.inc/docs/keyboard-shortcuts#shortcut-chords.
 //   Clicking it opens the default web browser to an external URL; there is no
 //   in-app observable effect, so it is not e2e-testable. The destination URL
 //   correctness is better covered by a unit assertion on the section, not a UI test.

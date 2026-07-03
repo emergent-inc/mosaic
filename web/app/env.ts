@@ -62,6 +62,9 @@ export const env = createEnv({
     CMUX_BUG_ALERTS_WEBHOOK_URL: z.string().url().optional(),
     // Optional shared secret required by /api/bug-alerts when configured.
     CMUX_BUG_ALERTS_SHARED_SECRET: z.string().min(1).optional(),
+    // Public R2 base used by Mosaic download/update proxy routes. Example:
+    // https://pub-xxxxxxxx.r2.dev
+    MOSAIC_R2_PUBLIC_BASE_URL: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_STACK_PROJECT_ID: z.string().min(1).optional(),
@@ -89,6 +92,7 @@ export const env = createEnv({
     SLACK_WAITLIST_WEBHOOK_URL: trimEnv(process.env.SLACK_WAITLIST_WEBHOOK_URL),
     CMUX_BUG_ALERTS_WEBHOOK_URL: trimEnv(process.env.CMUX_BUG_ALERTS_WEBHOOK_URL),
     CMUX_BUG_ALERTS_SHARED_SECRET: trimEnv(process.env.CMUX_BUG_ALERTS_SHARED_SECRET),
+    MOSAIC_R2_PUBLIC_BASE_URL: trimEnv(process.env.MOSAIC_R2_PUBLIC_BASE_URL),
     NEXT_PUBLIC_STACK_PROJECT_ID: stackEnv(
       process.env.NEXT_PUBLIC_STACK_PROJECT_ID,
       "00000000-0000-4000-8000-000000000000"

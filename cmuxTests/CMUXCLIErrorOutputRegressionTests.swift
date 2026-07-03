@@ -278,7 +278,7 @@ import Testing
         let fakeStableCLIPath = try fakeTaggedBundledCLIPath(
             sourceCLIPath: cliPath,
             tagSlug: "stable-\(UUID().uuidString.lowercased())",
-            bundleIdentifier: "com.cmuxterm.app",
+            bundleIdentifier: "mosaic.com.emergent.app",
             bundleName: "cmux"
         )
         let defaultResponder = try UnixSocketResponder(path: defaultStableSocketPath, response: "OK DEFAULT")
@@ -344,7 +344,7 @@ import Testing
         let fakeStableCLIPath = try fakeTaggedBundledCLIPath(
             sourceCLIPath: cliPath,
             tagSlug: "stable-\(UUID().uuidString.lowercased())",
-            bundleIdentifier: "com.cmuxterm.app",
+            bundleIdentifier: "mosaic.com.emergent.app",
             bundleName: "cmux"
         )
         let defaultResponder = try UnixSocketResponder(path: defaultStableSocketPath, response: "OK DEFAULT")
@@ -406,7 +406,7 @@ import Testing
         let fakeStableCLIPath = try fakeTaggedBundledCLIPath(
             sourceCLIPath: cliPath,
             tagSlug: "stable-\(UUID().uuidString.lowercased())",
-            bundleIdentifier: "com.cmuxterm.app",
+            bundleIdentifier: "mosaic.com.emergent.app",
             bundleName: "cmux"
         )
         let defaultResponder = try UnixSocketResponder(path: defaultStableSocketPath, response: "OK DEFAULT")
@@ -472,7 +472,7 @@ import Testing
         let fakeStableCLIPath = try fakeTaggedBundledCLIPath(
             sourceCLIPath: cliPath,
             tagSlug: "stable-\(UUID().uuidString.lowercased())",
-            bundleIdentifier: "com.cmuxterm.app",
+            bundleIdentifier: "mosaic.com.emergent.app",
             bundleName: "cmux"
         )
         let defaultResponder = try UnixSocketResponder(path: defaultStableSocketPath, response: "OK DEFAULT")
@@ -573,7 +573,7 @@ import Testing
         let socketPath = "/tmp/cmux-theme-\(UUID().uuidString.prefix(8)).sock"
         let responder = try UnixSocketResponder(path: socketPath, response: "OK")
         defer { responder.stop() }
-        let bundleIdentifier = "com.cmuxterm.app.debug.issue-4355-test"
+        let bundleIdentifier = "mosaic.com.emergent.app.debug.issue-4355-test"
 
         var environment = ProcessInfo.processInfo.environment
         for key in Array(environment.keys) where key.hasPrefix("CMUX_") {
@@ -1188,7 +1188,7 @@ import Testing
         try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
 
         let info: [String: Any] = [
-            "CFBundleIdentifier": bundleIdentifier ?? "com.cmuxterm.app.debug.\(tagSlug.replacingOccurrences(of: "-", with: "."))",
+            "CFBundleIdentifier": bundleIdentifier ?? "mosaic.com.emergent.app.debug.\(tagSlug.replacingOccurrences(of: "-", with: "."))",
             "CFBundleName": bundleName ?? "cmux DEV \(tagSlug)",
             "CFBundlePackageType": "APPL"
         ]

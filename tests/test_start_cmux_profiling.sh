@@ -29,9 +29,9 @@ EOF
 stable_app="$TMP_DIR/cmux.app"
 nightly_app="$TMP_DIR/cmux NIGHTLY.app"
 dev_app="$TMP_DIR/cmux DEV dog.app"
-make_app "$stable_app" "com.cmuxterm.app" "cmux"
-make_app "$nightly_app" "com.cmuxterm.app.nightly" "cmux NIGHTLY"
-make_app "$dev_app" "com.cmuxterm.app.debug.dog" "cmux DEV dog"
+make_app "$stable_app" "mosaic.com.emergent.app" "cmux"
+make_app "$nightly_app" "mosaic.com.emergent.app.nightly" "cmux NIGHTLY"
+make_app "$dev_app" "mosaic.com.emergent.app.debug.dog" "cmux DEV dog"
 
 plist_buddy="$TMP_DIR/plistbuddy"
 cat > "$plist_buddy" <<'EOF'
@@ -107,7 +107,7 @@ cat > "$ps_file" <<EOF
 EOF
 
 dry_run="$("$SCRIPT" --dry-run --test-ps-file "$ps_file" --channel dev --tag dog --duration 7 --out "$TMP_DIR/out")"
-if [[ "$dry_run" != *"Target: pid=303 channel=dev bundle=com.cmuxterm.app.debug.dog name=cmux DEV dog"* ]]; then
+if [[ "$dry_run" != *"Target: pid=303 channel=dev bundle=mosaic.com.emergent.app.debug.dog name=cmux DEV dog"* ]]; then
   echo "FAIL: dev tag selector did not choose the tagged dev process" >&2
   echo "$dry_run" >&2
   exit 1
@@ -149,9 +149,9 @@ if ! grep -Fq "multiple cmux processes are running" /tmp/cmux-profile-ambiguous.
 fi
 
 list_output="$("$SCRIPT" --list-targets --test-ps-file "$ps_file")"
-if [[ "$list_output" != *"pid=101 channel=stable bundle=com.cmuxterm.app"* ]] ||
-   [[ "$list_output" != *"pid=202 channel=nightly bundle=com.cmuxterm.app.nightly"* ]] ||
-   [[ "$list_output" != *"pid=303 channel=dev bundle=com.cmuxterm.app.debug.dog"* ]]; then
+if [[ "$list_output" != *"pid=101 channel=stable bundle=mosaic.com.emergent.app"* ]] ||
+   [[ "$list_output" != *"pid=202 channel=nightly bundle=mosaic.com.emergent.app.nightly"* ]] ||
+   [[ "$list_output" != *"pid=303 channel=dev bundle=mosaic.com.emergent.app.debug.dog"* ]]; then
   echo "FAIL: --list-targets did not show stable/nightly/dev discrimination" >&2
   echo "$list_output" >&2
   exit 1
@@ -323,7 +323,7 @@ if ! grep -Fq "all profiling templates failed" /tmp/cmux-profile-all-failed.log 
   exit 1
 fi
 
-submit_output="$("$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "cmux DEV dog" --target-pid 303 --channel dev --bundle-id com.cmuxterm.app.debug.dog --reply-to "user@example.com")"
+submit_output="$("$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "cmux DEV dog" --target-pid 303 --channel dev --bundle-id mosaic.com.emergent.app.debug.dog --reply-to "user@example.com")"
 if [[ "$submit_output" != *"Recipient: contact@emergent.inc"* ]] ||
    [[ "$submit_output" != *"Reply-to: user@example.com"* ]] ||
    [[ "$submit_output" != *"Subject: cmux profiling capture: cmux DEV dog"* ]]; then
@@ -424,7 +424,7 @@ CMUX_PROFILE_OSASCRIPT="$cancel_bin" CMUX_PROFILE_OPEN="$open_bin" CMUX_PROFILE_
   --target-name "cmux DEV dog" \
   --target-pid 303 \
   --channel dev \
-  --bundle-id com.cmuxterm.app.debug.dog
+  --bundle-id mosaic.com.emergent.app.debug.dog
 
 sleep_osascript="$TMP_DIR/sleep-osascript"
 sleep_osascript_pid="$TMP_DIR/sleep-osascript.pid"
@@ -441,7 +441,7 @@ CMUX_PROFILE_OSASCRIPT="$sleep_osascript" CMUX_PROFILE_DITTO="$ditto_bin" "$ROOT
   --target-name "cmux DEV dog" \
   --target-pid 303 \
   --channel dev \
-  --bundle-id com.cmuxterm.app.debug.dog \
+  --bundle-id mosaic.com.emergent.app.debug.dog \
   --send &
 sleep_helper_pid="$!"
 for _ in $(seq 1 50); do
@@ -479,7 +479,7 @@ if CMUX_PROFILE_OSASCRIPT="$cancel_bin" CMUX_PROFILE_OPEN="$open_bin" CMUX_PROFI
   --target-name "cmux DEV dog" \
   --target-pid 303 \
   --channel dev \
-  --bundle-id com.cmuxterm.app.debug.dog \
+  --bundle-id mosaic.com.emergent.app.debug.dog \
   --send >/tmp/cmux-profile-send-cancel.log 2>&1; then
   echo "FAIL: submit helper send mode should fail when Mail send is canceled" >&2
   exit 1
@@ -514,7 +514,7 @@ HOME="$TMP_DIR" CMUX_PROFILE_FEEDBACK_EMAIL=wrong@example.com CMUX_PROFILE_LOCAL
   --target-name "cmux DEV dog" \
   --target-pid 303 \
   --channel dev \
-  --bundle-id com.cmuxterm.app.debug.dog \
+  --bundle-id mosaic.com.emergent.app.debug.dog \
   --recipient contact@emergent.inc \
   --reply-to-file "$reply_to_file" \
   --note-file "$note_file" \

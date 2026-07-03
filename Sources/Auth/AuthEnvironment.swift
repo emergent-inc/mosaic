@@ -71,7 +71,7 @@ enum AuthEnvironment {
             }
             return "mosaic-dev"
         }
-        if bundleIdentifier == "com.cmuxterm.app.nightly" {
+        if bundleIdentifier == "mosaic.com.emergent.app.nightly" {
             return "mosaic-nightly"
         }
         return "mosaic"
@@ -79,7 +79,7 @@ enum AuthEnvironment {
 
     private static func debugSchemeTag(fromBundleIdentifier bundleIdentifier: String?) -> String? {
         guard let bundleIdentifier else { return nil }
-        let prefix = "com.cmuxterm.app.debug."
+        let prefix = "mosaic.com.emergent.app.debug."
         guard bundleIdentifier.hasPrefix(prefix) else { return nil }
         let suffix = String(bundleIdentifier.dropFirst(prefix.count))
         return sanitizedCallbackSchemeTag(suffix)
@@ -95,7 +95,7 @@ enum AuthEnvironment {
     }
 
     private static func isDebugBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
-        bundleIdentifier?.hasPrefix("com.cmuxterm.app.debug") == true
+        bundleIdentifier?.hasPrefix("mosaic.com.emergent.app.debug") == true
     }
 
     static func sanitizedCallbackSchemeTag(_ rawTag: String) -> String? {
@@ -131,7 +131,7 @@ enum AuthEnvironment {
     static var websiteOrigin: URL {
         resolvedURL(
             environmentKey: "CMUX_WWW_ORIGIN",
-            fallback: "https://cmux.com"
+            fallback: "https://mosaic.inc"
         )
     }
 
@@ -139,7 +139,7 @@ enum AuthEnvironment {
         canonicalizedLoopbackURL(
             resolvedURL(
                 environmentKey: "CMUX_AUTH_WWW_ORIGIN",
-                fallback: defaultWebOrigin
+                fallback: defaultAuthWebOrigin
             )
         )
     }
@@ -159,7 +159,7 @@ enum AuthEnvironment {
     ///   1. process env `CMUX_VM_API_BASE_URL` — works when the app is launched from a shell.
     ///   2. `~/.cmux-dev.env` file `CMUX_VM_API_BASE_URL=...` line — works regardless of how
     ///      the app was launched (click-through, Dock, `open`, etc.). Only honored in DEBUG.
-    ///   3. VM backend dev origin (`http://localhost:$CMUX_PORT` in Debug, cmux.com in Release).
+    ///   3. VM backend dev origin (`http://localhost:$CMUX_PORT` in Debug, mosaic.inc in Release).
     static var vmAPIBaseURL: URL {
         if let overridden = ProcessInfo.processInfo.environment["CMUX_VM_API_BASE_URL"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -233,14 +233,27 @@ enum AuthEnvironment {
            !origin.isEmpty {
             return origin
         }
-        return "https://cmux.com"
+        return "https://mosaic.inc"
+    }
+
+    private static var defaultAuthWebOrigin: String {
+        resolvedDefaultAuthWebOrigin(environment: ProcessInfo.processInfo.environment)
+    }
+
+    private static func resolvedDefaultAuthWebOrigin(environment: [String: String]) -> String {
+        if let origin = environment["CMUX_AUTH_WWW_ORIGIN"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !origin.isEmpty {
+            return origin
+        }
+        return "https://dashboard.mosaic.inc"
     }
 
     private static var defaultVMAPIOrigin: String {
         #if DEBUG
         return "http://localhost:\(cmuxPort)"
         #else
-        return "https://cmux.com"
+        return "https://mosaic.inc"
         #endif
     }
 
@@ -250,7 +263,7 @@ enum AuthEnvironment {
            !url.isEmpty {
             return url
         }
-        return "https://cmux.com"
+        return "https://dashboard.mosaic.inc"
     }
 
     static var stackBaseURL: URL {
@@ -296,7 +309,7 @@ enum AuthEnvironment {
     static func resolvedAfterSignInOrigin(environment: [String: String]) -> URL {
         resolvedURL(
             environmentKey: "CMUX_AUTH_WWW_ORIGIN",
-            fallback: resolvedDefaultWebOrigin(environment: environment),
+            fallback: resolvedDefaultAuthWebOrigin(environment: environment),
             environment: environment
         )
     }

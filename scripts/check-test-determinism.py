@@ -748,11 +748,11 @@ def _self_test() -> int:
         # Public URL used as a STRING fixture (no network verb): not live network.
         (
             "web/tests/n17.ts",
-            'expect(text).toContain("Docs: https://cmux.com/docs/api")\n',
+            'expect(text).toContain("Docs: https://mosaic.inc/docs/api")\n',
         ),
         (
             "web/tests/n18.ts",
-            'const llms = buildLlmsText("https://cmux.com")\n',
+            'const llms = buildLlmsText("https://mosaic.inc")\n',
         ),
         # A quoted shell command embedded in a Swift terminal-parser fixture is a
         # STRING literal, not a real delay: "sleep 5" must not flag sleep-then-assert.

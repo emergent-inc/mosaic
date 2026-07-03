@@ -14,7 +14,7 @@ final class CLIForwardingLaunchArgumentTests: XCTestCase {
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux STAGING", "STAGING"]))
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux NIGHTLY", "NIGHTLY"]))
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux", "-psn_0_12345"]))
-        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux", "cmux://workspace/foo"]))
+        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux", "mosaic://workspace/foo"]))
     }
 
     func testBundledCliResolverFallsBackToExecutablePath() throws {

@@ -186,7 +186,7 @@ extension UpdateStateModel {
 
     /// The canonical direct-download URL for the latest stable release artifact, used as the
     /// manual fallback when Sparkle's in-app install path fails.
-    private static let manualDownloadURLString = "https://github.com/emergent-inc/cmux/releases/latest/download/cmux-macos.dmg"
+    private static let manualDownloadURLString = "https://download.mosaic.inc/mosaic-macos.dmg"
 
     /// Whether an error reflects Sparkle's updater helper agent never connecting.
     ///

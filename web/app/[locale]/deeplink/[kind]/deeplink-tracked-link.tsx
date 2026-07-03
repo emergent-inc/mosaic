@@ -2,6 +2,7 @@
 
 import posthog from "posthog-js";
 import type { CSSProperties, ReactNode } from "react";
+import { captureWebAcquisitionEvent } from "../../../lib/web-analytics";
 
 type DeeplinkTrackedLinkProps = {
   readonly href: string;
@@ -33,6 +34,12 @@ export function DeeplinkTrackedLink({
         if (event !== "cmuxterm_linking_started") {
           posthog.capture("cmuxterm_linking_started", properties);
         }
+        captureWebAcquisitionEvent("web_deeplink_started", {
+          entrypoint: "deeplink_page",
+          result: result === "open_native" ? "started" : "failed",
+          link_kind: kind,
+          fallback_shown: result === "download_fallback",
+        });
       }}
     >
       {children}

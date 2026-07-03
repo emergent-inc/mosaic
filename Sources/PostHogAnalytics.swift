@@ -200,13 +200,51 @@ final class PostHogAnalytics: @unchecked Sendable {
         }
     }
 
+    func identifyAuthenticatedUser(userID: String, properties: [String: Any] = [:]) {
+        dispatchAsyncOnWorkQueue {
+            self.startIfNeededOnWorkQueue()
+            guard self.didStart else { return }
+            guard !userID.isEmpty else { return }
+
+            var identityProperties = properties
+            identityProperties["is_authenticated"] = true
+            identityProperties["platform"] = "cmuxterm"
+            PostHogSDK.shared.identify(
+                userID,
+                userProperties: Self.sanitizedProperties(
+                    identityProperties,
+                    infoDictionary: Bundle.main.infoDictionary ?? [:],
+                    maxProperties: 32,
+                    maxKeyLength: self.maxPropertyKeyLength,
+                    maxStringLength: self.maxPropertyStringLength,
+                    blockedKeyFragments: self.blockedPropertyKeyFragments
+                )
+            )
+        }
+    }
+
+    func resetIdentity() {
+        dispatchAsyncOnWorkQueue {
+            guard self.didStart else { return }
+            PostHogSDK.shared.reset()
+            PostHogSDK.shared.register(Self.superProperties(infoDictionary: Bundle.main.infoDictionary ?? [:]))
+        }
+    }
+
     private func startIfNeededOnWorkQueue() {
         guard !didStart else { return }
         guard isEnabled else { return }
 
         let config = PostHogConfig(apiKey: apiKey, host: host)
-        config.captureApplicationLifecycleEvents = false
-        config.captureScreenViews = false
+        config.captureApplicationLifecycleEvents = true
+        config.captureScreenViews = true
+        config.setBeforeSend { event in
+            event.properties = Self.sanitizedProperties(
+                event.properties,
+                infoDictionary: Bundle.main.infoDictionary ?? [:]
+            )
+            return event
+        }
 #if DEBUG
         config.debug = ProcessInfo.processInfo.environment["CMUX_POSTHOG_DEBUG"] == "1"
 #endif
@@ -411,7 +449,7 @@ final class PostHogAnalytics: @unchecked Sendable {
             guard isSafePropertyKey(key, maxKeyLength: maxKeyLength, blockedKeyFragments: blockedKeyFragments) else {
                 continue
             }
-            guard let value = sanitizedPropertyValue(input[key], maxStringLength: maxStringLength) else {
+            guard let value = sanitizedPropertyValue(input[key], key: key, maxStringLength: maxStringLength) else {
                 continue
             }
             output[key] = value
@@ -482,16 +520,18 @@ final class PostHogAnalytics: @unchecked Sendable {
 
     nonisolated private static func sanitizedPropertyValue(
         _ value: Any?,
+        key: String,
         maxStringLength: Int
     ) -> Any? {
         switch value {
         case let value as String:
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
-            if trimmed.count <= maxStringLength {
+            let effectiveMaxStringLength = key == "layout_tree" ? 2_048 : maxStringLength
+            if trimmed.count <= effectiveMaxStringLength {
                 return trimmed
             }
-            return String(trimmed.prefix(maxStringLength))
+            return String(trimmed.prefix(effectiveMaxStringLength))
         case let value as Bool:
             return value
         case let value as Int:
