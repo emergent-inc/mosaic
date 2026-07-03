@@ -965,6 +965,65 @@ final class WindowDragHandleHitTests: XCTestCase {
         )
     }
 
+    func testFullWidthDragHandleYieldsToRegisteredTrailingHeaderControls() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 120),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        guard let contentView = window.contentView else {
+            XCTFail("Expected content view")
+            return
+        }
+
+        let dragHandle = NSView(frame: contentView.bounds)
+        dragHandle.autoresizingMask = [.width, .height]
+        contentView.addSubview(dragHandle)
+
+        let trailingHeaderControl = NSView(
+            frame: NSRect(
+                x: contentView.bounds.maxX - 96,
+                y: contentView.bounds.maxY - WindowChromeMetrics.appTitlebarHeight,
+                width: RightSidebarChromeMetrics.headerControlSize,
+                height: RightSidebarChromeMetrics.headerControlSize
+            )
+        )
+        contentView.addSubview(trailingHeaderControl)
+        MinimalModeTitlebarControlHitRegionRegistry.register(trailingHeaderControl)
+        defer { MinimalModeTitlebarControlHitRegionRegistry.unregister(trailingHeaderControl) }
+
+        let registeredControlPoint = NSPoint(
+            x: trailingHeaderControl.frame.midX,
+            y: trailingHeaderControl.frame.midY
+        )
+        XCTAssertTrue(isMinimalModeTitlebarControlHit(window: window, locationInWindow: registeredControlPoint))
+        XCTAssertFalse(
+            windowDragHandleShouldCaptureHit(
+                dragHandle.convert(registeredControlPoint, from: nil),
+                in: dragHandle,
+                eventType: .leftMouseDown,
+                eventWindow: window
+            ),
+            "Full-width titlebar drag handles must yield to registered trailing header controls."
+        )
+
+        let emptyTrailingHeaderPoint = NSPoint(
+            x: contentView.bounds.maxX - 12,
+            y: trailingHeaderControl.frame.midY
+        )
+        XCTAssertTrue(
+            windowDragHandleShouldCaptureHit(
+                dragHandle.convert(emptyTrailingHeaderPoint, from: nil),
+                in: dragHandle,
+                eventType: .leftMouseDown,
+                eventWindow: window
+            ),
+            "Empty trailing header space should remain draggable when the drag handle spans the full header."
+        )
+    }
+
     func testMinimalModeSidebarFallbackHitUsesHardcodedLeadingInset() {
         let suiteName = "WindowDragHandleHitTests.leadingInset.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
