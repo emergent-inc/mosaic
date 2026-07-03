@@ -203,7 +203,7 @@ if [[ "$CHANNEL" != "debug" ]]; then
     security cms -D -i "$PROFILE_PATH" > "$TMP_PROFILE_PLIST"
     APP_IDENTIFIER="$(plist_value "$TMP_PROFILE_PLIST" "Entitlements:com.apple.application-identifier")"
     rm -f "$TMP_PROFILE_PLIST"
-    EXPECTED_APP_IDENTIFIER="7WLXT3NR37.$BUNDLE_ID"
+    EXPECTED_APP_IDENTIFIER="${APPLE_TEAM_ID:-T342J8UQGV}.$BUNDLE_ID"
     if [[ "$APP_IDENTIFIER" != "$EXPECTED_APP_IDENTIFIER" ]]; then
       echo "error: provisioning profile app id expected '$EXPECTED_APP_IDENTIFIER', found '$APP_IDENTIFIER'" >&2
       exit 1

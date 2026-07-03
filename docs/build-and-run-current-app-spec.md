@@ -161,10 +161,10 @@ The release profile from `APPLE_RELEASE_PROVISIONING_PROFILE_BASE64` is decoded 
 cmux.app/Contents/embedded.provisionprofile
 ```
 
-CI validates that the profile app identifier matches:
+CI validates that the profile app identifier matches `APPLE_TEAM_ID` plus the release bundle id:
 
 ```text
-7WLXT3NR37.mosaic.com.emergent.app
+T342J8UQGV.mosaic.com.emergent.app
 ```
 
 ### 5. Sign The App
