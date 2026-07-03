@@ -12809,6 +12809,7 @@ private struct SidebarFooterButtons: View {
             } else {
                 SidebarAccountButton(coordinator: nil, browserSignIn: nil)
             }
+            SidebarTutorialVideoButton()
 //            SidebarHelpMenuButton(onSendFeedback: onSendFeedback)
             // The puzzle button opens the extensions browser; it only shows
             // while the experimental Extensions feature is enabled.
@@ -12928,6 +12929,29 @@ private struct SidebarAccountButton: View {
         } else {
             AppDelegate.presentPreferencesWindow(navigationTarget: .account)
         }
+    }
+}
+
+private struct SidebarTutorialVideoButton: View {
+    private let title = String(localized: "sidebar.tutorialVideo.button", defaultValue: "Replay Tutorial Video")
+    private let buttonSize: CGFloat = 22
+    private let iconSize: CGFloat = 11
+
+    var body: some View {
+        TrackedButton("contentview_button_tutorial_video", action: {
+            Task { @MainActor in
+                TutorialVideoWindowController.shared.show()
+            }
+        }) {
+            CmuxSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                .frame(width: buttonSize, height: buttonSize, alignment: .center)
+        }
+        .buttonStyle(SidebarFooterIconButtonStyle())
+        .frame(width: buttonSize, height: buttonSize, alignment: .center)
+        .safeHelp(title)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier("SidebarTutorialVideoButton")
     }
 }
 
