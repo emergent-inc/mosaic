@@ -666,7 +666,7 @@ private struct SessionRow: View, Equatable {
     }
 
     private var rowBackground: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: 7, style: .continuous)
             .fill(rowBackgroundColor)
             .padding(.horizontal, 6)
     }
@@ -677,7 +677,7 @@ private struct SessionRow: View, Equatable {
 
     private var rowBackgroundColor: Color {
         if isHovered {
-            return Color.primary.opacity(0.08)
+            return Color.primary.opacity(0.12)
         }
         if isPreviewPresented {
             return Color.primary.opacity(0.07)
