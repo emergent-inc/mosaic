@@ -398,7 +398,6 @@ private struct IndexSectionView: View, Equatable {
                         onResume: actions.onResume,
                         onDelete: actions.onDelete
                     )
-                        .equatable()
                         .id(entry.id)
                 }
                 if section.shouldOfferShowMore(rowLimit: rowLimit) {
@@ -586,12 +585,12 @@ private struct SessionRow: View, Equatable {
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
+            deleteButton
             Spacer(minLength: 8)
             Text(relativeTime(entry.modified))
                 .cmuxFont(size: 11, weight: .light, monospacedDigit: true)
                 .foregroundColor(.secondary.opacity(0.65))
                 .fixedSize()
-            deleteButton
         }
         .padding(.leading, 32)
         .padding(.trailing, 8)
@@ -600,7 +599,12 @@ private struct SessionRow: View, Equatable {
         .contentShape(Rectangle())
         .background(rowBackground)
         .background(previewPopoverHost)
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            isHovered = hovering
+            if !hovering {
+                isDeleteHovered = false
+            }
+        }
         .help(helpText)
         .onTapGesture(count: 2) {
             onPreviewPresentationChange(true)
@@ -641,9 +645,9 @@ private struct SessionRow: View, Equatable {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .opacity(isHovered ? 1 : 0)
             .help(String(localized: "sessionIndex.row.delete.tooltip", defaultValue: "Delete Session"))
             .accessibilityLabel(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
+            .fixedSize()
             .onHover { isDeleteHovered = $0 }
         }
     }
@@ -668,7 +672,6 @@ private struct SessionRow: View, Equatable {
     }
 
     private var deleteForegroundColor: Color {
-        guard isHovered else { return .secondary.opacity(0) }
         return isDeleteHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
     }
 
@@ -2294,7 +2297,6 @@ private struct SectionPopoverView: View {
                                     delete(entry)
                                 }
                             )
-                            .equatable()
                         }
                         if hasMore {
                             // Always visible while more pages exist. Serves
@@ -2579,9 +2581,9 @@ private struct PopoverRow: View, Equatable {
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
+            deleteButton
             Spacer(minLength: 8)
             modifiedText
-            deleteButton
         }
         .padding(.leading, 12)
         .padding(.trailing, 8)
@@ -2589,7 +2591,12 @@ private struct PopoverRow: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            isHovered = hovering
+            if !hovering {
+                isDeleteHovered = false
+            }
+        }
         .onTapGesture(count: 2) { onActivate() }
         .onDrag {
             sessionDragItemProvider(for: entry)
@@ -2617,15 +2624,14 @@ private struct PopoverRow: View, Equatable {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .opacity(isHovered ? 1 : 0)
             .help(String(localized: "sessionIndex.row.delete.tooltip", defaultValue: "Delete Session"))
             .accessibilityLabel(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
+            .fixedSize()
             .onHover { isDeleteHovered = $0 }
         }
     }
 
     private var deleteForegroundColor: Color {
-        guard isHovered else { return .secondary.opacity(0) }
         return isDeleteHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
     }
 }
