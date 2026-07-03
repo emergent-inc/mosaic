@@ -33,6 +33,7 @@ struct CollaborationParticipantAvatarSnapshotTests {
         #expect(snapshot.initials == "DR")
         #expect(snapshot.avatarSeed == "dorsa_rohani")
         #expect(snapshot.colorHex == "#7A5CFF")
+        #expect(snapshot.imageURL == nil)
     }
 
     @Test
@@ -57,7 +58,8 @@ struct CollaborationParticipantAvatarSnapshotTests {
         let snapshot = CollaborationParticipantAvatarSnapshot.remote(
             peerID: "remote-peer",
             displayName: "Grace Hopper",
-            colorHex: "#34C759"
+            colorHex: "#34C759",
+            imageURL: "https://img.example/grace.png"
         )
 
         #expect(snapshot.id == "remote-peer")
@@ -65,6 +67,7 @@ struct CollaborationParticipantAvatarSnapshotTests {
         #expect(snapshot.initials == "GH")
         #expect(snapshot.avatarSeed == "Grace Hopper")
         #expect(snapshot.colorHex == "#34C759")
+        #expect(snapshot.imageURL == "https://img.example/grace.png")
     }
 
     @Test

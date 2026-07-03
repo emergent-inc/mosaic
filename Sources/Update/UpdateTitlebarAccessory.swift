@@ -2668,6 +2668,62 @@ private final class HoverTrackingNSView: NSView {
     }
 }
 
+/// Right-aligned native titlebar accessory that shows the Mosaic logo in the
+/// top-right of the window titlebar. The logo is purely decorative: it never
+/// handles clicks. The container reuses `TitlebarAccessoryContainerView`, whose
+/// window-drag convention lets a click/double-click on the logo region drag the
+/// window just like the surrounding empty titlebar, because the hosted image
+/// view is transparent to hit-testing.
+final class TitlebarMosaicLogoAccessoryViewController: NSTitlebarAccessoryViewController {
+    // Aspect ratio of the MosaicLogo asset (145 x 37).
+    private static let logoAspectRatio: CGFloat = 145.0 / 37.0
+
+    private final class LogoImageView: NSImageView {
+        override var mouseDownCanMoveWindow: Bool { false }
+        // Transparent to hit-testing so window drags/double-clicks over the logo
+        // fall through to the container's drag handling.
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    private let logoImageView = LogoImageView()
+
+    init() {
+        super.init(nibName: nil, bundle: nil)
+
+        let logoHeight: CGFloat = 20
+        let logoWidth = (logoHeight * Self.logoAspectRatio).rounded()
+        let horizontalPadding: CGFloat = 10
+        let barHeight = WindowChromeMetrics.appTitlebarHeight
+        let containerWidth = logoWidth + horizontalPadding * 2
+
+        let container = TitlebarAccessoryContainerView(
+            frame: NSRect(x: 0, y: 0, width: containerWidth, height: barHeight)
+        )
+        container.autoresizingMask = [.height]
+        container.wantsLayer = true
+
+        logoImageView.image = NSImage(named: "MosaicLogo")
+        logoImageView.imageScaling = .scaleProportionallyUpOrDown
+        logoImageView.imageAlignment = .alignCenter
+        logoImageView.frame = NSRect(
+            x: horizontalPadding,
+            y: ((barHeight - logoHeight) / 2).rounded(),
+            width: logoWidth,
+            height: logoHeight
+        )
+        logoImageView.autoresizingMask = [.minYMargin, .maxYMargin]
+        logoImageView.setAccessibilityElement(false)
+        container.addSubview(logoImageView)
+
+        view = container
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 @MainActor
 final class UpdateTitlebarAccessoryController {
     private let updateLog: UpdateLogStore
@@ -2678,6 +2734,7 @@ final class UpdateTitlebarAccessoryController {
     private var pendingAttachRetries: [ObjectIdentifier: Int] = [:]
     private var startupScanWorkItems: [DispatchWorkItem] = []
     private let controlsIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarControls")
+    private let logoIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarMosaicLogo")
     private let controlsControllers = NSHashTable<TitlebarControlsAccessoryViewController>.weakObjects()
     private var lastKnownPresentationMode: WorkspacePresentationModeSettings.Mode = WorkspacePresentationModeSettings.mode()
     private var detachedNotificationsPopover: NSPopover?
@@ -2839,6 +2896,13 @@ final class UpdateTitlebarAccessoryController {
             controlsControllers.add(controls)
         }
 
+        if !window.titlebarAccessoryViewControllers.contains(where: { $0.view.identifier == logoIdentifier }) {
+            let logo = TitlebarMosaicLogoAccessoryViewController()
+            logo.layoutAttribute = .right
+            logo.view.identifier = logoIdentifier
+            window.addTitlebarAccessoryViewController(logo)
+        }
+
         attachedWindows.add(window)
         applyAccessoryVisibility(for: window)
 
@@ -2860,7 +2924,8 @@ final class UpdateTitlebarAccessoryController {
         let shouldHide = WorkspacePresentationModeSettings.mode() == .minimal
             || window.styleMask.contains(.fullScreen)
         for accessory in window.titlebarAccessoryViewControllers
-            where accessory.view.identifier == controlsIdentifier {
+            where accessory.view.identifier == controlsIdentifier
+                || accessory.view.identifier == logoIdentifier {
             accessory.isHidden = shouldHide
             accessory.view.isHidden = shouldHide
             accessory.view.alphaValue = shouldHide ? 0 : 1
@@ -2875,7 +2940,7 @@ final class UpdateTitlebarAccessoryController {
         }
         let matchingIndices = window.titlebarAccessoryViewControllers.indices.reversed().filter { index in
             let id = window.titlebarAccessoryViewControllers[index].view.identifier
-            return id == controlsIdentifier
+            return id == controlsIdentifier || id == logoIdentifier
         }
         guard !matchingIndices.isEmpty || attachedWindows.contains(window) else { return }
 

@@ -12,6 +12,8 @@ public struct CollaborationParticipantAvatarSnapshot: Equatable, Identifiable, S
     public let avatarSeed: String
     /// Hex color used for local avatar fallback rendering.
     public let colorHex: String
+    /// Remote profile image URL used when available.
+    public let imageURL: String?
 
     /// Stable identity for SwiftUI lists.
     public var id: String { peerID }
@@ -23,18 +25,21 @@ public struct CollaborationParticipantAvatarSnapshot: Equatable, Identifiable, S
     ///   - initials: Initials used by generated avatar providers and local fallbacks.
     ///   - avatarSeed: Stable seed used for generated avatars.
     ///   - colorHex: Hex color used for local avatar fallback rendering.
+    ///   - imageURL: Remote profile image URL used when available.
     public init(
         peerID: String,
         displayName: String,
         initials: String,
         avatarSeed: String,
-        colorHex: String
+        colorHex: String,
+        imageURL: String? = nil
     ) {
         self.peerID = peerID
         self.displayName = displayName
         self.initials = initials
         self.avatarSeed = avatarSeed
         self.colorHex = colorHex
+        self.imageURL = imageURL
     }
 
     /// Creates display data for the local participant.
@@ -53,7 +58,8 @@ public struct CollaborationParticipantAvatarSnapshot: Equatable, Identifiable, S
             displayName: identity.displayName,
             initials: initials(for: resolvedSeed),
             avatarSeed: resolvedSeed,
-            colorHex: identity.color
+            colorHex: identity.color,
+            imageURL: identity.imageURL
         )
     }
 
@@ -62,11 +68,13 @@ public struct CollaborationParticipantAvatarSnapshot: Equatable, Identifiable, S
     ///   - peerID: Relay-visible peer identifier.
     ///   - displayName: Display name reported by the remote peer.
     ///   - colorHex: Hex color reported by the remote peer.
+    ///   - imageURL: Remote profile image URL reported by the remote peer.
     /// - Returns: Display data for the remote participant.
     public static func remote(
         peerID: String,
         displayName: String,
-        colorHex: String
+        colorHex: String,
+        imageURL: String? = nil
     ) -> CollaborationParticipantAvatarSnapshot {
         let seed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedSeed = seed.isEmpty ? peerID : seed
@@ -75,7 +83,8 @@ public struct CollaborationParticipantAvatarSnapshot: Equatable, Identifiable, S
             displayName: displayName,
             initials: initials(for: displayName),
             avatarSeed: resolvedSeed,
-            colorHex: colorHex
+            colorHex: colorHex,
+            imageURL: imageURL
         )
     }
 
