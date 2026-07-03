@@ -52,6 +52,27 @@ final class HostSettingsActions: SettingsHostActions {
         appIconModeObservation?.invalidate()
     }
 
+    private func trackSettingsAction(
+        _ actionID: String,
+        properties: [String: Any] = [:]
+    ) {
+        PostHogAnalytics.shared.trackAction(
+            actionID: actionID,
+            surface: "settings",
+            entrypoint: "settings_host_actions",
+            source: "HostSettingsActions",
+            properties: properties
+        )
+        PostHogAnalytics.shared.capture(
+            .buttonClicked,
+            properties: ([
+                "action_id": actionID,
+                "surface": "settings",
+                "entrypoint": "settings_host_actions",
+            ] as [String: Any]).merging(properties) { current, _ in current }
+        )
+    }
+
     private func startObservingAppIconMode() {
         // Apply once on construction so a value persisted before this
         // instance existed (e.g. from the config file) is reflected.
@@ -70,14 +91,17 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func clearBrowserHistory() {
+        trackSettingsAction("settings.clear_browser_history")
         BrowserHistoryStore.shared.clearHistory()
     }
 
     func sleepyModePreview() {
+        trackSettingsAction("settings.sleepy_mode_preview")
         SleepyModeController.shared.preview()
     }
 
     func sleepyModeStart() {
+        trackSettingsAction("settings.sleepy_mode_start")
         SleepyModeController.shared.activate()
     }
 
@@ -86,6 +110,7 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func openConfigInExternalEditor() {
+        trackSettingsAction("settings.open_config_external_editor")
         // Honor the user's configured editor (`preferredEditorCommand`),
         // falling back to the OS default. Opening the config file directly
         // through `NSWorkspace.shared.open` would route to the default
@@ -94,20 +119,24 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func sendFeedback() {
+        trackSettingsAction("settings.send_feedback")
         guard let url = URL(string: "https://github.com/emergent-inc/mosaic/issues/new") else { return }
         NSWorkspace.shared.open(url)
     }
 
     func sendTestNotification() {
+        trackSettingsAction("settings.send_test_notification")
         TerminalNotificationStore.shared.sendSettingsTestNotification()
     }
 
     func openSystemNotificationSettings() {
+        trackSettingsAction("settings.open_system_notification_settings")
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") else { return }
         NSWorkspace.shared.open(url)
     }
 
     func restartApp() {
+        trackSettingsAction("settings.restart_app")
         let bundlePath = Bundle.main.bundlePath
         let task = Process()
         task.launchPath = "/usr/bin/open"
@@ -117,14 +146,17 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func openBrowserImportFlow() {
+        trackSettingsAction("settings.open_browser_import_flow")
         BrowserDataImportCoordinator.shared.presentImportDialog()
     }
 
     func requestNotificationAuthorization() {
+        trackSettingsAction("settings.request_notification_authorization")
         TerminalNotificationStore.shared.requestAuthorizationFromSettings()
     }
 
     func openTerminalConfigWindow() {
+        trackSettingsAction("settings.open_terminal_config_window")
         NSApp.activate(ignoringOtherApps: true)
 
         // Legacy opened the dedicated config window via the SwiftUI
@@ -159,11 +191,13 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func setMenuBarOnly(_ enabled: Bool) -> Bool {
+        trackSettingsAction("settings.set_menu_bar_only", properties: ["enabled": enabled])
         MenuBarOnlySettings.setEnabled(enabled)
         return true
     }
 
     func openMobilePairingWindow() {
+        trackSettingsAction("settings.open_mobile_pairing_window")
         MobilePairingWindowController.shared.show()
     }
 
@@ -185,6 +219,7 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func previewNotificationSound(value: String, customFilePath: String) {
+        trackSettingsAction("settings.preview_notification_sound")
         NotificationSoundSettings.previewSound(value: value, customFilePath: customFilePath)
     }
 
@@ -205,11 +240,15 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func setSidebarFontSize(_ points: Double) async -> Bool {
-        await persistFontSize(
+        let didPersist = await persistFontSize(
             key: CmuxGhosttyConfigSettingEditor.sidebarFontSizeKey,
             points: CmuxGhosttyConfigSettingEditor().clampedSidebarFontSize(points),
             reloadSource: "settings.sidebar.fontSize"
         )
+        if didPersist {
+            trackSettingsAction("settings.set_sidebar_font_size")
+        }
+        return didPersist
     }
 
     func surfaceTabBarFontSize() -> SettingsFontSize {
@@ -223,11 +262,15 @@ final class HostSettingsActions: SettingsHostActions {
     }
 
     func setSurfaceTabBarFontSize(_ points: Double) async -> Bool {
-        await persistFontSize(
+        let didPersist = await persistFontSize(
             key: CmuxGhosttyConfigSettingEditor.surfaceTabBarFontSizeKey,
             points: CmuxGhosttyConfigSettingEditor().clampedSurfaceTabBarFontSize(points),
             reloadSource: "settings.terminal.tabBarFontSize"
         )
+        if didPersist {
+            trackSettingsAction("settings.set_surface_tab_bar_font_size")
+        }
+        return didPersist
     }
 
     func formattedFontSize(_ points: Double) -> String {
@@ -304,12 +347,16 @@ final class HostSettingsActions: SettingsHostActions {
     func applyMobilePairingPort(_ port: Int) async -> MobilePairingPortApplyResult {
         switch await MobileHostService.shared.applyConfiguredPort(port) {
         case .applied(let bound):
+            trackSettingsAction("settings.mobile_pairing_port_applied")
             return .applied(port: bound)
         case .portInUse:
+            trackSettingsAction("settings.mobile_pairing_port_failed", properties: ["result": "port_in_use"])
             return .portInUse(requestedPort: port)
         case .savedWhileDisabled:
+            trackSettingsAction("settings.mobile_pairing_port_saved_for_later")
             return .savedForLater(port: port)
         case .invalid:
+            trackSettingsAction("settings.mobile_pairing_port_failed", properties: ["result": "invalid"])
             return .invalid(requestedPort: port)
         }
     }

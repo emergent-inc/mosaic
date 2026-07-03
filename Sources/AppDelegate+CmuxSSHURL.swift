@@ -609,11 +609,23 @@ extension AppDelegate {
         }
         let sshURLIntentCount = sshURLRequests.count + sshURLParseErrors.count
         guard sshURLIntentCount > 0 else { return false }
+        ProductAnalytics.shared.trackLinking(
+            .started,
+            linkKind: .ssh,
+            entrypoint: .externalURL,
+            result: .started,
+            properties: [
+                "request_count": sshURLRequests.count,
+                "parse_error_count": sshURLParseErrors.count,
+            ]
+        )
 
         if sshURLIntentCount > 1 {
+            trackLinkingFailed(linkKind: .ssh, errorKind: "multiple_links")
             showCmuxSSHURLParseError(.multipleLinks)
         } else {
             for error in sshURLParseErrors {
+                trackLinkingFailed(linkKind: .ssh, errorKind: Self.analyticsErrorKind(for: error))
                 showCmuxSSHURLParseError(error)
             }
             if let request = sshURLRequests.first {
@@ -639,11 +651,26 @@ extension AppDelegate {
         }
         let textURLIntentCount = textURLRequests.count + textURLParseErrors.count
         guard textURLIntentCount > 0 else { return false }
+        let linkKind = textURLRequests.first.map { Self.analyticsLinkKind(for: $0) }
+            ?? textURLParseErrors.first.map { Self.analyticsLinkKind(for: $0) }
+            ?? .prompt
+        ProductAnalytics.shared.trackLinking(
+            .started,
+            linkKind: linkKind,
+            entrypoint: .externalURL,
+            result: .started,
+            properties: [
+                "request_count": textURLRequests.count,
+                "parse_error_count": textURLParseErrors.count,
+            ]
+        )
 
         if textURLIntentCount > 1 {
+            trackLinkingFailed(linkKind: linkKind, errorKind: "multiple_links")
             showCmuxTextURLParseError(.multipleLinks)
         } else {
             for error in textURLParseErrors {
+                trackLinkingFailed(linkKind: Self.analyticsLinkKind(for: error), errorKind: Self.analyticsErrorKind(for: error))
                 showCmuxTextURLParseError(error)
             }
             if let request = textURLRequests.first {
@@ -662,6 +689,13 @@ extension AppDelegate {
         deferInitialMainWindowBootstrapForExternalConfirmation()
         guard confirmCmuxSSHURLRequest(request) else {
             resumeInitialMainWindowBootstrapAfterExternalConfirmation(debugSource: "sshURL.cancelled")
+            ProductAnalytics.shared.trackLinking(
+                .failed,
+                linkKind: .ssh,
+                entrypoint: .externalURL,
+                result: .cancelled,
+                properties: ["error_kind": "user_cancelled"]
+            )
 #if DEBUG
             cmuxDebugLog("sshURL.cancelled")
 #endif
@@ -671,9 +705,25 @@ extension AppDelegate {
         prepareForExplicitOpenIntentAtStartup()
         bootstrapInitialMainWindowAfterAcceptedExternalOpen(debugSource: "sshURL.confirmed")
         NSApp.activate(ignoringOtherApps: true)
-        _ = CmuxSSHURLProcessLauncher.shared.start(
+        let didStart = CmuxSSHURLProcessLauncher.shared.start(
             request: request,
             preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
+        )
+        var analyticsProperties: [String: Any] = [
+            "has_port": request.port != nil,
+            "has_title": request.title != nil,
+            "no_focus": request.noFocus,
+        ]
+        if !didStart {
+            analyticsProperties["error_kind"] = "launcher_failed"
+        }
+        ProductAnalytics.shared.trackLinking(
+            didStart ? .completed : .failed,
+            linkKind: .ssh,
+            entrypoint: .externalURL,
+            result: didStart ? .completed : .failed,
+            properties: analyticsProperties,
+            flush: didStart
         )
     }
 
@@ -686,6 +736,13 @@ extension AppDelegate {
         deferInitialMainWindowBootstrapForExternalConfirmation()
         guard confirmCmuxTextURLRequest(request) else {
             resumeInitialMainWindowBootstrapAfterExternalConfirmation(debugSource: "textURL.cancelled")
+            ProductAnalytics.shared.trackLinking(
+                .failed,
+                linkKind: Self.analyticsLinkKind(for: request),
+                entrypoint: .externalURL,
+                result: .cancelled,
+                properties: ["error_kind": "user_cancelled"]
+            )
 #if DEBUG
             cmuxDebugLog("textURL.cancelled")
 #endif
@@ -713,6 +770,51 @@ extension AppDelegate {
         if !didPaste {
             showCmuxTextURLPasteFailure(request)
         }
+        var analyticsProperties: [String: Any] = [
+            "no_focus": request.noFocus,
+        ]
+        if !didPaste {
+            analyticsProperties["error_kind"] = "paste_failed"
+        }
+        ProductAnalytics.shared.trackLinking(
+            didPaste ? .completed : .failed,
+            linkKind: Self.analyticsLinkKind(for: request),
+            entrypoint: .externalURL,
+            result: didPaste ? .completed : .failed,
+            properties: analyticsProperties,
+            flush: didPaste
+        )
+    }
+
+    private func trackLinkingFailed(linkKind: LinkingAnalyticsKind, errorKind: String) {
+        ProductAnalytics.shared.trackLinking(
+            .failed,
+            linkKind: linkKind,
+            entrypoint: .externalURL,
+            result: .failed,
+            properties: ["error_kind": errorKind]
+        )
+    }
+
+    private static func analyticsLinkKind(for request: CmuxTextURLRequest) -> LinkingAnalyticsKind {
+        switch request.kind {
+        case .prompt:
+            return .prompt
+        case .rules:
+            return .rules
+        }
+    }
+
+    private static func analyticsLinkKind(for _: CmuxTextURLParseError) -> LinkingAnalyticsKind {
+        .prompt
+    }
+
+    private static func analyticsErrorKind(for error: CmuxSSHURLParseError) -> String {
+        String(describing: error)
+    }
+
+    private static func analyticsErrorKind(for error: CmuxTextURLParseError) -> String {
+        String(describing: error)
     }
 
     private func confirmCmuxSSHURLRequest(_ request: CmuxSSHURLRequest) -> Bool {
