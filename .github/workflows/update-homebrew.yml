@@ -79,7 +79,7 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          repository: emergent-inc/homebrew-cmux
+          repository: manaflow-ai/homebrew-cmux
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-cmux
 
