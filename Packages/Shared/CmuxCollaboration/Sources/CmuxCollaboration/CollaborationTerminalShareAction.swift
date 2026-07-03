@@ -1,24 +1,41 @@
-/// The next action for a terminal collaboration button press.
+/// The next action for a terminal sharing control.
 public enum CollaborationTerminalShareAction: Equatable, Sendable {
-    /// Show the create, join, or rejoin session chooser.
+    /// Show the create or join session chooser before sharing can start.
     case presentSessionChooser
-    /// Rejoin the collaboration session already assigned to this workspace.
-    case rejoinWorkspaceSession
-    /// Show the recipient picker for the terminal that is already connected to a session.
+    /// Share the local terminal in the workspace's existing session.
+    case shareInWorkspaceSession
+    /// Stop hosting the local terminal.
+    case stopSharingHostedTerminal
+    /// Stop viewing a mirrored remote terminal.
+    case stopViewingRemoteTerminal
+    /// Show the recipient picker for a hosted terminal.
     case presentParticipantPicker
 
-    /// Resolves the action for the current terminal state.
+    /// Resolves the primary sharing-control action for the current terminal state.
     /// - Parameters:
-    ///   - isShared: Whether the terminal is already shared in any session.
+    ///   - role: Whether the terminal is not shared, hosted by this user, or mirrored from a collaborator.
     ///   - workspaceHasSession: Whether the terminal's workspace already owns a session.
     /// - Returns: The action the peer button should perform.
-    public static func action(
-        isShared: Bool,
+    public static func primaryAction(
+        role: CollaborationSurfaceSharingRole,
         workspaceHasSession: Bool = false
     ) -> CollaborationTerminalShareAction {
-        if isShared {
-            return .presentParticipantPicker
+        switch role {
+        case .notShared:
+            return workspaceHasSession ? .shareInWorkspaceSession : .presentSessionChooser
+        case .hosted:
+            return .stopSharingHostedTerminal
+        case .mirrored:
+            return .stopViewingRemoteTerminal
         }
-        return workspaceHasSession ? .rejoinWorkspaceSession : .presentSessionChooser
+    }
+
+    /// Resolves the people-management action for the current terminal state.
+    /// - Parameter role: Whether the terminal is not shared, hosted by this user, or mirrored from a collaborator.
+    /// - Returns: The action available from the people button, when any.
+    public static func managementAction(
+        role: CollaborationSurfaceSharingRole
+    ) -> CollaborationTerminalShareAction? {
+        role == .hosted ? .presentParticipantPicker : nil
     }
 }
