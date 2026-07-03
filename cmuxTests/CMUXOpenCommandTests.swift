@@ -692,14 +692,13 @@ final class CMUXOpenCommandTests: XCTestCase {
             cliPath: cliPath,
             arguments: ["diff", patchURL.path],
             environmentOverrides: [
-                "AppleLanguages": "(ja)",
-                "LANG": "ja_JP.UTF-8"
+                "AppleLanguages": "(en)",
+                "LANG": "en_US.UTF-8"
             ]
         )
 
-        XCTAssertTrue(result.html.contains("インジケータースタイル"), result.html)
-        XCTAssertTrue(result.html.contains("git apply コマンドをコピー"), result.html)
-        XCTAssertFalse(result.html.contains("Indicator style"), result.html)
+        XCTAssertTrue(result.html.contains("Indicator style"), result.html)
+        XCTAssertTrue(result.html.contains("Copy git apply command"), result.html)
     }
 
     func testDiffCommandUsageDocumentsFocusTitleAndNoFocus() throws {

@@ -10,24 +10,6 @@
             "state": "translated",
             "value": "Attach"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "添付"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прикріпити"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "첨부"
-          }
         }
       }
     },
@@ -38,24 +20,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Attach Images"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像を添付"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прикріпити зображення"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지 첨부"
           }
         }
       }
@@ -68,24 +32,6 @@
             "state": "translated",
             "value": "Attach Images"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像を添付"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прикріпити зображення"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지 첨부"
-          }
         }
       }
     },
@@ -96,24 +42,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Up to 10 images."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像は最大10枚まで添付できます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "До 10 зображень."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최대 10장의 이미지."
           }
         }
       }
@@ -126,24 +54,6 @@
             "state": "translated",
             "value": "Cancel"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャンセル"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скасувати"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "취소"
-          }
         }
       }
     },
@@ -154,24 +64,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn't send feedback. Check your connection and try again."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバックを送信できませんでした。接続を確認して、もう一度お試しください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося надіслати відгук. Перевірте підключення та спробуйте ще раз."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백을 보내지 못했습니다. 연결을 확인하고 다시 시도하세요."
           }
         }
       }
@@ -184,24 +76,6 @@
             "state": "translated",
             "value": "Done"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "完了"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Готово"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "완료"
-          }
         }
       }
     },
@@ -213,24 +87,6 @@
             "state": "translated",
             "value": "Your Email"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メールアドレス"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваш email"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이메일 주소"
-          }
         }
       }
     },
@@ -238,24 +94,6 @@
       "extractionState": "manual",
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
-          }
-        },
-        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "you@example.com"
@@ -271,24 +109,6 @@
             "state": "translated",
             "value": "Enter a message before sending."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "送信する前にメッセージを入力してください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Введіть повідомлення перед надсиланням."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보내기 전에 메시지를 입력하세요."
-          }
         }
       }
     },
@@ -299,24 +119,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Feedback is unavailable right now. Email contact@emergent.inc instead."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在フィードバックを送信できません。代わりに contact@emergent.inc までメールしてください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відгуки зараз недоступні. Напишіть на contact@emergent.inc."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 피드백을 사용할 수 없습니다. 대신 contact@emergent.inc로 이메일을 보내주세요."
           }
         }
       }
@@ -329,24 +131,6 @@
             "state": "translated",
             "value": "Couldn't send feedback. Please try again."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバックを送信できませんでした。もう一度お試しください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося надіслати відгук. Спробуйте ще раз."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백을 보내지 못했습니다. 다시 시도하세요."
-          }
         }
       }
     },
@@ -357,24 +141,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enter a valid email address."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "有効なメールアドレスを入力してください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Введіть дійсну електронну адресу."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "올바른 이메일 주소를 입력하세요."
           }
         }
       }
@@ -387,24 +153,6 @@
             "state": "translated",
             "value": "One of the selected files could not be attached."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選択したファイルのうち1つを添付できませんでした。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Один з вибраних файлів не вдалося прикріпити."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택한 파일 중 하나를 첨부할 수 없습니다."
-          }
         }
       }
     },
@@ -415,24 +163,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Message"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メッセージ"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Повідомлення"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "메시지"
           }
         }
       }
@@ -445,24 +175,6 @@
             "state": "translated",
             "value": "Share feedback, feature requests, or issues."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバック、機能要望、不具合をお知らせください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поділіться відгуком, пропозиціями або повідомте про проблему."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백, 기능 요청 또는 문제를 공유하세요."
-          }
         }
       }
     },
@@ -473,24 +185,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your message is too long."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メッセージが長すぎます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваше повідомлення занадто довге."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "메시지가 너무 깁니다."
           }
         }
       }
@@ -503,24 +197,6 @@
             "state": "translated",
             "value": "A human will read this. You can also reach us at contact@emergent.inc."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "人間のチームメンバーが確認します。contact@emergent.inc 宛てに直接ご連絡いただくこともできます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Людина з команди це прочитає. Ви також можете написати нам на contact@emergent.inc."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "팀원이 직접 확인합니다. contact@emergent.inc로도 연락하실 수 있습니다."
-          }
         }
       }
     },
@@ -531,24 +207,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Too many feedback attempts. Please try again later."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバックの送信回数が多すぎます。しばらくしてからもう一度お試しください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Занадто багато спроб надсилання відгуку. Спробуйте пізніше."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백 시도가 너무 많습니다. 나중에 다시 시도하세요."
           }
         }
       }
@@ -561,24 +219,6 @@
             "state": "translated",
             "value": "Remove"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "削除"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Видалити"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "제거"
-          }
         }
       }
     },
@@ -589,24 +229,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Send"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "送信"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Надіслати"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보내기"
           }
         }
       }
@@ -619,24 +241,6 @@
             "state": "translated",
             "value": "You can also reach us at contact@emergent.inc."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "contact@emergent.inc 宛てに直接ご連絡いただくこともできます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ви також можете написати нам на contact@emergent.inc."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "contact@emergent.inc로도 연락하실 수 있습니다."
-          }
         }
       }
     },
@@ -647,24 +251,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thanks for the feedback."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバックありがとうございます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Дякуємо за відгук."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백을 보내주셔서 감사합니다."
           }
         }
       }
@@ -677,24 +263,6 @@
             "state": "translated",
             "value": "Send Feedback"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フィードバックを送信"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Надіслати відгук"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "피드백 보내기"
-          }
         }
       }
     },
@@ -705,24 +273,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "You can attach up to 10 images."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像は最大10枚まで添付できます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Можна прикріпити до 10 зображень."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최대 10장의 이미지를 첨부할 수 있습니다."
           }
         }
       }
@@ -735,24 +285,6 @@
             "state": "translated",
             "value": "These images are too large to send together. Remove a few and try again."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "これらの画像はまとめて送信するには大きすぎます。いくつか削除してもう一度お試しください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ці зображення занадто великі для надсилання разом. Видаліть кілька та спробуйте ще раз."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지가 너무 커서 함께 보낼 수 없습니다. 몇 개를 제거하고 다시 시도하세요."
-          }
         }
       }
     },
@@ -763,24 +295,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Check your message and attachments, then try again."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メッセージと添付ファイルを確認して、もう一度お試しください。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевірте повідомлення та вкладення, потім спробуйте ще раз."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "메시지와 첨부 파일을 확인한 후 다시 시도하세요."
           }
         }
       }

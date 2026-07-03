@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "../../../i18n/navigation";
-import { LanguageSwitcher } from "./language-switcher";
 
 function isExternal(href: string) {
   return href.startsWith("http") || href.startsWith("mailto:");
@@ -82,7 +81,7 @@ export async function SiteFooter() {
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-between mt-10">
+        <div className="mt-10">
           <p className="text-xs text-muted">
             {t("copyright", { year })}
             <span aria-hidden className="mx-2">
@@ -97,7 +96,6 @@ export async function SiteFooter() {
               {t("openSource")}
             </a>
           </p>
-          <LanguageSwitcher />
         </div>
       </div>
     </footer>
