@@ -39,12 +39,12 @@ let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier(
 private enum MosaicSidebarStyle {
     static let background = Color(nsColor: MosaicChromePalette.sidebarBackgroundColor)
     static let selectedRow = Color(nsColor: MosaicChromePalette.selectedSidebarRowColor)
-    static let hoverRow = Color(red: 0x32 / 255, green: 0x32 / 255, blue: 0x32 / 255)
-    static let selectedBorder = Color(red: 0x43 / 255, green: 0x43 / 255, blue: 0x43 / 255)
-    static let primaryText = Color(red: 0xD0 / 255, green: 0xD0 / 255, blue: 0xD0 / 255)
-    static let secondaryText = Color(red: 0x90 / 255, green: 0x90 / 255, blue: 0x90 / 255)
-    static let inactiveText = Color(red: 0x70 / 255, green: 0x70 / 255, blue: 0x70 / 255)
-    static let mutedText = Color(red: 0x60 / 255, green: 0x60 / 255, blue: 0x60 / 255)
+    static let hoverRow = Color(red: 0x18 / 255, green: 0x18 / 255, blue: 0x18 / 255)
+    static let selectedBorder = Color.clear
+    static let primaryText = Color(red: 0xE8 / 255, green: 0xE8 / 255, blue: 0xE8 / 255)
+    static let secondaryText = Color(red: 0xB8 / 255, green: 0xB8 / 255, blue: 0xB8 / 255)
+    static let inactiveText = Color(red: 0xC8 / 255, green: 0xC8 / 255, blue: 0xC8 / 255)
+    static let mutedText = Color(red: 0xA8 / 255, green: 0xA8 / 255, blue: 0xA8 / 255)
     static let sectionText = Color(red: 0x60 / 255, green: 0x60 / 255, blue: 0x60 / 255)
 }
 
@@ -1257,7 +1257,17 @@ struct ContentView: View {
     private static let minimumTerminalWidthWithRightSidebar: CGFloat = 360
 
     private var minimumSidebarWidth: CGFloat {
-        CGFloat(SessionPersistencePolicy.sanitizedMinimumSidebarWidth(sidebarMinimumWidthSetting))
+        let configuredMinimum = CGFloat(SessionPersistencePolicy.sanitizedMinimumSidebarWidth(sidebarMinimumWidthSetting))
+        let style = TitlebarControlsStyle(rawValue: titlebarControlsStyleRawValue) ?? .classic
+        let leadingInset = CGFloat(MinimalModeTitlebarDebugSettings.clamped(
+            titlebarLeftControlsLeadingInset,
+            range: MinimalModeTitlebarDebugSettings.horizontalInsetRange
+        ))
+        return Self.effectiveMinimumSidebarWidth(
+            configuredMinimum,
+            titlebarControlsStyle: style,
+            controlsLeadingInset: leadingInset
+        )
     }
 
     private enum SidebarResizerHandle: Hashable {
@@ -1288,7 +1298,10 @@ struct ContentView: View {
                         sidebarWidth = nextWidth
                     }
                 },
-                finishDrag: { sidebarDragStartWidth = nil }
+                finishDrag: {
+                    sidebarDragStartWidth = nil
+                    persistSidebarWidth(sidebarWidth)
+                }
             )
         case .explorerDivider:
             return (
@@ -1332,8 +1345,10 @@ struct ContentView: View {
     static func clampedSidebarWidth(
         _ candidate: CGFloat,
         maximumWidth: CGFloat,
-        minimumWidth: CGFloat = CGFloat(SessionPersistencePolicy.defaultMinimumSidebarWidth)
+        minimumWidth: CGFloat = CGFloat(SessionPersistencePolicy.defaultMinimumSidebarWidth),
+        controlsMinimumWidth: CGFloat = ContentView.minimumSidebarWidthForTitlebarArrowButtons()
     ) -> CGFloat {
+        let minimumWidth = max(minimumWidth, controlsMinimumWidth)
         let sanitizedMaximumWidth = max(minimumWidth, maximumWidth.isFinite ? maximumWidth : minimumWidth)
         guard candidate.isFinite else {
             return max(
@@ -1342,6 +1357,39 @@ struct ContentView: View {
             )
         }
         return max(minimumWidth, min(sanitizedMaximumWidth, candidate))
+    }
+
+    nonisolated static func effectiveMinimumSidebarWidth(
+        _ configuredMinimumWidth: CGFloat,
+        titlebarControlsStyle: TitlebarControlsStyle = .classic,
+        controlsLeadingInset: CGFloat = CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset)
+    ) -> CGFloat {
+        let configured = configuredMinimumWidth.isFinite
+            ? configuredMinimumWidth
+            : CGFloat(SessionPersistencePolicy.defaultMinimumSidebarWidth)
+        return max(
+            configured,
+            minimumSidebarWidthForTitlebarArrowButtons(
+                titlebarControlsStyle: titlebarControlsStyle,
+                controlsLeadingInset: controlsLeadingInset
+            )
+        )
+    }
+
+    nonisolated static func minimumSidebarWidthForTitlebarArrowButtons(
+        titlebarControlsStyle: TitlebarControlsStyle = .classic,
+        controlsLeadingInset: CGFloat = CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset)
+    ) -> CGFloat {
+        let config = titlebarControlsStyle.config
+        let ranges = TitlebarControlsHitRegions.buttonXRanges(config: config)
+        let forwardIndex = MinimalModeSidebarControlActionSlot.focusHistoryForward.rawValue
+        guard ranges.indices.contains(forwardIndex) else {
+            return CGFloat(SessionPersistencePolicy.defaultMinimumSidebarWidth)
+        }
+        let leadingInset = controlsLeadingInset.isFinite
+            ? controlsLeadingInset
+            : CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset)
+        return ceil(max(0, leadingInset) + ranges[forwardIndex].upperBound)
     }
 
     static func clampedRightSidebarWidth(
@@ -1376,6 +1424,12 @@ struct ContentView: View {
         withTransaction(Transaction(animation: nil)) {
             sidebarWidth = nextWidth
         }
+    }
+
+    private func persistSidebarWidth(_ width: CGFloat) {
+        let sanitized = normalizedSidebarWidth(width)
+        guard abs(sidebarState.persistedWidth - sanitized) > 0.5 else { return }
+        sidebarState.persistedWidth = sanitized
     }
 
     private func normalizedSidebarWidth(_ candidate: CGFloat) -> CGFloat {
@@ -1613,6 +1667,9 @@ struct ContentView: View {
                 if isResizerDragging {
                     TerminalWindowPortalRegistry.endInteractiveGeometryResize()
                     isResizerDragging = false
+                }
+                if sidebarDragStartWidth != nil {
+                    persistSidebarWidth(sidebarWidth)
                 }
                 sidebarDragStartWidth = nil
                 isResizerBandActive = false
@@ -3063,8 +3120,8 @@ struct ContentView: View {
                 sidebarWidth = sanitized
                 return
             }
-            if abs(sidebarState.persistedWidth - sanitized) > 0.5 {
-                sidebarState.persistedWidth = sanitized
+            if sidebarDragStartWidth == nil {
+                persistSidebarWidth(sanitized)
             }
             // Sidebar width changes are pure SwiftUI layout updates, so portal-hosted
             // terminals and browsers need an explicit post-layout geometry resync.
@@ -3157,6 +3214,9 @@ struct ContentView: View {
             if isResizerDragging {
                 TerminalWindowPortalRegistry.endInteractiveGeometryResize()
                 isResizerDragging = false
+                if sidebarDragStartWidth != nil {
+                    persistSidebarWidth(sidebarWidth)
+                }
                 sidebarDragStartWidth = nil
             }
             removeSidebarResizerPointerMonitor()
@@ -10027,6 +10087,7 @@ struct VerticalTabsSidebar: View {
     @State private var collaborationRuntime = CollaborationRuntime.shared
     @ObservedObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
     @State var dragState = SidebarDragState()
+    @State private var sidebarClosedHandCursorPushed = false
     // Bonsplit tab drags arrive through AppKit pasteboard callbacks, not
     // `SidebarDragState`, so they need a separate transient collection flag.
     @State private var isBonsplitWorkspaceDropTargetCollectionActive = false
@@ -10194,7 +10255,7 @@ struct VerticalTabsSidebar: View {
     @AppStorage(MinimalModeTitlebarDebugSettings.leftControlsTopInsetKey)
     private var titlebarLeftControlsTopInset = MinimalModeTitlebarDebugSettings.defaultLeftControlsTopInset
 
-    let tabRowSpacing: CGFloat = 2
+    let tabRowSpacing: CGFloat = 5
     private static let extensionSidebarObservationCoalesceInterval: RunLoop.SchedulerTimeType.Stride = .milliseconds(40)
     private static let extensionSidebarDisclosureAnimation = Animation.easeInOut(duration: 0.18)
     private var sidebarTitlebarInteractionHeight: CGFloat {
@@ -10525,9 +10586,11 @@ struct VerticalTabsSidebar: View {
         .overlay(alignment: .trailing) {
             WindowChromeBorder(
                 orientation: .vertical,
+                ignoresSafeArea: false,
                 refreshNotificationName: .ghosttyDefaultBackgroundDidChange,
                 backgroundColorProvider: { GhosttyBackgroundTheme.currentColor() }
             )
+            .padding(.top, sidebarTitlebarInteractionHeight)
         }
         .background(
             WindowAccessor(refreshID: showModifierHoldHints) { window in
@@ -10536,6 +10599,7 @@ struct VerticalTabsSidebar: View {
             .frame(width: 0, height: 0)
         )
         .onAppear {
+            popSidebarClosedHandCursorIfNeeded()
             if showModifierHoldHints {
                 modifierKeyMonitor.setHostWindow(observedWindow)
                 modifierKeyMonitor.start()
@@ -10562,6 +10626,7 @@ struct VerticalTabsSidebar: View {
             modifierKeyMonitor.stop()
             dragAutoScrollController.stop()
             dragFailsafeMonitor.stop()
+            popSidebarClosedHandCursorIfNeeded()
             dragState.clearDrag()
             isBonsplitWorkspaceDropTargetCollectionActive = false
             isWorkspaceReorderDropTargetCollectionActive = false
@@ -10595,6 +10660,7 @@ struct VerticalTabsSidebar: View {
             cmuxDebugLog("sidebar.dragState.sidebar tab=\(debugShortSidebarTabId(newDraggedTabId))")
 #endif
             if newDraggedTabId != nil {
+                pushSidebarClosedHandCursorIfNeeded()
                 // The failsafe monitor probes the real mouse-button state and
                 // posts `mouse_up_failsafe` if no mouse is held down. That's
                 // correct for HID-driven drags, but `debug.sidebar.simulate_drag`
@@ -10610,6 +10676,7 @@ struct VerticalTabsSidebar: View {
             dragFailsafeMonitor.stop()
             dragAutoScrollController.stop()
             dragState.clearDropIndicator()
+            popSidebarClosedHandCursorIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: SidebarDragLifecycleNotification.requestClear)) { notification in
             guard dragState.draggedTabId != nil || dragState.dropIndicator != nil else { return }
@@ -10625,6 +10692,18 @@ struct VerticalTabsSidebar: View {
             frozenShortcutHintsTabId = nil
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func pushSidebarClosedHandCursorIfNeeded() {
+        guard !sidebarClosedHandCursorPushed else { return }
+        NSCursor.closedHand.push()
+        sidebarClosedHandCursorPushed = true
+    }
+
+    private func popSidebarClosedHandCursorIfNeeded() {
+        guard sidebarClosedHandCursorPushed else { return }
+        NSCursor.pop()
+        sidebarClosedHandCursorPushed = false
     }
 
     private func workspaceScrollArea(renderContext: WorkspaceListRenderContext) -> some View {
@@ -11455,6 +11534,7 @@ struct VerticalTabsSidebar: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
         .safeHelp(row.title)
+        .cmuxCursorOnHover(.openHand)
         .opacity(dragState.draggedTabId == row.workspaceId ? 0.55 : 1)
         .onDrag {
             dragState.beginDragging(tabId: row.workspaceId)
@@ -11533,6 +11613,7 @@ struct VerticalTabsSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .cmuxCursorOnHover(.openHand)
         .opacity(dragState.draggedTabId == row.workspaceId ? 0.55 : 1)
         .onDrag {
             dragState.beginDragging(tabId: row.workspaceId)
@@ -11932,8 +12013,8 @@ struct VerticalTabsSidebar: View {
         // read them, never this sidebar body. See SidebarDragState and
         // https://github.com/emergent-inc/cmux/issues/2586.
         LazyVStack(spacing: tabRowSpacing) {
-            Text(String(localized: "sidebar.sessions.section", defaultValue: "SESSIONS"))
-                .font(.system(size: 11, weight: .semibold))
+            Text(String(localized: "sidebar.sessions.section", defaultValue: "Sessions"))
+                .font(.system(size: 11, weight: .regular, design: .default))
                 .tracking(1.1)
                 .foregroundColor(MosaicSidebarStyle.sectionText)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -12469,6 +12550,7 @@ struct VerticalTabsSidebar: View {
 
         row
             .sidebarWorkspaceFrameAnchor(id: tab.id, isEnabled: shouldCollectWorkspaceDropTargets)
+            .cmuxCursorOnHover(.openHand, enabled: !isBeingDragged)
             .padding(.leading, tab.groupId != nil ? SidebarWorkspaceGroupingMetrics.memberIndent : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -12727,7 +12809,7 @@ private struct SidebarFooterButtons: View {
             } else {
                 SidebarAccountButton(coordinator: nil, browserSignIn: nil)
             }
-            SidebarHelpMenuButton(onSendFeedback: onSendFeedback)
+//            SidebarHelpMenuButton(onSendFeedback: onSendFeedback)
             // The puzzle button opens the extensions browser; it only shows
             // while the experimental Extensions feature is enabled.
             if extensionsExperimentalEnabled {
@@ -13573,7 +13655,7 @@ struct TabItemView: View, Equatable {
     }
 
     private var titleFontWeight: Font.Weight {
-        .medium
+        .regular
     }
 
     private var fontScale: CGFloat {
@@ -13925,7 +14007,7 @@ struct TabItemView: View, Equatable {
                 }
 
                 Text(displayedTitle)
-                    .font(magnifiedFont(scaledFontSize(13), weight: titleFontWeight, design: .monospaced))
+                    .font(magnifiedFont(scaledFontSize(13), weight: titleFontWeight))
                     .foregroundColor(activePrimaryTextColor)
                     .lineLimit(titleLineLimit)
                     .truncationMode(.tail)
@@ -13966,7 +14048,7 @@ struct TabItemView: View, Equatable {
         // refresh rate (#5764 / #5845). Lazy rows must be height-stable after
         // they appear; content changes now apply in one discrete layout pass.
         .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(backgroundColor)
