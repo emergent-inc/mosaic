@@ -17,6 +17,7 @@ struct TerminalPanelView: View {
     @AppStorage(TerminalTextBoxInputSettings.maxLinesKey)
     private var textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
+    @State private var isTerminalSessionPopoverPresented = false
     @State private var isTerminalRecipientPopoverPresented = false
     let paneId: PaneID
     let isFocused: Bool
@@ -155,15 +156,12 @@ struct TerminalPanelView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
-            if state.isShared {
-                Text(state.peerSummary)
-                    .cmuxFont(size: 10)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
             agentRoomStatusView(state: agentRoomState)
             terminalAgentRoomButton
-            terminalCollaborationButton
+            terminalSessionPill(state: state)
+            if state.workspaceSessionCode != nil || state.isMirrored {
+                terminalShareButton(state: state)
+            }
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
@@ -187,30 +185,98 @@ struct TerminalPanelView: View {
         }
     }
 
-    private var terminalCollaborationButton: some View {
-        let state = CollaborationRuntime.shared.state(for: panel)
-        let canManageRecipients = CollaborationRuntime.shared.canManageRecipients(for: panel)
-        let label = if state.isShared && canManageRecipients {
-            CollaborationStrings.manageTerminalSharing
-        } else if state.isShared {
-            CollaborationStrings.stopSharingTerminal
-        } else {
-            CollaborationStrings.shareTerminal
-        }
-        return PanelHeaderIconButton(
-            systemName: state.isShared ? "person.2.fill" : "person.2",
-            label: label,
-            isDisabled: false,
-            action: {
-                if state.isShared && canManageRecipients {
-                    isTerminalRecipientPopoverPresented = true
-                } else {
-                    CollaborationRuntime.shared.configureOrShare(terminal: panel)
-                }
+    private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
+        let label = terminalSessionPillLabel(state: state)
+        return Button {
+            isTerminalSessionPopoverPresented = true
+        } label: {
+            HStack(spacing: 5) {
+                CmuxSystemSymbolImage(systemName: state.workspaceSessionCode == nil ? "plus.circle" : "link", pointSize: 10, weight: .semibold)
+                    .accessibilityHidden(true)
+                Text(label)
+                    .cmuxFont(size: 10, weight: .semibold)
+                    .lineLimit(1)
             }
-        )
-        .foregroundColor(state.isShared ? .accentColor : .secondary)
-        .accessibilityIdentifier("TerminalCollaborationButton")
+            .foregroundStyle(state.workspaceSessionCode == nil ? Color.secondary : Color.accentColor)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background {
+                Capsule()
+                    .fill(Color.primary.opacity(state.workspaceSessionCode == nil ? 0.06 : 0.10))
+            }
+            .overlay {
+                Capsule()
+                    .stroke(Color.primary.opacity(state.workspaceSessionCode == nil ? 0.10 : 0.16), lineWidth: 0.5)
+            }
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("TerminalCollaborationSessionPill")
+        .popover(isPresented: $isTerminalSessionPopoverPresented, arrowEdge: .bottom) {
+            TerminalCollaborationSessionPopoverContent(
+                sessionCode: state.workspaceSessionCode,
+                isConnected: state.isWorkspaceSessionConnected,
+                peerSummary: state.peerSummary,
+                participants: CollaborationRuntime.shared.participantSnapshots(forWorkspaceID: panel.workspaceId),
+                onCreate: {
+                    CollaborationRuntime.shared.createWorkspaceSession(for: panel)
+                    isTerminalSessionPopoverPresented = false
+                },
+                onJoin: {
+                    CollaborationRuntime.shared.joinWorkspaceSession(for: panel)
+                    isTerminalSessionPopoverPresented = false
+                },
+                onCopyInviteCode: {
+                    CollaborationRuntime.shared.copyWorkspaceSessionInviteCode(for: panel)
+                    isTerminalSessionPopoverPresented = false
+                },
+                onLeave: {
+                    CollaborationRuntime.shared.leaveWorkspaceSession(for: panel)
+                    isTerminalSessionPopoverPresented = false
+                }
+            )
+        }
+    }
+
+    private func terminalSessionPillLabel(state: CollaborationTerminalHeaderState) -> String {
+        guard let sessionCode = state.workspaceSessionCode else {
+            return CollaborationStrings.startSession
+        }
+        return CollaborationStrings.sessionPillLabel(code: sessionCode, peerSummary: state.peerSummary)
+    }
+
+    private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
+        let label = terminalShareButtonLabel(state: state)
+        return Button {
+            if state.isMirrored {
+                CollaborationRuntime.shared.setSharing(false, for: panel)
+            } else {
+                if !CollaborationRuntime.shared.state(for: panel).isHosted {
+                    CollaborationRuntime.shared.setSharing(true, for: panel)
+                }
+                isTerminalRecipientPopoverPresented = true
+            }
+        } label: {
+            Text(label)
+                .cmuxFont(size: 10, weight: .semibold)
+                .lineLimit(1)
+                .foregroundStyle(state.isHosted ? Color.accentColor : Color.secondary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background {
+                    Capsule()
+                        .fill(Color.primary.opacity(state.isHosted ? 0.10 : 0.06))
+                }
+                .overlay {
+                    Capsule()
+                        .stroke(Color.primary.opacity(state.isHosted ? 0.16 : 0.10), lineWidth: 0.5)
+                }
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("TerminalCollaborationShareButton")
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
@@ -221,9 +287,26 @@ struct TerminalPanelView: View {
                 onShare: { selectedIDs in
                     CollaborationRuntime.shared.applyRecipientSelection(selectedIDs, for: panel)
                     isTerminalRecipientPopoverPresented = false
+                },
+                onStopSharing: {
+                    CollaborationRuntime.shared.setSharing(false, for: panel)
+                    isTerminalRecipientPopoverPresented = false
                 }
             )
         }
+    }
+
+    private func terminalShareButtonLabel(state: CollaborationTerminalHeaderState) -> String {
+        if state.isMirrored {
+            return CollaborationStrings.viewingRemoteTerminal
+        }
+        guard state.isHosted else {
+            return CollaborationStrings.shareTerminal
+        }
+        let selectedCount = CollaborationRuntime.shared.recipientSnapshots(for: panel)
+            .filter(\.isSelected)
+            .count
+        return CollaborationStrings.sharedToRecipientCount(selectedCount)
     }
 
     private var terminalAgentRoomButton: some View {
@@ -262,20 +345,115 @@ struct TerminalPanelView: View {
     }
 }
 
+private struct TerminalCollaborationSessionPopoverContent: View {
+    let sessionCode: String?
+    let isConnected: Bool
+    let peerSummary: String
+    let participants: [CollaborationWorkspaceParticipantSnapshot]
+    let onCreate: () -> Void
+    let onJoin: () -> Void
+    let onCopyInviteCode: () -> Void
+    let onLeave: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image("AppIconLight", bundle: .main)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
+
+                Text(CollaborationStrings.sessionPopoverTitle)
+                    .cmuxFont(size: 12, weight: .semibold)
+            }
+
+            if let sessionCode {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(CollaborationStrings.sessionCodeLabel(code: sessionCode))
+                        .cmuxFont(size: 11, weight: .semibold)
+                        .textSelection(.enabled)
+                    Text(isConnected ? CollaborationStrings.sessionConnectedDetail(peerSummary: peerSummary) : CollaborationStrings.sessionJoinedDetail)
+                        .cmuxFont(size: 11)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if !participants.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(CollaborationStrings.sessionParticipantsTitle)
+                            .cmuxFont(size: 11, weight: .semibold)
+                        ForEach(participants) { participant in
+                            HStack(spacing: 7) {
+                                Text(participant.initials)
+                                    .cmuxFont(size: 9, weight: .bold)
+                                    .foregroundStyle(Color.white)
+                                    .frame(width: 18, height: 18)
+                                    .background {
+                                        Circle()
+                                            .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
+                                    }
+                                Text(participant.displayName)
+                                    .cmuxFont(size: 11)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Button(CollaborationStrings.copyInviteCode) {
+                        onCopyInviteCode()
+                    }
+                    Button(CollaborationStrings.joinDifferentSession) {
+                        onJoin()
+                    }
+                    Button(CollaborationStrings.leaveSession) {
+                        onLeave()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                Text(CollaborationStrings.sessionNotJoinedDetail)
+                    .cmuxFont(size: 11)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Button(CollaborationStrings.createSession) {
+                        onCreate()
+                    }
+                    .keyboardShortcut(.defaultAction)
+
+                    Button(CollaborationStrings.joinSession) {
+                        onJoin()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .padding(14)
+        .frame(width: 260)
+    }
+}
+
 private struct TerminalCollaborationRecipientPopoverContent: View {
     let recipients: [CollaborationTerminalRecipientSnapshot]
     let onCopyInviteCode: () -> Void
     let onShare: (Set<String>) -> Void
+    let onStopSharing: () -> Void
     @State private var selectedParticipantIDs: Set<String>
 
     init(
         recipients: [CollaborationTerminalRecipientSnapshot],
         onCopyInviteCode: @escaping () -> Void,
-        onShare: @escaping (Set<String>) -> Void
+        onShare: @escaping (Set<String>) -> Void,
+        onStopSharing: @escaping () -> Void
     ) {
         self.recipients = recipients
         self.onCopyInviteCode = onCopyInviteCode
         self.onShare = onShare
+        self.onStopSharing = onStopSharing
         _selectedParticipantIDs = State(initialValue: Set(
             recipients
                 .filter(\.isSelected)
@@ -293,7 +471,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     .frame(width: 22, height: 22)
                     .accessibilityHidden(true)
 
-                Text(CollaborationStrings.terminalRecipientsTitle)
+                Text(CollaborationStrings.terminalRecipientsShareTitle)
                     .cmuxFont(size: 12, weight: .semibold)
             }
 
@@ -304,6 +482,11 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack {
+                    if model.showsStopSharingAction {
+                        Button(CollaborationStrings.stopSharingTerminal) {
+                            onStopSharing()
+                        }
+                    }
                     Spacer()
                     Button(CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
@@ -324,6 +507,11 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
 
                 if model.showsShareAction {
                     HStack {
+                        if model.showsStopSharingAction {
+                            Button(CollaborationStrings.stopSharingTerminal) {
+                                onStopSharing()
+                            }
+                        }
                         Spacer()
                         Button(CollaborationStrings.share) {
                             onShare(selectedParticipantIDs)

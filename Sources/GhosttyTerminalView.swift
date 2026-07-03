@@ -3465,6 +3465,12 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     private var lastKnownMousePointInView: NSPoint?
     private var terminalCollaboratorCaretViews: [String: TerminalCollaboratorCaretView] = [:]
     private var terminalCollaboratorCaretHideTasks: [String: Task<Void, Never>] = [:]
+    /// Rendered-frame notification demand + observer, retained only while a
+    /// collaborator caret is visible so the label tracks the live cursor without
+    /// costing anything on idle terminals. See
+    /// ``beginTerminalCollaboratorCaretFrameTracking()``.
+    private var renderedFrameCaretDemandRelease: (() -> Void)?
+    private var renderedFrameCaretObserver: NSObjectProtocol?
     private var terminalCollaboratorPointerViews: [String: TerminalCollaboratorPointerView] = [:]
     private var terminalCollaboratorPointerHideTasks: [String: Task<Void, Never>] = [:]
     private var terminalCollaboratorSelectionViews: [String: TerminalCollaboratorSelectionView] = [:]
@@ -3750,13 +3756,56 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             guard !Task.isCancelled else { return }
             self?.terminalCollaboratorCaretViews[peerID]?.fadeOut()
             self?.terminalCollaboratorCaretHideTasks[peerID] = nil
+            self?.endTerminalCollaboratorCaretFrameTrackingIfIdle()
         }
+
+        beginTerminalCollaboratorCaretFrameTracking()
+    }
+
+    /// Keep the collaborator caret label pinned to the mirror surface's live
+    /// cursor while any caret is visible. The overlay is an `NSView` positioned
+    /// from `ghostty_surface_ime_point`, but during pure output streaming there
+    /// is no `layout()` pass, so it would otherwise strand on a stale line while
+    /// content scrolls underneath it (e.g. after a large `neofetch` burst).
+    /// Ghostty posts `.ghosttyDidRenderFrame` on every drawn frame (demand-gated
+    /// so idle terminals pay nothing), which is the exact moment the new cursor
+    /// position becomes visible. Retaining the demand only while a caret is shown
+    /// keeps the typing-latency path untouched when no one is collaborating.
+    private func beginTerminalCollaboratorCaretFrameTracking() {
+        guard renderedFrameCaretObserver == nil else { return }
+        renderedFrameCaretDemandRelease = Self.retainRenderedFrameNotifications()
+        renderedFrameCaretObserver = NotificationCenter.default.addObserver(
+            forName: .ghosttyDidRenderFrame,
+            object: self,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.syncTerminalCollaboratorCaretOverlays()
+            }
+        }
+    }
+
+    private func endTerminalCollaboratorCaretFrameTrackingIfIdle() {
+        guard renderedFrameCaretObserver != nil else { return }
+        let hasVisibleCaret = terminalCollaboratorCaretViews.values.contains { !$0.isHidden }
+        guard !hasVisibleCaret else { return }
+        endTerminalCollaboratorCaretFrameTracking()
+    }
+
+    private func endTerminalCollaboratorCaretFrameTracking() {
+        if let observer = renderedFrameCaretObserver {
+            NotificationCenter.default.removeObserver(observer)
+            renderedFrameCaretObserver = nil
+        }
+        renderedFrameCaretDemandRelease?()
+        renderedFrameCaretDemandRelease = nil
     }
 
     private func syncTerminalCollaboratorCaretOverlays() {
         guard let surface,
               let caretFrame = terminalCollaboratorCaretFrame(surface: surface) else {
             terminalCollaboratorCaretViews.values.forEach { $0.isHidden = true }
+            endTerminalCollaboratorCaretFrameTrackingIfIdle()
             return
         }
         for view in terminalCollaboratorCaretViews.values where !view.isHidden {
@@ -3775,6 +3824,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         column: Double?,
         contentRow: Double?,
         contentRowFromBottom: Double?,
+        viewportRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -3794,6 +3844,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 column: column,
                 contentRow: contentRow,
                 contentRowFromBottom: contentRowFromBottom,
+                viewportRowFromBottom: viewportRowFromBottom,
                 coordinateSpace: coordinateSpace
             ) else {
                 view.fadeOut()
@@ -3824,6 +3875,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         column: Double?,
         contentRow: Double?,
         contentRowFromBottom: Double?,
+        viewportRowFromBottom: Double?,
         coordinateSpace: String?
     ) -> NSPoint? {
         let x = min(max(CGFloat(normalizedX), 0), 1)
@@ -3834,8 +3886,24 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
 
         if coordinateSpace == "terminalContentBottom",
-           let contentRowFromBottom,
            let column {
+            if let viewportRowFromBottom {
+                return terminalCollaboratorPointerAnchor(
+                    viewportRowFromBottom: CGFloat(viewportRowFromBottom),
+                    column: CGFloat(column),
+                    metrics: metrics
+                )
+            }
+            guard let contentRowFromBottom else {
+                if let row {
+                    return terminalCollaboratorPointerAnchor(
+                        row: CGFloat(row),
+                        column: CGFloat(column),
+                        metrics: metrics
+                    )
+                }
+                return nil
+            }
             guard let scrollbar else {
                 if let row {
                     return terminalCollaboratorPointerAnchor(
@@ -3910,6 +3978,18 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         return NSPoint(
             x: metrics.xInset + (clampedColumn * metrics.cellWidth),
             y: bounds.height - metrics.yInset - (clampedRow * metrics.cellHeight)
+        )
+    }
+
+    private func terminalCollaboratorPointerAnchor(
+        viewportRowFromBottom: CGFloat,
+        column: CGFloat,
+        metrics: KeyboardCopyModeGridMetrics
+    ) -> NSPoint {
+        terminalCollaboratorPointerAnchor(
+            row: CGFloat(metrics.rows) - viewportRowFromBottom,
+            column: column,
+            metrics: metrics
         )
     }
 
@@ -7694,6 +7774,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             column: normalized.column,
             contentRow: normalized.contentRow,
             contentRowFromBottom: normalized.contentRowFromBottom,
+            viewportRowFromBottom: normalized.viewportRowFromBottom,
             visible: visible,
             coordinateSpace: normalized.coordinateSpace
         )
@@ -7709,17 +7790,19 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         column: Double?,
         contentRow: Double?,
         contentRowFromBottom: Double?,
+        viewportRowFromBottom: Double?,
         coordinateSpace: String
     ) {
         guard visible, let point else {
-            return (0, 0, nil, nil, nil, nil, "terminalContentBottom")
+            return (0, 0, nil, nil, nil, nil, nil, "terminalContentBottom")
         }
         guard let surface,
               let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
-            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, nil, "view") }
+            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, nil, nil, "view") }
             return (
                 Double(min(max(point.x / bounds.width, 0), 1)),
                 Double(min(max(point.y / bounds.height, 0), 1)),
+                nil,
                 nil,
                 nil,
                 nil,
@@ -7730,13 +7813,14 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         let gridWidth = CGFloat(metrics.columns) * metrics.cellWidth
         let gridHeight = CGFloat(metrics.rows) * metrics.cellHeight
-        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, nil, "terminalContentBottom") }
+        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, nil, nil, "terminalContentBottom") }
         let topOriginY = bounds.height - point.y
         let column = min(max((point.x - metrics.xInset) / metrics.cellWidth, 0), CGFloat(metrics.columns))
         let row = min(max((topOriginY - metrics.yInset) / metrics.cellHeight, 0), CGFloat(metrics.rows))
         let contentRow = row + CGFloat(scrollbar?.offset ?? 0)
         let bottomRow = CGFloat(max(scrollbar?.total ?? 0, 1)) - 1
         let contentRowFromBottom = max(0, bottomRow - contentRow)
+        let viewportRowFromBottom = max(0, CGFloat(metrics.rows) - row)
         return (
             Double(min(max((point.x - metrics.xInset) / gridWidth, 0), 1)),
             Double(min(max((topOriginY - metrics.yInset) / gridHeight, 0), 1)),
@@ -7744,6 +7828,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             Double(column),
             Double(contentRow),
             Double(contentRowFromBottom),
+            Double(viewportRowFromBottom),
             "terminalContentBottom"
         )
     }
@@ -8018,6 +8103,13 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             removeTrackingArea(trackingArea)
         }
         keyboardCopyModeViewportJumpSyncExpirationTimer?.invalidate()
+        terminalCollaboratorCaretHideTasks.values.forEach { $0.cancel() }
+        if let observer = renderedFrameCaretObserver {
+            NotificationCenter.default.removeObserver(observer)
+            renderedFrameCaretObserver = nil
+        }
+        renderedFrameCaretDemandRelease?()
+        renderedFrameCaretDemandRelease = nil
         terminalSurface = nil
     }
 
@@ -8828,6 +8920,7 @@ final class GhosttySurfaceScrollView: NSView {
         column: Double?,
         contentRow: Double?,
         contentRowFromBottom: Double?,
+        viewportRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -8841,6 +8934,7 @@ final class GhosttySurfaceScrollView: NSView {
             column: column,
             contentRow: contentRow,
             contentRowFromBottom: contentRowFromBottom,
+            viewportRowFromBottom: viewportRowFromBottom,
             visible: visible,
             coordinateSpace: coordinateSpace
         )

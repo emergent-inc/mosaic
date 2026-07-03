@@ -89,9 +89,11 @@ public struct MobileTerminalRenderGridReplay: Sendable {
         let stylesByID = Self.stylesByID(frame.styles)
         let defaultStyle = stylesByID[0] ?? .default
 
-        // Reset to a known state, then apply everything inside a synchronized
-        // update so the client never shows a partially-restored screen.
-        bytes.append(Data("\u{1B}c".utf8))
+        // Reset to a known state and clear the client's saved lines before
+        // flowing the host scrollback. RIS alone does not reliably erase
+        // emulator scrollback, so repeated full snapshots would otherwise stack
+        // old replay history ahead of the current host history.
+        bytes.append(Data("\u{1B}c\u{1B}[3J".utf8))
         bytes.append(Data("\u{1B}[?2026h".utf8))
 
         // Dynamic default colors (OSC 10/11/12). Cells already carry explicit

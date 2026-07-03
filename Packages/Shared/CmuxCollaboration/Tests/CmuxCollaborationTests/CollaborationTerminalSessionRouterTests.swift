@@ -68,19 +68,33 @@ struct CollaborationTerminalSessionRouterTests {
     }
 
     @Test(arguments: [
-        (isShared: false, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentSessionChooser),
-        (isShared: false, workspaceHasSession: true, action: CollaborationTerminalShareAction.rejoinWorkspaceSession),
-        (isShared: true, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentParticipantPicker),
-        (isShared: true, workspaceHasSession: true, action: CollaborationTerminalShareAction.presentParticipantPicker),
+        (role: CollaborationSurfaceSharingRole.notShared, workspaceHasSession: false, action: CollaborationTerminalShareAction.presentSessionChooser),
+        (role: CollaborationSurfaceSharingRole.notShared, workspaceHasSession: true, action: CollaborationTerminalShareAction.shareInWorkspaceSession),
+        (role: CollaborationSurfaceSharingRole.hosted, workspaceHasSession: false, action: CollaborationTerminalShareAction.stopSharingHostedTerminal),
+        (role: CollaborationSurfaceSharingRole.hosted, workspaceHasSession: true, action: CollaborationTerminalShareAction.stopSharingHostedTerminal),
+        (role: CollaborationSurfaceSharingRole.mirrored, workspaceHasSession: false, action: CollaborationTerminalShareAction.stopViewingRemoteTerminal),
+        (role: CollaborationSurfaceSharingRole.mirrored, workspaceHasSession: true, action: CollaborationTerminalShareAction.stopViewingRemoteTerminal),
     ])
-    func terminalButtonActionUsesSharedStateBeforeWorkspaceSessionBinding(
-        isShared: Bool,
+    func terminalSharingPrimaryActionSeparatesSessionSharingAndViewing(
+        role: CollaborationSurfaceSharingRole,
         workspaceHasSession: Bool,
         action: CollaborationTerminalShareAction
     ) {
-        #expect(CollaborationTerminalShareAction.action(
-            isShared: isShared,
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: role,
             workspaceHasSession: workspaceHasSession
         ) == action)
+    }
+
+    @Test(arguments: [
+        (role: CollaborationSurfaceSharingRole.notShared, action: nil),
+        (role: CollaborationSurfaceSharingRole.hosted, action: CollaborationTerminalShareAction.presentParticipantPicker),
+        (role: CollaborationSurfaceSharingRole.mirrored, action: nil),
+    ])
+    func terminalManagementActionOnlyExistsForHostedTerminals(
+        role: CollaborationSurfaceSharingRole,
+        action: CollaborationTerminalShareAction?
+    ) {
+        #expect(CollaborationTerminalShareAction.managementAction(role: role) == action)
     }
 }
