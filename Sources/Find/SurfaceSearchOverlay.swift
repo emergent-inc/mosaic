@@ -79,7 +79,7 @@ struct SurfaceSearchOverlay: View {
                     }
                 }
 
-                Button(action: {
+                TrackedButton("surfacesearchoverlay_button_82", action: {
                     #if DEBUG
                     cmuxDebugLog("findbar.next surface=\(surfaceId.uuidString.prefix(5))")
                     #endif
@@ -90,7 +90,7 @@ struct SurfaceSearchOverlay: View {
                 .buttonStyle(SearchButtonStyle())
                 .safeHelp(String(localized: "search.nextMatch.help", defaultValue: "Next match (Return)"))
 
-                Button(action: {
+                TrackedButton("surfacesearchoverlay_button_93", action: {
                     #if DEBUG
                     cmuxDebugLog("findbar.prev surface=\(surfaceId.uuidString.prefix(5))")
                     #endif
@@ -101,7 +101,7 @@ struct SurfaceSearchOverlay: View {
                 .buttonStyle(SearchButtonStyle())
                 .safeHelp(String(localized: "search.previousMatch.help", defaultValue: "Previous match (Shift+Return)"))
 
-                Button(action: {
+                TrackedButton("surfacesearchoverlay_button_104", action: {
                     #if DEBUG
                     cmuxDebugLog("findbar.close surface=\(surfaceId.uuidString.prefix(5))")
                     #endif

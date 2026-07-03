@@ -266,9 +266,9 @@ struct RightSidebarPanelView: View {
     }
 
     private func openAsPaneButton(mode: RightSidebarMode) -> some View {
-        Button {
+        TrackedButton("rightsidebarpanelview_button_269", action: {
             onOpenAsPane(mode)
-        } label: {
+        }) {
             HeaderChromeIconStyle.symbol("rectangle.split.2x1")
         }
         .buttonStyle(RightSidebarHeaderIconButtonStyle(iconGeometryKeyPrefix: "rightSidebarHeaderOpenAsPaneIcon"))
@@ -302,7 +302,7 @@ struct RightSidebarPanelView: View {
             modifierHoldHintsEnabled: showModifierHoldHints
         )
         return ZStack {
-            Button(action: onClose) {
+            TrackedButton("rightsidebarpanelview_button_305", action: onClose) {
                 HeaderChromeIconStyle.symbol("xmark")
             }
             .buttonStyle(

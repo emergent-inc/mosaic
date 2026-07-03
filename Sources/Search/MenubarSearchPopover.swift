@@ -373,7 +373,7 @@ private struct GlobalSearchResultRowView: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("menubarsearchpopover_button_376", action: action) {
             HStack(spacing: 12) {
                 Image(systemName: row.systemImageName)
                     .cmuxFont(size: 14, weight: .semibold)

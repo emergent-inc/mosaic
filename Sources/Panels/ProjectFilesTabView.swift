@@ -48,9 +48,9 @@ struct ProjectFilesTabView: View {
                 .textFieldStyle(.plain)
                 .cmuxFont(size: 12)
             if !panel.filesSearchText.isEmpty {
-                Button {
+                TrackedButton("projectfilestabview_button_51", action: {
                     panel.filesSearchText = ""
-                } label: {
+                }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
@@ -260,7 +260,7 @@ private struct ProjectFilesGroupRow: View {
         let scale = GlobalFontMagnification.scale(for: globalFontPercent)
         let chevronWidth = max(1, 12 * scale)
         let symbolFrame = max(1, 14 * scale)
-        Button(action: onToggle) {
+        TrackedButton("projectfilestabview_button_263", action: onToggle) {
             HStack(spacing: 4) {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .cmuxFont(size: 9, weight: .semibold)
@@ -308,7 +308,7 @@ private struct ProjectFilesFileRow: View {
         let scale = GlobalFontMagnification.scale(for: globalFontPercent)
         let spacerWidth = max(1, 12 * scale)
         let symbolFrame = max(1, 14 * scale)
-        Button(action: onSelect) {
+        TrackedButton("projectfilestabview_button_311", action: onSelect) {
             HStack(spacing: 4) {
                 Spacer().frame(width: spacerWidth)
                 Image(systemName: glyph(for: file.fileType))
