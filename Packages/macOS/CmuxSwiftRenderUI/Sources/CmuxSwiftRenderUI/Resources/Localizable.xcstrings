@@ -9,12 +9,6 @@
             "state": "translated",
             "value": "Sidebar error"
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サイドバーエラー"
-          }
         }
       }
     },
@@ -26,12 +20,6 @@
             "state": "translated",
             "value": "Sidebar file is empty or missing."
           }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サイドバーファイルが空か見つかりません。"
-          }
         }
       }
     },
@@ -42,12 +30,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No supported SwiftUI view found."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "対応するSwiftUIビューが見つかりません。"
           }
         }
       }

@@ -6,43 +6,43 @@ import {
 } from "../app/[locale]/testimonials";
 
 describe("testimonial translations", () => {
-  const simplifiedChineseTestimonial = {
+  const nonEnglishTestimonial = {
     key: "minixalpha",
     name: "minixalpha",
     handle: "@minixalpha",
     avatar: "/avatars/minixalpha.jpg",
-    text: "我也主力用 cmux",
-    lang: "zh-CN",
+    text: "Original testimonial",
+    lang: "es",
     url: "https://x.com/minixalpha/status/2037496984890986576",
     platform: "x" as const,
   } satisfies Testimonial;
 
-  test("does not translate Simplified Chinese testimonials for zh-CN readers", () => {
+  test("does not translate testimonials already in the reader language", () => {
     const translation = getTestimonialTranslation(
-      simplifiedChineseTestimonial,
-      "zh-CN",
-      () => "繁體中文翻譯"
+      nonEnglishTestimonial,
+      "es",
+      () => "English translation"
     );
 
     expect(translation).toBeNull();
   });
 
-  test("shows Traditional Chinese translations for Simplified Chinese testimonials", () => {
+  test("shows English translations for non-English testimonials", () => {
     const translation = getTestimonialTranslation(
-      simplifiedChineseTestimonial,
-      "zh-TW",
+      nonEnglishTestimonial,
+      "en",
       (key) => {
         expect(key).toBe("minixalpha");
-        return "繁體中文翻譯";
+        return "English translation";
       }
     );
 
-    expect(translation).toBe("繁體中文翻譯");
+    expect(translation).toBe("English translation");
   });
 
   test("resolves localized testimonial subtitles by key", () => {
     const testimonialWithSubtitleKey = {
-      ...simplifiedChineseTestimonial,
+      ...nonEnglishTestimonial,
       subtitleKey: "steipete",
     } satisfies Testimonial;
 
