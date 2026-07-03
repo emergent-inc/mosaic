@@ -23,7 +23,7 @@ import Testing
     // flow: reset, paint each viewport row (CHA-positioned spans), then restore
     // the cursor.
     #expect(String(data: frame.vtReplacementBytes(), encoding: .utf8) ==
-        "\u{1B}c\u{1B}[?2026h" +
+        "\u{1B}c\u{1B}[3J\u{1B}[?2026h" +
         "\u{1B}[?7l\u{1B}[?25l\u{1B}[0m" +
         "\u{1B}[0m\u{1B}[1Galpha" +
         "\r\n\u{1B}[0m" +
@@ -56,6 +56,23 @@ import Testing
         "\u{1B}[2;1H\u{1B}[0mchanged" +
         "\u{1B}[0m"
     )
+}
+
+@Test func renderGridFullSnapshotClearsExistingClientScrollbackBeforeReplay() throws {
+    let frame = try MobileTerminalRenderGridFrame(
+        surfaceID: "terminal-a",
+        stateSeq: 1,
+        columns: 8,
+        rows: 1,
+        rowSpans: [.init(row: 0, column: 0, text: "live")],
+        scrollbackRows: 1,
+        scrollbackSpans: [.init(row: 0, column: 0, text: "host-old")]
+    )
+
+    let vt = try #require(String(data: frame.vtPatchBytes(), encoding: .utf8))
+    let clearScrollback = try #require(vt.range(of: "\u{1B}[3J"))
+    let hostScrollback = try #require(vt.range(of: "host-old"))
+    #expect(clearScrollback.lowerBound < hostScrollback.lowerBound)
 }
 
 @Test func renderGridDeltaClearsShortenedRowForBackspace() throws {
@@ -265,7 +282,7 @@ import Testing
     )
 
     let vt = try #require(String(data: frame.vtPatchBytes(), encoding: .utf8))
-    #expect(vt.hasPrefix("\u{1B}c\u{1B}[?2026h"))
+    #expect(vt.hasPrefix("\u{1B}c\u{1B}[3J\u{1B}[?2026h"))
     #expect(vt.hasSuffix("\u{1B}[?2026l"))
     #expect(vt.contains("\u{1B}[?1049h")) // entered the alternate screen
     #expect(vt.contains("\u{1B}[?1000h")) // mouse mode restored
