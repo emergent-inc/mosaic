@@ -29,4 +29,9 @@ public struct CollaborationTerminalRecipientPopoverModel: Equatable, Sendable {
     public var showsShareAction: Bool {
         primaryAction == .shareWithSelectedRecipients
     }
+
+    /// Whether the popover should offer a way to stop hosting the terminal.
+    public var showsStopSharingAction: Bool {
+        true
+    }
 }
