@@ -17,6 +17,7 @@ describe("cmux native session tokens", () => {
       userId: "user_123",
       displayName: "Dorsa",
       primaryEmail: "dorsa@example.com",
+      imageURL: "https://img.example/dorsa.png",
       selectedTeamId: "org_selected",
       teamIds: ["org_selected", " org_other ", "org_selected", ""],
     }, Math.floor(Date.now() / 1000));
@@ -29,6 +30,7 @@ describe("cmux native session tokens", () => {
       userId: "user_123",
       displayName: "Dorsa",
       primaryEmail: "dorsa@example.com",
+      imageURL: "https://img.example/dorsa.png",
       selectedTeamId: "org_selected",
       teamIds: ["org_selected", "org_other"],
     });
@@ -66,6 +68,7 @@ describe("cmux native session tokens", () => {
       userId: "user_123",
       displayName: "Dorsa",
       primaryEmail: "dorsa@example.com",
+      imageURL: "https://img.example/dorsa.png",
       selectedTeamId: "org_selected",
       teamIds: ["org_selected"],
     });
@@ -81,6 +84,7 @@ describe("cmux native session tokens", () => {
       userId: "user_123",
       displayName: "Dorsa",
       primaryEmail: "dorsa@example.com",
+      imageURL: "https://img.example/dorsa.png",
       selectedTeamId: "org_selected",
       teamIds: ["org_selected"],
     });

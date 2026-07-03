@@ -12863,6 +12863,13 @@ private struct SidebarAccountButton: View {
         isSignedIn ? "person.crop.circle.fill" : "person.crop.circle"
     }
 
+    private var profileImageURL: URL? {
+        guard isSignedIn else { return nil }
+        let trimmed = currentUser?.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return nil }
+        return URL(string: trimmed)
+    }
+
     private var accessibilityLabel: String {
         SettingsNavigationTarget.account.title
     }
@@ -12892,12 +12899,10 @@ private struct SidebarAccountButton: View {
 
     var body: some View {
         TrackedButton("contentview_button_12893", action: {
-            openAccountSettings()
+            handleAccountButtonPressed()
         }) {
             ZStack(alignment: .topTrailing) {
-                CmuxSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
-                    .foregroundStyle(iconColor)
-                    .frame(width: buttonSize, height: buttonSize, alignment: .center)
+                accountImage
                 if isWorkingOnAuth {
                     ProgressView()
                         .controlSize(.mini)
@@ -12916,8 +12921,49 @@ private struct SidebarAccountButton: View {
         .accessibilityIdentifier("SidebarAccountButton")
     }
 
+    @ViewBuilder
+    private var accountImage: some View {
+        if let profileImageURL {
+            AsyncImage(url: profileImageURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .empty, .failure:
+                    fallbackIcon
+                @unknown default:
+                    fallbackIcon
+                }
+            }
+            .frame(width: buttonSize - 4, height: buttonSize - 4)
+            .clipShape(Circle())
+        } else {
+            fallbackIcon
+        }
+    }
+
+    private var fallbackIcon: some View {
+        CmuxSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
+            .foregroundStyle(iconColor)
+            .frame(width: buttonSize, height: buttonSize, alignment: .center)
+    }
+
     private var iconColor: Color {
         isSignedIn ? cmuxAccentColor() : Color(nsColor: .secondaryLabelColor)
+    }
+
+    private func handleAccountButtonPressed() {
+        if isWorkingOnAuth {
+            return
+        }
+        if isSignedIn {
+            openAccountSettings()
+        } else if let browserSignIn {
+            browserSignIn.beginSignIn()
+        } else {
+            openAccountSettings()
+        }
     }
 
     private func openAccountSettings() {

@@ -655,14 +655,33 @@ final class CollaborationRuntime {
         sessionCodesByWorkspaceID[workspaceID]
     }
 
+    /// Session code scoped to one terminal. Sharing is per-surface: only the
+    /// terminal that was actually hosted/mirrored into a session (or whose
+    /// workspace explicitly joined a session that is still live) counts as
+    /// "in session". Sibling terminals must not inherit another terminal's
+    /// share just because they live in the same workspace.
+    private func terminalScopedSessionCode(for terminal: TerminalPanel) -> String? {
+        let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
+        if let terminalID, let code = terminalSessionRouter.sessionCode(forTerminalID: terminalID) {
+            return code
+        }
+        // Workspace bindings come from the explicit join flow. Only honor them
+        // while the relay connection is live so stale persisted bindings can't
+        // resurrect session UI on unrelated terminals.
+        if let code = sessionCode(forWorkspaceID: terminal.workspaceId), connectionsBySessionCode[code] != nil {
+            return code
+        }
+        return nil
+    }
+
     private func terminalHeaderState(
         _ state: CollaborationTerminalHeaderState,
         for terminal: TerminalPanel
     ) -> CollaborationTerminalHeaderState {
-        let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
+        let terminalSessionCode = terminalScopedSessionCode(for: terminal)
         var enriched = state
-        enriched.workspaceSessionCode = workspaceSessionCode
-        enriched.isWorkspaceSessionConnected = workspaceSessionCode.flatMap { connectionsBySessionCode[$0] } != nil
+        enriched.workspaceSessionCode = terminalSessionCode
+        enriched.isWorkspaceSessionConnected = terminalSessionCode.flatMap { connectionsBySessionCode[$0] } != nil
         return enriched
     }
 
@@ -680,6 +699,18 @@ final class CollaborationRuntime {
         guard let sessionCode = sessionCode(forWorkspaceID: workspaceID) else {
             return []
         }
+        return participantSnapshots(inSession: sessionCode)
+    }
+
+    func participantSnapshots(for terminal: TerminalPanel) -> [CollaborationWorkspaceParticipantSnapshot] {
+        _ = workspaceParticipantSnapshotRevision
+        guard let sessionCode = terminalScopedSessionCode(for: terminal) else {
+            return []
+        }
+        return participantSnapshots(inSession: sessionCode)
+    }
+
+    private func participantSnapshots(inSession sessionCode: String) -> [CollaborationWorkspaceParticipantSnapshot] {
         let local = localParticipantSnapshot()
         guard let connection = connectionsBySessionCode[sessionCode] else {
             return [local]
@@ -891,7 +922,7 @@ final class CollaborationRuntime {
         for terminal: TerminalPanel,
         entrypoint: CollaborationAnalyticsEntrypoint = .terminalHeaderButton
     ) {
-        let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
+        let workspaceSessionCode = terminalScopedSessionCode(for: terminal)
         let currentState = state(for: terminal)
         let role = currentState.sharingRole
         if isSharing {
@@ -1067,7 +1098,7 @@ final class CollaborationRuntime {
     }
 
     func copyWorkspaceSessionInviteCode(for terminal: TerminalPanel) {
-        let code = sessionCode(forWorkspaceID: terminal.workspaceId) ?? sessionCode
+        let code = terminalScopedSessionCode(for: terminal) ?? sessionCode
         guard let code else { return }
         let normalizedCode = Self.normalizedSessionCode(from: code)
         guard !normalizedCode.isEmpty else { return }
@@ -1093,7 +1124,7 @@ final class CollaborationRuntime {
     }
 
     func leaveWorkspaceSession(for terminal: TerminalPanel) {
-        guard let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId) else { return }
+        guard let workspaceSessionCode = terminalScopedSessionCode(for: terminal) else { return }
         let normalizedCode = Self.normalizedSessionCode(from: workspaceSessionCode)
         guard !normalizedCode.isEmpty else { return }
         let terminalIDs = terminalStatesByID.keys.filter {
@@ -2790,7 +2821,11 @@ final class CollaborationRuntime {
     ) {
         let descriptor = terminalDescriptor(for: terminal)
         let terminalID = descriptor.terminalID(sessionID: connection.sessionCode)
-        recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
+        // Deliberately no recordWorkspaceSession here: hosting is per-terminal.
+        // Binding the session to the workspace made every sibling terminal's
+        // header adopt the session (pill + share button) after sharing one
+        // terminal. Workspace bindings are only recorded by the explicit
+        // join-session flow.
         hostedTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(terminal)
         hostedTerminalIDsBySurfaceID[terminal.id] = terminalID
         terminalOwnerParticipantIDsByID[terminalID] = peerIdentity.participantID
@@ -4205,7 +4240,7 @@ enum CollaborationStrings {
     }
 
     static var stopSharingTerminal: String {
-        String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop Sharing Terminal")
+        String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop session")
     }
 
     static func sharedToRecipientCount(_ count: Int) -> String {
