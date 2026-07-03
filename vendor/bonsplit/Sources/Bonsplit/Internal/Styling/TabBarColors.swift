@@ -35,6 +35,13 @@ enum TabBarColors {
         return NSColor(bonsplitHex: value)
     }
 
+    private static func activeTabBackgroundColor(
+        for appearance: BonsplitConfiguration.Appearance
+    ) -> NSColor? {
+        guard let value = appearance.chromeColors.activeTabBackgroundHex else { return nil }
+        return NSColor(bonsplitHex: value)
+    }
+
     private static func nonClearColor(_ color: NSColor?) -> NSColor? {
         guard let color else { return nil }
         let resolved = color.usingColorSpace(.sRGB) ?? color
@@ -164,6 +171,9 @@ enum TabBarColors {
     }
 
     static func activeTabBackground(for appearance: BonsplitConfiguration.Appearance) -> Color {
+        if let customActive = activeTabBackgroundColor(for: appearance) {
+            return Color(nsColor: customActive)
+        }
         guard let custom = tabBarBackgroundColor(for: appearance) else {
             return activeTabBackground
         }

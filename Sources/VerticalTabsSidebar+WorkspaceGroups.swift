@@ -195,5 +195,6 @@ extension VerticalTabsSidebar {
                 id: group.anchorWorkspaceId,
                 isEnabled: shouldCollectWorkspaceDropTargets
             )
+            .cmuxCursorOnHover(.openHand, enabled: dragState.draggedTabId != group.anchorWorkspaceId)
     }
 }

@@ -21,35 +21,65 @@ final class SidebarWidthPolicyTests: XCTestCase {
 
         XCTAssertEqual(
             SessionPersistencePolicy.defaultMinimumSidebarWidth,
-            216,
+            220,
             accuracy: 0.001
         )
         XCTAssertEqual(
             SessionPersistencePolicy.resolvedMinimumSidebarWidth(defaults: defaults),
-            216,
+            220,
             accuracy: 0.001
         )
     }
 
     func testContentViewClampKeepsMinimumSidebarWidth() {
         XCTAssertEqual(
-            ContentView.clampedSidebarWidth(184, maximumWidth: 600),
-            CGFloat(SessionPersistencePolicy.minimumSidebarWidth),
+            ContentView.clampedSidebarWidth(140, maximumWidth: 600),
+            CGFloat(SessionPersistencePolicy.defaultMinimumSidebarWidth),
             accuracy: 0.001
         )
     }
 
-    func testContentViewClampCanUseSmallerConfiguredMinimumSidebarWidth() {
+    func testContentViewClampPreservesTitlebarArrowButtonsWhenConfiguredMinimumIsSmaller() {
         XCTAssertEqual(
             ContentView.clampedSidebarWidth(184, maximumWidth: 600, minimumWidth: 160),
-            184,
+            ContentView.minimumSidebarWidthForTitlebarArrowButtons(),
             accuracy: 0.001
         )
         XCTAssertEqual(
             ContentView.clampedSidebarWidth(140, maximumWidth: 600, minimumWidth: 160),
-            160,
+            ContentView.minimumSidebarWidthForTitlebarArrowButtons(),
             accuracy: 0.001
         )
+    }
+
+    func testContentViewClampUsesConfiguredMinimumWhenItExceedsTitlebarArrowButtons() {
+        XCTAssertEqual(
+            ContentView.clampedSidebarWidth(220, maximumWidth: 600, minimumWidth: 220),
+            220,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            ContentView.clampedSidebarWidth(180, maximumWidth: 600, minimumWidth: 220),
+            220,
+            accuracy: 0.001
+        )
+    }
+
+    func testMinimumSidebarWidthForTitlebarArrowButtonsTracksControlStyleAndInset() {
+        XCTAssertEqual(
+            ContentView.minimumSidebarWidthForTitlebarArrowButtons(
+                titlebarControlsStyle: .classic,
+                controlsLeadingInset: CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset)
+            ),
+            200,
+            accuracy: 0.001
+        )
+
+        let roomy = ContentView.minimumSidebarWidthForTitlebarArrowButtons(
+            titlebarControlsStyle: .roomy,
+            controlsLeadingInset: CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset)
+        )
+        XCTAssertGreaterThan(roomy, 200)
     }
 
     func testSessionPersistenceReadsConfiguredMinimumSidebarWidth() {
