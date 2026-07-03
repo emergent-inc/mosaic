@@ -353,7 +353,7 @@ struct ModeBarButton: View {
     @State private var isHovered: Bool = false
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("rightsidebarchromestyle_button_356", action: action) {
             HStack(spacing: 4) {
                 CmuxSystemSymbolImage(
                     systemName: item.symbolName,

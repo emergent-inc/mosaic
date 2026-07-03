@@ -6,7 +6,7 @@ struct AgentSessionDebugMenuButtons: View {
     let openSolid: () -> Void
 
     var body: some View {
-        Button(
+        TrackedButton("agentsessiondebugmenubuttons_button_9", 
             String(
                 localized: "debug.menu.openAgentGuiReact",
                 defaultValue: "Open Agent GUI (React)"
@@ -15,7 +15,7 @@ struct AgentSessionDebugMenuButtons: View {
             openReact()
         }
 
-        Button(
+        TrackedButton("agentsessiondebugmenubuttons_button_18", 
             String(
                 localized: "debug.menu.openAgentGuiSolid",
                 defaultValue: "Open Agent GUI (Solid)"

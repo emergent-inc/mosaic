@@ -97,8 +97,7 @@ final class PostHogAnalytics: @unchecked Sendable {
     private var isEnabled: Bool {
         guard TelemetrySettings.enabledForCurrentLaunch else { return false }
 #if DEBUG
-        // Avoid polluting production analytics while iterating locally.
-        return ProcessInfo.processInfo.environment["CMUX_POSTHOG_ENABLE"] == "1"
+        return !apiKey.isEmpty && apiKey != "REPLACE_WITH_POSTHOG_PUBLIC_KEY"
 #else
         return !apiKey.isEmpty && apiKey != "REPLACE_WITH_POSTHOG_PUBLIC_KEY"
 #endif
@@ -149,6 +148,14 @@ final class PostHogAnalytics: @unchecked Sendable {
         }
     }
 
+    func capture(
+        _ eventName: String,
+        properties: [String: Any] = [:],
+        flush: Bool = false
+    ) {
+        capture(MacAnalyticsEvent(rawValue: eventName), properties: properties, flush: flush)
+    }
+
     func trackAction(
         actionID: String,
         surface: String,
@@ -171,6 +178,12 @@ final class PostHogAnalytics: @unchecked Sendable {
             category: "analytics.action",
             data: Self.sentryContext(from: eventProperties)
         )
+    }
+
+    func trackButtonTap(buttonName: String, properties: [String: Any] = [:]) {
+        var eventProperties = properties
+        eventProperties["button_name"] = buttonName
+        capture("button_tapped", properties: eventProperties)
     }
 
     func trackError(
@@ -246,10 +259,17 @@ final class PostHogAnalytics: @unchecked Sendable {
             return event
         }
 #if DEBUG
-        config.debug = ProcessInfo.processInfo.environment["CMUX_POSTHOG_DEBUG"] == "1"
+        config.debug = true
 #endif
 
         PostHogSDK.shared.setup(config)
+#if DEBUG
+        print("[PostHog] Debug mode enabled")
+#endif
+        capturePostHog("app_launched", [:])
+#if DEBUG
+        flushPostHog()
+#endif
 
         // Tag every event so PostHog can distinguish desktop from web and
         // break events down by released app version/build.
@@ -283,6 +303,14 @@ final class PostHogAnalytics: @unchecked Sendable {
 
         let today = utcDayString(now())
         if userDefaults.string(forKey: lastActiveDayUTCKey) == today {
+            captureOnWorkQueue(
+                event: "cmux_health_check",
+                properties: [
+                    "type": "daily",
+                    "status": "ok",
+                ],
+                flush: false
+            )
             return false
         }
 
@@ -350,9 +378,13 @@ final class PostHogAnalytics: @unchecked Sendable {
         )
         capturePostHog(event, sanitizedProperties)
 
+#if DEBUG
+        flushPostHog()
+#else
         if flush || Self.shouldFlushAfterCapture(event: event) {
             flushPostHog()
         }
+#endif
     }
 
     private func dispatchAsyncOnWorkQueue(_ block: @escaping @Sendable () -> Void) {

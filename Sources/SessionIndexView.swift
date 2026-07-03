@@ -125,9 +125,9 @@ struct SessionIndexView: View {
             .accessibilityIdentifier("SessionScopeToggle.thisFolder")
             .titlebarInteractiveControl()
 
-            Button {
+            TrackedButton("sessionindexview_button_128", action: {
                 store.reload()
-            } label: {
+            }) {
                 Image(systemName: "arrow.clockwise")
                     .cmuxFont(size: 10, weight: .medium)
             }
@@ -286,7 +286,7 @@ private struct GroupingButton: View {
     @State private var isHovered: Bool = false
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("sessionindexview_button_289", action: action) {
             HStack(spacing: 3) {
                 Image(systemName: mode.symbolName)
                     .symbolRenderingMode(.monochrome)
@@ -410,9 +410,9 @@ private struct IndexSectionView: View, Equatable {
     }
 
     private var showMoreButton: some View {
-        Button {
+        TrackedButton("sessionindexview_button_413", action: {
             isPopoverOpen = true
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.section.showMore", defaultValue: "Show more"))
                 .cmuxFont(size: 12, weight: .medium)
                 .foregroundColor(.secondary.opacity(0.7))
@@ -436,9 +436,9 @@ private struct IndexSectionView: View, Equatable {
     }
 
     private var sectionHeader: some View {
-        Button {
+        TrackedButton("sessionindexview_button_439", action: {
             isCollapsed.toggle()
-        } label: {
+        }) {
             HStack(spacing: 8) {
                 sectionIconView
                 Text(section.title)
@@ -631,7 +631,7 @@ private struct SessionRow: View, Equatable {
     @ViewBuilder
     private var deleteButton: some View {
         if entry.fileURL != nil {
-            Button(role: .destructive) {
+            TrackedButton("sessionindexview_button_634", role: .destructive) {
                 _ = onDelete(entry)
             } label: {
                 Image(systemName: "xmark")
@@ -715,60 +715,60 @@ private func sessionRowMenuItems(
     onDelete: SessionDeleteFn?
 ) -> some View {
     if let onResume {
-        Button {
+        TrackedButton("sessionindexview_button_718", action: {
             onResume(entry)
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.resume", defaultValue: "Resume in New Tab"))
         }
         Divider()
     }
     if let url = entry.fileURL {
-        Button {
+        TrackedButton("sessionindexview_button_726", action: {
             NSWorkspace.shared.open(url)
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.open", defaultValue: "Open"))
         }
-        Button {
+        TrackedButton("sessionindexview_button_731", action: {
             NSWorkspace.shared.activateFileViewerSelecting([url])
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.reveal", defaultValue: "Reveal in Finder"))
         }
         Divider()
-        Button {
+        TrackedButton("sessionindexview_button_737", action: {
             let pb = NSPasteboard.general
             pb.clearContents()
             pb.setString(url.path, forType: .string)
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.copyPath", defaultValue: "Copy File Path"))
         }
     }
     if let resumeCommand = entry.resumeCommand {
-        Button {
+        TrackedButton("sessionindexview_button_746", action: {
             let pb = NSPasteboard.general
             pb.clearContents()
             pb.setString(resumeCommand, forType: .string)
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.copyResume", defaultValue: "Copy Resume Command"))
         }
     }
     if let cwd = entry.cwd, !cwd.isEmpty {
-        Button {
+        TrackedButton("sessionindexview_button_755", action: {
             NSWorkspace.shared.open(URL(fileURLWithPath: cwd))
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.openCwd", defaultValue: "Open Working Directory"))
         }
     }
     if let pr = entry.pullRequest, let url = URL(string: pr.url) {
         Divider()
-        Button {
+        TrackedButton("sessionindexview_button_763", action: {
             NSWorkspace.shared.open(url)
-        } label: {
+        }) {
             Text(String(localized: "sessionIndex.row.openPR", defaultValue: "Open Pull Request"))
         }
     }
     if let onDelete, entry.fileURL != nil {
         Divider()
-        Button(role: .destructive) {
+        TrackedButton("sessionindexview_button_771", role: .destructive) {
             _ = onDelete(entry)
         } label: {
             Text(String(localized: "sessionIndex.row.delete", defaultValue: "Delete"))
@@ -2234,9 +2234,9 @@ private struct SectionPopoverView: View {
                 .cmuxFont(size: 12)
                 .focused($searchFieldFocused)
                 if !query.isEmpty {
-                    Button {
+                    TrackedButton("sessionindexview_button_2237", action: {
                         query = ""
-                    } label: {
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .cmuxFont(size: 11)
                             .foregroundColor(.secondary)
@@ -2610,7 +2610,7 @@ private struct PopoverRow: View, Equatable {
     @ViewBuilder
     private var deleteButton: some View {
         if entry.fileURL != nil {
-            Button(role: .destructive) {
+            TrackedButton("sessionindexview_button_2613", role: .destructive) {
                 _ = onDelete()
             } label: {
                 Image(systemName: "xmark")

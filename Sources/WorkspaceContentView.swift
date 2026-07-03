@@ -748,7 +748,7 @@ struct EmptyPanelView: View {
         shortcut: StoredShortcut,
         action: @escaping () -> Void
     ) -> some View {
-        let button = Button(action: action) {
+        let button = TrackedButton("workspacecontentview_button_751", action: action) {
             HStack(spacing: 10) {
                 HStack(spacing: 6) {
                     CmuxSystemSymbolImage(systemName: systemImage, pointSize: 13)
