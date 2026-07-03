@@ -19,6 +19,7 @@ struct CollaborationDocumentHeaderState: Equatable {
     var isShared = false
     var statusText = ""
     var peerSummary = ""
+    var isConnectedToSession = false
 }
 
 private struct CollaborationCreateSessionResponse: Decodable {
@@ -178,6 +179,7 @@ private struct CollaborationTerminalPointerWire: Codable {
     let column: Double?
     let contentRow: Double?
     let contentRowFromBottom: Double?
+    let viewportRowFromBottom: Double?
 }
 
 private struct CollaborationTerminalSelectionRectWire: Codable {
@@ -338,9 +340,19 @@ private final class CollaborationRelayConnection {
 
 struct CollaborationTerminalHeaderState: Equatable {
     var isShared = false
+    var isHosted = false
+    var isMirrored = false
     var statusText = ""
     var peerSummary = ""
     var ownerSnapshot: CollaborationParticipantAvatarSnapshot?
+    var workspaceSessionCode: String?
+    var isWorkspaceSessionConnected = false
+
+    var sharingRole: CollaborationSurfaceSharingRole {
+        if isHosted { return .hosted }
+        if isMirrored { return .mirrored }
+        return .notShared
+    }
 }
 
 struct CollaborationTerminalRecipientSnapshot: Equatable, Identifiable {
@@ -551,7 +563,6 @@ final class CollaborationRuntime {
     static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
     private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
     private static let terminalInitialRenderGridScrollbackLines = 10_000
-    private static let terminalLiveRenderGridScrollbackLines = 0
     private static let inviteCodeStore = CollaborationInviteCodeStore()
     private static let workspaceSessionStore = CollaborationWorkspaceSessionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
@@ -583,7 +594,6 @@ final class CollaborationRuntime {
     private var terminalSessionRouter = CollaborationTerminalSessionRouter()
     private var hostedTerminalOutputSequencesByID: [String: UInt64] = [:]
     private var hostedTerminalOutputCaretSuppressionsByID: [String: TerminalOutputCaretSuppression] = [:]
-    private var hostedTerminalRenderGridSnapshotTasksByID: [String: Task<Void, Never>] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalOwnerParticipantIDsByID: [String: String] = [:]
@@ -628,6 +638,17 @@ final class CollaborationRuntime {
 
     private func sessionCode(forWorkspaceID workspaceID: UUID) -> String? {
         sessionCodesByWorkspaceID[workspaceID]
+    }
+
+    private func terminalHeaderState(
+        _ state: CollaborationTerminalHeaderState,
+        for terminal: TerminalPanel
+    ) -> CollaborationTerminalHeaderState {
+        let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
+        var enriched = state
+        enriched.workspaceSessionCode = workspaceSessionCode
+        enriched.isWorkspaceSessionConnected = workspaceSessionCode.flatMap { connectionsBySessionCode[$0] } != nil
+        return enriched
     }
 
     private func recordWorkspaceSession(_ sessionCode: String, workspaceID: UUID) {
@@ -772,26 +793,41 @@ final class CollaborationRuntime {
         return statesByDocumentID[documentID] ?? CollaborationDocumentHeaderState(
             isShared: false,
             statusText: connection?.connectionLabel ?? connectionLabel,
-            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers
+            peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers,
+            isConnectedToSession: connection != nil
         )
     }
 
     func configureOrShare(panel: any CollaborationEditablePanel) {
-        scheduleStartDialog(thenShare: panel)
+        setSharing(true, for: panel)
+    }
+
+    func setSharing(_ isSharing: Bool, for panel: any CollaborationEditablePanel) {
+        let state = state(for: panel)
+        if isSharing {
+            if state.isShared { return }
+            if activeConnection != nil {
+                share(panel: panel)
+            } else {
+                scheduleStartDialog(thenShare: panel)
+            }
+        } else if state.isShared {
+            leave(panel: panel)
+        }
     }
 
     func state(for terminal: TerminalPanel) -> CollaborationTerminalHeaderState {
         let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
         if let terminalID, let state = terminalStatesByID[terminalID] {
-            return state
+            return terminalHeaderState(state, for: terminal)
         }
         let connection = activeConnection
-        return CollaborationTerminalHeaderState(
+        return terminalHeaderState(CollaborationTerminalHeaderState(
             isShared: false,
             statusText: connection?.connectionLabel ?? connectionLabel,
             peerSummary: connection?.peerSummary ?? CollaborationStrings.noPeers,
             ownerSnapshot: nil
-        )
+        ), for: terminal)
     }
 
     func canManageRecipients(for terminal: TerminalPanel) -> Bool {
@@ -799,27 +835,48 @@ final class CollaborationRuntime {
     }
 
     func configureOrShare(terminal: TerminalPanel) {
+        setSharing(true, for: terminal)
+    }
+
+    func setSharing(_ isSharing: Bool, for terminal: TerminalPanel) {
         let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId)
-        switch CollaborationTerminalShareAction.action(
-            isShared: state(for: terminal).isShared,
-            workspaceHasSession: workspaceSessionCode != nil
-        ) {
-        case .presentParticipantPicker:
-            if !canManageRecipients(for: terminal) {
-                leave(terminal: terminal)
-            }
-        case .rejoinWorkspaceSession:
-            guard let workspaceSessionCode else {
+        let role = state(for: terminal).sharingRole
+        if isSharing {
+            switch CollaborationTerminalShareAction.primaryAction(
+                role: role,
+                workspaceHasSession: workspaceSessionCode != nil
+            ) {
+            case .presentSessionChooser:
                 scheduleStartDialog(thenShare: terminal)
-                return
-            }
-            Task {
-                if let connection = await joinSession(code: workspaceSessionCode) {
-                    share(terminal: terminal, via: connection)
+            case .shareInWorkspaceSession:
+                guard let workspaceSessionCode else {
+                    scheduleStartDialog(thenShare: terminal)
+                    return
                 }
+                if let connection = connectionsBySessionCode[workspaceSessionCode] {
+                    sessionCode = workspaceSessionCode
+                    connectionLabel = connection.connectionLabel
+                    share(terminal: terminal, via: connection)
+                    return
+                }
+                Task {
+                    if let connection = await joinSession(code: workspaceSessionCode) {
+                        share(terminal: terminal, via: connection)
+                    }
+                }
+            case .stopSharingHostedTerminal, .stopViewingRemoteTerminal, .presentParticipantPicker:
+                break
             }
-        case .presentSessionChooser:
-            scheduleStartDialog(thenShare: terminal)
+        } else {
+            switch CollaborationTerminalShareAction.primaryAction(
+                role: role,
+                workspaceHasSession: workspaceSessionCode != nil
+            ) {
+            case .stopSharingHostedTerminal, .stopViewingRemoteTerminal:
+                leave(terminal: terminal)
+            case .presentSessionChooser, .shareInWorkspaceSession, .presentParticipantPicker:
+                break
+            }
         }
     }
 
@@ -850,6 +907,45 @@ final class CollaborationRuntime {
         guard !normalizedCode.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+    }
+
+    func createWorkspaceSession(for terminal: TerminalPanel) {
+        Task { await createSessionAndBindWorkspace(for: terminal) }
+    }
+
+    func joinWorkspaceSession(for terminal: TerminalPanel) {
+        presentJoinDialog(thenBindWorkspaceFor: terminal)
+    }
+
+    func copyWorkspaceSessionInviteCode(for terminal: TerminalPanel) {
+        let code = sessionCode(forWorkspaceID: terminal.workspaceId) ?? sessionCode
+        guard let code else { return }
+        let normalizedCode = Self.normalizedSessionCode(from: code)
+        guard !normalizedCode.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(normalizedCode, forType: .string)
+    }
+
+    func leaveWorkspaceSession(for terminal: TerminalPanel) {
+        guard let workspaceSessionCode = sessionCode(forWorkspaceID: terminal.workspaceId) else { return }
+        let normalizedCode = Self.normalizedSessionCode(from: workspaceSessionCode)
+        guard !normalizedCode.isEmpty else { return }
+        let terminalIDs = terminalStatesByID.keys.filter {
+            terminalSessionRouter.sessionCode(forTerminalID: $0) == normalizedCode
+        }
+        for terminalID in terminalIDs {
+            leave(terminalID: terminalID)
+        }
+        sessionCodesByWorkspaceID.removeValue(forKey: terminal.workspaceId)
+        Self.workspaceSessionStore.remove(workspaceID: terminal.workspaceId)
+        if let connection = connectionsBySessionCode.removeValue(forKey: normalizedCode) {
+            connection.disconnect()
+        }
+        if sessionCode == normalizedCode {
+            sessionCode = nil
+            connectionLabel = CollaborationStrings.disconnected
+        }
+        workspaceParticipantSnapshotRevision &+= 1
     }
 
     func applyRecipientSelection(_ selectedParticipantIDs: Set<String>, for terminal: TerminalPanel) {
@@ -907,13 +1003,16 @@ final class CollaborationRuntime {
         let terminalID = hostedTerminalIDsBySurfaceID[terminal.id]
             ?? mirroredTerminalIDsBySurfaceID[terminal.id]
             ?? terminalID(for: terminal)
+        leave(terminalID: terminalID)
+    }
+
+    private func leave(terminalID: String) {
         let connection = connection(forTerminalID: terminalID)
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
-        hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
@@ -934,8 +1033,12 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
         Task {
             if let connection = connection(forTerminalID: terminalID) {
+                // The byte-faithful raw stream is the mirror's sole live painter;
+                // it reproduces scrollback, TUIs, and resizes exactly. We do NOT
+                // also send a live render-grid delta here: the two transports
+                // interleave and desync, which left stale rows on the peer. The
+                // render-grid path is used only for the cold-attach full seed.
                 try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data), via: connection)
-                scheduleTerminalRenderGridSnapshot(terminalID: terminalID)
             }
         }
     }
@@ -966,6 +1069,7 @@ final class CollaborationRuntime {
         column: Double?,
         contentRow: Double?,
         contentRowFromBottom: Double?,
+        viewportRowFromBottom: Double?,
         visible: Bool,
         coordinateSpace: String
     ) {
@@ -998,7 +1102,8 @@ final class CollaborationRuntime {
                     row: row,
                     column: column,
                     contentRow: contentRow,
-                    contentRowFromBottom: contentRowFromBottom
+                    contentRowFromBottom: contentRowFromBottom,
+                    viewportRowFromBottom: viewportRowFromBottom
                 ), via: connection)
             }
         }
@@ -1662,8 +1767,6 @@ final class CollaborationRuntime {
         terminalSessionRouter.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
-        hostedTerminalRenderGridSnapshotTasksByID.values.forEach { $0.cancel() }
-        hostedTerminalRenderGridSnapshotTasksByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
         mirroredTerminalRenderGridPatchSequencesByID.removeAll()
@@ -1823,6 +1926,19 @@ final class CollaborationRuntime {
         }
     }
 
+    private func createSessionAndBindWorkspace(for terminal: TerminalPanel) async {
+        do {
+            let response = try await createSession()
+            if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
+                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
+            }
+            presentCreatedSessionDialog(code: response.sessionCode)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            connectionLabel = CollaborationStrings.connectionFailed
+        }
+    }
+
     private func createSessionAndShare(panel: any CollaborationEditablePanel) async {
         do {
             let response = try await createSession()
@@ -1975,7 +2091,8 @@ final class CollaborationRuntime {
         statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
             isShared: true,
             statusText: CollaborationStrings.shared,
-            peerSummary: connection.peerSummary
+            peerSummary: connection.peerSummary,
+            isConnectedToSession: true
         )
         Task {
             do {
@@ -2009,6 +2126,7 @@ final class CollaborationRuntime {
         let ownerSnapshot = localParticipantSnapshot()
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
+            isHosted: true,
             statusText: CollaborationStrings.shared,
             peerSummary: connection.peerSummary,
             ownerSnapshot: ownerSnapshot
@@ -2052,7 +2170,8 @@ final class CollaborationRuntime {
             statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
                 isShared: true,
                 statusText: CollaborationStrings.shared,
-                peerSummary: connection.peerSummary
+                peerSummary: connection.peerSummary,
+                isConnectedToSession: true
             )
             Task {
                 do {
@@ -2120,6 +2239,7 @@ final class CollaborationRuntime {
         let ownerSnapshot = ownerSnapshot(forPeerID: ownerPeerID, in: connection)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
+            isMirrored: true,
             statusText: CollaborationStrings.shared,
             peerSummary: connection.peerSummary,
             ownerSnapshot: ownerSnapshot
@@ -2499,6 +2619,7 @@ final class CollaborationRuntime {
                 column: pointer.column,
                 contentRow: pointer.contentRow,
                 contentRowFromBottom: pointer.contentRowFromBottom,
+                viewportRowFromBottom: pointer.viewportRowFromBottom,
                 visible: pointer.visible,
                 coordinateSpace: pointer.coordinateSpace
             )
@@ -2751,15 +2872,33 @@ final class CollaborationRuntime {
             full: full,
             scrollbackLines: scrollbackLines
         ) else { return }
+        let frame = terminalRenderGridFrameWithResolvedDefaults(snapshot.frame)
         try await send(CollaborationTerminalRenderGridWire(
             type: "terminal.render_grid",
             terminalID: terminalID,
-            frame: snapshot.frame,
+            frame: frame,
             recipientParticipantIDs: recipientParticipantIDs ?? recipientParticipantIDsForSending(
                 terminalID: terminalID,
                 connection: connection
             )
         ), via: connection)
+    }
+
+    private func terminalRenderGridFrameWithResolvedDefaults(
+        _ frame: MobileTerminalRenderGridFrame
+    ) -> MobileTerminalRenderGridFrame {
+        guard frame.full else { return frame }
+        var resolved = frame
+        if resolved.terminalForeground == nil {
+            resolved.terminalForeground = GhosttyApp.shared.defaultForegroundColor.hexString()
+        }
+        if resolved.terminalBackground == nil {
+            resolved.terminalBackground = GhosttyApp.shared.defaultBackgroundColor.hexString()
+        }
+        if resolved.terminalCursorColor == nil {
+            resolved.terminalCursorColor = GhosttyApp.shared.defaultCursorColor.hexString()
+        }
+        return resolved
     }
 
     private func sendHostedTerminalSeedsForNewPeer(
@@ -2802,27 +2941,6 @@ final class CollaborationRuntime {
 
     private static func shouldSendTerminalRenderGridSnapshot(for panel: TerminalPanel) -> Bool {
         panel.surface.hostedView.isAtLiveScrollbackBottom
-    }
-
-    private func scheduleTerminalRenderGridSnapshot(terminalID: String) {
-        guard hostedTerminalRenderGridSnapshotTasksByID[terminalID] == nil else { return }
-        hostedTerminalRenderGridSnapshotTasksByID[terminalID] = Task { [weak self] in
-            await Task.yield()
-            if !Task.isCancelled {
-                if let connection = await self?.connection(forTerminalID: terminalID) {
-                    try? await self?.sendTerminalRenderGridSnapshotIfPossible(
-                        terminalID: terminalID,
-                        scrollbackLines: Self.terminalLiveRenderGridScrollbackLines,
-                        full: false,
-                        requireLiveScrollbackBottom: true,
-                        via: connection
-                    )
-                }
-            }
-            await MainActor.run {
-                self?.hostedTerminalRenderGridSnapshotTasksByID.removeValue(forKey: terminalID)
-            }
-        }
     }
 
     private func send(_ frame: CollaborationRelayFrame) async throws {
@@ -2973,7 +3091,8 @@ final class CollaborationRuntime {
         statesByDocumentID[documentID] = CollaborationDocumentHeaderState(
             isShared: isShared,
             statusText: isShared ? CollaborationStrings.shared : connection.connectionLabel,
-            peerSummary: connection.peerSummary
+            peerSummary: connection.peerSummary,
+            isConnectedToSession: true
         )
     }
 
@@ -2992,9 +3111,13 @@ final class CollaborationRuntime {
             let existingState = terminalStatesByID[terminalID]
             terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
                 isShared: existingState?.isShared ?? false,
+                isHosted: existingState?.isHosted ?? false,
+                isMirrored: existingState?.isMirrored ?? false,
                 statusText: existingState?.isShared == true ? CollaborationStrings.shared : connection.connectionLabel,
                 peerSummary: connection.peerSummary,
-                ownerSnapshot: existingState?.ownerSnapshot
+                ownerSnapshot: existingState?.ownerSnapshot,
+                workspaceSessionCode: existingState?.workspaceSessionCode,
+                isWorkspaceSessionConnected: existingState?.isWorkspaceSessionConnected ?? false
             )
         }
     }
@@ -3216,8 +3339,99 @@ enum CollaborationStrings {
         String(localized: "collaboration.terminal.manageSharing", defaultValue: "Manage Terminal Sharing")
     }
 
+    static var sharingToggle: String {
+        String(localized: "collaboration.sharing.toggle", defaultValue: "Sharing")
+    }
+
+    static var sharingToggleHelp: String {
+        String(
+            localized: "collaboration.sharing.toggle.help",
+            defaultValue: "Turn sharing on or off for this item."
+        )
+    }
+
+    static var viewingRemoteTerminal: String {
+        String(localized: "collaboration.terminal.viewingRemote", defaultValue: "Viewing")
+    }
+
+    static var stopViewingRemoteTerminal: String {
+        String(localized: "collaboration.terminal.stopViewingRemote", defaultValue: "Stop Viewing Remote Terminal")
+    }
+
+    static var startSession: String {
+        String(localized: "collaboration.action.startSession", defaultValue: "Start Session")
+    }
+
+    static var sessionPopoverTitle: String {
+        String(localized: "collaboration.session.popover.title", defaultValue: "Collaboration Session")
+    }
+
+    static var sessionNotJoined: String {
+        String(localized: "collaboration.session.notJoined", defaultValue: "No collaboration session")
+    }
+
+    static var sessionJoined: String {
+        String(localized: "collaboration.session.joined", defaultValue: "Joined collaboration session")
+    }
+
+    static var sessionConnected: String {
+        String(localized: "collaboration.session.connected", defaultValue: "Connected collaboration session")
+    }
+
+    static var sessionNotJoinedDetail: String {
+        String(
+            localized: "collaboration.session.notJoined.detail",
+            defaultValue: "Create or join a session first. The Sharing toggle controls whether this terminal is visible to that session."
+        )
+    }
+
+    static var sessionJoinedDetail: String {
+        String(
+            localized: "collaboration.session.joined.detail",
+            defaultValue: "This workspace remembers the session. Turn Sharing on to share this terminal."
+        )
+    }
+
+    static func sessionConnectedDetail(peerSummary: String) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "collaboration.session.connected.detail", defaultValue: "Connected with %@."),
+            peerSummary
+        )
+    }
+
+    static func sessionCodeLabel(code: String) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "collaboration.session.code.label", defaultValue: "Session %@"),
+            code
+        )
+    }
+
+    static func sessionPillLabel(code: String, peerSummary: String) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "collaboration.session.pill.label", defaultValue: "Session %@ · %@"),
+            code,
+            peerSummary
+        )
+    }
+
+    static var sessionParticipantsTitle: String {
+        String(localized: "collaboration.session.participants.title", defaultValue: "People in session")
+    }
+
+    static var joinDifferentSession: String {
+        String(localized: "collaboration.action.joinDifferentSession", defaultValue: "Join Different Session")
+    }
+
+    static var leaveSession: String {
+        String(localized: "collaboration.action.leaveSession", defaultValue: "Leave Session")
+    }
+
     static var terminalRecipientsTitle: String {
         String(localized: "collaboration.terminal.recipients.title", defaultValue: "Sharing with")
+    }
+
+    static var terminalRecipientsShareTitle: String {
+        String(localized: "collaboration.terminal.recipients.shareTitle", defaultValue: "Share terminal with")
     }
 
     static var terminalRecipientsEmpty: String {
@@ -3245,6 +3459,20 @@ enum CollaborationStrings {
 
     static var stopSharingTerminal: String {
         String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop Sharing Terminal")
+    }
+
+    static func sharedToRecipientCount(_ count: Int) -> String {
+        switch count {
+        case 0:
+            return String(localized: "collaboration.terminal.sharedTo.none", defaultValue: "Shared to no one")
+        case 1:
+            return String(localized: "collaboration.terminal.sharedTo.one", defaultValue: "Shared to 1")
+        default:
+            return String.localizedStringWithFormat(
+                String(localized: "collaboration.terminal.sharedTo.count", defaultValue: "Shared to %d"),
+                count
+            )
+        }
     }
 
     static var sharedTerminalTitle: String {
@@ -3532,24 +3760,39 @@ struct CollaborationHeaderControls<PanelModel>: View where PanelModel: Collabora
 
     var body: some View {
         let state = runtime.state(for: panel)
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             if state.isShared {
                 Text(state.peerSummary)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            PanelHeaderIconButton(
-                systemName: state.isShared ? "person.2.fill" : "person.2",
-                label: state.isShared ? "\(state.statusText) - \(state.peerSummary)" : CollaborationStrings.collaborate,
-                isDisabled: false,
-                action: {
-                    if state.isShared {
-                        runtime.leave(panel: panel)
-                    } else {
-                        runtime.configureOrShare(panel: panel)
-                    }
+            Text(CollaborationStrings.sharingToggle)
+                .cmuxFont(size: 10, weight: .semibold)
+                .foregroundStyle(state.isShared ? Color.accentColor : Color.secondary)
+            Toggle(isOn: Binding(
+                get: {
+                    runtime.state(for: panel).isShared
+                },
+                set: { isSharing in
+                    runtime.setSharing(isSharing, for: panel)
                 }
-            )
+            )) {
+                EmptyView()
+            }
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .help(state.isShared ? "\(state.statusText) - \(state.peerSummary)" : CollaborationStrings.sharingToggleHelp)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background {
+            Capsule()
+                .fill(Color.primary.opacity(state.isShared ? 0.10 : 0.06))
+        }
+        .overlay {
+            Capsule()
+                .stroke(Color.primary.opacity(state.isShared ? 0.16 : 0.10), lineWidth: 0.5)
         }
     }
 }
