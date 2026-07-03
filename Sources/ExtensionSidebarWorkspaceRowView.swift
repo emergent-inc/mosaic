@@ -60,7 +60,7 @@ struct CmuxExtensionSidebarWorkspaceRowView: View, Equatable {
             }
 
             if let accessory = row.accessory, let workspace {
-                Button {
+                TrackedButton("extensionsidebarworkspacerowview_button_63", action: {
                     if inspectorDraft == nil {
                         inspectorDraft = CmuxExtensionWorkspaceInspectorDraft.initial(
                             workspace: workspace,
@@ -68,7 +68,7 @@ struct CmuxExtensionSidebarWorkspaceRowView: View, Equatable {
                         )
                     }
                     showsInspector = true
-                } label: {
+                }) {
                     Image(systemName: accessory.systemImageName)
                         .cmuxFont(size: isSuperCompact ? 10 : 12, weight: .regular)
                         .frame(width: isSuperCompact ? 14 : 18, height: isSuperCompact ? 14 : 18)
@@ -192,7 +192,7 @@ struct CmuxExtensionWorkspaceInspectorView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Button(action: onOpenWindow) {
+                TrackedButton("extensionsidebarworkspacerowview_button_195", action: onOpenWindow) {
                     Image(systemName: "macwindow")
                         .frame(width: 20, height: 20)
                 }

@@ -20,9 +20,9 @@ struct DockEmptyView: View {
             .foregroundStyle(.secondary)
             VStack(spacing: 8) {
                 HStack(spacing: 4) {
-                    Button {
+                    TrackedButton("dockemptyview_button_23", action: {
                         copyAgentPrompt()
-                    } label: {
+                    }) {
                         Label(
                             String(localized: "dock.empty.copyPrompt", defaultValue: "Copy Agent Prompt"),
                             systemImage: "doc.on.doc"
@@ -32,9 +32,9 @@ struct DockEmptyView: View {
                     .controlSize(.small)
                     .help(String(localized: "dock.empty.copyPrompt.help", defaultValue: "Copy a prompt you can paste into an AI coding agent"))
 
-                    Button {
+                    TrackedButton("dockemptyview_button_35", action: {
                         isPromptPopoverPresented.toggle()
-                    } label: {
+                    }) {
                         Image(systemName: "info.circle")
                     }
                     .buttonStyle(.borderless)
@@ -46,9 +46,9 @@ struct DockEmptyView: View {
                     }
                 }
 
-                Button {
+                TrackedButton("dockemptyview_button_49", action: {
                     openDockDocs()
-                } label: {
+                }) {
                     Label(
                         String(localized: "dock.empty.openDocs", defaultValue: "Docs"),
                         systemImage: "questionmark.circle"

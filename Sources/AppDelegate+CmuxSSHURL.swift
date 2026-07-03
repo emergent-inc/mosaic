@@ -516,7 +516,13 @@ extension AppDelegate {
         }
 
         if let request = navigationRequests.first {
-            _ = handleCmuxNavigationURLRequest(request)
+            let deeplinkType = Self.deeplinkType(forNavigationTarget: request.target)
+            trackDeeplinkReceived(type: deeplinkType)
+            if handleCmuxNavigationURLRequest(request) {
+                trackDeeplinkConfirmed(type: deeplinkType)
+            } else {
+                trackDeeplinkRejected(type: deeplinkType, reason: "target_not_found")
+            }
         }
         return true
     }
@@ -621,11 +627,14 @@ extension AppDelegate {
         )
 
         if sshURLIntentCount > 1 {
+            trackDeeplinkRejected(type: "ssh", reason: "multiple_links")
             trackLinkingFailed(linkKind: .ssh, errorKind: "multiple_links")
             showCmuxSSHURLParseError(.multipleLinks)
         } else {
             for error in sshURLParseErrors {
-                trackLinkingFailed(linkKind: .ssh, errorKind: Self.analyticsErrorKind(for: error))
+                let reason = Self.analyticsErrorKind(for: error)
+                trackDeeplinkRejected(type: "ssh", reason: reason)
+                trackLinkingFailed(linkKind: .ssh, errorKind: reason)
                 showCmuxSSHURLParseError(error)
             }
             if let request = sshURLRequests.first {
@@ -638,7 +647,7 @@ extension AppDelegate {
     @discardableResult
     func handleCmuxTextURLs(from urls: [URL]) -> Bool {
         var textURLRequests: [CmuxTextURLRequest] = []
-        var textURLParseErrors: [CmuxTextURLParseError] = []
+        var textURLParseErrors: [(deeplinkType: String, error: CmuxTextURLParseError)] = []
         for url in urls {
             switch CmuxTextURLRequest.parse(url) {
             case .success(.some(let request)):
@@ -646,13 +655,13 @@ extension AppDelegate {
             case .success(nil):
                 break
             case .failure(let error):
-                textURLParseErrors.append(error)
+                textURLParseErrors.append((Self.deeplinkType(forTextURL: url), error))
             }
         }
         let textURLIntentCount = textURLRequests.count + textURLParseErrors.count
         guard textURLIntentCount > 0 else { return false }
         let linkKind = textURLRequests.first.map { Self.analyticsLinkKind(for: $0) }
-            ?? textURLParseErrors.first.map { Self.analyticsLinkKind(for: $0) }
+            ?? textURLParseErrors.first.map { Self.analyticsLinkKind(forDeeplinkType: $0.deeplinkType) }
             ?? .prompt
         ProductAnalytics.shared.trackLinking(
             .started,
@@ -666,12 +675,15 @@ extension AppDelegate {
         )
 
         if textURLIntentCount > 1 {
+            trackDeeplinkRejected(type: linkKind.rawValue, reason: "multiple_links")
             trackLinkingFailed(linkKind: linkKind, errorKind: "multiple_links")
             showCmuxTextURLParseError(.multipleLinks)
         } else {
-            for error in textURLParseErrors {
-                trackLinkingFailed(linkKind: Self.analyticsLinkKind(for: error), errorKind: Self.analyticsErrorKind(for: error))
-                showCmuxTextURLParseError(error)
+            for parseError in textURLParseErrors {
+                let reason = Self.analyticsErrorKind(for: parseError.error)
+                trackDeeplinkRejected(type: parseError.deeplinkType, reason: reason)
+                trackLinkingFailed(linkKind: Self.analyticsLinkKind(forDeeplinkType: parseError.deeplinkType), errorKind: reason)
+                showCmuxTextURLParseError(parseError.error)
             }
             if let request = textURLRequests.first {
                 handleCmuxTextURLRequest(request)
@@ -686,6 +698,7 @@ extension AppDelegate {
         cmuxDebugLog("sshURL.prompt target=\(target) destinationLength=\(request.destination.count) hasPort=\(request.port != nil)")
 #endif
 
+        trackDeeplinkReceived(type: "ssh")
         deferInitialMainWindowBootstrapForExternalConfirmation()
         guard confirmCmuxSSHURLRequest(request) else {
             resumeInitialMainWindowBootstrapAfterExternalConfirmation(debugSource: "sshURL.cancelled")
@@ -703,6 +716,7 @@ extension AppDelegate {
         }
 
         prepareForExplicitOpenIntentAtStartup()
+        trackDeeplinkConfirmed(type: "ssh")
         bootstrapInitialMainWindowAfterAcceptedExternalOpen(debugSource: "sshURL.confirmed")
         NSApp.activate(ignoringOtherApps: true)
         let didStart = CmuxSSHURLProcessLauncher.shared.start(
@@ -733,6 +747,8 @@ extension AppDelegate {
         cmuxDebugLog("textURL.prompt target=\(target) kind=\(request.kind.rawValue) textLength=\(request.text.count)")
 #endif
 
+        let deeplinkType = Self.deeplinkType(for: request)
+        trackDeeplinkReceived(type: deeplinkType)
         deferInitialMainWindowBootstrapForExternalConfirmation()
         guard confirmCmuxTextURLRequest(request) else {
             resumeInitialMainWindowBootstrapAfterExternalConfirmation(debugSource: "textURL.cancelled")
@@ -750,6 +766,7 @@ extension AppDelegate {
         }
 
         prepareForExplicitOpenIntentAtStartup()
+        trackDeeplinkConfirmed(type: deeplinkType)
         bootstrapInitialMainWindowAfterAcceptedExternalOpen(
             debugSource: "textURL.confirmed",
             shouldActivate: !request.noFocus,
@@ -796,6 +813,45 @@ extension AppDelegate {
         )
     }
 
+    private func trackDeeplinkReceived(type: String) {
+#if DEBUG
+        print("[PostHog] firing: deeplink_received")
+#endif
+        PostHogAnalytics.shared.capture("deeplink_received", properties: [
+            "deeplink_type": type,
+        ])
+    }
+
+    private func trackDeeplinkConfirmed(type: String) {
+#if DEBUG
+        print("[PostHog] firing: deeplink_confirmed")
+#endif
+        PostHogAnalytics.shared.capture("deeplink_confirmed", properties: [
+            "deeplink_type": type,
+        ])
+    }
+
+    private func trackDeeplinkRejected(type: String, reason: String) {
+#if DEBUG
+        print("[PostHog] firing: deeplink_rejected")
+#endif
+        PostHogAnalytics.shared.capture("deeplink_rejected", properties: [
+            "deeplink_type": type,
+            "reason": reason,
+        ])
+    }
+
+    private static func deeplinkType(forNavigationTarget target: CmuxNavigationURLRequest.Target) -> String {
+        switch target {
+        case .workspace:
+            return "workspace"
+        case .pane:
+            return "pane"
+        case .surface:
+            return "surface"
+        }
+    }
+
     private static func analyticsLinkKind(for request: CmuxTextURLRequest) -> LinkingAnalyticsKind {
         switch request.kind {
         case .prompt:
@@ -807,6 +863,36 @@ extension AppDelegate {
 
     private static func analyticsLinkKind(for _: CmuxTextURLParseError) -> LinkingAnalyticsKind {
         .prompt
+    }
+
+    private static func analyticsLinkKind(forDeeplinkType deeplinkType: String) -> LinkingAnalyticsKind {
+        deeplinkType == "rules" ? .rules : .prompt
+    }
+
+    private static func deeplinkType(for request: CmuxTextURLRequest) -> String {
+        switch request.kind {
+        case .prompt:
+            return "prompt"
+        case .rules:
+            return "rules"
+        }
+    }
+
+    private static func deeplinkType(forTextURL url: URL) -> String {
+        if let host = url.host?.trimmingCharacters(in: CharacterSet(charactersIn: "/")).lowercased(),
+           host == "rule" || host == "rules" {
+            return "rules"
+        }
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return "prompt"
+        }
+        let route = components.path
+            .split(separator: "/")
+            .map { String($0).lowercased() }
+        if route.contains("rules") {
+            return "rules"
+        }
+        return "prompt"
     }
 
     private static func analyticsErrorKind(for error: CmuxSSHURLParseError) -> String {

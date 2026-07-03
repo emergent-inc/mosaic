@@ -1033,7 +1033,7 @@ private struct TextBoxAttachmentPreviewPopoverView: View {
                 .padding(TextBoxAttachmentPreviewLayout.previewPadding)
 
             if attachment.localURL != nil {
-                Button(action: openInPreview) {
+                TrackedButton("textboxinput_button_1036", action: openInPreview) {
                     Text(String(localized: "textbox.openWithPreview.button", defaultValue: "Open with Preview"))
                         .cmuxFont(size: 12, weight: .semibold)
                         .lineLimit(1)
@@ -1169,7 +1169,7 @@ private struct TextBoxAttachmentChip: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: 118, alignment: .leading)
 
-            Button(action: onRemove) {
+            TrackedButton("textboxinput_button_1172", action: onRemove) {
                 CmuxSystemSymbolImage(magnified: "xmark", pointSize: 8, weight: .bold)
                     .frame(width: 14, height: 14)
             }
@@ -1527,9 +1527,9 @@ private struct TextBoxMentionCompletionPopoverView: View {
                         .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
                     } else {
                         ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
-                            Button {
+                            TrackedButton("textboxinput_button_1530", action: {
                                 onSelect(suggestion)
-                            } label: {
+                            }) {
                                 Text(Self.highlightedTitle(suggestion.title, query: searchTerm))
                                     .cmuxFont(size: 12, weight: .semibold)
                                     .lineLimit(1)
@@ -2807,7 +2807,7 @@ struct TextBoxInputContainer: View {
     }
 
     private func addFilesButton(foreground: Color) -> some View {
-        Button(action: chooseFiles) {
+        TrackedButton("textboxinput_button_2810", action: chooseFiles) {
             CmuxSystemSymbolImage(magnified: "plus", pointSize: TextBoxLayout.iconSymbolSize, weight: .semibold)
                 .frame(width: TextBoxLayout.iconButtonSize, height: TextBoxLayout.iconButtonSize)
                 .background(
@@ -2845,7 +2845,7 @@ struct TextBoxInputContainer: View {
     }
 
     private func sendButton(canSend: Bool, foreground: Color) -> some View {
-        Button(action: submit) {
+        TrackedButton("textboxinput_button_2848", action: submit) {
             CmuxSystemSymbolImage(magnified: "arrow.up", pointSize: TextBoxLayout.sendSymbolSize, weight: .bold)
                 .frame(width: TextBoxLayout.iconButtonSize, height: TextBoxLayout.iconButtonSize)
         }
@@ -2861,9 +2861,9 @@ struct TextBoxInputContainer: View {
 
     private func pendingCommentsChip(count: Int, foreground: Color) -> some View {
         HStack(spacing: 5) {
-            Button {
+            TrackedButton("textboxinput_button_2864", action: {
                 showPendingCommentsPreview.toggle()
-            } label: {
+            }) {
                 HStack(spacing: 5) {
                     CmuxSystemSymbolImage(magnified: "text.bubble", pointSize: 11, weight: .medium)
                     Text(pendingCommentsLabel(count))
@@ -2876,9 +2876,9 @@ struct TextBoxInputContainer: View {
                 localized: "textbox.diffComments.preview",
                 defaultValue: "Show comments"
             ))
-            Button {
+            TrackedButton("textboxinput_button_2879", action: {
                 dismissPendingComments()
-            } label: {
+            }) {
                 CmuxSystemSymbolImage(magnified: "xmark", pointSize: 9, weight: .bold)
                     .frame(width: 16, height: 16)
                     .background(Circle().fill(foreground.opacity(0.12)))
