@@ -118,11 +118,11 @@ private struct PDFPreviewChromeDebugView: View {
 
                     Spacer()
 
-                    Button(String(localized: "debug.pdfPreviewChrome.copyConfig", defaultValue: "Copy Config")) {
+                    TrackedButton("pdfpreviewchromedebugwindowcontroller_button_121", String(localized: "debug.pdfPreviewChrome.copyConfig", defaultValue: "Copy Config")) {
                         copyConfig()
                     }
 
-                    Button(String(localized: "debug.pdfPreviewChrome.resetToDefault", defaultValue: "Reset to Default")) {
+                    TrackedButton("pdfpreviewchromedebugwindowcontroller_button_125", String(localized: "debug.pdfPreviewChrome.resetToDefault", defaultValue: "Reset to Default")) {
                         apply(.liquidGlass)
                     }
                 }
@@ -168,7 +168,7 @@ private struct PDFPreviewChromeDebugView: View {
 
                 Spacer()
 
-                Button(
+                TrackedButton("pdfpreviewchromedebugwindowcontroller_button_171", 
                     isSelected
                         ? String(localized: "debug.pdfPreviewChrome.selected", defaultValue: "Selected")
                         : String(localized: "debug.pdfPreviewChrome.use", defaultValue: "Use")

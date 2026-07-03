@@ -105,25 +105,25 @@ struct ConfigSettingsView: View {
 
                 Spacer(minLength: 0)
 
-                Button(openEditorButtonTitle) {
+                TrackedButton("configsettingsview_button_108", openEditorButtonTitle) {
                     openCurrentSourceInEditor()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Button(revealFinderButtonTitle) {
+                TrackedButton("configsettingsview_button_114", revealFinderButtonTitle) {
                     revealCurrentSourceInFinder()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Button(String(localized: "settings.config.action.reload", defaultValue: "Reload")) {
+                TrackedButton("configsettingsview_button_120", String(localized: "settings.config.action.reload", defaultValue: "Reload")) {
                     reloadFromDisk()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Button(String(localized: "settings.config.action.save", defaultValue: "Save")) {
+                TrackedButton("configsettingsview_button_126", String(localized: "settings.config.action.save", defaultValue: "Save")) {
                     saveCmuxConfig()
                 }
                 .buttonStyle(.borderedProminent)

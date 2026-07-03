@@ -45,7 +45,7 @@ struct RemoteTmuxPaneHeader: View {
     }
 
     private func button(system: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        TrackedButton("remotetmuxpaneheader_button_48", action: action) {
             CmuxSystemSymbolImage(magnified: system, pointSize: 11, weight: .medium)
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())

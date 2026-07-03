@@ -258,13 +258,13 @@ struct FileExternalOpenMenu: View {
                     isDisabled: isDisabled
                 )
             case .chrome:
-                Button {
+                TrackedButton("filepreviewpanel_button_261", action: {
                     presentMenu(
                         applications: applications,
                         currentPrimaryApplication: primaryApplication,
                         otherApplications: otherApplications
                     )
-                } label: {
+                }) {
                     label
                 }
                 .contentShape(Rectangle())
@@ -367,7 +367,7 @@ private struct FileExternalOpenHeaderMenuButton: View {
     let isDisabled: Bool
 
     var body: some View {
-        Button(action: presentMenu) {
+        TrackedButton("filepreviewpanel_button_370", action: presentMenu) {
             PanelHeaderIconGlyph(systemName: "square.and.arrow.up")
         }
         .buttonStyle(.plain)
@@ -1646,7 +1646,7 @@ private struct FilePreviewPDFSidebarChromeView: View {
 
     @ViewBuilder
     private var sidebarMenuItems: some View {
-        Button(action: toggleSidebar) {
+        TrackedButton("filepreviewpanel_button_1649", action: toggleSidebar) {
             Text(isSidebarVisible
                 ? String(localized: "filePreview.pdf.hideSidebar", defaultValue: "Hide Sidebar")
                 : String(localized: "filePreview.pdf.showSidebar", defaultValue: "Show Sidebar"))
@@ -1684,7 +1684,7 @@ private struct FilePreviewPDFSidebarChromeView: View {
         isSelected: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        TrackedButton("filepreviewpanel_button_1687", action: action) {
             HStack {
                 if isSelected {
                     Image(systemName: "checkmark")
@@ -1804,7 +1804,7 @@ struct FilePreviewPDFZoomChromeView: View {
         if chromeStyleVariant == .liquidGlass {
             FilePreviewChromeIconButton(systemName: systemName, label: label, action: action)
         } else {
-            Button(action: action) {
+            TrackedButton("filepreviewpanel_button_1807", action: action) {
                 Image(systemName: systemName)
                     .cmuxFont(size: 16, weight: .regular)
                     .frame(width: 38, height: 36)
@@ -1834,7 +1834,7 @@ private struct FilePreviewChromeIconButton: View {
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("filepreviewpanel_button_1837", action: action) {
             Image(systemName: systemName)
                 .cmuxFont(size: 16, weight: .semibold)
                 .frame(width: 42, height: 40)
