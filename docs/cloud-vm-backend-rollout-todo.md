@@ -6,7 +6,7 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
 
 - Vercel project exists: `emergentinc/cmux`.
 - Vercel root directory is `web`.
-- Production URL is `https://cmux.com`.
+- Production URL is `https://mosaic.inc`.
 - Vercel custom `staging` environment exists for the `emergentinc/cmux` project and tracks the
   `staging` git branch.
 - VM application logic already runs in the Vercel Next app:
@@ -94,7 +94,7 @@ These are already configured in Vercel for development, preview, and production:
   provisioning, so the route either needs a sufficient `maxDuration` or must become an async
   create-status flow before production.
 - [ ] Confirm Stack Auth callback and trusted domains include:
-  - `https://cmux.com`
+  - `https://mosaic.inc`
   - the Vercel preview domain pattern used by this project
   - local `CMUX_PORT` development callback URLs
 - [ ] Redeploy Vercel preview after env injection.

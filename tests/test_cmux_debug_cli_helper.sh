@@ -75,7 +75,7 @@ OUTPUT="$(
   CMUX_SOCKET="/tmp/main-cmux-legacy.sock" \
   CMUX_SOCKET_PATH="/tmp/main-cmux.sock" \
   CMUX_SOCKET_PASSWORD="main-secret" \
-  CMUX_BUNDLE_ID="com.cmuxterm.app" \
+  CMUX_BUNDLE_ID="mosaic.com.emergent.app" \
   CMUX_BUNDLED_CLI_PATH="/Applications/cmux.app/Contents/Resources/bin/cmux" \
   CMUX_WORKSPACE_ID="main-workspace" \
   CMUX_TAB_ID="main-tab" \
@@ -106,7 +106,7 @@ reject_prefix() {
 
 require_line "CMUX_SOCKET_PATH=$SOCKET_PATH"
 require_line "CMUX_TAG=$TAG_SLUG"
-require_line "CMUX_BUNDLE_ID=com.cmuxterm.app.debug.${TAG_BUNDLE_ID}"
+require_line "CMUX_BUNDLE_ID=mosaic.com.emergent.app.debug.${TAG_BUNDLE_ID}"
 require_line "CMUX_BUNDLED_CLI_PATH=$FAKE_CLI"
 
 reject_prefix "CMUX_SOCKET"

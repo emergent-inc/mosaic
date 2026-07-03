@@ -30,6 +30,7 @@ GhosttyKit.xcframework.bak-*/
 # Release artifacts
 cmux-*.zip
 cmux-macos.dmg
+mosaic-macos.dmg
 appcast.xml
 
 # Python

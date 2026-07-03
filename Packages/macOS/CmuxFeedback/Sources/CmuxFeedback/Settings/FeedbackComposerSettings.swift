@@ -28,7 +28,7 @@ public struct FeedbackComposerSettings: Sendable, Equatable {
     public init(
         storedEmailKey: String = "sidebarHelpFeedbackEmail",
         endpointEnvironmentKey: String = "CMUX_FEEDBACK_API_URL",
-        defaultEndpoint: String = "https://cmux.com/api/feedback",
+        defaultEndpoint: String = "https://mosaic.inc/api/feedback",
         foundersEmail: String = "contact@emergent.inc",
         maxMessageLength: Int = 4_000,
         maxAttachmentCount: Int = 10,

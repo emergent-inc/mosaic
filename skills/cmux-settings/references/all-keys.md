@@ -1,6 +1,6 @@
 # All settings keys
 
-Auto-generated from `web/data/cmux.schema.json`. For the rendered docs, see `https://cmux.com/docs/configuration`.
+Auto-generated from `web/data/cmux.schema.json`. For the rendered docs, see `https://mosaic.inc/docs/configuration`.
 
 ## app
 

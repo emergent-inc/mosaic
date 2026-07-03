@@ -47,9 +47,12 @@ fi
 
 TAG="$1"
 SIGN_HASH="A050CC7E193C8221BDBA204E731B046CDCCC1B30"
-ENTITLEMENTS="cmux.entitlements"
+ENTITLEMENTS_TEMPLATE="cmux.entitlements"
 APP_PATH="build/Build/Products/Release/cmux.app"
 GHOSTTYKIT_CRASH_REPORT_SUBDIR="cmux/crash"
+STABLE_APPCAST_URL="${MOSAIC_STABLE_APPCAST_URL:-https://updates.mosaic.inc/stable/appcast.xml}"
+RELEASE_DOWNLOAD_URL_BASE="${MOSAIC_RELEASE_DOWNLOAD_URL_BASE:-https://download.mosaic.inc/releases}"
+DMG_RELEASE="mosaic-macos.dmg"
 
 # --- Pre-flight ---
 source ~/.secrets/cmuxterm.env
@@ -87,7 +90,7 @@ APP_PLIST="$APP_PATH/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" "$APP_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$APP_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_KEY_DERIVED" "$APP_PLIST"
-/usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml" "$APP_PLIST"
+/usr/libexec/PlistBuddy -c "Add :SUFeedURL string $STABLE_APPCAST_URL" "$APP_PLIST"
 echo "Sparkle keys injected"
 
 # cmux is a non-sandboxed app. Sparkle's sandbox-only XPC services make the
@@ -96,6 +99,11 @@ echo "Sparkle keys injected"
 
 # --- Codesign ---
 echo "Codesigning..."
+ENTITLEMENTS="$(mktemp /tmp/mosaic-release-entitlements.XXXXXX)"
+./scripts/resolve-app-entitlements.sh \
+  "$ENTITLEMENTS_TEMPLATE" \
+  "$ENTITLEMENTS" \
+  "mosaic.com.emergent.app"
 ./scripts/sign-cmux-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$SIGN_HASH"
 echo "Codesign verified"
 
@@ -111,25 +119,26 @@ echo "App notarized"
 
 # --- Create and notarize DMG ---
 echo "Creating DMG..."
-rm -f cmux-macos.dmg
-create-dmg --codesign "$SIGN_HASH" cmux-macos.dmg "$APP_PATH"
+rm -f "$DMG_RELEASE"
+create-dmg --codesign "$SIGN_HASH" "$DMG_RELEASE" "$APP_PATH"
 echo "Notarizing DMG..."
-xcrun notarytool submit cmux-macos.dmg \
+xcrun notarytool submit "$DMG_RELEASE" \
   --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
-xcrun stapler staple cmux-macos.dmg
-xcrun stapler validate cmux-macos.dmg
+xcrun stapler staple "$DMG_RELEASE"
+xcrun stapler validate "$DMG_RELEASE"
 echo "DMG notarized"
 
 # --- Generate Sparkle appcast ---
 echo "Generating appcast..."
-./scripts/sparkle_generate_appcast.sh cmux-macos.dmg "$TAG" appcast.xml
+DOWNLOAD_URL_PREFIX="${RELEASE_DOWNLOAD_URL_BASE}/${TAG}/" \
+  ./scripts/sparkle_generate_appcast.sh "$DMG_RELEASE" "$TAG" appcast.xml
 
 # --- Create GitHub release (if needed) and upload ---
 if gh release view "$TAG" >/dev/null 2>&1; then
   echo "Release $TAG already exists"
   EXISTING_ASSETS="$(gh release view "$TAG" --json assets --jq '.assets[].name' || true)"
   HAS_CONFLICTING_ASSET="false"
-  for asset in cmux-macos.dmg appcast.xml; do
+  for asset in "$DMG_RELEASE" appcast.xml; do
     if printf '%s\n' "$EXISTING_ASSETS" | grep -Fxq "$asset"; then
       HAS_CONFLICTING_ASSET="true"
       break
@@ -144,14 +153,14 @@ if gh release view "$TAG" >/dev/null 2>&1; then
 
   if [[ "$ALLOW_OVERWRITE" == "true" ]]; then
     echo "Uploading with overwrite enabled for existing release $TAG..."
-    gh release upload "$TAG" cmux-macos.dmg appcast.xml --clobber
+    gh release upload "$TAG" "$DMG_RELEASE" appcast.xml --clobber
   else
     echo "Uploading to existing release $TAG..."
-    gh release upload "$TAG" cmux-macos.dmg appcast.xml
+    gh release upload "$TAG" "$DMG_RELEASE" appcast.xml
   fi
 else
   echo "Creating release $TAG and uploading..."
-  gh release create "$TAG" cmux-macos.dmg appcast.xml --title "$TAG" --notes "See CHANGELOG.md for details"
+  gh release create "$TAG" "$DMG_RELEASE" appcast.xml --title "$TAG" --notes "See CHANGELOG.md for details"
 fi
 
 # --- Verify ---
@@ -160,7 +169,7 @@ gh release view "$TAG"
 # --- Update Homebrew cask (skip for nightlies) ---
 if [[ "$TAG" != *"-nightly"* ]]; then
   VERSION="${TAG#v}"
-  DMG_SHA256=$(shasum -a 256 cmux-macos.dmg | cut -d' ' -f1)
+  DMG_SHA256=$(shasum -a 256 "$DMG_RELEASE" | cut -d' ' -f1)
   echo "Updating homebrew cask to $VERSION (SHA: $DMG_SHA256)..."
   CASK_FILE="homebrew-cmux/Casks/cmux.rb"
   if [ -f "$CASK_FILE" ]; then
@@ -169,7 +178,7 @@ cask "cmux" do
   version "${VERSION}"
   sha256 "${DMG_SHA256}"
 
-  url "https://github.com/emergent-inc/cmux/releases/download/v#{version}/cmux-macos.dmg"
+  url "https://download.mosaic.inc/releases/v#{version}/mosaic-macos.dmg"
   name "cmux"
   desc "Lightweight native macOS terminal with vertical tabs for AI coding agents"
   homepage "https://github.com/emergent-inc/cmux"
@@ -207,7 +216,7 @@ CASKEOF
 fi
 
 # --- Cleanup ---
-rm -rf build/ cmux-macos.dmg appcast.xml
+rm -rf build/ "$DMG_RELEASE" appcast.xml
 echo ""
 echo "=== Release $TAG complete ==="
 say "cmux release complete"

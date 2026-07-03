@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppBundleIconPersistencePolicy {
-    private static let stableReleaseBundleIdentifier = "com.cmuxterm.app"
+    private static let stableReleaseBundleIdentifier = "mosaic.com.emergent.app"
     private static let stableReleaseAppBundleName = "cmux.app"
     static let disablePersistenceArgument = "--cmux-disable-bundle-icon-persistence"
     static let disablePersistenceDefaultsKey = "cmuxDisableBundleIconPersistence"

@@ -482,9 +482,9 @@ enum CLISocketPathResolver {
         }
 
 #if DEBUG
-        return "com.cmuxterm.app.debug"
+        return "mosaic.com.emergent.app.debug"
 #else
-        return "com.cmuxterm.app"
+        return "mosaic.com.emergent.app"
 #endif
     }
 

@@ -3,9 +3,9 @@ public import Foundation
 public enum SocketPathMarkerFiles {
     public static let stableMarkerFileName = "last-socket-path"
     public static let stableTmpPath = "/tmp/cmux-last-socket-path"
-    public static let nightlyBundleIdentifier = "com.cmuxterm.app.nightly"
-    public static let stagingBundleIdentifier = "com.cmuxterm.app.staging"
-    public static let defaultBaseDebugBundleIdentifier = "com.cmuxterm.app.debug"
+    public static let nightlyBundleIdentifier = "mosaic.com.emergent.app.nightly"
+    public static let stagingBundleIdentifier = "mosaic.com.emergent.app.staging"
+    public static let defaultBaseDebugBundleIdentifier = "mosaic.com.emergent.app.debug"
     public static let defaultDebugSocketPath = "/tmp/cmux-debug.sock"
     public static let defaultNightlySocketPath = "/tmp/cmux-nightly.sock"
     public static let defaultStagingSocketPath = "/tmp/cmux-staging.sock"

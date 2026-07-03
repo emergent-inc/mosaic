@@ -52,13 +52,13 @@ gh run watch --repo emergent-inc/cmux
 The expected release asset is:
 
 ```text
-cmux-macos.dmg
+mosaic-macos.dmg
 ```
 
 The README download button points to:
 
 ```text
-releases/latest/download/cmux-macos.dmg
+https://download.mosaic.inc/mosaic-macos.dmg
 ```
 
 If the asset name changes, update every surface that assumes this path.

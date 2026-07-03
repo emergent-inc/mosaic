@@ -552,7 +552,7 @@ class StressContext:
         env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
         if self.tag:
             env["CMUX_TAG"] = self.tag
-            env["CMUX_BUNDLE_ID"] = f"com.cmuxterm.app.debug.{self.tag.replace('-', '.')}"
+            env["CMUX_BUNDLE_ID"] = f"mosaic.com.emergent.app.debug.{self.tag.replace('-', '.')}"
         env.pop("CMUX_SOCKET", None)
         env.pop("CMUX_SOCKET_PASSWORD", None)
         env.pop("CMUX_WORKSPACE_ID", None)

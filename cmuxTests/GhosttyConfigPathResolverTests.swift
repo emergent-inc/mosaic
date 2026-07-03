@@ -13,14 +13,14 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let releaseConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "font-size = 13\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [releaseConfigURL]
@@ -32,20 +32,20 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "background = #000000\n"
             )
             let preferredConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "theme = light:3024 Day,dark:3024 Night\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3478",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3478",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [preferredConfigURL]
@@ -57,20 +57,20 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "font-size = 13\n"
             )
             let currentConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app.debug.issue-829",
+                bundleIdentifier: "mosaic.com.emergent.app.debug.issue-829",
                 filename: "config.ghostty",
                 contents: "font-size = 14\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug.issue-829",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-829",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [currentConfigURL]
@@ -82,7 +82,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let fileManager = FileManager.default
             let bundleDirectory = appSupportDirectory
-                .appendingPathComponent("com.cmuxterm.app.debug.issue-3518", isDirectory: true)
+                .appendingPathComponent("mosaic.com.emergent.app.debug.issue-3518", isDirectory: true)
             try fileManager.createDirectory(at: bundleDirectory, withIntermediateDirectories: true)
 
             let dotfilesDirectory = appSupportDirectory
@@ -100,7 +100,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3518",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3518",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [symlinkedConfigURL]
@@ -115,7 +115,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
                 .appendingPathComponent("Library", isDirectory: true)
                 .appendingPathComponent("Application Support", isDirectory: true)
             let bundleDirectory = appSupportDirectory
-                .appendingPathComponent("com.cmuxterm.app.debug.issue-3518", isDirectory: true)
+                .appendingPathComponent("mosaic.com.emergent.app.debug.issue-3518", isDirectory: true)
             try fileManager.createDirectory(at: bundleDirectory, withIntermediateDirectories: true)
 
             let dotfilesDirectory = homeDirectory
@@ -133,7 +133,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
 
             let environment = ConfigSourceEnvironment(
                 homeDirectoryURL: homeDirectory,
-                currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3518"
+                currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3518"
             )
             try environment.writeCmuxConfigContents("theme = light:Andromeda,dark:3024 Day\n")
 
@@ -156,7 +156,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
                 .appendingPathComponent("Library", isDirectory: true)
                 .appendingPathComponent("Application Support", isDirectory: true)
             let bundleDirectory = appSupportDirectory
-                .appendingPathComponent("com.cmuxterm.app.debug.issue-3518", isDirectory: true)
+                .appendingPathComponent("mosaic.com.emergent.app.debug.issue-3518", isDirectory: true)
             let configGhosttyURL = bundleDirectory.appendingPathComponent("config.ghostty", isDirectory: false)
             let legacyConfigURL = bundleDirectory.appendingPathComponent("config", isDirectory: false)
 
@@ -168,7 +168,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
 
             let environment = ConfigSourceEnvironment(
                 homeDirectoryURL: homeDirectory,
-                currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3518",
+                currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3518",
                 fileManager: fileManager
             )
 
@@ -206,7 +206,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
             let snapshot = ConfigSource.synced.snapshot(
                 environment: ConfigSourceEnvironment(
                     homeDirectoryURL: homeDirectory,
-                    currentBundleIdentifier: "com.cmuxterm.app"
+                    currentBundleIdentifier: "mosaic.com.emergent.app"
                 )
             )
 
@@ -216,7 +216,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
                 homeDirectory
                     .appendingPathComponent("Library", isDirectory: true)
                     .appendingPathComponent("Application Support", isDirectory: true)
-                    .appendingPathComponent("com.cmuxterm.app", isDirectory: true)
+                    .appendingPathComponent("mosaic.com.emergent.app", isDirectory: true)
                     .appendingPathComponent("config.synced-preview", isDirectory: false)
                     .path,
             ])
@@ -227,20 +227,20 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "font-size = 13\n"
             )
             let nightlyConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app.nightly",
+                bundleIdentifier: "mosaic.com.emergent.app.nightly",
                 filename: "config.ghostty",
                 contents: "font-size = 15\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.nightly",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.nightly",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [nightlyConfigURL]
@@ -252,14 +252,14 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let releaseConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "font-size = 13\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.nightly",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.nightly",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [releaseConfigURL]
@@ -271,20 +271,20 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "font-size = 13\n"
             )
             let stagingConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app.staging",
+                bundleIdentifier: "mosaic.com.emergent.app.staging",
                 filename: "config.ghostty",
                 contents: "font-size = 15\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.staging",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.staging",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [stagingConfigURL]
@@ -296,14 +296,14 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let releaseConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "font-size = 13\n"
             )
 
             XCTAssertEqual(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.staging",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.staging",
                     appSupportDirectory: appSupportDirectory
                 ),
                 [releaseConfigURL]
@@ -315,19 +315,19 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let legacyConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "background = #000000\n"
             )
             let preferredConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: "theme = light:3024 Day,dark:3024 Night\n"
             )
 
             let paths = GhosttyApp.loadedGhosttyConfigScanPaths(
-                currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3478",
+                currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3478",
                 appSupportDirectory: appSupportDirectory
             )
 
@@ -340,7 +340,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "font-size = 13\n"
             )
@@ -358,20 +358,20 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let legacyConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config",
                 contents: "background = #000000\n"
             )
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: ""
             )
 
             XCTAssertEqual(
                 CmuxGhosttyConfigPathResolver().activeOrEditableConfigURL(
-                    currentBundleIdentifier: "com.cmuxterm.app",
+                    currentBundleIdentifier: "mosaic.com.emergent.app",
                     appSupportDirectory: appSupportDirectory
                 ),
                 legacyConfigURL
@@ -382,12 +382,12 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
     func testCmuxConfigPathResolverTargetsCurrentConfigGhosttyWhenNoActiveConfigExists() throws {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             let expectedURL = appSupportDirectory
-                .appendingPathComponent("com.cmuxterm.app.debug.issue-3518", isDirectory: true)
+                .appendingPathComponent("mosaic.com.emergent.app.debug.issue-3518", isDirectory: true)
                 .appendingPathComponent("config.ghostty", isDirectory: false)
 
             XCTAssertEqual(
                 CmuxGhosttyConfigPathResolver().activeOrEditableConfigURL(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug.issue-3518",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug.issue-3518",
                     appSupportDirectory: appSupportDirectory
                 ),
                 expectedURL
@@ -399,14 +399,14 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryAppSupportDirectory { appSupportDirectory in
             _ = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 filename: "config.ghostty",
                 contents: ""
             )
 
             XCTAssertTrue(
                 GhosttyApp.cmuxAppSupportConfigURLs(
-                    currentBundleIdentifier: "com.cmuxterm.app.debug",
+                    currentBundleIdentifier: "mosaic.com.emergent.app.debug",
                     appSupportDirectory: appSupportDirectory
                 ).isEmpty
             )
@@ -417,14 +417,14 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
         try withTemporaryHomeDirectory { homeDirectory in
             let environment = ConfigSourceEnvironment(
                 homeDirectoryURL: homeDirectory,
-                currentBundleIdentifier: "com.cmuxterm.app.debug.empty"
+                currentBundleIdentifier: "mosaic.com.emergent.app.debug.empty"
             )
 
             let urls = try environment.materializedGhosttySettingsEditorURLs()
             let expectedConfigURL = homeDirectory
                 .appendingPathComponent("Library", isDirectory: true)
                 .appendingPathComponent("Application Support", isDirectory: true)
-                .appendingPathComponent("com.cmuxterm.app.debug.empty", isDirectory: true)
+                .appendingPathComponent("mosaic.com.emergent.app.debug.empty", isDirectory: true)
                 .appendingPathComponent("config.ghostty", isDirectory: false)
             let expectedPreviewURL = expectedConfigURL
                 .deletingLastPathComponent()
@@ -443,7 +443,7 @@ final class GhosttyConfigPathResolverTests: XCTestCase {
                 .appendingPathComponent("Library", isDirectory: true)
                 .appendingPathComponent("Application Support", isDirectory: true)
 
-            let bundleIdentifier = "com.cmuxterm.app.debug.includes"
+            let bundleIdentifier = "mosaic.com.emergent.app.debug.includes"
             let cmuxConfigURL = try writeAppSupportConfig(
                 appSupportDirectory: appSupportDirectory,
                 bundleIdentifier: bundleIdentifier,

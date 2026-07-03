@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="cmux DEV"
-BUNDLE_ID="com.cmuxterm.app.debug"
+BUNDLE_ID="mosaic.com.emergent.app.debug"
 BASE_APP_NAME="cmux DEV"
 DERIVED_DATA=""
 NAME_SET=0
@@ -162,16 +162,16 @@ write_last_socket_path() {
   local slug=""
 
   case "$bundle_id" in
-    com.cmuxterm.app)
+    mosaic.com.emergent.app)
       marker_name="last-socket-path"
       tmp_marker="/tmp/cmux-last-socket-path"
       ;;
-    com.cmuxterm.app.nightly)
+    mosaic.com.emergent.app.nightly)
       marker_name="nightly-last-socket-path"
       tmp_marker="/tmp/cmux-nightly-last-socket-path"
       ;;
-    com.cmuxterm.app.nightly.*)
-      slug="$(sanitize_path "${bundle_id#com.cmuxterm.app.nightly.}")"
+    mosaic.com.emergent.app.nightly.*)
+      slug="$(sanitize_path "${bundle_id#mosaic.com.emergent.app.nightly.}")"
       if [[ -n "$slug" ]]; then
         marker_name="nightly-${slug}-last-socket-path"
         tmp_marker="/tmp/cmux-nightly-${slug}-last-socket-path"
@@ -180,12 +180,12 @@ write_last_socket_path() {
         tmp_marker="/tmp/cmux-nightly-last-socket-path"
       fi
       ;;
-    com.cmuxterm.app.staging)
+    mosaic.com.emergent.app.staging)
       marker_name="staging-last-socket-path"
       tmp_marker="/tmp/cmux-staging-last-socket-path"
       ;;
-    com.cmuxterm.app.staging.*)
-      slug="$(sanitize_path "${bundle_id#com.cmuxterm.app.staging.}")"
+    mosaic.com.emergent.app.staging.*)
+      slug="$(sanitize_path "${bundle_id#mosaic.com.emergent.app.staging.}")"
       if [[ -n "$slug" ]]; then
         marker_name="staging-${slug}-last-socket-path"
         tmp_marker="/tmp/cmux-staging-${slug}-last-socket-path"
@@ -194,15 +194,15 @@ write_last_socket_path() {
         tmp_marker="/tmp/cmux-staging-last-socket-path"
       fi
       ;;
-    com.cmuxterm.app.debug)
+    mosaic.com.emergent.app.debug)
       slug="${TAG_SLUG:-}"
       if [[ -n "$slug" ]]; then
         marker_name="dev-${slug}-last-socket-path"
         tmp_marker="/tmp/cmux-dev-${slug}-last-socket-path"
       fi
       ;;
-    com.cmuxterm.app.debug.*)
-      slug="$(sanitize_path "${bundle_id#com.cmuxterm.app.debug.}")"
+    mosaic.com.emergent.app.debug.*)
+      slug="$(sanitize_path "${bundle_id#mosaic.com.emergent.app.debug.}")"
       if [[ -n "$slug" ]]; then
         marker_name="dev-${slug}-last-socket-path"
         tmp_marker="/tmp/cmux-dev-${slug}-last-socket-path"
@@ -516,7 +516,7 @@ if [[ -n "$TAG" ]]; then
     APP_NAME="cmux DEV ${TAG_SLUG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
-    BUNDLE_ID="com.cmuxterm.app.debug.${TAG_ID}"
+    BUNDLE_ID="mosaic.com.emergent.app.debug.${TAG_ID}"
   fi
   if [[ "$DERIVED_SET" -eq 0 ]]; then
     DERIVED_DATA="$(tagged_derived_data_path "$TAG_SLUG")"
@@ -590,8 +590,10 @@ reload_finalize() {
     echo "Dev web origin:"
     echo "  $CMUX_DEV_ORIGIN"
     if [[ -n "${TAG_SLUG:-}" ]]; then
+      AUTH_WWW_HINT="${CMUX_AUTH_WWW_ORIGIN:-$CMUX_DEV_ORIGIN}"
       echo "Dev web command:"
-      echo "  cd web && CMUX_PORT=$CMUX_DEV_PORT CMUX_PORT_RANGE=$CMUX_DEV_PORT_RANGE CMUX_PORT_END=$CMUX_DEV_PORT_END CMUX_AUTH_CALLBACK_SCHEME=mosaic-dev-$TAG_SLUG bun dev"
+      echo "  cd ../www && NEXT_PUBLIC_APP_URL=$AUTH_WWW_HINT pnpm dev"
+      echo "  # Ensure ../www/.env has Clerk keys and MOSAIC_NATIVE_AUTH_SECRET; native callback scheme: mosaic-dev-$TAG_SLUG"
     fi
   fi
   if [[ -x "${CLI_PATH:-}" ]]; then

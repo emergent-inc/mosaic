@@ -211,7 +211,7 @@ final class CMUXOpenCommandTests: XCTestCase {
         let cmuxAppSupportConfigURL = homeURL
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Application Support", isDirectory: true)
-            .appendingPathComponent("com.cmuxterm.app", isDirectory: true)
+            .appendingPathComponent("mosaic.com.emergent.app", isDirectory: true)
             .appendingPathComponent("config.ghostty", isDirectory: false)
         let ghosttyResourcesURL = rootURL.appendingPathComponent("ghostty-resources", isDirectory: true)
         let ghosttyThemesURL = ghosttyResourcesURL.appendingPathComponent("themes", isDirectory: true)

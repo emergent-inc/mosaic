@@ -12,6 +12,7 @@ import {
   WAITLIST_PLATFORMS,
   type WaitlistPlatform,
 } from "../../lib/download";
+import { captureWebAcquisitionEvent } from "../../lib/web-analytics";
 import { ctaButtonStyle } from "./cta-styles";
 import { PlatformIcon } from "./platform-icons";
 import { WaitlistDialog } from "./waitlist-dialog";
@@ -66,8 +67,16 @@ export function DownloadButton({
     isSmall ? "px-2" : "px-2.5"
   }`;
 
-  const captureMac = () =>
+  const captureMac = () => {
     posthog.capture("cmuxterm_download_clicked", { location, platform: "mac" });
+    captureWebAcquisitionEvent("web_download_clicked", {
+      entrypoint: "download_button",
+      result: "started",
+      location,
+      platform_name: "mac",
+      confirmation_page: onConfirmationPage,
+    });
+  };
 
   // The Apple mark artwork has an 814:1000 aspect ratio. Derive the box width
   // from its height so the glyph fills the frame instead of letterboxing inside
@@ -152,10 +161,18 @@ export function DownloadButton({
                 <Menu.Item
                   render={<Link href="/ios" target="_blank" rel="noreferrer" />}
                   onClick={() =>
+                  {
                     posthog.capture("cmuxterm_download_clicked", {
                       location,
                       platform: "ios",
-                    })
+                    });
+                    captureWebAcquisitionEvent("web_download_clicked", {
+                      entrypoint: "download_menu",
+                      result: "started",
+                      location,
+                      platform_name: "ios",
+                    });
+                  }
                   }
                   className={menuItemClass}
                 >
@@ -175,6 +192,12 @@ export function DownloadButton({
                         posthog.capture("cmuxterm_waitlist_opened", {
                           location,
                           platform,
+                        });
+                        captureWebAcquisitionEvent("web_signup_intent_started", {
+                          entrypoint: "download_menu",
+                          result: "started",
+                          location,
+                          platform_name: platform,
                         });
                         openWaitlist(platform);
                       }}

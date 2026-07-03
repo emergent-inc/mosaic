@@ -8,7 +8,7 @@ describe("native sign-in handoff route", () => {
     const afterSignIn = new URL("https://cmux.test/handler/after-sign-in");
     afterSignIn.searchParams.set(
       "native_app_return_to",
-      "cmux-dev://auth-callback?cmux_auth_state=state-123"
+      "mosaic-dev://auth-callback?mosaic_auth_state=state-123"
     );
     const request = new NextRequest(
       `https://cmux.test/handler/native-sign-in?after_auth_return_to=${encodeURIComponent(afterSignIn.toString())}`,
@@ -23,13 +23,13 @@ describe("native sign-in handoff route", () => {
     const redirectURL = new URL(location.searchParams.get("redirect_url")!);
     expect(redirectURL.pathname).toBe("/handler/after-sign-in");
     expect(redirectURL.searchParams.get("native_app_return_to")).toBe(
-      "cmux-dev://auth-callback?cmux_auth_state=state-123"
+      "mosaic-dev://auth-callback?mosaic_auth_state=state-123"
     );
-    const handoff = redirectURL.searchParams.get("cmux_auth_handoff");
+    const handoff = redirectURL.searchParams.get("mosaic_auth_handoff");
     expect(handoff).toBeTruthy();
 
     const cookie = response.headers.get("set-cookie");
-    expect(cookie).toContain("cmux-native-auth-handoff=");
+    expect(cookie).toContain("mosaic-native-auth-handoff=");
     expect(cookie).toContain("Path=/handler/after-sign-in");
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=lax");
@@ -39,7 +39,7 @@ describe("native sign-in handoff route", () => {
     const afterSignIn = new URL("https://cmux.test/handler/after-sign-in");
     afterSignIn.searchParams.set(
       "native_app_return_to",
-      "cmux-dev://auth-callback?cmux_auth_state=state-123"
+      "mosaic-dev://auth-callback?mosaic_auth_state=state-123"
     );
     const request = new NextRequest(
       `https://cmux.test/handler/native-sign-in?after_auth_return_to=${encodeURIComponent(afterSignIn.toString())}`,
@@ -49,7 +49,7 @@ describe("native sign-in handoff route", () => {
     const response = GET(request);
     const location = new URL(response.headers.get("location")!);
     const redirectURL = new URL(location.searchParams.get("redirect_url")!);
-    expect(redirectURL.searchParams.get("cmux_auth_handoff")).toBeNull();
+    expect(redirectURL.searchParams.get("mosaic_auth_handoff")).toBeNull();
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 

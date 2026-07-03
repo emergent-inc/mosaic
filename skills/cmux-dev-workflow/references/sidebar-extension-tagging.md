@@ -13,13 +13,13 @@ Three build settings drive the tagging model:
 The default extension point is:
 
 ```text
-com.cmuxterm.app.cmux.sidebar
+mosaic.com.emergent.app.cmux.sidebar
 ```
 
 Tagged host builds scope it to:
 
 ```text
-com.cmuxterm.app.debug.<tag>.cmux.sidebar
+mosaic.com.emergent.app.debug.<tag>.cmux.sidebar
 ```
 
 ## Why display name matters

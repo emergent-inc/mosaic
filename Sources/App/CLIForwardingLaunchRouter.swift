@@ -2,14 +2,14 @@ import Darwin
 import Foundation
 import os
 
-nonisolated private let cliForwardingLogger = Logger(subsystem: "com.cmuxterm.app", category: "CLIForwarding")
+nonisolated private let cliForwardingLogger = Logger(subsystem: "mosaic.com.emergent.app", category: "CLIForwarding")
 
 enum CLIForwardingLaunchRouter {
     private static let guardKey = "CMUX_CLI_FORWARDED"
 
     /// If `argv` looks like a CLI invocation, exec the bundled CLI at
     /// `Contents/Resources/bin/cmux` and never return. macOS-launch arguments
-    /// (`-psn_...`, other `-` flags) and `cmux://` URLs are left to the GUI.
+    /// (`-psn_...`, other `-` flags) and `mosaic://` URLs are left to the GUI.
     static func forwardToBundledCLIIfNeeded(
         arguments argv: [String] = CommandLine.arguments,
         bundle: Bundle = .main,

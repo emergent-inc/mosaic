@@ -1,7 +1,7 @@
 import AppKit
 import CoreServices
 
-private let cmuxAppIconDidChangeNotification = Notification.Name("com.cmuxterm.appIconDidChange")
+private let cmuxAppIconDidChangeNotification = Notification.Name("mosaic.com.emergent.appIconDidChange")
 private let cmuxAppIconModeKey = "appIconMode"
 
 private enum DockTileAppIconMode: String {

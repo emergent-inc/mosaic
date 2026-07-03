@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -165,6 +166,7 @@ struct PostHogAnalyticsPropertiesTests {
         #expect(event.properties["entrypoint"] as? String == "socket_share_selected")
         #expect(event.properties["result"] as? String == "completed")
         #expect(event.properties["peer_count"] as? Int == 2)
+        #expect(event.properties["path"] == nil)
     }
 
     @Test
@@ -193,6 +195,71 @@ struct PostHogAnalyticsPropertiesTests {
         #expect(event.properties["entrypoint"] as? String == "external_url")
         #expect(event.properties["result"] as? String == "completed")
         #expect(event.properties["has_port"] as? Bool == true)
+    }
+
+    @Test
+    func productAnalyticsBuildsSemanticEventsWithPrivacyBoundary() throws {
+        var captured: ProductAnalyticsEvent?
+        let analytics = ProductAnalytics { event in
+            captured = event
+        }
+
+        analytics.trackSemantic(
+            .workspaceLayoutSnapshotRecorded,
+            featureArea: .workspace,
+            entrypoint: .system,
+            result: .completed,
+            properties: [
+                "workspace_id_hash": ProductAnalyticsPrivacy.hashIdentifier("workspace-1"),
+                "pane_count": 3,
+                "terminal_pane_count": 2,
+                "browser_pane_count": 1,
+                "layout_fingerprint": ProductAnalyticsPrivacy.hashIdentifier("layout"),
+                "layout_tree": #"{"panes":[{"pane_index":0,"kinds":["terminal"]}]}"#,
+                "terminal_text": "do not capture",
+                "browser_url": "https://example.com/private",
+                "file_path": "/Users/private/project",
+            ]
+        )
+
+        let event = try #require(captured)
+        #expect(event.name.rawValue == "mac_workspace_layout_snapshot_recorded")
+        #expect(event.properties["feature_area"] as? String == "workspace")
+        #expect(event.properties["entrypoint"] as? String == "system")
+        #expect(event.properties["result"] as? String == "completed")
+        #expect(event.properties["pane_count"] as? Int == 3)
+        #expect(event.properties["layout_tree"] as? String != nil)
+        #expect(event.properties["terminal_text"] == nil)
+        #expect(event.properties["browser_url"] == nil)
+        #expect(event.properties["file_path"] == nil)
+    }
+
+    @Test
+    func posthogSanitizerAllowsBoundedLayoutTree() {
+        let layoutTree = String(repeating: "x", count: 1_000)
+        let properties = PostHogAnalytics.sanitizedProperties(
+            [
+                "layout_tree": layoutTree,
+                "layout_fingerprint": "shape",
+                "terminal_text": "private terminal contents",
+            ],
+            infoDictionary: [:]
+        )
+
+        #expect((properties["layout_tree"] as? String)?.count == 1_000)
+        #expect(properties["layout_fingerprint"] as? String == "shape")
+        #expect(properties["terminal_text"] == nil)
+    }
+
+    @Test
+    func nativeInteractionMetadataUsesSafeStableValues() {
+        #expect(MacAnalyticsEvent.uiInteraction.rawValue == "cmux_ui_interaction")
+        #expect(NativeInteractionAnalytics.interactionType(for: .leftMouseDown) == "click")
+        #expect(NativeInteractionAnalytics.eventTypeName(.scrollWheel) == "scroll_wheel")
+        #expect(NativeInteractionAnalytics.scrollDirection(12) == "positive")
+        #expect(NativeInteractionAnalytics.scrollDirection(-1) == "negative")
+        #expect(NativeInteractionAnalytics.scrollDirection(0) == "none")
+        #expect(NativeInteractionAnalytics.sanitizedIdentifier("Sidebar Help/Menu Button!") == "SidebarHelpMenuButton")
     }
 
     @Test

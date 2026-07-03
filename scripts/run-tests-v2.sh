@@ -49,7 +49,7 @@ launch_and_wait() {
   done
 
   # Force socket mode for deterministic automation runs, independent of prior user settings.
-  defaults write com.cmuxterm.app.debug socketControlMode -string full >/dev/null 2>&1 || true
+  defaults write mosaic.com.emergent.app.debug socketControlMode -string full >/dev/null 2>&1 || true
 
   # Launch directly with UI test mode enabled so startup follows deterministic test codepaths.
   CMUX_TAG="$RUN_TAG" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/cmux DEV" >/dev/null 2>&1 &

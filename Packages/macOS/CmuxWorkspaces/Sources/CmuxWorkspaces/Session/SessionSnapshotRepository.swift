@@ -35,7 +35,7 @@ public struct SessionSnapshotRepository<SnapshotValue: SessionSnapshotRepresenti
     ///     snapshots with any other version are unusable.
     ///   - bundleIdentifier: The bundle identifier used to derive the
     ///     snapshot file name (pass `Bundle.main.bundleIdentifier` at the
-    ///     composition root). Falls back to `com.cmuxterm.app` when nil or
+    ///     composition root). Falls back to `mosaic.com.emergent.app` when nil or
     ///     blank.
     ///   - appSupportDirectory: Overrides the discovered user Application
     ///     Support directory (tests pass a temporary directory).
@@ -157,7 +157,7 @@ public struct SessionSnapshotRepository<SnapshotValue: SessionSnapshotRepresenti
         }
         let bundleId = (bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
             ? bundleIdentifier!
-            : "com.cmuxterm.app"
+            : "mosaic.com.emergent.app"
         let safeBundleId = bundleId.replacingOccurrences(
             of: "[^A-Za-z0-9._-]",
             with: "_",

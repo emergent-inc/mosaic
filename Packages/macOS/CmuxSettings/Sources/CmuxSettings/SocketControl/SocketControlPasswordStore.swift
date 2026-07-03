@@ -22,7 +22,7 @@ public struct SocketControlPasswordStore: Sendable {
 
     private static let keychainMigrationDefaultsKey = "socketControlPasswordMigrationVersion"
     private static let keychainMigrationVersion = 1
-    private static let legacyKeychainService = "com.cmuxterm.app.socket-control"
+    private static let legacyKeychainService = "mosaic.com.emergent.app.socket-control"
     private static let legacyKeychainAccount = "local-socket-password"
 
     private let environment: [String: String]
@@ -327,7 +327,7 @@ public struct SocketControlPasswordStore: Sendable {
 #if canImport(Security)
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrService: "com.cmuxterm.app.socket-control",
+            kSecAttrService: "mosaic.com.emergent.app.socket-control",
             kSecAttrAccount: "local-socket-password",
             kSecReturnData: true,
             kSecMatchLimit: kSecMatchLimitOne,
@@ -348,7 +348,7 @@ public struct SocketControlPasswordStore: Sendable {
 #if canImport(Security)
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrService: "com.cmuxterm.app.socket-control",
+            kSecAttrService: "mosaic.com.emergent.app.socket-control",
             kSecAttrAccount: "local-socket-password",
         ]
         let status = SecItemDelete(query as CFDictionary)

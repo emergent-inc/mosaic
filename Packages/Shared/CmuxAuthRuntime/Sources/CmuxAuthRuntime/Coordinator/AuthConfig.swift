@@ -54,8 +54,8 @@ public struct AuthConfig: Equatable, Sendable {
             callbackURL = "http://localhost:3000/auth/callback"
             defaultAPIBaseURL = "http://localhost:3000"
         case .production:
-            callbackURL = "https://cmux.com/auth/callback"
-            defaultAPIBaseURL = "https://cmux.com"
+            callbackURL = "https://dashboard.mosaic.inc/auth/callback"
+            defaultAPIBaseURL = "https://dashboard.mosaic.inc"
         }
 
         let override = overrides["ApiBaseURL"]

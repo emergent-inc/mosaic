@@ -11,8 +11,8 @@ struct SettingsWindowPresenter {
     private static let sharedPresenter = SettingsWindowPresenter()
     /// Release-safe diagnostics so intermittent "Settings won't open" reports
     /// (https://github.com/emergent-inc/cmux/issues/5770) become attributable
-    /// from `log show --predicate 'subsystem == "com.cmuxterm.app" && category == "Settings"'`.
-    private nonisolated static let log = Logger(subsystem: "com.cmuxterm.app", category: "Settings")
+    /// from `log show --predicate 'subsystem == "mosaic.com.emergent.app" && category == "Settings"'`.
+    private nonisolated static let log = Logger(subsystem: "mosaic.com.emergent.app", category: "Settings")
     /// Number of times to re-request the SwiftUI window when an open request
     /// produces no window. The single `Window` scene's `openWindow(id:)` can
     /// silently no-op mid-teardown, which is the "nothing happens" symptom.

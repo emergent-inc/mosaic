@@ -130,7 +130,7 @@ public final class UpdateStateModel {
             retry: { [weak self] in self?.setOverrideState(nil) },
             dismiss: { [weak self] in self?.setOverrideState(nil) },
             technicalDetails: "debug scenario: \(scenario.rawValue)",
-            feedURLString: "https://github.com/emergent-inc/cmux/releases/latest/download/appcast.xml"
+            feedURLString: "https://updates.mosaic.inc/stable/appcast.xml"
         )))
     }
     #endif

@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const NATIVE_HANDOFF_COOKIE = "cmux-native-auth-handoff";
-const NATIVE_HANDOFF_PARAM = "cmux_auth_handoff";
+const NATIVE_HANDOFF_COOKIE = "mosaic-native-auth-handoff";
+const NATIVE_HANDOFF_PARAM = "mosaic_auth_handoff";
 
 function canSetAutoHandoff(request: NextRequest): boolean {
   const fetchSite = request.headers.get("sec-fetch-site");
@@ -30,7 +30,7 @@ export function GET(request: NextRequest) {
   }
 
   const nativeReturnTo = afterSignInURL.searchParams.get("native_app_return_to");
-  const shouldSetHandoff = canSetAutoHandoff(request) && nativeReturnTo?.includes("cmux_auth_state") === true;
+  const shouldSetHandoff = canSetAutoHandoff(request) && nativeReturnTo?.includes("mosaic_auth_state") === true;
   let nonce: string | null = null;
   if (shouldSetHandoff) {
     nonce = randomUUID();

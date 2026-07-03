@@ -396,7 +396,7 @@ def python_client_default_socket_path(extra_env: dict[str, str]) -> str:
 
 
 def test_python_client_ignores_unknown_bundle_env() -> bool:
-    expected_tagged_debug = "com.cmuxterm.app.debug.variant.test.tag"
+    expected_tagged_debug = "mosaic.com.emergent.app.debug.variant.test.tag"
     actual = python_client_default_bundle_id({
         "CMUX_BUNDLE_ID": "com.example.stale.bundle",
         "CMUX_TAG": "variant-test-tag",
@@ -408,10 +408,10 @@ def test_python_client_ignores_unknown_bundle_env() -> bool:
         return False
 
     actual = python_client_default_bundle_id({
-        "CMUX_BUNDLE_ID": "com.cmuxterm.app",
+        "CMUX_BUNDLE_ID": "mosaic.com.emergent.app",
         "CMUX_TAG": "rogue-stable-tag",
     })
-    if actual != "com.cmuxterm.app":
+    if actual != "mosaic.com.emergent.app":
         print("FAIL: python client rejected known stable CMUX_BUNDLE_ID")
         print(f"actual={actual!r}")
         return False
@@ -477,25 +477,25 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
             cli_path,
             apps,
             "cmux",
-            "com.cmuxterm.app",
+            "mosaic.com.emergent.app",
         )
         nightly_cli = bundled_cli_for_variant(
             cli_path,
             apps,
             "cmux NIGHTLY",
-            "com.cmuxterm.app.nightly",
+            "mosaic.com.emergent.app.nightly",
         )
         isolated_nightly_cli = bundled_cli_for_variant(
             cli_path,
             apps,
             "cmux NIGHTLY issue3542",
-            "com.cmuxterm.app.nightly.issue3542",
+            "mosaic.com.emergent.app.nightly.issue3542",
         )
         dev_agent_cli = bundled_cli_for_variant(
             cli_path,
             apps,
             "cmux DEV agent",
-            "com.cmuxterm.app.debug.agent",
+            "mosaic.com.emergent.app.debug.agent",
         )
 
         write_marker(home, "last-socket-path", stable_socket)
@@ -595,7 +595,7 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
                 cli_path,
                 apps,
                 "cmux DEV issue3542",
-                "com.cmuxterm.app.debug",
+                "mosaic.com.emergent.app.debug",
             )
             proc = subprocess.run(
                 [debug_cli, "ping"],

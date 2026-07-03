@@ -4,7 +4,7 @@ import { Link } from "../../../../i18n/navigation";
 export const metadata: Metadata = {
   title: "Privacy Policy — cmux",
   description: "Privacy policy for cmux",
-  alternates: { canonical: "https://cmux.com/privacy-policy" },
+  alternates: { canonical: "https://mosaic.inc/privacy-policy" },
 };
 
 export default function PrivacyPolicyPage() {
@@ -22,7 +22,7 @@ export default function PrivacyPolicyPage() {
       <p>
         For purposes of this policy, &ldquo;Site&rdquo; refers to the
         Company&rsquo;s website at{" "}
-        <a href="https://cmux.com">cmux.com</a>.
+        <a href="https://mosaic.inc">mosaic.inc</a>.
         &ldquo;Application&rdquo; refers to the cmux desktop application for
         macOS. &ldquo;Service&rdquo; refers to the Site and Application
         collectively. The terms &ldquo;we,&rdquo; &ldquo;us,&rdquo; and

@@ -22,7 +22,7 @@ fi
 echo "Cask version: $VERSION"
 echo "Cask SHA256:  $CASK_SHA"
 
-URL="https://github.com/emergent-inc/cmux/releases/download/v${VERSION}/cmux-macos.dmg"
+URL="https://download.mosaic.inc/releases/v${VERSION}/mosaic-macos.dmg"
 TMPFILE=$(mktemp)
 trap 'rm -f "$TMPFILE"' EXIT
 

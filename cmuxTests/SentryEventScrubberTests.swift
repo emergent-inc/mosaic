@@ -18,7 +18,7 @@ import Testing
         let event = Event()
         // `capture(message:)` sets only `formatted`, leaving the template nil.
         // The scrubber must catch the rendered text, not just the template.
-        event.message = SentryMessage(formatted: "boom for lawrence@cmux.com")
+        event.message = SentryMessage(formatted: "boom for lawrence@mosaic.inc")
         event.transaction = "open /Users/lawrence/secret.txt"
 
         let exception = Exception(value: "failed at /Users/buildbot/app.swift", type: "NSRangeException")
@@ -55,7 +55,7 @@ import Testing
         frame.package = "/Users/buildbot/Library/Developer/Xcode/DerivedData/cmux/Build/cmux.app"
         frame.lineNumber = 1325
         frame.contextLine = "let home = \"/Users/lawrence/secret\""
-        frame.preContext = ["// open lawrence@cmux.com"]
+        frame.preContext = ["// open lawrence@mosaic.inc"]
         frame.postContext = ["token=abcdef0123456789zz"]
         frame.vars = ["cwd": "/Users/lawrence/dev", "token": "plainsecretvalue"]
 
@@ -143,7 +143,7 @@ import Testing
         let event = Event()
         let user = User()
         user.userId = "uid-12345"
-        user.email = "lawrence@cmux.com"
+        user.email = "lawrence@mosaic.inc"
         user.username = "lawrence"
         user.name = "Lawrence Chen"
         user.ipAddress = "203.0.113.7"

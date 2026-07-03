@@ -14,7 +14,7 @@ struct AuthEnvironmentTests {
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: ["CMUX_TAG": "Safari Auth!"],
-                bundleIdentifier: "com.cmuxterm.app.debug.safari-auth",
+                bundleIdentifier: "mosaic.com.emergent.app.debug.safari-auth",
                 isDebugBuild: true
             ) == "mosaic-dev-safari-auth"
         )
@@ -25,7 +25,7 @@ struct AuthEnvironmentTests {
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: [:],
-                bundleIdentifier: "com.cmuxterm.app.debug.clerk.auth",
+                bundleIdentifier: "mosaic.com.emergent.app.debug.clerk.auth",
                 isDebugBuild: true
             ) == "mosaic-dev-clerk-auth"
         )
@@ -36,7 +36,7 @@ struct AuthEnvironmentTests {
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: [:],
-                bundleIdentifier: "com.cmuxterm.app.debug.clerk.auth"
+                bundleIdentifier: "mosaic.com.emergent.app.debug.clerk.auth"
             ) == "mosaic-dev-clerk-auth"
         )
     }
@@ -46,7 +46,7 @@ struct AuthEnvironmentTests {
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: [:],
-                bundleIdentifier: "com.cmuxterm.app.debug",
+                bundleIdentifier: "mosaic.com.emergent.app.debug",
                 registeredURLSchemes: ["http", "https", "mosaic-dev-clerk-auth"],
                 isDebugBuild: true
             ) == "mosaic-dev-clerk-auth"
@@ -58,14 +58,14 @@ struct AuthEnvironmentTests {
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: ["CMUX_TAG": "safari-auth"],
-                bundleIdentifier: "com.cmuxterm.app",
+                bundleIdentifier: "mosaic.com.emergent.app",
                 isDebugBuild: false
             ) == "mosaic"
         )
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: ["CMUX_TAG": "safari-auth"],
-                bundleIdentifier: "com.cmuxterm.app.nightly",
+                bundleIdentifier: "mosaic.com.emergent.app.nightly",
                 isDebugBuild: false
             ) == "mosaic-nightly"
         )
@@ -81,10 +81,10 @@ struct AuthEnvironmentTests {
                 "AppleLanguages": "(ru)",
                 "LANG": "ru_RU.UTF-8",
                 "LC_ALL": "ru_RU.UTF-8",
-                "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
+                "CMUX_AUTH_WWW_ORIGIN": "https://dashboard.mosaic.inc",
                 "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
-            bundleIdentifier: "com.cmuxterm.app"
+            bundleIdentifier: "mosaic.com.emergent.app"
         )
 
         assertNativeSignInURL(url)
@@ -98,11 +98,11 @@ struct AuthEnvironmentTests {
                 "CMUX_TAG": "pair-auth",
                 "CMUX_PORT": "4123",
             ],
-            bundleIdentifier: "com.cmuxterm.app.debug.pair-auth"
+            bundleIdentifier: "mosaic.com.emergent.app.debug.pair-auth"
         )
 
         #expect(url.scheme == "https")
-        #expect(url.host == "cmux.com")
+        #expect(url.host == "dashboard.mosaic.inc")
         #expect(url.port == nil)
         #expect(url.path == "/handler/native-sign-in")
 
@@ -112,7 +112,7 @@ struct AuthEnvironmentTests {
             .value)
         let afterSignInURL = try #require(URL(string: afterAuthReturnTo))
         #expect(afterSignInURL.scheme == "https")
-        #expect(afterSignInURL.host == "cmux.com")
+        #expect(afterSignInURL.host == "dashboard.mosaic.inc")
         #expect(afterSignInURL.port == nil)
 
         let nativeReturnTo = try #require(URLComponents(url: afterSignInURL, resolvingAgainstBaseURL: false)?
@@ -132,7 +132,7 @@ struct AuthEnvironmentTests {
                 "CMUX_TAG": "pair-auth",
                 "CMUX_AUTH_WWW_ORIGIN": "http://localhost:4123",
             ],
-            bundleIdentifier: "com.cmuxterm.app.debug.pair-auth"
+            bundleIdentifier: "mosaic.com.emergent.app.debug.pair-auth"
         )
 
         #expect(url.scheme == "http")
@@ -158,10 +158,10 @@ struct AuthEnvironmentTests {
                 "AppleLanguages": "(en)",
                 "LANG": "en_US.UTF-8",
                 "LC_ALL": "en_US.UTF-8",
-                "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
+                "CMUX_AUTH_WWW_ORIGIN": "https://dashboard.mosaic.inc",
                 "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
-            bundleIdentifier: "com.cmuxterm.app"
+            bundleIdentifier: "mosaic.com.emergent.app"
         )
         let russianURL = AuthEnvironment.signInURL(
             callbackState: "state-1",
@@ -169,10 +169,10 @@ struct AuthEnvironmentTests {
                 "AppleLanguages": "(ru)",
                 "LANG": "ru_RU.UTF-8",
                 "LC_ALL": "ru_RU.UTF-8",
-                "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
+                "CMUX_AUTH_WWW_ORIGIN": "https://dashboard.mosaic.inc",
                 "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
-            bundleIdentifier: "com.cmuxterm.app"
+            bundleIdentifier: "mosaic.com.emergent.app"
         )
 
         #expect(russianURL == englishURL)
@@ -181,7 +181,7 @@ struct AuthEnvironmentTests {
 
 private func assertNativeSignInURL(_ url: URL) {
     #expect(url.scheme == "https")
-    #expect(url.host == "cmux.com")
+    #expect(url.host == "dashboard.mosaic.inc")
     #expect(url.path == "/handler/native-sign-in")
     #expect(!urlHasLeadingLocaleSegment(url))
 
@@ -194,7 +194,7 @@ private func assertNativeSignInURL(_ url: URL) {
     }
 
     #expect(afterSignInURL.scheme == "https")
-    #expect(afterSignInURL.host == "cmux.com")
+    #expect(afterSignInURL.host == "dashboard.mosaic.inc")
     #expect(afterSignInURL.path == "/handler/after-sign-in")
     #expect(!urlHasLeadingLocaleSegment(afterSignInURL))
 

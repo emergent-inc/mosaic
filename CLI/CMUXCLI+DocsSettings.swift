@@ -1,11 +1,11 @@
 import Foundation
 
 extension CMUXCLI {
-    static let settingsDocsURL = "https://cmux.com/docs/configuration#cmux-json"
+    static let settingsDocsURL = "https://mosaic.inc/docs/configuration#cmux-json"
     static let settingsSchemaURL = "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux.schema.json"
     static let primarySettingsDisplayPath = "~/.config/cmux/cmux.json"
     static let legacySettingsDisplayPath = "~/.config/cmux/settings.json"
-    static let fallbackSettingsDisplayPath = "~/Library/Application Support/com.cmuxterm.app/settings.json"
+    static let fallbackSettingsDisplayPath = "~/Library/Application Support/mosaic.com.emergent.app/settings.json"
     static let ghosttyConfigDisplayPath = "~/.config/ghostty/config"
 
     private struct DocsResource {
@@ -43,7 +43,7 @@ extension CMUXCLI {
             topic: "shortcuts",
             aliases: ["keyboard", "keybindings", "keys"],
             summary: "cmux-owned keyboard shortcuts and two-step chord syntax.",
-            webURL: "https://cmux.com/docs/keyboard-shortcuts",
+            webURL: "https://mosaic.inc/docs/keyboard-shortcuts",
             rawResources: [
                 DocsResource(label: "shortcut data", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/data/cmux-shortcuts.ts"),
                 DocsResource(label: "settings schema", url: settingsSchemaURL),
@@ -58,7 +58,7 @@ extension CMUXCLI {
             topic: "api",
             aliases: ["cli", "socket", "automation", "handles"],
             summary: "CLI/socket API, handle model, windows, workspaces, panes, and surfaces.",
-            webURL: "https://cmux.com/docs/api",
+            webURL: "https://mosaic.inc/docs/api",
             rawResources: [
                 DocsResource(label: "CLI contract", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/cli-contract.md"),
                 DocsResource(label: "cmux skill", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/skills/cmux/SKILL.md"),
@@ -72,7 +72,7 @@ extension CMUXCLI {
             topic: "browser",
             aliases: ["browser-automation", "webview"],
             summary: "Browser panel automation commands and snapshot-driven web interaction.",
-            webURL: "https://cmux.com/docs/browser-automation",
+            webURL: "https://mosaic.inc/docs/browser-automation",
             rawResources: [
                 DocsResource(label: "browser skill", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/skills/cmux-browser/SKILL.md"),
                 DocsResource(label: "browser commands", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/skills/cmux-browser/references/commands.md"),
@@ -86,7 +86,7 @@ extension CMUXCLI {
             topic: "agents",
             aliases: ["integrations", "agent-integrations"],
             summary: "Agent hook integrations, Feed approvals, notifications, and session restore.",
-            webURL: "https://cmux.com/docs/agent-integrations/oh-my-codex",
+            webURL: "https://mosaic.inc/docs/agent-integrations/oh-my-codex",
             rawResources: [
                 DocsResource(label: "agent hook docs", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/agent-hooks.md"),
                 DocsResource(label: "feed docs", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/feed.md"),
@@ -104,7 +104,7 @@ extension CMUXCLI {
             topic: "dock",
             aliases: ["doc", "controls", "right-sidebar", "dock-json"],
             summary: "Custom right-sidebar terminal controls from .cmux/dock.json or ~/.config/cmux/dock.json.",
-            webURL: "https://cmux.com/docs/dock",
+            webURL: "https://mosaic.inc/docs/dock",
             rawResources: [
                 DocsResource(label: "dock docs", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/dock.md"),
                 DocsResource(label: "dock web copy", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/web/messages/en.json"),
@@ -119,7 +119,7 @@ extension CMUXCLI {
             topic: "sidebars",
             aliases: ["sidebar", "custom-sidebar", "custom-sidebars", "vibe-sidebar"],
             summary: "Vibe-code a custom sidebar: a runtime-interpreted SwiftUI-style file in ~/.config/cmux/sidebars/ (beta).",
-            webURL: "https://cmux.com/docs/custom-sidebars",
+            webURL: "https://mosaic.inc/docs/custom-sidebars",
             rawResources: [
                 DocsResource(label: "custom sidebar authoring guide", url: "https://raw.githubusercontent.com/emergent-inc/cmux/main/docs/custom-sidebars.md"),
             ],

@@ -27,7 +27,7 @@ import Testing
         let body = PresenceHeartbeatClient.heartbeatBody(
             deviceID: "11111111-2222-4333-8444-555555555555",
             tag: "default",
-            bundleID: "com.cmuxterm.app.nightly",
+            bundleID: "mosaic.com.emergent.app.nightly",
             displayName: "Studio",
             routes: routes,
             stopping: false
@@ -43,7 +43,7 @@ import Testing
         #expect(body["tag"] as? String == "default")
         #expect(body["displayName"] as? String == "Studio")
         // The bundle id is carried so the phone can label the build channel.
-        #expect(body["bundleId"] as? String == "com.cmuxterm.app.nightly")
+        #expect(body["bundleId"] as? String == "mosaic.com.emergent.app.nightly")
         #expect(body["stopping"] == nil)
     }
 
@@ -53,7 +53,7 @@ import Testing
         let body = PresenceHeartbeatClient.heartbeatBody(
             deviceID: "11111111-2222-4333-8444-555555555555",
             tag: "default",
-            bundleID: "com.cmuxterm.app.nightly",
+            bundleID: "mosaic.com.emergent.app.nightly",
             displayName: nil,
             routes: [],
             stopping: false
@@ -67,7 +67,7 @@ import Testing
         let body = PresenceHeartbeatClient.heartbeatBody(
             deviceID: "11111111-2222-4333-8444-555555555555",
             tag: "presvc",
-            bundleID: "com.cmuxterm.app.nightly",
+            bundleID: "mosaic.com.emergent.app.nightly",
             displayName: nil,
             routes: [try route(host: "192.168.1.4", port: 50123)],
             stopping: true
@@ -80,7 +80,7 @@ import Testing
         let body = PresenceHeartbeatClient.heartbeatBody(
             deviceID: "11111111-2222-4333-8444-555555555555",
             tag: "default",
-            bundleID: "com.cmuxterm.app.nightly",
+            bundleID: "mosaic.com.emergent.app.nightly",
             displayName: "Studio",
             routes: [try route(host: "100.0.0.1", port: 51000)],
             stopping: true

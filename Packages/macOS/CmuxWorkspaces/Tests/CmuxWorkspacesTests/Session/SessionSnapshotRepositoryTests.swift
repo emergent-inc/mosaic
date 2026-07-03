@@ -64,14 +64,14 @@ struct SessionSnapshotRepositoryTests {
         #expect(backup.path == dir.appendingPathComponent("cmux/session-com.cmux_odd_id-previous.json").path)
     }
 
-    @Test("nil and blank bundle identifiers fall back to com.cmuxterm.app")
+    @Test("nil and blank bundle identifiers fall back to mosaic.com.emergent.app")
     func bundleIdentifierFallback() throws {
         let dir = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         for identifier in [nil, "  "] as [String?] {
             let repository = makeRepository(appSupport: dir, bundleIdentifier: identifier)
             let primary = try #require(repository.defaultSnapshotFileURL())
-            #expect(primary.lastPathComponent == "session-com.cmuxterm.app.json")
+            #expect(primary.lastPathComponent == "session-mosaic.com.emergent.app.json")
         }
     }
 

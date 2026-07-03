@@ -2,8 +2,13 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 let authenticatedUser: { readonly id: string } | null = { id: "user-123" };
 const verifyRequest = mock(async () => authenticatedUser);
+const unauthorized = () => new Response(JSON.stringify({ error: "unauthorized" }), {
+  headers: { "Content-Type": "application/json" },
+  status: 401,
+});
 
 mock.module("../services/vms/auth", () => ({
+  unauthorized,
   verifyRequest,
 }));
 

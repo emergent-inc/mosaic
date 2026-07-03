@@ -7,7 +7,7 @@ public import Foundation
 /// ## Why not Application Support
 ///
 /// These files are read and written by **two separately code-signed binaries** —
-/// the cmux app (bundle id `com.cmuxterm.app`) and the standalone `cmux` CLI
+/// the cmux app (bundle id `mosaic.com.emergent.app`) and the standalone `cmux` CLI
 /// installed at `/usr/local/bin/cmux`. On macOS Sequoia, a non-sandboxed process
 /// that reaches into another app's data under `~/Library/Application Support`,
 /// `~/Library/Containers`, or `~/Library/Group Containers` triggers the

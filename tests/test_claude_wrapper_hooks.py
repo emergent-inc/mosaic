@@ -248,7 +248,7 @@ def run_wrapper_terminal_env_probe(
         args_log = tmp / "real-args.log"
         socket_path = str(tmp / "cmux.sock")
         fingerprint_env = {
-            "CMUX_BUNDLE_ID": "com.cmuxterm.app.debug.envprobe",
+            "CMUX_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
             "CMUX_BUNDLED_CLI_PATH": str(wrapper_dir / "cmux"),
             "CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION": "1",
             "CMUX_PANEL_ID": "panel:test",
@@ -903,7 +903,7 @@ def test_hooks_disabled_preserves_cmux_terminal_env_for_custom_hooks(failures: l
         )
 
         for key, expected_value in {
-            "CMUX_BUNDLE_ID": "com.cmuxterm.app.debug.envprobe",
+            "CMUX_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
             "CMUX_CLAUDE_HOOKS_DISABLED": "1",
             "CMUX_PANEL_ID": "panel:test",
             "CMUX_SURFACE_ID": "surface:test",

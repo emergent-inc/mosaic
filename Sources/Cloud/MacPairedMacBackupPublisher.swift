@@ -3,7 +3,7 @@ import CmuxAuthRuntime
 import Foundation
 import os
 
-private let macPairedMacPublishLog = Logger(subsystem: "com.cmuxterm.app", category: "MacPairedMacPublish")
+private let macPairedMacPublishLog = Logger(subsystem: "mosaic.com.emergent.app", category: "MacPairedMacPublish")
 
 /// DEV convenience: publishes THIS Mac's own attach route into the signed-in
 /// user's per-user `pairedMacs` Durable Object backup (`POST /v1/sync/paired-macs`

@@ -24,13 +24,13 @@ public struct MacBuildChannel: Sendable {
         }
 
         // The channel is the component RIGHT AFTER the base bundle id; a tagged
-        // build appends a further `.slug` (e.g. `com.cmuxterm.app.nightly.my-tag`,
-        // `com.cmuxterm.app.rc`), so match the component, not the suffix. Mirrors
+        // build appends a further `.slug` (e.g. `mosaic.com.emergent.app.nightly.my-tag`,
+        // `mosaic.com.emergent.app.rc`), so match the component, not the suffix. Mirrors
         // the canonical `SocketPathMarkerFiles.variant` on macOS — kept in sync as
         // channels are added (Stable/Nightly/Staging/RC). RC may not exist yet (a
         // future release-candidate desktop build), but is handled ahead of time.
         let bundle = (bundleID ?? "").lowercased()
-        let base = "com.cmuxterm.app"
+        let base = "mosaic.com.emergent.app"
         if bundle == base { return "Stable" }
         if bundle.hasPrefix(base + ".") {
             let rest = bundle.dropFirst(base.count + 1)
@@ -43,7 +43,7 @@ public struct MacBuildChannel: Sendable {
             default: return nil // unknown channel component — don't guess
             }
         }
-        // A non-`com.cmuxterm.app` bundle that is clearly a dev build (e.g. the iOS
+        // A non-`mosaic.com.emergent.app` bundle that is clearly a dev build (e.g. the iOS
         // dev bundle `dev.cmux.*`).
         if bundle.hasPrefix("dev.cmux") { return "DEV" }
         return nil
