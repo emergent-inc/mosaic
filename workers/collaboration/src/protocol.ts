@@ -3,6 +3,7 @@ export interface PeerInfo {
   participantID: string;
   displayName: string;
   color: string;
+  imageURL?: string;
 }
 
 export interface RelayEnvelope {
@@ -31,12 +32,17 @@ export function parsePeer(value: unknown): PeerInfo | null {
   const participantID = typeof record.participantID === "string" && record.participantID.trim() !== ""
     ? record.participantID
     : record.peerID;
-  return {
+  const imageURL = typeof record.imageURL === "string" && record.imageURL.trim() !== ""
+    ? record.imageURL
+    : undefined;
+  const peer: PeerInfo = {
     peerID: record.peerID,
     participantID,
     displayName: record.displayName,
     color: record.color,
   };
+  if (imageURL !== undefined) peer.imageURL = imageURL;
+  return peer;
 }
 
 export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | null {

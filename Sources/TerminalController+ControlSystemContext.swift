@@ -240,6 +240,17 @@ extension TerminalController: ControlSystemContext {
 
     func controlFeedbackOpen(workspaceID: UUID?, windowID: UUID?, requestedActivate: Bool) {
         let shouldActivate = v2FocusAllowed(requested: requestedActivate)
+        ProductAnalytics.shared.trackFeedback(
+            actionID: .open,
+            entrypoint: .socket,
+            result: .started,
+            properties: [
+                "requested_activate": requestedActivate,
+                "will_activate": shouldActivate,
+                "has_workspace_selector": workspaceID != nil,
+                "has_window_selector": windowID != nil,
+            ]
+        )
         DispatchQueue.main.async {
             let targetWindow: NSWindow?
             if let windowID, let app = AppDelegate.shared {

@@ -2184,7 +2184,6 @@ struct ContentView: View {
                     .allowsHitTesting(false)
 
                 Spacer()
-
             }
             .frame(height: titlebarContentHeight)
             .padding(.top, 2)
@@ -6122,9 +6121,10 @@ struct ContentView: View {
                 assertionFailure("No command palette handler registered for \(contribution.commandId)")
                 continue
             }
+            let commandId = contribution.commandId
             commands.append(
                 CommandPaletteCommand(
-                    id: contribution.commandId,
+                    id: commandId,
                     rank: nextRank,
                     title: configuredPaletteAction?.title ?? contribution.title(context),
                     subtitle: configuredPaletteAction?.subtitle ?? contribution.subtitle(context),
@@ -6134,7 +6134,23 @@ struct ContentView: View {
                         ? configuredPaletteAction?.keywords ?? contribution.keywords
                         : contribution.keywords,
                     dismissOnRun: contribution.dismissOnRun,
-                    action: action
+                    action: {
+                        PostHogAnalytics.shared.trackAction(
+                            actionID: commandId,
+                            surface: "command_palette",
+                            entrypoint: "palette",
+                            source: "CommandPaletteCommand.action"
+                        )
+                        PostHogAnalytics.shared.capture(
+                            .commandPaletteCommandPerformed,
+                            properties: [
+                                "action_id": commandId,
+                                "surface": "command_palette",
+                                "entrypoint": "palette",
+                            ]
+                        )
+                        action()
+                    }
                 )
             )
             nextRank += 1
