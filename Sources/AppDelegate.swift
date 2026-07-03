@@ -1192,7 +1192,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         // Before the auth graph is configured, fall back to a default router
         // (built-in cmux schemes) so dropped callbacks are still detected.
-        let callbackRouter = auth?.callbackRouter ?? AuthCallbackRouter()
+        let callbackRouter = auth?.callbackRouter ?? AuthCallbackRouter(
+            extraAllowedScheme: AuthEnvironment.callbackScheme
+        )
         let authCallbacks = urls.filter(callbackRouter.isAuthCallbackURL)
         #if DEBUG
         AuthDebugLog().log("auth.openURLs.authCallbacks count=\(authCallbacks.count)")
