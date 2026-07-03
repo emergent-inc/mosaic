@@ -61,7 +61,7 @@ struct BrowserSearchOverlay: View {
                             .padding(.trailing, 8)
                     }
                 }
-                Button(action: {
+                TrackedButton("browsersearchoverlay_button_64", action: {
                     #if DEBUG
                     cmuxDebugLog("browser.findbar.next panel=\(panelId.uuidString.prefix(5))")
                     #endif
@@ -72,7 +72,7 @@ struct BrowserSearchOverlay: View {
                 .buttonStyle(SearchButtonStyle())
                 .safeHelp("Next match (Return)")
 
-                Button(action: {
+                TrackedButton("browsersearchoverlay_button_75", action: {
                     #if DEBUG
                     cmuxDebugLog("browser.findbar.prev panel=\(panelId.uuidString.prefix(5))")
                     #endif
@@ -83,7 +83,7 @@ struct BrowserSearchOverlay: View {
                 .buttonStyle(SearchButtonStyle())
                 .safeHelp("Previous match (Shift+Return)")
 
-                Button(action: {
+                TrackedButton("browsersearchoverlay_button_86", action: {
                     #if DEBUG
                     cmuxDebugLog("browser.findbar.close panel=\(panelId.uuidString.prefix(5))")
                     #endif

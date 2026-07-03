@@ -2531,13 +2531,14 @@ class GhosttyApp {
         url: URL,
         sourceWorkspaceId: UUID,
         sourcePanelId: UUID,
-        host: String
+        host: String,
+        linkType: String
     ) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled() else {
             #if DEBUG
             cmuxDebugLog("link.openURL deferred embedded but cmuxBrowser=disabled, opening externally url=\(url)")
             #endif
-            return NSWorkspace.shared.open(url)
+            return openTerminalLinkInMacOS(url, linkType: linkType)
         }
 
         guard let app = AppDelegate.shared,
@@ -2551,7 +2552,7 @@ class GhosttyApp {
                 "tabId=\(sourceWorkspaceId) surfaceId=\(sourcePanelId) url=\(url)"
             )
             #endif
-            return NSWorkspace.shared.open(url)
+            return openTerminalLinkInMacOS(url, linkType: linkType)
         }
 
         let workspace = resolved.workspace
@@ -2565,16 +2566,21 @@ class GhosttyApp {
         #endif
 
         let openedInBrowser: Bool
+        let destination: String
+        var properties: [String: Any] = ["link_type": linkType]
         if let targetPane = workspace.preferredRightSideTargetPane(fromPanelId: sourcePanelId) {
             #if DEBUG
             cmuxDebugLog("link.openURL opening in existing browser pane=\(targetPane)")
             #endif
             openedInBrowser = workspace.newBrowserSurface(inPane: targetPane, url: url, focus: true) != nil
+            destination = "browser_pane"
+            properties["reused_pane"] = true
         } else {
             #if DEBUG
             cmuxDebugLog("link.openURL opening as new browser split from surface=\(sourcePanelId)")
             #endif
             openedInBrowser = workspace.newBrowserSplit(from: sourcePanelId, orientation: .horizontal, url: url) != nil
+            destination = "new_split"
         }
 
         guard openedInBrowser else {
@@ -2584,10 +2590,56 @@ class GhosttyApp {
                 "host=\(host) url=\(url)"
             )
             #endif
-            return NSWorkspace.shared.open(url)
+            return openTerminalLinkInMacOS(url, linkType: linkType)
         }
 
+        properties["destination"] = destination
+#if DEBUG
+        print("[PostHog] firing: terminal_link_opened")
+#endif
+        PostHogAnalytics.shared.capture("terminal_link_opened", properties: properties)
         return true
+    }
+
+    @MainActor
+    private static func openTerminalLinkInMacOS(_ url: URL, linkType: String) -> Bool {
+        let opened = NSWorkspace.shared.open(url)
+        if opened {
+#if DEBUG
+            print("[PostHog] firing: terminal_link_opened")
+#endif
+            PostHogAnalytics.shared.capture("terminal_link_opened", properties: [
+                "link_type": linkType,
+                "destination": "macos",
+            ])
+        }
+        return opened
+    }
+
+    private static func trackTerminalLinkOpened(linkType: String, destination: String) {
+#if DEBUG
+        print("[PostHog] firing: terminal_link_opened")
+#endif
+        PostHogAnalytics.shared.capture("terminal_link_opened", properties: [
+            "link_type": linkType,
+            "destination": destination,
+        ])
+    }
+
+    private static func terminalLinkType(rawValue: String, url: URL) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if url.isFileURL || NSString(string: trimmed).isAbsolutePath {
+            return "file"
+        }
+        guard let scheme = URL(string: trimmed)?.scheme?.lowercased() else {
+            return "domain"
+        }
+        switch scheme {
+        case "http", "https":
+            return scheme
+        default:
+            return "scheme"
+        }
     }
 
     private func splitDirection(from direction: ghostty_action_split_direction_e) -> SplitDirection? {
@@ -3106,8 +3158,11 @@ class GhosttyApp {
                         surfaceId: termSurface.id,
                         filePath: resolvedPath
                     ) {
-                        NSWorkspace.shared.open(fileURL)
+                        if NSWorkspace.shared.open(fileURL) {
+                            Self.trackTerminalLinkOpened(linkType: "file", destination: "macos")
+                        }
                     }
+                    Self.trackTerminalLinkOpened(linkType: "file", destination: "file_viewer")
                     return (true, resolvedPath)
                 }
                 if let fallbackPath = filePathResolution.fallbackPath {
@@ -3124,6 +3179,7 @@ class GhosttyApp {
                 #endif
                 return false
             }
+            let linkType = Self.terminalLinkType(rawValue: normalizedOpenURLString, url: target.url)
             #if DEBUG
             if UITestCaptureSink().appendLineIfConfigured(
                 envKey: "CMUX_UI_TEST_CAPTURE_OPEN_URL_PATH",
@@ -3156,8 +3212,11 @@ class GhosttyApp {
                         surfaceId: termSurface.id,
                         filePath: fileURL.path
                     ) {
-                        NSWorkspace.shared.open(fileURL)
+                        if NSWorkspace.shared.open(fileURL) {
+                            Self.trackTerminalLinkOpened(linkType: "file", destination: "macos")
+                        }
                     }
+                    Self.trackTerminalLinkOpened(linkType: "file", destination: "file_viewer")
                     return true
                 }
                 if routed {
@@ -3171,7 +3230,7 @@ class GhosttyApp {
                 cmuxDebugLog("link.openURL cmuxBrowser=disabled, opening externally url=\(target.url)")
                 #endif
                 return performOnMain {
-                    NSWorkspace.shared.open(target.url)
+                    Self.openTerminalLinkInMacOS(target.url, linkType: linkType)
                 }
             }
             switch target {
@@ -3180,7 +3239,7 @@ class GhosttyApp {
                 cmuxDebugLog("link.openURL target=external, opening externally url=\(url)")
                 #endif
                 return performOnMain {
-                    NSWorkspace.shared.open(url)
+                    Self.openTerminalLinkInMacOS(url, linkType: linkType)
                 }
             case let .embeddedBrowser(url):
                 if BrowserLinkOpenSettings.shouldOpenExternally(url) {
@@ -3188,7 +3247,7 @@ class GhosttyApp {
                     cmuxDebugLog("link.openURL target=embedded but shouldOpenExternally=true url=\(url)")
                     #endif
                     return performOnMain {
-                        NSWorkspace.shared.open(url)
+                        Self.openTerminalLinkInMacOS(url, linkType: linkType)
                     }
                 }
                 guard let host = BrowserInsecureHTTPSettings.normalizeHost(url.host ?? "") else {
@@ -3196,7 +3255,7 @@ class GhosttyApp {
                     cmuxDebugLog("link.openURL target=embedded but normalizeHost=nil host=\(url.host ?? "nil") url=\(url)")
                     #endif
                     return performOnMain {
-                        NSWorkspace.shared.open(url)
+                        Self.openTerminalLinkInMacOS(url, linkType: linkType)
                     }
                 }
 
@@ -3206,7 +3265,7 @@ class GhosttyApp {
                     cmuxDebugLog("link.openURL target=embedded but hostWhitelist miss host=\(host) url=\(url)")
                     #endif
                     return performOnMain {
-                        NSWorkspace.shared.open(url)
+                        Self.openTerminalLinkInMacOS(url, linkType: linkType)
                     }
                 }
                 let sourceWorkspaceId = callbackTabId ?? surfaceView.tabId
@@ -3239,19 +3298,20 @@ class GhosttyApp {
                     )
                     #endif
                     return performOnMain {
-                        NSWorkspace.shared.open(url)
+                        Self.openTerminalLinkInMacOS(url, linkType: linkType)
                     }
                 }
 
                 // Browser split creation changes focus, which unfocuses the source terminal and
                 // calls back into Ghostty. Defer that work until this open_url callback returns.
                 // From here cmux owns the open attempt and the deferred path falls back externally.
-                Task { @MainActor [url, sourceWorkspaceId, sourcePanelId, host] in
+                Task { @MainActor [url, sourceWorkspaceId, sourcePanelId, host, linkType] in
                     let didOpen = Self.openEmbeddedBrowserLink(
                         url: url,
                         sourceWorkspaceId: sourceWorkspaceId,
                         sourcePanelId: sourcePanelId,
-                        host: host
+                        host: host,
+                        linkType: linkType
                     )
                     guard didOpen else {
                         #if DEBUG
@@ -5572,6 +5632,10 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 surfaceId: terminalSurface.id
             )
         )
+#if DEBUG
+        print("[PostHog] firing: surface_link_copied")
+#endif
+        PostHogAnalytics.shared.capture("surface_link_copied")
     }
 
     private func recordDirectAgentHibernationTerminalInput() {

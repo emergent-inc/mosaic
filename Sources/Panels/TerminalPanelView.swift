@@ -196,13 +196,19 @@ struct TerminalPanelView: View {
         let borderColor = isTerminalSessionPillHovered
             ? hoverColor.opacity(0.24)
             : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.10 : 0.16)
-        return Button {
+        return TrackedButton("session_pill_open", action: {
+#if DEBUG
+            print("[PostHog] firing: session_pill_tapped")
+#endif
+            PostHogAnalytics.shared.capture("session_pill_tapped", properties: [
+                "session_state": state.workspaceSessionCode == nil ? "no_session" : "active_session",
+            ])
             if CollaborationRuntime.shared.ensureSignedInForCollaboration(continue: {
                 isTerminalSessionPopoverPresented = true
             }) {
                 isTerminalSessionPopoverPresented = true
             }
-        } label: {
+        }) {
             HStack(spacing: 5) {
                 CmuxSystemSymbolImage(systemName: state.workspaceSessionCode == nil ? "person.2" : "link", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
@@ -265,7 +271,7 @@ struct TerminalPanelView: View {
 
     private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalShareButtonLabel(state: state)
-        return Button {
+        return TrackedButton("terminal_share", action: {
             if state.isMirrored {
                 CollaborationRuntime.shared.setSharing(false, for: panel)
             } else {
@@ -274,7 +280,7 @@ struct TerminalPanelView: View {
                 }
                 isTerminalRecipientPopoverPresented = true
             }
-        } label: {
+        }) {
             Text(label)
                 .cmuxFont(size: 10, weight: .semibold)
                 .lineLimit(1)
@@ -404,13 +410,13 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Button(CollaborationStrings.copyInviteCode) {
+                    TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
-                    Button(CollaborationStrings.joinDifferentSession) {
+                    TrackedButton("session_join_different", CollaborationStrings.joinDifferentSession) {
                         onJoin()
                     }
-                    Button(CollaborationStrings.leaveSession) {
+                    TrackedButton("session_leave", CollaborationStrings.leaveSession) {
                         onLeave()
                     }
                 }
@@ -422,12 +428,12 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Button(CollaborationStrings.createSession) {
+                    TrackedButton("session_create", CollaborationStrings.createSession) {
                         onCreate()
                     }
                     .keyboardShortcut(.defaultAction)
 
-                    Button(CollaborationStrings.joinSession) {
+                    TrackedButton("session_join", CollaborationStrings.joinSession) {
                         onJoin()
                     }
                 }
@@ -521,12 +527,12 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
 
                 HStack {
                     if model.showsStopSharingAction {
-                        Button(CollaborationStrings.stopSharingTerminal) {
+                        TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
                             onStopSharing()
                         }
                     }
                     Spacer()
-                    Button(CollaborationStrings.copyInviteCode) {
+                    TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
                     .keyboardShortcut(.defaultAction)
@@ -546,12 +552,12 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                 if model.showsShareAction {
                     HStack {
                         if model.showsStopSharingAction {
-                            Button(CollaborationStrings.stopSharingTerminal) {
+                            TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
                                 onStopSharing()
                             }
                         }
                         Spacer()
-                        Button(CollaborationStrings.share) {
+                        TrackedButton("terminal_share_confirm", CollaborationStrings.share) {
                             onShare(selectedParticipantIDs)
                         }
                         .keyboardShortcut(.defaultAction)
@@ -853,7 +859,7 @@ private struct AgentHibernationPlaceholderView: View {
                 .cmuxFont(.caption)
                 .foregroundStyle(.tertiary)
             }
-            Button(String(localized: "terminal.agentHibernation.resume", defaultValue: "Resume")) {
+            TrackedButton("terminalpanelview_button_859", String(localized: "terminal.agentHibernation.resume", defaultValue: "Resume")) {
                 onResume()
             }
             .buttonStyle(.borderedProminent)

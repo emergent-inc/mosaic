@@ -126,32 +126,32 @@ struct SleepyFaceView: View {
         return VStack(spacing: 0) {
             Spacer()
             HStack(spacing: 16) {
-                Button {
+                TrackedButton("sleepyfaceview_button_129", action: {
                     SleepyModeController.shared.toggle()
-                } label: {
+                }) {
                     Label(String(localized: "sleepyMode.button.exit", defaultValue: "Exit"), systemImage: "xmark")
                 }
                 .buttonStyle(SleepyPixelButtonStyle(tint: Color(red: 0.52, green: 0.30, blue: 0.40)))
 
-                Button {
+                TrackedButton("sleepyfaceview_button_136", action: {
                     // The real macOS login lock — genuinely secure (Apple's), unlike
                     // the overlay. The screensaver stays up behind it as the backdrop.
                     let power = power
                     Task { await power.lockMacNow() }
-                } label: {
+                }) {
                     Label(String(localized: "sleepyMode.button.lockMac", defaultValue: "Lock Mac"), systemImage: "lock.fill")
                 }
                 .buttonStyle(SleepyPixelButtonStyle(tint: Color(red: 0.34, green: 0.30, blue: 0.60)))
 
-                Button {
+                TrackedButton("sleepyfaceview_button_146", action: {
                     let power = power
                     Task { await power.sleepDisplayNow() }
-                } label: {
+                }) {
                     Label(String(localized: "sleepyMode.button.sleepDisplay", defaultValue: "Sleep Display"), systemImage: "moon.fill")
                 }
                 .buttonStyle(SleepyPixelButtonStyle(tint: Color(red: 0.28, green: 0.40, blue: 0.62)))
 
-                Button {
+                TrackedButton("sleepyfaceview_button_154", action: {
                     // Gate on the shared MainActor UI state so overlapping clicks
                     // (from any display) can't issue concurrent privileged toggles,
                     // and every overlay computes the next action from one value.
@@ -166,7 +166,7 @@ struct SleepyFaceView: View {
                         ui.isOn = await power.setLowPowerMode(turnOn)
                         ui.isBusy = false
                     }
-                } label: {
+                }) {
                     Label(
                         powerUIState.isOn
                             ? String(localized: "sleepyMode.button.lowPowerOn", defaultValue: "Low Power: On")
