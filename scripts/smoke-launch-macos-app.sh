@@ -68,8 +68,15 @@ dump_system_log() {
 
 open_log_indicates_unsupported_gui() {
   [[ -s "$OPEN_LOG" ]] || return 1
-  grep -Fq 'OSLaunchdErrorDomain Code=125' "$OPEN_LOG" \
-    && grep -Fq 'Domain does not support specified action' "$OPEN_LOG"
+  if grep -Fq 'OSLaunchdErrorDomain Code=125' "$OPEN_LOG" \
+    && grep -Fq 'Domain does not support specified action' "$OPEN_LOG"; then
+    return 0
+  fi
+  if grep -Fq 'RBSRequestErrorDomain Code=5 "Launch failed."' "$OPEN_LOG" \
+    && grep -Fq 'Launchd job spawn failed' "$OPEN_LOG"; then
+    return 0
+  fi
+  return 1
 }
 
 echo "==> smoke launching $APP_PATH"
