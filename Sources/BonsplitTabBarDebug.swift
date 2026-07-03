@@ -263,7 +263,7 @@ private struct BonsplitTabBarDebugView: View {
             }
 
             HStack(spacing: 10) {
-                Button(String(localized: "debug.bonsplitTabBarDebug.reset", defaultValue: "Reset")) {
+                TrackedButton("bonsplittabbardebug_button_266", String(localized: "debug.bonsplitTabBarDebug.reset", defaultValue: "Reset")) {
                     cmuxDebugLog(
                         "bonsplit.tabbarDebug.reset " +
                         "separatorFadeWidth=\(BonsplitTabBarDebugSettings.formatPixels(BonsplitTabBarDebugSettings.defaultSeparatorFadeWidth)) " +
@@ -274,7 +274,7 @@ private struct BonsplitTabBarDebugView: View {
                     setContentFadeWidth(BonsplitTabBarDebugSettings.defaultContentFadeWidth)
                     setSolidSurfaceWidthAdjustment(BonsplitTabBarDebugSettings.defaultSolidSurfaceWidthAdjustment)
                 }
-                Button(String(localized: "debug.bonsplitTabBarDebug.copyConfig", defaultValue: "Copy Config")) {
+                TrackedButton("bonsplittabbardebug_button_277", String(localized: "debug.bonsplitTabBarDebug.copyConfig", defaultValue: "Copy Config")) {
                     BonsplitTabBarDebugSettings.copyCurrentTuningToPasteboard()
                     cmuxDebugLog("bonsplit.tabbarDebug.copyConfig \(BonsplitTabBarDebugSettings.currentTuningDescription())")
                 }

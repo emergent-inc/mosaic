@@ -341,9 +341,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         if enabledIdentities.count > 1 {
             Menu {
                 ForEach(enabledIdentities, id: \.bundleIdentifier) { enabledIdentity in
-                    Button {
+                    TrackedButton("cmuxinstalledextensionsidebarhostview_button_344", action: {
                         selectExtension(enabledIdentity)
-                    } label: {
+                    }) {
                         Label(enabledIdentity.localizedName, systemImage: "puzzlepiece.extension")
                     }
                 }
@@ -357,9 +357,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
             .controlSize(.small)
         }
 
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_360", action: {
             presentExtensionBrowser()
-        } label: {
+        }) {
             Label(
                 String(localized: "sidebar.extensions.manage.short", defaultValue: "Manage"),
                 systemImage: "puzzlepiece.extension"
@@ -367,9 +367,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         }
         .controlSize(.small)
 
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_370", action: {
             onUseDefaultSidebar()
-        } label: {
+        }) {
             Label(
                 String(localized: "sidebar.extensions.useDefault.short", defaultValue: "Use Default"),
                 systemImage: "sidebar.left"
@@ -383,9 +383,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
             extensionIdentityControl(activeIdentity: activeIdentity)
             Spacer(minLength: 8)
             if effectiveGrant?.needsAdditionalApproval == true {
-                Button {
+                TrackedButton("cmuxinstalledextensionsidebarhostview_button_386", action: {
                     isShowingAccessReview = true
-                } label: {
+                }) {
                     Label(
                         String(localized: "sidebar.extensions.access.statusLimited", defaultValue: "Limited"),
                         systemImage: "lock"
@@ -395,9 +395,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
                 .controlSize(.mini)
                 .help(String(localized: "sidebar.extensions.access.statusLimited.help", defaultValue: "This extension has limited access."))
             }
-            Button {
+            TrackedButton("cmuxinstalledextensionsidebarhostview_button_398", action: {
                 isShowingExtensionDetails = true
-            } label: {
+            }) {
                 Image(systemName: "info.circle")
             }
             .buttonStyle(.plain)
@@ -467,13 +467,13 @@ struct CMUXInstalledExtensionSidebarHostView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let activeIdentity, let effectiveGrant {
                     HStack(spacing: 8) {
-                        Button(String(localized: "sidebar.extensions.access.review", defaultValue: "Review Access...")) {
+                        TrackedButton("cmuxinstalledextensionsidebarhostview_button_470", String(localized: "sidebar.extensions.access.review", defaultValue: "Review Access...")) {
                             isShowingAccessReview = true
                         }
                         .controlSize(.small)
                         .disabled(!effectiveGrant.needsAdditionalApproval)
 
-                        Button(String(localized: "sidebar.extensions.access.keepLimited", defaultValue: "Keep Limited")) {
+                        TrackedButton("cmuxinstalledextensionsidebarhostview_button_476", String(localized: "sidebar.extensions.access.keepLimited", defaultValue: "Keep Limited")) {
                             xpcHost.revokeSensitiveAccess(bundleIdentifier: activeIdentity.bundleIdentifier)
                             self.effectiveGrant = xpcHost.currentEffectiveGrant
                             xpcHost.sendSnapshotDidChange()
@@ -483,12 +483,12 @@ struct CMUXInstalledExtensionSidebarHostView: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button(String(localized: "sidebar.extensions.manage.short", defaultValue: "Manage")) {
+                    TrackedButton("cmuxinstalledextensionsidebarhostview_button_486", String(localized: "sidebar.extensions.manage.short", defaultValue: "Manage")) {
                         isShowingExtensionDetails = false
                         presentExtensionBrowser()
                     }
                     .controlSize(.small)
-                    Button(String(localized: "sidebar.extensions.useDefault.short", defaultValue: "Use Default")) {
+                    TrackedButton("cmuxinstalledextensionsidebarhostview_button_491", String(localized: "sidebar.extensions.useDefault.short", defaultValue: "Use Default")) {
                         isShowingExtensionDetails = false
                         onUseDefaultSidebar()
                     }
@@ -528,12 +528,12 @@ struct CMUXInstalledExtensionSidebarHostView: View {
 
     @ViewBuilder
     private func blockedExtensionActionButtons() -> some View {
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_531", action: {
             blockedManifestReason = nil
             effectiveGrant = nil
             xpcHost.invalidate()
             hostReloadToken &+= 1
-        } label: {
+        }) {
             Label(
                 String(localized: "sidebar.extensions.retry", defaultValue: "Try Again"),
                 systemImage: "arrow.clockwise"
@@ -541,9 +541,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         }
         .controlSize(.small)
 
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_544", action: {
             onUseDefaultSidebar()
-        } label: {
+        }) {
             Label(
                 String(localized: "sidebar.extensions.useDefault.short", defaultValue: "Use Default"),
                 systemImage: "sidebar.left"
@@ -551,9 +551,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         }
         .controlSize(.small)
 
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_554", action: {
             presentExtensionBrowser()
-        } label: {
+        }) {
             Label(
                 String(localized: "sidebar.extensions.manage.short", defaultValue: "Manage"),
                 systemImage: "puzzlepiece.extension")
@@ -654,9 +654,9 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         if enabledIdentities.count > 1 {
             Menu {
                 ForEach(enabledIdentities, id: \.bundleIdentifier) { enabledIdentity in
-                    Button {
+                    TrackedButton("cmuxinstalledextensionsidebarhostview_button_657", action: {
                         selectExtension(enabledIdentity)
-                    } label: {
+                    }) {
                         Label(
                             enabledIdentity.localizedName,
                             systemImage: enabledIdentity.bundleIdentifier == activeIdentity?.bundleIdentifier ? "checkmark" : "puzzlepiece.extension"
@@ -740,15 +740,15 @@ struct CMUXInstalledExtensionSidebarHostView: View {
         identity: AppExtensionIdentity,
         effectiveGrant: CMUXSidebarExtensionEffectiveGrant
     ) -> some View {
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_743", action: {
             isShowingAccessReview = true
-        } label: {
+        }) {
             Text(String(localized: "sidebar.extensions.access.review", defaultValue: "Review Access..."))
         }
         .controlSize(.small)
-        Button {
+        TrackedButton("cmuxinstalledextensionsidebarhostview_button_749", action: {
             keepLimitedAccess(identity: identity, effectiveGrant: effectiveGrant)
-        } label: {
+        }) {
             Text(String(localized: "sidebar.extensions.access.keepLimited", defaultValue: "Keep Limited"))
         }
         .controlSize(.small)
@@ -791,12 +791,12 @@ struct CMUXInstalledExtensionSidebarHostView: View {
 
             HStack(spacing: 8) {
                 Spacer()
-                Button(String(localized: "sidebar.extensions.access.keepLimited", defaultValue: "Keep Limited")) {
+                TrackedButton("cmuxinstalledextensionsidebarhostview_button_794", String(localized: "sidebar.extensions.access.keepLimited", defaultValue: "Keep Limited")) {
                     keepLimitedAccess(identity: identity, effectiveGrant: effectiveGrant)
                     isShowingAccessReview = false
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(String(localized: "sidebar.extensions.access.allow", defaultValue: "Allow Requested Access")) {
+                TrackedButton("cmuxinstalledextensionsidebarhostview_button_799", String(localized: "sidebar.extensions.access.allow", defaultValue: "Allow Requested Access")) {
                     grantRequestedAccess(identity: identity, effectiveGrant: effectiveGrant)
                     isShowingAccessReview = false
                 }
