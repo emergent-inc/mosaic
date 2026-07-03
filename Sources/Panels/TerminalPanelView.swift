@@ -601,7 +601,7 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         }
         let trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.activeInActiveApp, .inVisibleRect, .mouseEnteredAndExited],
+            options: [.activeInActiveApp, .inVisibleRect, .mouseEnteredAndExited, .cursorUpdate],
             owner: self
         )
         addTrackingArea(trackingArea)
@@ -619,6 +619,14 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     override func resetCursorRects() {
         super.resetCursorRects()
         addCursorRect(bounds, cursor: .openHand)
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        if dragSessionActive {
+            NSCursor.closedHand.set()
+        } else {
+            NSCursor.openHand.set()
+        }
     }
 
     override func mouseDown(with event: NSEvent) {
