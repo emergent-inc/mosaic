@@ -23,6 +23,46 @@ final class SidebarHelpMenuUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testTutorialVideoReplayButtonOpensVideoWindow() {
+        let app = XCUIApplication()
+        app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
+        launchAndActivate(app)
+
+        XCTAssertTrue(waitForWindowCount(atLeast: 1, app: app, timeout: 6.0))
+        revealSidebarIfNeeded(app)
+
+        let replayButton = requireElement(
+            candidates: tutorialReplayButtonCandidates(in: app),
+            timeout: 6.0,
+            description: "tutorial video replay button"
+        )
+        let windowCountBeforeReplay = app.windows.count
+        replayButton.click()
+
+        XCTAssertTrue(
+            sidebarHelpPollUntil(timeout: 4.0) {
+                app.windows.count > windowCountBeforeReplay
+            },
+            "Expected replaying the tutorial video to open an auxiliary window"
+        )
+    }
+
+    func testTutorialVideoSeenFlagSuppressesAutomaticPresentation() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-cmuxTutorialVideoSeen.v1", "YES"]
+        app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
+        app.launchEnvironment["CMUX_UI_TEST_TUTORIAL_VIDEO_AUTO_SHOW"] = "1"
+        launchAndActivate(app)
+
+        XCTAssertTrue(waitForWindowCount(atLeast: 1, app: app, timeout: 6.0))
+        XCTAssertFalse(
+            sidebarHelpPollUntil(timeout: 1.0) {
+                app.windows["Welcome to mosaic"].exists ||
+                    app.otherElements["TutorialVideoWindowContent"].exists
+            }
+        )
+    }
+
     func testHelpMenuCheckForUpdatesTriggersSidebarUpdatePill() {
         let app = XCUIApplication()
         app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
@@ -129,6 +169,13 @@ final class SidebarHelpMenuUITests: XCTestCase {
         }
     }
 
+    private func revealSidebarIfNeeded(_ app: XCUIApplication) {
+        if firstExistingElement(candidates: tutorialReplayButtonCandidates(in: app), timeout: 1.0) != nil {
+            return
+        }
+        app.typeKey("b", modifierFlags: [.command])
+    }
+
     private func helpButtonCandidates(in app: XCUIApplication) -> [XCUIElement] {
         let sidebar = app.otherElements["Sidebar"]
         return [
@@ -136,6 +183,20 @@ final class SidebarHelpMenuUITests: XCTestCase {
             app.buttons["Help"],
             sidebar.buttons["SidebarHelpMenuButton"],
             sidebar.buttons["Help"],
+        ]
+    }
+
+    private func tutorialReplayButtonCandidates(in app: XCUIApplication) -> [XCUIElement] {
+        let sidebar = app.otherElements["Sidebar"]
+        return [
+            app.buttons["SidebarTutorialVideoButton"],
+            app.buttons["Replay Tutorial Video"],
+            app.descendants(matching: .any)["SidebarTutorialVideoButton"],
+            app.descendants(matching: .any)["Replay Tutorial Video"],
+            sidebar.buttons["SidebarTutorialVideoButton"],
+            sidebar.buttons["Replay Tutorial Video"],
+            sidebar.descendants(matching: .any)["SidebarTutorialVideoButton"],
+            sidebar.descendants(matching: .any)["Replay Tutorial Video"],
         ]
     }
 

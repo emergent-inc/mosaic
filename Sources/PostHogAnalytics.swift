@@ -538,6 +538,9 @@ final class PostHogAnalytics: @unchecked Sendable {
     ) -> Bool {
         guard !key.isEmpty, key.count <= maxKeyLength else { return false }
         let lowercased = key.lowercased()
+        if lowercased == "file_viewer_pane_count" {
+            return true
+        }
         guard !blockedKeyFragments.contains(where: { lowercased.contains($0) }) else {
             return false
         }

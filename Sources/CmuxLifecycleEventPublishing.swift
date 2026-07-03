@@ -279,6 +279,7 @@ extension Workspace {
             origin: origin
         )
         CmuxSelectionEventState.clearPane(workspaceId: id, paneId: paneId.id)
+        publishTerminalLayoutChanged(trigger: .paneClosed)
     }
 
     func publishCmuxFocusedSelection(paneId: PaneID, surfaceId: UUID, origin: String) {
