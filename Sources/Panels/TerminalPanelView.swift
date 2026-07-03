@@ -277,7 +277,7 @@ struct TerminalPanelView: View {
                 sessionCode: state.workspaceSessionCode,
                 isConnected: state.isWorkspaceSessionConnected,
                 peerSummary: state.peerSummary,
-                participants: CollaborationRuntime.shared.participantSnapshots(forWorkspaceID: panel.workspaceId),
+                participants: CollaborationRuntime.shared.participantSnapshots(for: panel),
                 onCreate: {
                     CollaborationRuntime.shared.createWorkspaceSession(for: panel)
                     isTerminalSessionPopoverPresented = false

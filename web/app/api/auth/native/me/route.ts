@@ -17,6 +17,7 @@ export function GET(request: Request) {
       id: claims.userId,
       displayName: claims.displayName,
       primaryEmail: claims.primaryEmail,
+      imageURL: claims.imageURL,
     },
     teams: claims.teamIds.map((id) => ({ id, displayName: null })),
     selectedTeamId: claims.selectedTeamId,

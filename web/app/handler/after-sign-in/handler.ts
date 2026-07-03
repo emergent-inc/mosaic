@@ -34,6 +34,7 @@ type ClerkUserLike = {
   fullName?: string | null;
   firstName?: string | null;
   lastName?: string | null;
+  imageUrl?: string | null;
   primaryEmailAddress?: { emailAddress?: string | null } | null;
   emailAddresses?: readonly { emailAddress?: string | null }[];
 };
@@ -272,6 +273,7 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
       userId: auth.userId,
       displayName: displayNameFor(user),
       primaryEmail: primaryEmailFor(user),
+      imageURL: imageURLFor(user),
       selectedTeamId: auth.orgId ?? teamIds[0] ?? null,
       teamIds,
     });
@@ -316,6 +318,11 @@ function primaryEmailFor(user: ClerkUserLike | null): string | null {
   return user?.primaryEmailAddress?.emailAddress
     ?? user?.emailAddresses?.find((email) => email.emailAddress)?.emailAddress
     ?? null;
+}
+
+function imageURLFor(user: ClerkUserLike | null): string | null {
+  const imageUrl = user?.imageUrl?.trim();
+  return imageUrl || null;
 }
 
 function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {
