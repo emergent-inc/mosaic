@@ -260,12 +260,27 @@ jobs:
       - name: Build universal app (Release)
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
+          set -euo pipefail
+          APP_LOG="$RUNNER_TEMP/cmux-release-xcodebuild.log"
+          set +e
           CMUX_SKIP_ZIG_BUILD=1 xcodebuild -scheme cmux -configuration Release -derivedDataPath build-universal \
             -destination 'generic/platform=macOS' \
             -clonedSourcePackagesDirPath .spm-cache \
+            -jobs 2 \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee "$APP_LOG"
+          APP_STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$APP_STATUS" -ne 0 ]; then
+            echo "Universal release app build failed" >&2
+            echo "xcodebuild diagnostic tail:" >&2
+            grep -Ei 'error:|fatal error:|failed|BUILD FAILED|The following build commands failed' "$APP_LOG" | tail -n 120 >&2 || true
+            echo "Last 160 xcodebuild log lines:" >&2
+            tail -n 160 "$APP_LOG" >&2 || true
+            exit "$APP_STATUS"
+          fi
 
       - name: Download universal Ghostty CLI helper
         if: steps.guard_release_assets.outputs.skip_all != 'true'
