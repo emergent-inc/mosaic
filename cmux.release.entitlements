@@ -10,8 +10,6 @@
 	<array>
 		<string>T342J8UQGV.mosaic.com.emergent.app</string>
 	</array>
-	<key>com.apple.developer.web-browser.public-key-credential</key>
-	<true/>
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
 	<key>com.apple.security.cs.allow-jit</key>
