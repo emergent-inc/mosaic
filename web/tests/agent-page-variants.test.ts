@@ -31,12 +31,7 @@ describe("agent page variants", () => {
       requestedPath: "/en/docs/getting-started.txt",
       canonicalPath: "/docs/getting-started",
     });
-    expect(resolveAgentPageVariant("/ja/index.md")).toEqual({
-      kind: "page",
-      format: "md",
-      requestedPath: "/ja/index.md",
-      canonicalPath: "/ja",
-    });
+    expect(resolveAgentPageVariant("/zz/index.md")).toBeNull();
     expect(resolveAgentPageVariant("/undocumented-internal-feature.md")).toBeNull();
     expect(resolveAgentPageVariant("/%5Cfoo.md")).toBeNull();
     expect(resolveAgentPageVariant("/%00foo.md")).toBeNull();
@@ -303,8 +298,8 @@ describe("agent page variants", () => {
 
   test("forwards protected preview auth headers to canonical HTML fetches", () => {
     const requestHeaders = new Headers({
-      cookie: "_vercel_sso_nonce=abc; NEXT_LOCALE=ja",
-      "accept-language": "ja,en;q=0.9",
+      cookie: "_vercel_sso_nonce=abc; NEXT_LOCALE=en",
+      "accept-language": "en-US,en;q=0.9",
       authorization: "Bearer token",
     });
     const searchParams = new URLSearchParams({
@@ -315,7 +310,7 @@ describe("agent page variants", () => {
 
     expect(headers.get("accept")).toBe("text/html");
     expect(headers.get("cookie")).toContain("_vercel_sso_nonce=abc");
-    expect(headers.get("accept-language")).toBe("ja,en;q=0.9");
+    expect(headers.get("accept-language")).toBe("en-US,en;q=0.9");
     expect(headers.get("authorization")).toBe("Bearer token");
     expect(headers.get("x-vercel-protection-bypass")).toBe("secret");
     expect(headers.get("x-vercel-set-bypass-cookie")).toBe("true");

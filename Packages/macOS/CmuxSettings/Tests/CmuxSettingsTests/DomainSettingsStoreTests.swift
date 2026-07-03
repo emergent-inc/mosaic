@@ -361,9 +361,9 @@ struct LanguageSettingsStoreTests {
 
     @Test func readsStoredLanguage() {
         let defaults = makeScratchDefaults()
-        defaults.set("ja", forKey: "appLanguage")
+        defaults.set("en", forKey: "appLanguage")
         let store = LanguageSettingsStore(defaults: defaults)
-        #expect(store.storedLanguage == .ja)
+        #expect(store.storedLanguage == .en)
     }
 
     @Test func applyLanguageOverrideWritesAppleLanguagesList() {
@@ -374,8 +374,8 @@ struct LanguageSettingsStoreTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         let store = LanguageSettingsStore(defaults: defaults)
 
-        store.applyLanguageOverride(.ja)
-        #expect(defaults.persistentDomain(forName: suiteName)?["AppleLanguages"] as? [String] == ["ja"])
+        store.applyLanguageOverride(.en)
+        #expect(defaults.persistentDomain(forName: suiteName)?["AppleLanguages"] as? [String] == ["en"])
 
         store.applyLanguageOverride(.system)
         #expect(defaults.persistentDomain(forName: suiteName)?["AppleLanguages"] == nil)
