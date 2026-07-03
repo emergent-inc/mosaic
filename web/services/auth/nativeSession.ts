@@ -11,6 +11,7 @@ export type NativeSessionClaims = {
   userId: string;
   displayName: string | null;
   primaryEmail: string | null;
+  imageURL: string | null;
   selectedTeamId: string | null;
   teamIds: readonly string[];
   exp: number;
@@ -27,6 +28,7 @@ export type NativeSessionUserInput = {
   userId: string;
   displayName?: string | null;
   primaryEmail?: string | null;
+  imageURL?: string | null;
   selectedTeamId?: string | null;
   teamIds?: readonly string[];
 };
@@ -48,6 +50,7 @@ export function refreshNativeSessionTokenPair(refreshToken: string): NativeSessi
     userId: claims.userId,
     displayName: claims.displayName,
     primaryEmail: claims.primaryEmail,
+    imageURL: claims.imageURL,
     selectedTeamId: claims.selectedTeamId,
     teamIds: claims.teamIds,
   });
@@ -67,6 +70,7 @@ export function verifyNativeAuthToken(token: string): NativeSessionClaims | null
     return null;
   }
   if (!isValidClaims(claims)) return null;
+  claims.imageURL ??= null;
   if (claims.exp <= Math.floor(Date.now() / 1000)) return null;
   return claims;
 }
@@ -82,6 +86,7 @@ function claimsFor(
     userId: user.userId,
     displayName: user.displayName ?? null,
     primaryEmail: user.primaryEmail ?? null,
+    imageURL: user.imageURL ?? null,
     selectedTeamId: user.selectedTeamId ?? null,
     teamIds: uniqueStrings(user.teamIds ?? []),
     exp: nowSeconds + ttlSeconds,
@@ -116,6 +121,7 @@ function isValidClaims(value: NativeSessionClaims): boolean {
     value.userId.length > 0 &&
     (value.displayName === null || typeof value.displayName === "string") &&
     (value.primaryEmail === null || typeof value.primaryEmail === "string") &&
+    (value.imageURL === undefined || value.imageURL === null || typeof value.imageURL === "string") &&
     (value.selectedTeamId === null || typeof value.selectedTeamId === "string") &&
     Array.isArray(value.teamIds) &&
     value.teamIds.every((teamId) => typeof teamId === "string" && teamId.length > 0) &&
