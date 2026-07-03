@@ -238,22 +238,29 @@ jobs:
           HELPER_PID=$!
 
           APP_STATUS=0
+          APP_LOG="$RUNNER_TEMP/cmux-nightly-xcodebuild.log"
           set +e
           # Skip only the in-Xcode helper build; the background helper process
           # above must build the real universal Zig helper, not the CI stub.
           CMUX_SKIP_ZIG_BUILD=1 xcodebuild -scheme cmux -configuration Release -derivedDataPath build-universal \
             -destination 'generic/platform=macOS' \
             -clonedSourcePackagesDirPath .spm-cache \
+            -jobs 2 \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGNING_ALLOWED=NO ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-Nightly build
-          APP_STATUS=$?
+            CODE_SIGNING_ALLOWED=NO ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-Nightly build \
+            2>&1 | tee "$APP_LOG"
+          APP_STATUS=${PIPESTATUS[0]}
           set -e
           HELPER_STATUS=0
           wait "$HELPER_PID" || HELPER_STATUS=$?
           cat "$HELPER_LOG"
           if [ "$APP_STATUS" -ne 0 ]; then
             echo "Universal nightly app build failed" >&2
+            echo "xcodebuild diagnostic tail:" >&2
+            grep -Ei 'error:|fatal error:|failed|BUILD FAILED|The following build commands failed' "$APP_LOG" | tail -n 120 >&2 || true
+            echo "Last 160 xcodebuild log lines:" >&2
+            tail -n 160 "$APP_LOG" >&2 || true
             exit "$APP_STATUS"
           fi
           if [ "$HELPER_STATUS" -ne 0 ]; then
