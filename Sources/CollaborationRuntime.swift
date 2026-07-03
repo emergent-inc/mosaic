@@ -977,7 +977,7 @@ final class CollaborationRuntime {
         }) else {
             return
         }
-        Task { await createSessionAndBindWorkspace(for: terminal) }
+        Task { await createSessionAndShare(terminal: terminal) }
     }
 
     func joinWorkspaceSession(for terminal: TerminalPanel) {
@@ -1756,15 +1756,26 @@ final class CollaborationRuntime {
         return ["requested": true]
     }
 
-    func createSessionForAutomation(relayURL: String?) async -> [String: Any] {
+    func createSessionForAutomation(
+        relayURL: String?,
+        workspaceID: String? = nil,
+        surfaceID: String? = nil
+    ) async -> [String: Any] {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
         }
         do {
             let response = try await createSession()
-            await connect(sessionID: response.sessionID, code: response.sessionCode)
+            let connection = await connect(sessionID: response.sessionID, code: response.sessionCode)
+            var didShareTerminal = false
+            if let connection,
+               let terminal = terminalForAutomation(workspaceID: workspaceID, surfaceID: surfaceID) {
+                share(terminal: terminal, via: connection)
+                didShareTerminal = true
+            }
             var payload = statusPayload()
             payload["session_code"] = response.sessionCode
+            payload["shared_terminal"] = didShareTerminal
             return payload
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -1777,14 +1788,39 @@ final class CollaborationRuntime {
         }
     }
 
-    func createSessionForAutomationRequest(relayURL: String?) -> [String: Any] {
+    func createSessionForAutomationRequest(
+        relayURL: String?,
+        workspaceID: String? = nil,
+        surfaceID: String? = nil
+    ) -> [String: Any] {
         Task { @MainActor in
-            _ = await createSessionForAutomation(relayURL: relayURL)
+            _ = await createSessionForAutomation(
+                relayURL: relayURL,
+                workspaceID: workspaceID,
+                surfaceID: surfaceID
+            )
         }
         return [
             "requested": true,
             "status": CollaborationStrings.connecting,
         ]
+    }
+
+    private func terminalForAutomation(workspaceID rawWorkspaceID: String?, surfaceID rawSurfaceID: String?) -> TerminalPanel? {
+        guard let rawSurfaceID,
+              let surfaceID = UUID(uuidString: rawSurfaceID.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return nil
+        }
+        let workspaceID = rawWorkspaceID
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap(UUID.init(uuidString:))
+        guard let location = AppDelegate.shared?.workspaceContainingPanel(
+            panelId: surfaceID,
+            preferredWorkspaceId: workspaceID
+        ) else {
+            return nil
+        }
+        return location.workspace.panels[surfaceID] as? TerminalPanel
     }
 
     func joinSessionForAutomation(relayURL: String?, code: String) async -> [String: Any] {
@@ -1992,19 +2028,6 @@ final class CollaborationRuntime {
         do {
             let response = try await createSession()
             await connect(sessionID: response.sessionID, code: response.sessionCode)
-            presentCreatedSessionDialog(code: response.sessionCode)
-        } catch {
-            lastErrorMessage = error.localizedDescription
-            connectionLabel = CollaborationStrings.connectionFailed
-        }
-    }
-
-    private func createSessionAndBindWorkspace(for terminal: TerminalPanel) async {
-        do {
-            let response = try await createSession()
-            if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
-                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
-            }
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription

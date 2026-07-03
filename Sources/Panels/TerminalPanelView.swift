@@ -601,19 +601,33 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         }
         let trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.activeInActiveApp, .inVisibleRect, .mouseEnteredAndExited, .cursorUpdate],
+            options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved, .cursorUpdate],
             owner: self
         )
         addTrackingArea(trackingArea)
         self.trackingArea = trackingArea
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.invalidateCursorRects(for: self)
+    }
+
     override func mouseEntered(with event: NSEvent) {
         setHovering(true)
+        activeCursor.set()
     }
 
     override func mouseExited(with event: NSEvent) {
         setHovering(false)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        activeCursor.set()
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        activeCursor.set()
     }
 
     override func resetCursorRects() {
@@ -621,17 +635,10 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         addCursorRect(bounds, cursor: .openHand)
     }
 
-    override func cursorUpdate(with event: NSEvent) {
-        if dragSessionActive {
-            NSCursor.closedHand.set()
-        } else {
-            NSCursor.openHand.set()
-        }
-    }
-
     override func mouseDown(with event: NSEvent) {
         mouseDownEvent = event
         dragSessionActive = false
+        pushClosedHandCursorIfNeeded()
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -656,7 +663,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     }
 
     override func mouseUp(with event: NSEvent) {
-        defer { mouseDownEvent = nil }
+        defer {
+            mouseDownEvent = nil
+            if !dragSessionActive {
+                popClosedHandCursorIfNeeded()
+            }
+        }
         guard !dragSessionActive else { return }
         onClick?()
     }
@@ -694,14 +706,21 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         closedHandCursorPushed = true
     }
 
+    private var activeCursor: NSCursor {
+        closedHandCursorPushed ? .closedHand : .openHand
+    }
+
+    private func popClosedHandCursorIfNeeded() {
+        guard closedHandCursorPushed else { return }
+        NSCursor.pop()
+        closedHandCursorPushed = false
+    }
+
     private func endDragSession() {
         mouseDownEvent = nil
         dragSessionActive = false
         CollaborationRuntime.shared.endAgentRoomWireDrag()
-        if closedHandCursorPushed {
-            NSCursor.pop()
-            closedHandCursorPushed = false
-        }
+        popClosedHandCursorIfNeeded()
     }
 
     private func setHovering(_ nextValue: Bool) {

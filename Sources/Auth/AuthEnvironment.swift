@@ -7,9 +7,12 @@ enum AuthEnvironment {
     private static let productionStackPublishableClientKey = "pck_kzj80gx4mh2jrzn1cx6y5e8jk0kwa01vkevh2p9zd4twr"
 
     static var callbackScheme: String {
-        callbackScheme(
+        let bundleIdentifier = Bundle.main.bundleIdentifier
+        return callbackScheme(
             environment: ProcessInfo.processInfo.environment,
-            bundleIdentifier: Bundle.main.bundleIdentifier
+            bundleIdentifier: bundleIdentifier,
+            registeredURLSchemes: registeredURLSchemes(in: Bundle.main),
+            isDebugBuild: isDebugBundleIdentifier(bundleIdentifier)
         )
     }
 
@@ -17,16 +20,30 @@ enum AuthEnvironment {
         environment: [String: String],
         bundleIdentifier: String?
     ) -> String {
-        #if DEBUG
-        return callbackScheme(environment: environment, bundleIdentifier: bundleIdentifier, isDebugBuild: true)
-        #else
-        return callbackScheme(environment: environment, bundleIdentifier: bundleIdentifier, isDebugBuild: false)
-        #endif
+        callbackScheme(
+            environment: environment,
+            bundleIdentifier: bundleIdentifier,
+            isDebugBuild: isDebugBundleIdentifier(bundleIdentifier)
+        )
     }
 
     static func callbackScheme(
         environment: [String: String],
         bundleIdentifier: String?,
+        isDebugBuild: Bool
+    ) -> String {
+        callbackScheme(
+            environment: environment,
+            bundleIdentifier: bundleIdentifier,
+            registeredURLSchemes: [],
+            isDebugBuild: isDebugBuild
+        )
+    }
+
+    static func callbackScheme(
+        environment: [String: String],
+        bundleIdentifier: String?,
+        registeredURLSchemes: [String],
         isDebugBuild: Bool
     ) -> String {
         if let overridden = environment["CMUX_AUTH_CALLBACK_SCHEME"]?
@@ -44,12 +61,41 @@ enum AuthEnvironment {
                let schemeTag = sanitizedCallbackSchemeTag(tag) {
                 return "mosaic-dev-\(schemeTag)"
             }
+            if let registered = registeredURLSchemes
+                .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+                .first(where: { $0.hasPrefix("mosaic-dev-") }) {
+                return registered
+            }
+            if let schemeTag = debugSchemeTag(fromBundleIdentifier: bundleIdentifier) {
+                return "mosaic-dev-\(schemeTag)"
+            }
             return "mosaic-dev"
         }
         if bundleIdentifier == "com.cmuxterm.app.nightly" {
             return "mosaic-nightly"
         }
         return "mosaic"
+    }
+
+    private static func debugSchemeTag(fromBundleIdentifier bundleIdentifier: String?) -> String? {
+        guard let bundleIdentifier else { return nil }
+        let prefix = "com.cmuxterm.app.debug."
+        guard bundleIdentifier.hasPrefix(prefix) else { return nil }
+        let suffix = String(bundleIdentifier.dropFirst(prefix.count))
+        return sanitizedCallbackSchemeTag(suffix)
+    }
+
+    private static func registeredURLSchemes(in bundle: Bundle) -> [String] {
+        guard let types = bundle.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] else {
+            return []
+        }
+        return types.flatMap { type in
+            type["CFBundleURLSchemes"] as? [String] ?? []
+        }
+    }
+
+    private static func isDebugBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
+        bundleIdentifier?.hasPrefix("com.cmuxterm.app.debug") == true
     }
 
     static func sanitizedCallbackSchemeTag(_ rawTag: String) -> String? {
