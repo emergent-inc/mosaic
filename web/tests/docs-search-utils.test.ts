@@ -11,8 +11,8 @@ describe("docs search utilities", () => {
       "/docs/getting-started",
     );
     expect(
-      normalizePagefindUrl("https://mosaic.inc/ja/docs/api/index.html#surface"),
-    ).toBe("/ja/docs/api#surface");
+      normalizePagefindUrl("https://mosaic.inc/docs/api/index.html#surface"),
+    ).toBe("/docs/api#surface");
     expect(normalizePagefindUrl("/docs/configuration/index.html")).toBe(
       "/docs/configuration",
     );
@@ -82,9 +82,9 @@ describe("docs search utilities", () => {
     expect(result.title).toBe("Skill layout");
   });
 
-  test("strips locale prefixes from search result hrefs", () => {
+  test("strips English locale prefixes from search result hrefs", () => {
     const result = normalizeDocsSearchResult({
-      url: "/zh-CN/docs/skills/",
+      url: "/en/docs/skills/",
       excerpt: "Run <mark>skills</mark>.",
       plain_excerpt: "Run skills.",
       meta: {
@@ -93,7 +93,7 @@ describe("docs search utilities", () => {
       sub_results: [
         {
           title: "Install skills",
-          url: "/zh-CN/docs/skills/#install-skills",
+          url: "/en/docs/skills/#install-skills",
           excerpt: "Install <mark>skills</mark>.",
           plain_excerpt: "Install skills.",
         },

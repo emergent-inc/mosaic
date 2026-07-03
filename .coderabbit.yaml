@@ -72,19 +72,19 @@ reviews:
         Apply `.github/review-bot-rules/user-facing-errors.md` during review. For production user-facing errors, alerts, command output, API error bodies, and recovery copy, flag implementation leaks such as upstream vendor names, internal provider names, environment variables, database or migration details, raw upstream messages, internal billing ids, or unredacted payloads.
     - path: "**/*.{swift,ts,tsx,js,jsx,xcstrings,plist}"
       instructions: |
-        Apply `.github/review-bot-rules/full-internationalization.md` during review. For production user-facing text, fail partial localization: Swift text must use localized APIs with matching translated string-catalog entries, app string catalogs and Info.plist text must include every supported locale in the touched catalog, and web UI, API response, rendered markdown, changelog, or user-facing data changes must read from `next-intl` or another locale-specific source and update every locale in `web/i18n/routing.ts` and `web/messages/`.
+        Apply `.github/review-bot-rules/full-internationalization.md` during review. For production user-facing text, fail missing localization: Swift text must use localized APIs with matching English string-catalog entries, and web UI, API response, rendered markdown, changelog, or user-facing data changes must read from `next-intl` or another English message source in `web/messages/en.json`.
     - path: "web/messages/**/*.json"
       instructions: |
-        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify message key changes update every locale listed in `web/i18n/routing.ts` with matching entries in `web/messages/`.
+        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify message key changes update `web/messages/en.json`.
     - path: "web/data/**/*.json"
       instructions: |
-        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify user-facing schema titles, descriptions, and data copy have matching localized message coverage for every locale listed in `web/i18n/routing.ts`.
+        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify user-facing schema titles, descriptions, and data copy have matching English message coverage.
     - path: "web/app/**/*.{md,mdx}"
       instructions: |
-        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify rendered markdown copy has matching localized message coverage for every locale listed in `web/i18n/routing.ts`.
+        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify rendered markdown copy has matching English message coverage.
     - path: "CHANGELOG.md"
       instructions: |
-        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify changelog copy rendered on the docs site has matching localized message coverage for every locale listed in `web/i18n/routing.ts`.
+        Apply `.github/review-bot-rules/full-internationalization.md` during review. Verify changelog copy rendered on the docs site has matching English message coverage.
     - path: "README.md"
       instructions: |
         Apply `.github/review-bot-rules/readme-site-feature-parity.md` during review. When the "## Features" section changes, flag feature names or factual claims that now contradict the homepage feature list (`home.feature.*` in `web/messages/en.json`) or FAQ (`home.faq*`). The README may stay the detailed superset; only shared features must use consistent names and non-contradicting claims.
@@ -161,7 +161,7 @@ reviews:
       - name: "cmux full internationalization"
         mode: error
         instructions: |
-          For production changes, fail when the diff violates `.github/review-bot-rules/full-internationalization.md`: user-facing Swift text must use `String(localized:defaultValue:)` or an equivalent localized API with a matching translated string-catalog entry, app string catalog or Info.plist additions and edits must include translated entries for every locale already supported by the touched catalog, and web UI, metadata, API response, rendered markdown, changelog, or user-facing data changes must read from `next-intl` or another locale-specific source and update every locale listed in `web/i18n/routing.ts` with matching `web/messages/` entries. Pass for tests, operational docs not shown to end users, developer-only comments, debug-only logs, literal protocol/config tokens, and existing untranslated strings not worsened by the PR.
+          For production changes, fail when the diff violates `.github/review-bot-rules/full-internationalization.md`: user-facing Swift text must use `String(localized:defaultValue:)` or an equivalent localized API with a matching English string-catalog entry, and web UI, metadata, API response, rendered markdown, changelog, or user-facing data changes must read from `next-intl` or another English message source in `web/messages/en.json`. Pass for tests, operational docs not shown to end users, developer-only comments, debug-only logs, literal protocol/config tokens, and existing untranslated strings not worsened by the PR.
       - name: "cmux SwiftUI state layout"
         mode: error
         instructions: |

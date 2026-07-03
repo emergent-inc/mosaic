@@ -8,10 +8,6 @@
 </p>
 
 <p align="center">
-  English | <a href="README.ja.md">日本語</a> | <a href="README.vi.md">Tiếng Việt</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.ko.md">한국어</a> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.it.md">Italiano</a> | <a href="README.da.md">Dansk</a> | <a href="README.pl.md">Polski</a> | <a href="README.ru.md">Русский</a> | <a href="README.bs.md">Bosanski</a> | <a href="README.ar.md">العربية</a> | <a href="README.no.md">Norsk</a> | <a href="README.pt-BR.md">Português (Brasil)</a> | <a href="README.th.md">ไทย</a> | <a href="README.tr.md">Türkçe</a> | <a href="README.km.md">ភាសាខ្មែរ</a> | <a href="README.uk.md">Українська</a>
-</p>
-
-<p align="center">
   <a href="https://x.com/emergentinc"><img src="https://img.shields.io/badge/@emergent.inc-555?logo=x" alt="X / Twitter" /></a>
   <a href="https://discord.gg/xsgFEVrWCZ"><img src="https://img.shields.io/badge/Discord-555?logo=discord" alt="Discord" /></a>
   <a href="https://github.com/emergent-inc/cmux"><img src="https://img.shields.io/github/stars/emergent-inc/cmux?style=flat&logo=github&label=stars&color=4c71f2" alt="GitHub stars" /></a>

@@ -29,7 +29,7 @@ Use:
 String(localized: "key.name", defaultValue: "English text")
 ```
 
-Update `Resources/Localizable.xcstrings` for all supported languages. Currently that means English and Japanese.
+Update `Resources/Localizable.xcstrings` for supported user-facing app strings. English is currently the only supported language.
 
 Do not rely on `defaultValue` as the English localization. It is a fallback and development convenience, not a completed localization entry.
 
@@ -38,10 +38,9 @@ Do not rely on `defaultValue` as the English localization. It is a fallback and 
 For localized web/docs content, update:
 
 - `web/messages/en.json`
-- `web/messages/ja.json`
-- any localized data structures with inline translations
+- any data structures carrying user-facing text
 
-Keep keys aligned across locales. A key added only to English is incomplete even if the UI falls back at runtime.
+Keep English message keys aligned with the code paths that read them.
 
 ## Bare English search
 

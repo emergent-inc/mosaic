@@ -295,7 +295,7 @@
       "p085": "Wire Google Antigravity CLI hooks to cmux notifications through Antigravity's hooks.json contract, with stdout-safe JSON handling so the notification hook does not invalidate the agent runtime",
       "p086": "Cover browser automation as part of a broad CLI taxonomy that uniquely documents capture-pane internals and CMUX_SOCKET_PASSWORD authentication - more reference than tutorial",
       "p087": "Fan out cmux-aware hooks to SSH hosts, Hermes, and omp/Pi, then relay agent activity back as local notifications and sidebar badges through a stdlib helper rather than per-agent hand-written scripts",
-      "p088": "Provide c-help CLI: offline searchable cheatsheet for all cmux keyboard shortcuts, CLI commands, sidebar APIs, browser automation, and env vars in English and Japanese",
+      "p088": "Provide c-help CLI: offline searchable cheatsheet for all cmux keyboard shortcuts, CLI commands, sidebar APIs, browser automation, and env vars in English",
       "p089": "Skips status pills in favour of IDE ergonomics: auto-open edited files in a Vim subpane and toggle a broot file-browser sidebar, turning cmux into a lightweight editor environment",
       "p090": "Open or focus workspaces with ws , scaffold with CLAUDE.md and permissions via ws init, and integrate Flox envs plus 1Password CLI secrets - combines workspace management with secrets injection",
       "p091": "Push desktop notifications on idle or error alongside subagent viewer panes and browser tools; distinguishes itself by pairing notification events with visible subagent viewer panes in the same plugin",

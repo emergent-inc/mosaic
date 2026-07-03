@@ -520,9 +520,9 @@ export const changelogMedia: Record<string, VersionMedia> = {
           "Choose from bundled sounds or pick your own audio file so background task notifications are easier to notice and easier to personalize.",
       },
       {
-        title: "Expanded Localization",
+        title: "Language Setting",
         description:
-          "cmux now includes Japanese plus 16 additional languages, and a per-app language override lets you change the UI language without changing macOS system settings.",
+          "cmux keeps an app language setting for choosing the system default or English.",
       },
     ],
   },
