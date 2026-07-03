@@ -1374,12 +1374,37 @@ struct cmuxApp: App {
 
     @ViewBuilder
     func splitCommandButton(title: String, shortcut: StoredShortcut, action: @escaping () -> Void) -> some View {
+        let trackedAction = {
+            PostHogAnalytics.shared.capture(
+                .menuActionPerformed,
+                properties: [
+                    "action_id": Self.analyticsMenuActionID(title: title),
+                    "surface": "main_menu",
+                    "entrypoint": "splitCommandButton",
+                    "has_shortcut": !shortcut.isUnbound,
+                ]
+            )
+            action()
+        }
         if let key = shortcut.keyEquivalent {
-            Button(title, action: action)
+            Button(title, action: trackedAction)
                 .keyboardShortcut(key, modifiers: shortcut.eventModifiers)
         } else {
-            Button(title, action: action)
+            Button(title, action: trackedAction)
         }
+    }
+
+    private static func analyticsMenuActionID(title: String) -> String {
+        let normalized = title.lowercased().unicodeScalars.map { scalar -> Character in
+            if CharacterSet.alphanumerics.contains(scalar) {
+                return Character(scalar)
+            }
+            return "."
+        }
+        let collapsed = String(normalized)
+            .split(separator: ".")
+            .joined(separator: ".")
+        return collapsed.isEmpty ? "menu.unknown" : "menu.\(collapsed)"
     }
 
     private func dispatchReloadConfigurationMenuCommand() {

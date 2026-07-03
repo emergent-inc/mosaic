@@ -22,6 +22,25 @@ enum CanvasAction: Equatable {
     case zoomReset
     /// Apply an alignment/distribution/tidy command to all panes.
     case alignment(CanvasAlignmentCommand)
+
+    var analyticsID: String {
+        switch self {
+        case .toggleLayout:
+            return "canvas.toggle_layout"
+        case .revealFocusedPane:
+            return "canvas.reveal_focused_pane"
+        case .toggleOverview:
+            return "canvas.toggle_overview"
+        case .zoomIn:
+            return "canvas.zoom_in"
+        case .zoomOut:
+            return "canvas.zoom_out"
+        case .zoomReset:
+            return "canvas.zoom_reset"
+        case .alignment(let command):
+            return "canvas.alignment.\(command.rawValue)"
+        }
+    }
 }
 
 extension KeyboardShortcutSettings.Action {
@@ -80,42 +99,69 @@ struct CanvasActionExecutor {
     /// (for example a canvas-only action while the workspace is in splits).
     @discardableResult
     func perform(_ action: CanvasAction) -> Bool {
+        let didPerform: Bool
         switch action {
         case .toggleLayout:
             workspace.toggleCanvasLayout()
-            return true
+            didPerform = true
         case .revealFocusedPane:
-            guard workspace.layoutMode == .canvas,
-                  let panelId = workspace.focusedPanelId else { return false }
-            workspace.canvasModel.viewport?.revealPane(panelId, animated: true)
-            return true
-        case .toggleOverview:
-            guard workspace.layoutMode == .canvas else { return false }
-            workspace.canvasModel.viewport?.toggleOverview()
-            return true
-        case .zoomIn:
-            guard workspace.layoutMode == .canvas else { return false }
-            workspace.canvasModel.viewport?.zoom(by: Self.zoomStepFactor)
-            return true
-        case .zoomOut:
-            guard workspace.layoutMode == .canvas else { return false }
-            workspace.canvasModel.viewport?.zoom(by: 1 / Self.zoomStepFactor)
-            return true
-        case .zoomReset:
-            guard workspace.layoutMode == .canvas else { return false }
-            workspace.canvasModel.viewport?.resetZoom()
-            return true
-        case .alignment(let command):
-            guard workspace.layoutMode == .canvas else { return false }
-            let changed = workspace.canvasModel.applyAlignment(
-                command,
-                to: [],
-                reference: workspace.focusedPanelId
-            )
-            if changed {
-                workspace.canvasModel.viewport?.modelDidChangeExternally(animated: true)
+            if workspace.layoutMode == .canvas,
+               let panelId = workspace.focusedPanelId {
+                workspace.canvasModel.viewport?.revealPane(panelId, animated: true)
+                didPerform = true
+            } else {
+                didPerform = false
             }
-            return changed
+        case .toggleOverview:
+            if workspace.layoutMode == .canvas {
+                workspace.canvasModel.viewport?.toggleOverview()
+                didPerform = true
+            } else {
+                didPerform = false
+            }
+        case .zoomIn:
+            if workspace.layoutMode == .canvas {
+                workspace.canvasModel.viewport?.zoom(by: Self.zoomStepFactor)
+                didPerform = true
+            } else {
+                didPerform = false
+            }
+        case .zoomOut:
+            if workspace.layoutMode == .canvas {
+                workspace.canvasModel.viewport?.zoom(by: 1 / Self.zoomStepFactor)
+                didPerform = true
+            } else {
+                didPerform = false
+            }
+        case .zoomReset:
+            if workspace.layoutMode == .canvas {
+                workspace.canvasModel.viewport?.resetZoom()
+                didPerform = true
+            } else {
+                didPerform = false
+            }
+        case .alignment(let command):
+            if workspace.layoutMode == .canvas {
+                let changed = workspace.canvasModel.applyAlignment(
+                    command,
+                    to: [],
+                    reference: workspace.focusedPanelId
+                )
+                if changed {
+                    workspace.canvasModel.viewport?.modelDidChangeExternally(animated: true)
+                }
+                didPerform = changed
+            } else {
+                didPerform = false
+            }
         }
+        PostHogAnalytics.shared.trackAction(
+            actionID: action.analyticsID,
+            surface: "canvas",
+            entrypoint: "shared_executor",
+            source: "CanvasActionExecutor.perform",
+            result: didPerform ? "performed" : "not_applicable"
+        )
+        return didPerform
     }
 }

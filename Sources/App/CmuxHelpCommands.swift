@@ -80,6 +80,11 @@ extension cmuxApp {
     }
 
     private func presentFeedbackFromHelpMenu() {
+        ProductAnalytics.shared.trackFeedback(
+            actionID: .open,
+            entrypoint: .helpMenu,
+            result: .started
+        )
         if let targetWindow = NSApp.keyWindow ?? NSApp.mainWindow {
             FeedbackComposerBridge().openComposer(in: targetWindow)
             return
