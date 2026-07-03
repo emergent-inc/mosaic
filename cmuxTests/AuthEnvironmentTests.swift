@@ -16,7 +16,7 @@ struct AuthEnvironmentTests {
                 environment: ["CMUX_TAG": "Safari Auth!"],
                 bundleIdentifier: "com.cmuxterm.app.debug.safari-auth",
                 isDebugBuild: true
-            ) == "cmux-dev-safari-auth"
+            ) == "mosaic-dev-safari-auth"
         )
     }
 
@@ -27,14 +27,14 @@ struct AuthEnvironmentTests {
                 environment: ["CMUX_TAG": "safari-auth"],
                 bundleIdentifier: "com.cmuxterm.app",
                 isDebugBuild: false
-            ) == "cmux"
+            ) == "mosaic"
         )
         #expect(
             AuthEnvironment.callbackScheme(
                 environment: ["CMUX_TAG": "safari-auth"],
                 bundleIdentifier: "com.cmuxterm.app.nightly",
                 isDebugBuild: false
-            ) == "cmux-nightly"
+            ) == "mosaic-nightly"
         )
     }
 
@@ -49,7 +49,7 @@ struct AuthEnvironmentTests {
                 "LANG": "ru_RU.UTF-8",
                 "LC_ALL": "ru_RU.UTF-8",
                 "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
-                "CMUX_AUTH_CALLBACK_SCHEME": "cmux",
+                "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
             bundleIdentifier: "com.cmuxterm.app"
         )
@@ -57,13 +57,47 @@ struct AuthEnvironmentTests {
         assertNativeSignInURL(url)
     }
 
-    @Test("tagged debug sign-in URL uses local origin and tag callback scheme")
-    func taggedDebugSignInURLUsesLocalOriginAndTagCallbackScheme() throws {
+    @Test("tagged debug sign-in URL uses hosted origin and tag callback scheme")
+    func taggedDebugSignInURLUsesHostedOriginAndTagCallbackScheme() throws {
         let url = AuthEnvironment.signInURL(
             callbackState: "state-1",
             environment: [
                 "CMUX_TAG": "pair-auth",
                 "CMUX_PORT": "4123",
+            ],
+            bundleIdentifier: "com.cmuxterm.app.debug.pair-auth"
+        )
+
+        #expect(url.scheme == "https")
+        #expect(url.host == "cmux.com")
+        #expect(url.port == nil)
+        #expect(url.path == "/handler/native-sign-in")
+
+        let afterAuthReturnTo = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == "after_auth_return_to" })?
+            .value)
+        let afterSignInURL = try #require(URL(string: afterAuthReturnTo))
+        #expect(afterSignInURL.scheme == "https")
+        #expect(afterSignInURL.host == "cmux.com")
+        #expect(afterSignInURL.port == nil)
+
+        let nativeReturnTo = try #require(URLComponents(url: afterSignInURL, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == "native_app_return_to" })?
+            .value)
+        let nativeCallbackURL = try #require(URL(string: nativeReturnTo))
+        #expect(nativeCallbackURL.scheme == "mosaic-dev-pair-auth")
+        #expect(nativeCallbackURL.host == "auth-callback")
+    }
+
+    @Test("explicit auth origin override supports local www testing")
+    func explicitAuthOriginOverrideSupportsLocalWWWTesting() throws {
+        let url = AuthEnvironment.signInURL(
+            callbackState: "state-1",
+            environment: [
+                "CMUX_TAG": "pair-auth",
+                "CMUX_AUTH_WWW_ORIGIN": "http://localhost:4123",
             ],
             bundleIdentifier: "com.cmuxterm.app.debug.pair-auth"
         )
@@ -81,14 +115,6 @@ struct AuthEnvironmentTests {
         #expect(afterSignInURL.scheme == "http")
         #expect(afterSignInURL.host == "localhost")
         #expect(afterSignInURL.port == 4123)
-
-        let nativeReturnTo = try #require(URLComponents(url: afterSignInURL, resolvingAgainstBaseURL: false)?
-            .queryItems?
-            .first(where: { $0.name == "native_app_return_to" })?
-            .value)
-        let nativeCallbackURL = try #require(URL(string: nativeReturnTo))
-        #expect(nativeCallbackURL.scheme == "cmux-dev-pair-auth")
-        #expect(nativeCallbackURL.host == "auth-callback")
     }
 
     @Test("sign-in URL ignores locale-like environment values")
@@ -100,7 +126,7 @@ struct AuthEnvironmentTests {
                 "LANG": "en_US.UTF-8",
                 "LC_ALL": "en_US.UTF-8",
                 "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
-                "CMUX_AUTH_CALLBACK_SCHEME": "cmux",
+                "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
             bundleIdentifier: "com.cmuxterm.app"
         )
@@ -111,7 +137,7 @@ struct AuthEnvironmentTests {
                 "LANG": "ru_RU.UTF-8",
                 "LC_ALL": "ru_RU.UTF-8",
                 "CMUX_AUTH_WWW_ORIGIN": "https://cmux.com",
-                "CMUX_AUTH_CALLBACK_SCHEME": "cmux",
+                "CMUX_AUTH_CALLBACK_SCHEME": "mosaic",
             ],
             bundleIdentifier: "com.cmuxterm.app"
         )
@@ -147,11 +173,11 @@ private func assertNativeSignInURL(_ url: URL) {
         return
     }
 
-    #expect(nativeCallbackURL.scheme == "cmux")
+    #expect(nativeCallbackURL.scheme == "mosaic")
     #expect(nativeCallbackURL.host == "auth-callback")
 
     let nativeCallbackComponents = URLComponents(url: nativeCallbackURL, resolvingAgainstBaseURL: false)
-    #expect(nativeCallbackComponents?.queryItems?.first { $0.name == "cmux_auth_state" }?.value == "state-1")
+    #expect(nativeCallbackComponents?.queryItems?.first { $0.name == "mosaic_auth_state" }?.value == "state-1")
 }
 
 private func urlHasLeadingLocaleSegment(_ url: URL) -> Bool {

@@ -1,7 +1,7 @@
 public import CMUXAuthCore
 public import Foundation
 
-/// Auth client backed by cmux-native tokens minted from a Clerk website session.
+/// Auth client backed by Mosaic-native tokens minted from a Clerk website session.
 public actor NativeAuthClient: AuthClient {
     private struct TokenPair: Decodable {
         let accessToken: String
@@ -32,7 +32,7 @@ public actor NativeAuthClient: AuthClient {
 
     /// Creates a native auth client.
     /// - Parameters:
-    ///   - apiBaseURL: The cmux web/API origin.
+    ///   - apiBaseURL: The Mosaic web/API origin.
     ///   - tokenStore: The local token persistence seam.
     ///   - session: URL session used for API calls.
     public init(
@@ -114,7 +114,7 @@ public actor NativeAuthClient: AuthClient {
         var request = URLRequest(url: endpoint("api/auth/native/revoke"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
+        request.setValue(refreshToken, forHTTPHeaderField: "X-Mosaic-Refresh-Token")
         _ = try? await session.data(for: request)
     }
 
@@ -170,7 +170,7 @@ public actor NativeAuthClient: AuthClient {
         var request = URLRequest(url: endpoint("api/auth/native/refresh"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
+        request.setValue(refreshToken, forHTTPHeaderField: "X-Mosaic-Refresh-Token")
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw AuthError.networkError

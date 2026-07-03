@@ -36,8 +36,8 @@ struct HostBrowserSignInFlowHarness {
             tokenStore: tokenStore,
             sessionFactory: factory,
             callbackRouter: AuthCallbackRouter(),
-            makeSignInURL: { URL(string: "https://example.test/handler/sign-in?cmux_auth_state=\($0)")! },
-            callbackScheme: { "cmux-dev" },
+            makeSignInURL: { URL(string: "https://example.test/handler/sign-in?mosaic_auth_state=\($0)")! },
+            callbackScheme: { "mosaic-dev" },
             clock: clock ?? ContinuousClock(),
             browserAttemptTimeout: browserAttemptTimeout,
             slowSignInThreshold: slowSignInThreshold
@@ -49,17 +49,17 @@ struct HostBrowserSignInFlowHarness {
     }
 
     func callbackURL(state: String) -> URL {
-        URL(string: "cmux-dev://auth-callback?cmux_refresh=refresh-1&cmux_access=access-1&cmux_auth_state=\(state)")!
+        URL(string: "mosaic-dev://auth-callback?mosaic_refresh=refresh-1&mosaic_access=access-1&mosaic_auth_state=\(state)")!
     }
 
     func fallbackCallbackURL() -> URL {
-        URL(string: "cmux-dev://auth-callback?cmux_refresh=refresh-1&cmux_access=access-1")!
+        URL(string: "mosaic-dev://auth-callback?mosaic_refresh=refresh-1&mosaic_access=access-1")!
     }
 
     func callbackState(_ session: FakeBrowserAuthSession) -> String {
         URLComponents(url: session.signInURL, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == "cmux_auth_state" })?
+            .first(where: { $0.name == "mosaic_auth_state" })?
             .value ?? ""
     }
 

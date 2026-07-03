@@ -669,6 +669,7 @@ struct TitlebarControlButton<Content: View>: View {
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel(accessibilityLabel)
+        .cmuxCursorOnHover(.pointingHand)
         .overlay {
             if let rightClickAction {
                 TitlebarControlRightClickView(onRightMouseDown: rightClickAction)
@@ -2514,6 +2515,7 @@ struct NotificationPopoverRow: View, Equatable {
             .frame(width: 20, height: 20)
         }
         .buttonStyle(.plain)
+        .cmuxCursorOnHover(.pointingHand)
     }
 }
 

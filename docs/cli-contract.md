@@ -212,11 +212,11 @@ Theme subcommands:
 | Command | Contract |
 | --- | --- |
 | `themes` | List available themes and report the managed current theme. |
-| `themes list` | List available themes and mark `Cursor Dark` as the managed terminal theme. |
-| `themes set <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
-| `themes set --light <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
-| `themes set --dark <theme>` | Disabled; terminal colors are fixed to `Cursor Dark`. |
-| `themes clear` | Disabled; terminal colors are fixed to `Cursor Dark`. |
+| `themes list` | List available themes and mark `Anysphere Dark` as the managed terminal theme. |
+| `themes set <theme>` | Disabled; terminal colors are fixed to `Anysphere Dark`. |
+| `themes set --light <theme>` | Disabled; terminal colors are fixed to `Anysphere Dark`. |
+| `themes set --dark <theme>` | Disabled; terminal colors are fixed to `Anysphere Dark`. |
+| `themes clear` | Disabled; terminal colors are fixed to `Anysphere Dark`. |
 
 Workspace and tab action names:
 

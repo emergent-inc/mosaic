@@ -18,6 +18,7 @@ struct TerminalPanelView: View {
     private var textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
     @State private var isTerminalRecipientPopoverPresented = false
+    @State private var isAgentRoomButtonHovered = false
     let paneId: PaneID
     let isFocused: Bool
     let isVisibleInUI: Bool
@@ -198,6 +199,8 @@ struct TerminalPanelView: View {
             systemName: state.isShared ? "person.2.fill" : "person.2",
             label: label,
             isDisabled: false,
+            hoverBackgroundColor: .orange,
+            hoverForegroundColor: .orange,
             action: {
                 if state.isShared && canManageRecipients {
                     isTerminalRecipientPopoverPresented = true
@@ -229,6 +232,10 @@ struct TerminalPanelView: View {
             systemName: state.isConnected ? "link.circle.fill" : "link.circle",
             label: state.label,
             isDisabled: false,
+            hoverCursor: .openHand,
+            hoverBackgroundColor: .accentColor,
+            hoverForegroundColor: .accentColor,
+            isHoverForced: isAgentRoomButtonHovered,
             action: {
                 CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
             }
@@ -236,9 +243,13 @@ struct TerminalPanelView: View {
         .foregroundColor(state.isConnected ? .accentColor : .secondary)
         .accessibilityIdentifier("TerminalAgentRoomButton")
         .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
-        .onDrag {
-            CollaborationRuntime.shared.beginAgentRoomWireDrag(sourcePanel: panel)
-            return AgentRoomWireDragPayload.provider(for: panel.id)
+        .overlay {
+            AgentRoomWireDragSourceRepresentable(
+                panel: panel,
+                onHoverChanged: { isAgentRoomButtonHovered = $0 }
+            ) {
+                CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
+            }
         }
     }
 }
@@ -336,27 +347,166 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
 
 private struct AgentRoomWireDragPayload {
     static let contentType = UTType(exportedAs: CollaborationRuntime.agentRoomWirePasteboardTypeIdentifier)
+}
 
-    static func provider(for surfaceID: UUID) -> NSItemProvider {
-        let provider = NSItemProvider()
-        let data = Data(surfaceID.uuidString.utf8)
-        provider.registerDataRepresentation(
-            forTypeIdentifier: contentType.identifier,
-            visibility: .ownProcess
-        ) { completion in
-            completion(data, nil)
-            return nil
-        }
-        return provider
+private struct AgentRoomWireDragSourceRepresentable: NSViewRepresentable {
+    let panel: TerminalPanel
+    let onHoverChanged: (Bool) -> Void
+    let onClick: () -> Void
+
+    func makeNSView(context: Context) -> AgentRoomWireDragSourceView {
+        let view = AgentRoomWireDragSourceView(frame: .zero)
+        view.panel = panel
+        view.onHoverChanged = onHoverChanged
+        view.onClick = onClick
+        return view
     }
 
-    static func surfaceID(from data: Data?) -> String? {
-        guard let data,
-              let raw = String(data: data, encoding: .utf8) else {
-            return nil
+    func updateNSView(_ nsView: AgentRoomWireDragSourceView, context: Context) {
+        nsView.panel = panel
+        nsView.onHoverChanged = onHoverChanged
+        nsView.onClick = onClick
+    }
+}
+
+private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
+    weak var panel: TerminalPanel?
+    var onHoverChanged: ((Bool) -> Void)?
+    var onClick: (() -> Void)?
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false
+    private var mouseDownEvent: NSEvent?
+    private var dragSessionActive = false
+    private var closedHandCursorPushed = false
+
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        bounds.contains(point) ? self : nil
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
         }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return UUID(uuidString: trimmed).map { $0.uuidString }
+        let trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.activeInActiveApp, .inVisibleRect, .mouseEnteredAndExited],
+            owner: self
+        )
+        addTrackingArea(trackingArea)
+        self.trackingArea = trackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        setHovering(true)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        setHovering(false)
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .openHand)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        mouseDownEvent = event
+        dragSessionActive = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard !dragSessionActive,
+              let panel,
+              let mouseDownEvent else {
+            return
+        }
+        dragSessionActive = true
+        CollaborationRuntime.shared.beginAgentRoomWireDrag(sourcePanel: panel)
+        pushClosedHandCursorIfNeeded()
+
+        let pasteboardItem = NSPasteboardItem()
+        pasteboardItem.setString(
+            panel.id.uuidString,
+            forType: NSPasteboard.PasteboardType(AgentRoomWireDragPayload.contentType.identifier)
+        )
+
+        let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+        draggingItem.setDraggingFrame(bounds, contents: dragImage())
+        beginDraggingSession(with: [draggingItem], event: mouseDownEvent, source: self)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        defer { mouseDownEvent = nil }
+        guard !dragSessionActive else { return }
+        onClick?()
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        .copy
+    }
+
+    func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
+        true
+    }
+
+    func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        endDragSession()
+    }
+
+    private func dragImage() -> NSImage {
+        let imageSize = bounds.size.width > 0 && bounds.size.height > 0
+            ? bounds.size
+            : NSSize(width: 20, height: 20)
+        let image = NSImage(size: imageSize)
+        image.lockFocus()
+        NSColor.clear.setFill()
+        NSRect(origin: .zero, size: imageSize).fill()
+        image.unlockFocus()
+        return image
+    }
+
+    private func pushClosedHandCursorIfNeeded() {
+        guard !closedHandCursorPushed else { return }
+        NSCursor.closedHand.push()
+        closedHandCursorPushed = true
+    }
+
+    private func endDragSession() {
+        mouseDownEvent = nil
+        dragSessionActive = false
+        CollaborationRuntime.shared.endAgentRoomWireDrag()
+        if closedHandCursorPushed {
+            NSCursor.pop()
+            closedHandCursorPushed = false
+        }
+    }
+
+    private func setHovering(_ nextValue: Bool) {
+        guard isHovering != nextValue else { return }
+        isHovering = nextValue
+        onHoverChanged?(nextValue)
+    }
+
+    deinit {
+        onHoverChanged?(false)
+        if dragSessionActive {
+            Task { @MainActor in
+                CollaborationRuntime.shared.endAgentRoomWireDrag()
+            }
+        }
+        if closedHandCursorPushed {
+            NSCursor.pop()
+        }
     }
 }
 
