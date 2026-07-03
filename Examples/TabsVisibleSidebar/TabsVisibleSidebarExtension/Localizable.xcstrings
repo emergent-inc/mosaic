@@ -1,48 +1,76 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "tabsVisible.actionDenied" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "cmux did not allow that action" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "cmux はその操作を許可しませんでした" } }
+  "sourceLanguage": "en",
+  "strings": {
+    "tabsVisible.actionDenied": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux did not allow that action"
+          }
+        }
       }
     },
-    "tabsVisible.manifest.displayName" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tabs Visible Sidebar" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "タブ表示サイドバー" } }
+    "tabsVisible.manifest.displayName": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs Visible Sidebar"
+          }
+        }
       }
     },
-    "tabsVisible.noSurfaces" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No shared tabs" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "共有されたタブはありません" } }
+    "tabsVisible.noSurfaces": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No shared tabs"
+          }
+        }
       }
     },
-    "tabsVisible.noWorkspaces" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No workspaces shared by cmux" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "cmux から共有されたワークスペースはありません" } }
+    "tabsVisible.noWorkspaces": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workspaces shared by cmux"
+          }
+        }
       }
     },
-    "tabsVisible.title" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Workspaces" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ワークスペース" } }
+    "tabsVisible.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspaces"
+          }
+        }
       }
     },
-    "tabsVisible.waiting" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for cmux" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "cmux を待機中" } }
+    "tabsVisible.waiting": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for cmux"
+          }
+        }
       }
     },
-    "tabsVisible.waitingForHost" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for cmux" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "cmux を待機中" } }
+    "tabsVisible.waitingForHost": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for cmux"
+          }
+        }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

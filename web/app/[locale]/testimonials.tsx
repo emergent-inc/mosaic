@@ -381,15 +381,8 @@ function Initials({ name }: { name: string }) {
   );
 }
 
-/**
- * Returns the language family prefix for a locale.
- * Chinese variants stay distinct so zh-TW users can see Traditional translations.
- */
 function langFamily(locale: string): string {
   const normalized = locale.toLowerCase();
-  if (normalized === "zh-cn" || normalized === "zh-tw") {
-    return normalized;
-  }
   return normalized.split("-")[0];
 }
 
