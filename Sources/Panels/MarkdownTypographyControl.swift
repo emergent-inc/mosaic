@@ -41,7 +41,7 @@ struct MarkdownTypographyControl: View {
     }
 
     var body: some View {
-        Button { isPresented.toggle() } label: {
+        TrackedButton("markdowntypographycontrol_button_44", action: { isPresented.toggle() }) {
             PanelHeaderIconGlyph(systemName: "textformat.size")
         }
         .buttonStyle(.plain)
@@ -121,13 +121,13 @@ struct MarkdownTypographyControl: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Button(String(localized: "markdown.fontSize.reset", defaultValue: "Reset to default")) {
+                TrackedButton("markdowntypographycontrol_button_124", String(localized: "markdown.fontSize.reset", defaultValue: "Reset to default")) {
                     panel.resetTypography()
                 }
-                Button(String(localized: "markdown.typography.resetBuiltIn", defaultValue: "Reset to built-in defaults")) {
+                TrackedButton("markdowntypographycontrol_button_127", String(localized: "markdown.typography.resetBuiltIn", defaultValue: "Reset to built-in defaults")) {
                     panel.resetTypographyToBuiltInDefaults()
                 }
-                Button(String(localized: "markdown.fontSize.setDefault", defaultValue: "Set as default for new viewers")) {
+                TrackedButton("markdowntypographycontrol_button_130", String(localized: "markdown.fontSize.setDefault", defaultValue: "Set as default for new viewers")) {
                     MarkdownTypographyDefaults.setDefault(
                         fontSize: panel.fontSize,
                         fontFamily: panel.fontFamily,

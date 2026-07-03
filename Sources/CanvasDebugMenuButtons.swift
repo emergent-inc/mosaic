@@ -6,7 +6,7 @@ struct CanvasDebugMenuButtons: View {
     let openStressWorkspacesWithLoadedSurfaces: () -> Void
 
     var body: some View {
-        Button(
+        TrackedButton("canvasdebugmenubuttons_button_9", 
             String(
                 localized: "debug.menu.openStressWorkspacesWithLoadedSurfaces",
                 defaultValue: "Open Stress Workspaces and Load All Terminals"
@@ -15,7 +15,7 @@ struct CanvasDebugMenuButtons: View {
             openStressWorkspacesWithLoadedSurfaces()
         }
 
-        Button(
+        TrackedButton("canvasdebugmenubuttons_button_18", 
             String(
                 localized: "debug.menu.showCanvasCommandScrollHint",
                 defaultValue: "Show Canvas Scroll Hint"

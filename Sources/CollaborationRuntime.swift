@@ -819,6 +819,12 @@ final class CollaborationRuntime {
         let state = state(for: panel)
         if isSharing {
             if state.isShared { return }
+            let didRequireSignIn = AppDelegate.shared?.auth?.coordinator.isAuthenticated != true
+            let didCreateSession = activeConnection == nil
+            PostHogAnalytics.shared.capture("document_sharing_enabled", properties: [
+                "required_sign_in": didRequireSignIn,
+                "required_session_create": didCreateSession,
+            ])
             guard ensureSignedInForCollaboration(continue: { [weak panel] in
                 guard let panel else { return }
                 self.setSharing(true, for: panel, entrypoint: entrypoint)
@@ -838,6 +844,7 @@ final class CollaborationRuntime {
                 scheduleStartDialog(thenShare: panel)
             }
         } else if state.isShared {
+            PostHogAnalytics.shared.capture("document_sharing_disabled")
             leave(panel: panel)
         }
     }
@@ -887,6 +894,10 @@ final class CollaborationRuntime {
                 }) else {
                     return
                 }
+                #if DEBUG
+        print("[PostHog] firing: terminal_sharing_started")
+        #endif
+        PostHogAnalytics.shared.capture("terminal_sharing_started")
                 trackCollaboration(
                     .shareInitiated,
                     shareKind: .terminal,
@@ -1007,6 +1018,12 @@ final class CollaborationRuntime {
         guard !normalizedCode.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+        #if DEBUG
+        print("[PostHog] firing: invite_code_copied")
+        #endif
+        PostHogAnalytics.shared.capture("invite_code_copied", properties: [
+            "context": "share_terminal_popover",
+        ])
         trackCollaboration(
             .inviteCodeCopied,
             shareKind: .terminal,
@@ -1043,6 +1060,12 @@ final class CollaborationRuntime {
         guard !normalizedCode.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+        #if DEBUG
+        print("[PostHog] firing: invite_code_copied")
+        #endif
+        PostHogAnalytics.shared.capture("invite_code_copied", properties: [
+            "context": "share_terminal_popover",
+        ])
         trackCollaboration(
             .inviteCodeCopied,
             shareKind: .terminal,
@@ -1082,6 +1105,9 @@ final class CollaborationRuntime {
         sessionCodesByWorkspaceID.removeValue(forKey: terminal.workspaceId)
         Self.workspaceSessionStore.remove(workspaceID: terminal.workspaceId)
         if let connection = connectionsBySessionCode.removeValue(forKey: normalizedCode) {
+            PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
+                "reason": "workspace_session_left",
+            ])
             connection.disconnect()
         }
         if sessionCode == normalizedCode {
@@ -1163,6 +1189,9 @@ final class CollaborationRuntime {
 
     private func leave(terminalID: String) {
         let connection = connection(forTerminalID: terminalID)
+        let sharedToCount = connection.map {
+            selectedRecipientParticipantIDs(for: terminalID, connection: $0).count
+        } ?? 0
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
@@ -1186,6 +1215,12 @@ final class CollaborationRuntime {
             entrypoint: .terminalHeaderButton,
             result: .completed
         )
+        #if DEBUG
+        print("[PostHog] firing: terminal_sharing_stopped")
+        #endif
+        PostHogAnalytics.shared.capture("terminal_sharing_stopped", properties: [
+            "shared_to_count": sharedToCount,
+        ])
         if let connection {
             trackCollaborationLayoutSnapshot(reason: "pane_unshared", sessionCode: connection.sessionCode)
         }
@@ -1679,6 +1714,25 @@ final class CollaborationRuntime {
                 "error_name": String(describing: type(of: error)),
             ]
         )
+    }
+
+    private static func analyticsErrorDescription(_ error: any Error) -> String {
+        let description = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !description.isEmpty else {
+            return String(describing: type(of: error))
+        }
+        let withoutHome = NSHomeDirectory().isEmpty
+            ? description
+            : description.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+        return String(withoutHome.prefix(160))
+    }
+
+    private static func analyticsRelayHost(from relayURLString: String) -> String {
+        guard let host = URL(string: relayURLString)?.host?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !host.isEmpty else {
+            return "unknown"
+        }
+        return host
     }
 
     func agentRoomStatusPayload() async -> [String: Any] {
@@ -2276,8 +2330,16 @@ final class CollaborationRuntime {
         if let relayURL {
             relayURLString = Self.normalizedRelayURL(from: relayURL)
         }
+        #if DEBUG
+        print("[PostHog] firing: collaboration_session_create_started")
+        #endif
+        PostHogAnalytics.shared.capture("collaboration_session_create_started")
         do {
             let response = try await createSession()
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_created")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_created")
             await connect(sessionID: response.sessionID, code: response.sessionCode)
             trackCollaboration(
                 .sessionCreated,
@@ -2296,6 +2358,12 @@ final class CollaborationRuntime {
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_create_failed")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_create_failed", properties: [
+                "error": Self.analyticsErrorDescription(error),
+            ])
             trackCollaboration(
                 .sessionCreated,
                 entrypoint: .startDialogCreate,
@@ -2311,8 +2379,16 @@ final class CollaborationRuntime {
     }
 
     private func createSessionAndShare(panel: any CollaborationEditablePanel) async {
+        #if DEBUG
+        print("[PostHog] firing: collaboration_session_create_started")
+        #endif
+        PostHogAnalytics.shared.capture("collaboration_session_create_started")
         do {
             let response = try await createSession()
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_created")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_created")
             await connect(sessionID: response.sessionID, code: response.sessionCode)
             trackCollaboration(
                 .sessionCreated,
@@ -2333,6 +2409,12 @@ final class CollaborationRuntime {
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_create_failed")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_create_failed", properties: [
+                "error": Self.analyticsErrorDescription(error),
+            ])
             trackCollaboration(
                 .sessionCreated,
                 shareKind: .document,
@@ -2349,8 +2431,16 @@ final class CollaborationRuntime {
     }
 
     private func createSessionAndShare(terminal: TerminalPanel) async {
+        #if DEBUG
+        print("[PostHog] firing: collaboration_session_create_started")
+        #endif
+        PostHogAnalytics.shared.capture("collaboration_session_create_started")
         do {
             let response = try await createSession()
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_created")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_created")
             if let connection = await connect(sessionID: response.sessionID, code: response.sessionCode) {
                 trackCollaboration(
                     .sessionCreated,
@@ -2372,6 +2462,12 @@ final class CollaborationRuntime {
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_create_failed")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_create_failed", properties: [
+                "error": Self.analyticsErrorDescription(error),
+            ])
             trackCollaboration(
                 .sessionCreated,
                 shareKind: .terminal,
@@ -2412,6 +2508,12 @@ final class CollaborationRuntime {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
+        #if DEBUG
+        print("[PostHog] firing: invite_code_copied")
+        #endif
+        PostHogAnalytics.shared.capture("invite_code_copied", properties: [
+            "context": "session_created_dialog",
+        ])
         trackCollaboration(
             .inviteCodeCopied,
             entrypoint: .createdSessionDialog,
@@ -2427,7 +2529,24 @@ final class CollaborationRuntime {
         entrypoint: CollaborationAnalyticsEntrypoint
     ) async -> CollaborationRelayConnection? {
         let normalizedCode = Self.normalizedSessionCode(from: code)
+        #if DEBUG
+        print("[PostHog] firing: collaboration_session_join_started")
+        #endif
+        PostHogAnalytics.shared.capture("collaboration_session_join_started")
         let connection = await connect(sessionID: normalizedCode, code: normalizedCode)
+        if connection == nil {
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_join_failed")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_join_failed", properties: [
+                "error": "collaboration.join_failed",
+            ])
+        } else {
+            #if DEBUG
+            print("[PostHog] firing: collaboration_session_joined")
+            #endif
+            PostHogAnalytics.shared.capture("collaboration_session_joined")
+        }
         trackCollaboration(
             .sessionJoined,
             entrypoint: entrypoint,
@@ -2520,6 +2639,9 @@ final class CollaborationRuntime {
         startHeartbeatLoop(for: connection)
         await nextSession.markConnected()
         trackCollaborationSessionStarted(sessionCode: normalizedCode)
+        PostHogAnalytics.shared.capture("collaboration_ws_connected", properties: [
+            "relay": Self.analyticsRelayHost(from: relayURLString),
+        ])
         connection.connectionLabel = CollaborationStrings.connected
         connectionLabel = CollaborationStrings.connected
         reopenSharedDocumentsForCurrentSession()
@@ -3263,6 +3385,9 @@ final class CollaborationRuntime {
                 flush: true
             )
             trackCollaborationSessionEnded(sessionCode: sessionCode, reason: "receive_failed")
+            PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
+                "reason": String(describing: type(of: error)),
+            ])
             await connection.session.markDisconnected()
         case .success(let message):
             do {
@@ -3654,6 +3779,9 @@ final class CollaborationRuntime {
 
     private func recordHeartbeatFailure(_ error: any Error) {
         lastErrorMessage = error.localizedDescription
+        PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
+            "reason": "heartbeat_failed",
+        ])
     }
 
     private func updateState(
@@ -3847,6 +3975,9 @@ final class CollaborationRuntime {
                 ],
                 flush: true
             )
+            PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
+                "reason": "disconnect_all",
+            ])
             connection.disconnect()
         }
         connectionsBySessionCode.removeAll()

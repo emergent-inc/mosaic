@@ -658,7 +658,7 @@ struct TitlebarControlButton<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        Button(action: action) {
+        TrackedButton("updatetitlebaraccessory_button_661", action: action) {
             content()
         }
         .disabled(!isEnabled)
@@ -2196,7 +2196,7 @@ private struct NotificationsPopoverView: View {
                     .background(Capsule().fill(cmuxAccentColor()))
             }
             Spacer()
-            Button(action: jumpToLatestUnread) {
+            TrackedButton("updatetitlebaraccessory_button_2199", action: jumpToLatestUnread) {
                 HStack(spacing: 5) {
                     CmuxSystemSymbolImage(systemName: "arrow.down.to.line", pointSize: 10, weight: .semibold)
                     Text(String(localized: "notifications.jumpToLatest", defaultValue: "Jump to Latest"))
@@ -2234,7 +2234,7 @@ private struct NotificationsPopoverView: View {
             )
             .disabled(!hasUnreadNotifications)
 
-            Button(action: { notificationStore.clearAll() }) {
+            TrackedButton("updatetitlebaraccessory_button_2237", action: { notificationStore.clearAll() }) {
                 Text(String(localized: "notifications.clearAll", defaultValue: "Clear All"))
                     .cmuxFont(size: 11)
                     .padding(.horizontal, 8)
@@ -2397,7 +2397,7 @@ struct NotificationPopoverRow: View, Equatable {
             // key-view loop: keyboard users can tab to a row and activate it with
             // space/return. Visual styling is owned by rowContent; the button background
             // lets the NSTrackingArea-driven hover tint shine through.
-            Button(action: onOpen) {
+            TrackedButton("updatetitlebaraccessory_button_2400", action: onOpen) {
                 rowContent
                     .background(
                         Color.primary.opacity(isHovering ? 0.11 : 0)
@@ -2441,20 +2441,20 @@ struct NotificationPopoverRow: View, Equatable {
             }
         )
         .contextMenu {
-                Button(String(localized: "notifications.open", defaultValue: "Open")) {
+                TrackedButton("updatetitlebaraccessory_button_2444", String(localized: "notifications.open", defaultValue: "Open")) {
                     onOpen()
                 }
                 if notification.isRead {
-                    Button(String(localized: "notifications.markAsUnread", defaultValue: "Mark as Unread")) {
+                    TrackedButton("updatetitlebaraccessory_button_2448", String(localized: "notifications.markAsUnread", defaultValue: "Mark as Unread")) {
                         onToggleRead()
                     }
                 } else {
-                    Button(String(localized: "notifications.markAsRead", defaultValue: "Mark as Read")) {
+                    TrackedButton("updatetitlebaraccessory_button_2452", String(localized: "notifications.markAsRead", defaultValue: "Mark as Read")) {
                         onToggleRead()
                     }
                 }
                 Divider()
-                Button(String(localized: "notifications.dismiss", defaultValue: "Dismiss"), role: .destructive) {
+                TrackedButton("updatetitlebaraccessory_button_2457", String(localized: "notifications.dismiss", defaultValue: "Dismiss"), role: .destructive) {
                     onClear()
                 }
             }
@@ -2505,7 +2505,7 @@ struct NotificationPopoverRow: View, Equatable {
     }
 
     private var clearButton: some View {
-        Button(action: onClear) {
+        TrackedButton("updatetitlebaraccessory_button_2508", action: onClear) {
             ZStack {
                 Circle()
                     .fill(Color.primary.opacity(0.1))
