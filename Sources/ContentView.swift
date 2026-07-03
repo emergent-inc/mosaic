@@ -2127,7 +2127,6 @@ struct ContentView: View {
                     .allowsHitTesting(false)
 
                 Spacer()
-
             }
             .frame(height: titlebarContentHeight)
             .padding(.top, 2)

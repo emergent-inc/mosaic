@@ -44,6 +44,7 @@ export class CollaborationSessionObject extends DurableObject {
       participantID: url.searchParams.get("participantID"),
       displayName: url.searchParams.get("displayName"),
       color: url.searchParams.get("color"),
+      imageURL: url.searchParams.get("imageURL"),
     });
     if (peer === null) {
       return new Response(JSON.stringify({ error: "invalid_peer" }), { status: 400 });
