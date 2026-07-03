@@ -841,6 +841,10 @@ final class BonsplitTests: XCTestCase {
             selectedTabFrame: secondSelectedFrame,
             totalWidth: totalWidth
         )
+        let secondFillFrame = layout.selectedFillFrame(
+            selectedTabFrame: secondSelectedFrame,
+            totalWidth: totalWidth
+        )
 
         XCTAssertEqual(firstIndicatorFrame?.minX, frames[firstTabId]?.minX)
         XCTAssertEqual(
@@ -848,6 +852,9 @@ final class BonsplitTests: XCTestCase {
             frames[secondTabId]?.minX,
             "Selected tab chrome must be derived from the current selected tab id, not a cached frame from a previous selection."
         )
+        XCTAssertEqual(secondFillFrame?.minX, frames[secondTabId]?.minX)
+        XCTAssertEqual(secondFillFrame?.width, frames[secondTabId]?.width)
+        XCTAssertEqual(secondFillFrame?.height, 28)
         let nilSelectedFrame = TabBarStyling.selectedTabFrame(
             selectedTabId: nil,
             tabFrames: frames
@@ -858,6 +865,47 @@ final class BonsplitTests: XCTestCase {
                 totalWidth: totalWidth
             )
         )
+        XCTAssertNil(
+            layout.selectedFillFrame(
+                selectedTabFrame: nilSelectedFrame,
+                totalWidth: totalWidth
+            )
+        )
+    }
+
+    func testTabBarSelectedFillCanExtendIntoLeadingPaddingWithoutChangingSeparatorGap() {
+        let layout = TabBarLayout(
+            tabBarHeight: 28,
+            splitButtonCount: 0,
+            splitButtonLaneVisible: false,
+            reservesSplitButtonLane: false
+        )
+        let firstTabFrame = CGRect(x: TabBarMetrics.barPadding, y: 0, width: 120, height: 28)
+        let secondTabFrame = CGRect(x: 144, y: 0, width: 96, height: 28)
+        let totalWidth: CGFloat = 300
+
+        let leadingFillFrame = layout.selectedFillFrame(
+            selectedTabFrame: firstTabFrame,
+            totalWidth: totalWidth,
+            includesLeadingPadding: true
+        )
+        let leadingSeparatorGap = layout.selectedSeparatorGap(
+            selectedTabFrame: firstTabFrame,
+            totalWidth: totalWidth
+        )
+        let trailingFillFrame = layout.selectedFillFrame(
+            selectedTabFrame: secondTabFrame,
+            totalWidth: totalWidth,
+            includesLeadingPadding: false
+        )
+
+        XCTAssertEqual(leadingFillFrame?.minX, 0)
+        XCTAssertEqual(leadingFillFrame?.width, firstTabFrame.maxX)
+        XCTAssertEqual(leadingFillFrame?.height, 28)
+        XCTAssertEqual(leadingSeparatorGap?.lowerBound, firstTabFrame.minX)
+        XCTAssertEqual(leadingSeparatorGap?.upperBound, firstTabFrame.maxX)
+        XCTAssertEqual(trailingFillFrame?.minX, secondTabFrame.minX)
+        XCTAssertEqual(trailingFillFrame?.width, secondTabFrame.width)
     }
 
     func testTabBarLayoutIgnoresMeasuredSplitButtonLaneWidthWithoutButtons() {
@@ -1449,6 +1497,28 @@ final class BonsplitTests: XCTestCase {
             0.01,
             "Shared-backdrop selected tabs should rely on the active indicator instead of a hover-like fill"
         )
+    }
+
+    func testExplicitActiveTabBackgroundOverridesDerivedFill() {
+        let appearance = BonsplitConfiguration.Appearance(
+            chromeColors: .init(
+                backgroundHex: "#252525",
+                tabBarBackgroundHex: "#252525",
+                activeTabBackgroundHex: "#1E1E1E"
+            )
+        )
+        let active = NSColor(TabBarColors.activeTabBackground(for: appearance)).usingColorSpace(.sRGB)!
+
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        active.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+
+        XCTAssertEqual(red, 30.0 / 255.0, accuracy: 0.0001)
+        XCTAssertEqual(green, 30.0 / 255.0, accuracy: 0.0001)
+        XCTAssertEqual(blue, 30.0 / 255.0, accuracy: 0.0001)
+        XCTAssertEqual(alpha, 1.0, accuracy: 0.0001)
     }
 
     func testSplitActionPressedStateUsesHigherContrast() {

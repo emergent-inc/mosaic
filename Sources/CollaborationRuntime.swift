@@ -952,7 +952,6 @@ final class CollaborationRuntime {
         let alert = NSAlert()
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.signInRequiredTitle
-        alert.informativeText = CollaborationStrings.signInRequiredMessage
         alert.addButton(withTitle: CollaborationStrings.signIn)
         alert.addButton(withTitle: CollaborationStrings.cancel)
         guard alert.runModal() == .alertFirstButtonReturn else {
@@ -4164,14 +4163,7 @@ enum CollaborationStrings {
     }
 
     static var signInRequiredTitle: String {
-        String(localized: "collaboration.signInRequired.title", defaultValue: "Sign In to Share")
-    }
-
-    static var signInRequiredMessage: String {
-        String(
-            localized: "collaboration.signInRequired.message",
-            defaultValue: "Sharing with peers uses your cmux account so collaborators know who you are."
-        )
+        String(localized: "collaboration.signInRequired.title", defaultValue: "Sign into Mosaic")
     }
 
     static var signIn: String {
