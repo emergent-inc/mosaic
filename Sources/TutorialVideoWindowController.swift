@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import AVKit
 import SwiftUI
 
@@ -55,6 +56,7 @@ extension Notification.Name {
 
 enum TutorialVideoStyle {
     static let cornerRadius: CGFloat = 16
+    static let fallbackVideoSize = CGSize(width: 960, height: 620)
 }
 
 enum TutorialVideoResource {
@@ -78,6 +80,18 @@ enum TutorialVideoResource {
         resolve(fileName, fileExtension, subdirectory)
             ?? resolve(fileName, fileExtension, nil)
     }
+
+    static func naturalVideoSize(url: URL? = videoURL()) -> CGSize? {
+        guard let url else { return nil }
+        let asset = AVURLAsset(url: url)
+        guard let track = asset.tracks(withMediaType: .video).first else { return nil }
+        let transformedSize = track.naturalSize.applying(track.preferredTransform)
+        let size = CGSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
+            return nil
+        }
+        return size
+    }
 }
 
 struct TutorialVideoView: View {
@@ -95,9 +109,8 @@ struct TutorialVideoView: View {
             }
 
             closeButton
-                .padding(12)
         }
-        .frame(minWidth: 480, minHeight: 300)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityIdentifier("TutorialVideoWindowContent")

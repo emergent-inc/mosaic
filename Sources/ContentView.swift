@@ -1187,6 +1187,7 @@ struct ContentView: View {
     @State private var commandPaletteUsageHistoryByCommandId: [String: CommandPaletteUsageEntry] = [:]
     @State private var isFeedbackComposerPresented = false
     @State private var isTutorialVideoPresented = false
+    @State private var tutorialVideoNaturalSize: CGSize?
     @AppStorage(AppCatalogSection().renameSelectsExistingName.userDefaultsKey)
     private var commandPaletteRenameSelectAllOnFocus = AppCatalogSection().renameSelectsExistingName.defaultValue
     @AppStorage(AppCatalogSection().commandPaletteSearchesAllSurfaces.userDefaultsKey)
@@ -3600,8 +3601,11 @@ struct ContentView: View {
 
     private var tutorialVideoOverlay: some View {
         GeometryReader { proxy in
-            let targetWidth = proxy.size.width
-            let targetHeight = min(620, max(300, proxy.size.height - 96))
+            let videoSize = tutorialVideoNaturalSize ?? TutorialVideoStyle.fallbackVideoSize
+            let targetSize = Self.tutorialVideoPopupSize(
+                videoSize: videoSize,
+                availableSize: proxy.size
+            )
 
             ZStack {
                 Color.black.opacity(0.42)
@@ -3616,7 +3620,7 @@ struct ContentView: View {
                     cornerRadius: TutorialVideoStyle.cornerRadius,
                     onClose: dismissTutorialVideo
                 )
-                .frame(width: targetWidth, height: targetHeight)
+                .frame(width: targetSize.width, height: targetSize.height)
                 .shadow(color: Color.black.opacity(0.34), radius: 24, x: 0, y: 14)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -8871,11 +8875,32 @@ struct ContentView: View {
     }
 
     private func presentTutorialVideo() {
+        tutorialVideoNaturalSize = TutorialVideoResource.naturalVideoSize()
         isTutorialVideoPresented = true
     }
 
     private func dismissTutorialVideo() {
         isTutorialVideoPresented = false
+    }
+
+    private static func tutorialVideoPopupSize(videoSize: CGSize, availableSize: CGSize) -> CGSize {
+        let fallback = TutorialVideoStyle.fallbackVideoSize
+        let sourceSize: CGSize
+        if videoSize.width.isFinite
+            && videoSize.height.isFinite
+            && videoSize.width > 0
+            && videoSize.height > 0 {
+            sourceSize = videoSize
+        } else {
+            sourceSize = fallback
+        }
+        let availableWidth = max(1, availableSize.width)
+        let availableHeight = max(1, availableSize.height)
+        let scale = min(1, availableWidth / sourceSize.width, availableHeight / sourceSize.height)
+        return CGSize(
+            width: sourceSize.width * scale,
+            height: sourceSize.height * scale
+        )
     }
 
     static func shouldHandleCommandPaletteRequest(
