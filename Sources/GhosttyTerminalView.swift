@@ -4867,13 +4867,24 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         )
         let terminalWidth = CGFloat(columns) * resolvedCellWidth
         let terminalHeight = CGFloat(rows) * resolvedCellHeight
+        // A viewport-capped surface (collaboration mirror lock or mobile pairing)
+        // letterboxes the grid at the TOP-LEFT with the blank margin and edge
+        // border toward the bottom-right (see `setMobileViewportBorder`
+        // drawRight/drawBottom). Overlays must anchor to that top-left origin;
+        // the centered inset used for a normal full-pane grid would push every
+        // overlay down/right by half the letterbox margin (the "collaborator
+        // cursor one line below" symptom). Non-capped grids fill the pane, so the
+        // centered inset is ~0 and unchanged.
+        let isLetterboxed = terminalSurface?.isViewportCellCapped ?? false
+        let xInset = isLetterboxed ? 0 : max(0, (bounds.width - terminalWidth) / 2)
+        let yInset = isLetterboxed ? 0 : max(0, (bounds.height - terminalHeight) / 2)
         return KeyboardCopyModeGridMetrics(
             rows: rows,
             columns: columns,
             cellWidth: resolvedCellWidth,
             cellHeight: resolvedCellHeight,
-            xInset: max(0, (bounds.width - terminalWidth) / 2),
-            yInset: max(0, (bounds.height - terminalHeight) / 2),
+            xInset: xInset,
+            yInset: yInset,
             viewHeight: bounds.height
         )
     }
