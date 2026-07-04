@@ -546,19 +546,19 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack {
-                    if model.showsStopSharingAction {
-                        TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
-                            onStopSharing()
-                        }
-                        .fixedSize()
-                    }
-                    Spacer()
                     TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
                     .buttonStyle(.mosaicAccent)
                     .keyboardShortcut(.defaultAction)
                     .fixedSize()
+                    Spacer()
+                    if model.showsStopSharingAction {
+                        TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
+                            onStopSharing()
+                        }
+                        .fixedSize()
+                    }
                 }
             } else if model.showsRecipientSelection {
                 VStack(alignment: .leading, spacing: 6) {
