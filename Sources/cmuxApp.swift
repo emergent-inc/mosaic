@@ -523,6 +523,10 @@ struct cmuxApp: App {
                     appDelegate.openDebugScrollbackTab(nil)
                 }
 
+                Button("Preview Incoming Session Invite") {
+                    CollaborationRuntime.shared.debugPreviewIncomingSession()
+                }
+
                 AgentSessionDebugMenuButtons(
                     openReact: { appDelegate.openDebugAgentSessionReact(nil) },
                     openSolid: { appDelegate.openDebugAgentSessionSolid(nil) }
