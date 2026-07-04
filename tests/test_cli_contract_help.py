@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Executable contract check for no-socket cmux CLI help behavior.
+Executable contract check for no-socket mosaic CLI help behavior.
 
 The command list lives in docs/cli-contract.md so the human migration spec and
 CI check stay tied together. This test invokes the built CLI binary; it does not
@@ -24,8 +24,8 @@ START_MARKER = "<!-- cli-contract-help-probes:start -->"
 END_MARKER = "<!-- cli-contract-help-probes:end -->"
 NEGATIVE_START_MARKER = "<!-- cli-contract-negative-help-probes:start -->"
 NEGATIVE_END_MARKER = "<!-- cli-contract-negative-help-probes:end -->"
-PROBE_RE = re.compile(r"^- `(?P<command>cmux(?: [^`]+)?)` -> `(?P<needle>[^`]+)`$")
-NEGATIVE_PROBE_RE = re.compile(r"^- `(?P<command>cmux(?: [^`]+)?)` !> `(?P<needle>[^`]+)`$")
+PROBE_RE = re.compile(r"^- `(?P<command>mosaic(?: [^`]+)?)` -> `(?P<needle>[^`]+)`$")
+NEGATIVE_PROBE_RE = re.compile(r"^- `(?P<command>mosaic(?: [^`]+)?)` !> `(?P<needle>[^`]+)`$")
 
 
 @dataclass(frozen=True)
@@ -46,19 +46,19 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def resolve_cmux_cli() -> str:
-    explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
+def resolve_mosaic_cli() -> str:
+    explicit = os.environ.get("MOSAIC_CLI_BIN") or os.environ.get("MOSAIC_CLI")
     if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
         return explicit
 
     candidates: list[str] = []
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/mosaic")))
     candidates = [path for path in candidates if os.path.exists(path) and os.access(path, os.X_OK)]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
         return candidates[0]
 
-    raise RuntimeError("Unable to find cmux CLI binary. Set CMUX_CLI_BIN.")
+    raise RuntimeError("Unable to find mosaic CLI binary. Set MOSAIC_CLI_BIN.")
 
 
 def load_help_probes() -> list[HelpProbe]:
@@ -106,8 +106,8 @@ def load_probes(start_marker: str, end_marker: str, pattern: re.Pattern[str]) ->
 
 def run_probe(cli_path: str, probe: HelpProbe) -> ProbeResult:
     tokens = shlex.split(probe.command)
-    if not tokens or tokens[0] != "cmux":
-        raise RuntimeError(f"Probe must start with cmux: {probe.command}")
+    if not tokens or tokens[0] != "mosaic":
+        raise RuntimeError(f"Probe must start with mosaic: {probe.command}")
 
     return run_cli_args(cli_path, tokens[1:])
 
@@ -115,19 +115,19 @@ def run_probe(cli_path: str, probe: HelpProbe) -> ProbeResult:
 def run_cli_args(cli_path: str, args: list[str]) -> ProbeResult:
     env = dict(os.environ)
     for key in [
-        "CMUX_SOCKET_PASSWORD",
-        "CMUX_SOCKET",
-        "CMUX_WORKSPACE_ID",
-        "CMUX_SURFACE_ID",
-        "CMUX_TAB_ID",
+        "MOSAIC_SOCKET_PASSWORD",
+        "MOSAIC_SOCKET",
+        "MOSAIC_WORKSPACE_ID",
+        "MOSAIC_SURFACE_ID",
+        "MOSAIC_TAB_ID",
     ]:
         env.pop(key, None)
-    env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-    env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+    env["MOSAIC_CLI_SENTRY_DISABLED"] = "1"
+    env["MOSAIC_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
 
-    with tempfile.TemporaryDirectory(prefix="cmux-no-socket-") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="mosaic-no-socket-") as tmpdir:
         no_socket = os.path.join(tmpdir, f"socket-{uuid.uuid4().hex}.sock")
-        env["CMUX_SOCKET_PATH"] = no_socket
+        env["MOSAIC_SOCKET_PATH"] = no_socket
 
         proc = subprocess.run(  # noqa: S603
             [cli_path, *args],
@@ -148,7 +148,7 @@ def run_cli_args(cli_path: str, args: list[str]) -> ProbeResult:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
         probes = load_help_probes()
         negative_probes = load_negative_help_probes()
     except (RuntimeError, OSError, ValueError) as exc:
@@ -215,48 +215,48 @@ def main() -> int:
     try:
         result = run_cli_args(cli_path, [])
     except subprocess.TimeoutExpired:
-        failures.append("cmux: timed out")
+        failures.append("mosaic: timed out")
     except (RuntimeError, OSError, ValueError) as exc:
-        failures.append(f"cmux: {exc}")
+        failures.append(f"mosaic: {exc}")
     else:
         if result.returncode != 2:
             failures.append(
-                f"cmux: expected missing-command exit 2, got {result.returncode}\n"
+                f"mosaic: expected missing-command exit 2, got {result.returncode}\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
         if result.stdout:
             failures.append(
-                f"cmux: missing-command usage should not write stdout\n"
+                f"mosaic: missing-command usage should not write stdout\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
-        if "Missing command" not in result.stderr or "cmux --help" not in result.stderr:
+        if "Missing command" not in result.stderr or "mosaic --help" not in result.stderr:
             failures.append(
-                f"cmux: missing-command error should point to cmux --help\n"
+                f"mosaic: missing-command error should point to mosaic --help\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
-        if "browser find" in result.stderr or "cmux - control cmux via Unix socket" in result.stderr:
+        if "browser find" in result.stderr or "mosaic - control mosaic via Unix socket" in result.stderr:
             failures.append(
-                f"cmux: missing-command error should not dump full help\n"
+                f"mosaic: missing-command error should not dump full help\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
 
     try:
         result = run_cli_args(cli_path, ["settings", "--help"])
     except subprocess.TimeoutExpired:
-        failures.append("cmux settings --help stale-target check: timed out")
+        failures.append("mosaic settings --help stale-target check: timed out")
     except (RuntimeError, OSError, ValueError) as exc:
-        failures.append(f"cmux settings --help stale-target check: {exc}")
+        failures.append(f"mosaic settings --help stale-target check: {exc}")
     else:
-        stale_usage = "Usage: cmux settings [open|path|docs|target]"
-        target_usage = "Usage: cmux settings [open [target]|path|docs|<target>]"
+        stale_usage = "Usage: mosaic settings [open|path|docs|target]"
+        target_usage = "Usage: mosaic settings [open [target]|path|docs|<target>]"
         if stale_usage in result.stdout:
             failures.append(
-                f"cmux settings --help: stale literal target usage still present\n"
+                f"mosaic settings --help: stale literal target usage still present\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
         if target_usage not in result.stdout:
             failures.append(
-                f"cmux settings --help: expected target-placeholder usage {target_usage!r}\n"
+                f"mosaic settings --help: expected target-placeholder usage {target_usage!r}\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
 

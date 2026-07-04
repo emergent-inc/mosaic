@@ -1,5 +1,5 @@
 import Foundation
-import CmuxFoundation
+import MosaicFoundation
 
 nonisolated enum SSHPTYAttachStartupCommandBuilder {
     struct ForegroundAuth {
@@ -17,18 +17,18 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
         requireExisting: Bool = true
     ) -> String {
         var lines = [
-            "cmux_ssh_attach_cli=\"${CMUX_BUNDLED_CLI_PATH:-}\"",
-            "if [ -z \"$cmux_ssh_attach_cli\" ] || [ ! -x \"$cmux_ssh_attach_cli\" ]; then cmux_ssh_attach_cli=\"$(command -v cmux 2>/dev/null || true)\"; fi",
-            "if [ -z \"$cmux_ssh_attach_cli\" ]; then printf '%s\\n' '[cmux] bundled CLI not found for SSH PTY attach.' >&2; exit 127; fi",
-            "if [ -z \"${CMUX_SOCKET_PATH:-}\" ]; then printf '%s\\n' '[cmux] required configuration missing for SSH PTY attach.' >&2; exit 1; fi",
-            "if [ -z \"${CMUX_WORKSPACE_ID:-}\" ]; then printf '%s\\n' '[cmux] required workspace context missing for SSH PTY attach.' >&2; exit 1; fi",
+            "mosaic_ssh_attach_cli=\"${MOSAIC_BUNDLED_CLI_PATH:-}\"",
+            "if [ -z \"$mosaic_ssh_attach_cli\" ] || [ ! -x \"$mosaic_ssh_attach_cli\" ]; then mosaic_ssh_attach_cli=\"$(command -v mosaic 2>/dev/null || true)\"; fi",
+            "if [ -z \"$mosaic_ssh_attach_cli\" ]; then printf '%s\\n' '[mosaic] bundled CLI not found for SSH PTY attach.' >&2; exit 127; fi",
+            "if [ -z \"${MOSAIC_SOCKET_PATH:-}\" ]; then printf '%s\\n' '[mosaic] required configuration missing for SSH PTY attach.' >&2; exit 1; fi",
+            "if [ -z \"${MOSAIC_WORKSPACE_ID:-}\" ]; then printf '%s\\n' '[mosaic] required workspace context missing for SSH PTY attach.' >&2; exit 1; fi",
         ]
         if let sessionID = normalized(sessionID) {
-            lines.append("cmux_ssh_attach_session_id=\(shellQuote(sessionID))")
+            lines.append("mosaic_ssh_attach_session_id=\(shellQuote(sessionID))")
         } else {
             lines += [
-                "if [ -z \"${CMUX_SURFACE_ID:-}\" ]; then printf '%s\\n' '[cmux] required terminal context missing for SSH PTY attach.' >&2; exit 1; fi",
-                "cmux_ssh_attach_session_id=\"ssh-$CMUX_WORKSPACE_ID-$CMUX_SURFACE_ID\"",
+                "if [ -z \"${MOSAIC_SURFACE_ID:-}\" ]; then printf '%s\\n' '[mosaic] required terminal context missing for SSH PTY attach.' >&2; exit 1; fi",
+                "mosaic_ssh_attach_session_id=\"ssh-$MOSAIC_WORKSPACE_ID-$MOSAIC_SURFACE_ID\"",
             ]
         }
         if let foregroundAuth {
@@ -38,7 +38,7 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
         let commandB64Flag = normalized(remoteCommand).map {
             " --command-b64 \(shellQuote(Data($0.utf8).base64EncodedString()))"
         } ?? ""
-        let attachCommand = "\"$cmux_ssh_attach_cli\" --socket \"$CMUX_SOCKET_PATH\" ssh-pty-attach --wait\(requireExistingFlag) --workspace \"$CMUX_WORKSPACE_ID\" --session-id \"$cmux_ssh_attach_session_id\" --attachment-id \"${CMUX_SURFACE_ID:-}\"\(commandB64Flag)"
+        let attachCommand = "\"$mosaic_ssh_attach_cli\" --socket \"$MOSAIC_SOCKET_PATH\" ssh-pty-attach --wait\(requireExistingFlag) --workspace \"$MOSAIC_WORKSPACE_ID\" --session-id \"$mosaic_ssh_attach_session_id\" --attachment-id \"${MOSAIC_SURFACE_ID:-}\"\(commandB64Flag)"
         lines += retryingAttachLines(command: attachCommand)
         return "/bin/sh -c \(shellQuote(lines.joined(separator: "\n")))"
     }
@@ -47,27 +47,27 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
         RemoteInteractiveShellBootstrapBuilder.script(
             remoteRelayPort: relayPort,
             shellFeatures: RemoteInteractiveShellBootstrapBuilder.shellFeatures(),
-            bundledZshIntegration: RemoteInteractiveShellBootstrapBuilder.bundledShellIntegrationScript(named: "cmux-zsh-integration.zsh"),
-            bundledBashIntegration: RemoteInteractiveShellBootstrapBuilder.bundledShellIntegrationScript(named: "cmux-bash-integration.bash"),
+            bundledZshIntegration: RemoteInteractiveShellBootstrapBuilder.bundledShellIntegrationScript(named: "mosaic-zsh-integration.zsh"),
+            bundledBashIntegration: RemoteInteractiveShellBootstrapBuilder.bundledShellIntegrationScript(named: "mosaic-bash-integration.bash"),
             bundledFishIntegration: RemoteInteractiveShellBootstrapBuilder.bundledShellIntegrationScript(named: "fish/config.fish")
         )
     }
 
     private static func retryingAttachLines(command: String) -> [String] {
         [
-            "cmux_ssh_attach_reconnect_limit=\"${CMUX_SSH_RECONNECT_LIMIT:-20}\"",
-            "case \"$cmux_ssh_attach_reconnect_limit\" in ''|*[!0-9]*) cmux_ssh_attach_reconnect_limit=20 ;; esac",
-            "cmux_ssh_attach_reconnect_delay=\"${CMUX_SSH_RECONNECT_DELAY_SECONDS:-2}\"",
-            "case \"$cmux_ssh_attach_reconnect_delay\" in ''|*[!0-9]*) cmux_ssh_attach_reconnect_delay=2 ;; esac",
-            "cmux_ssh_attach_retry=0",
+            "mosaic_ssh_attach_reconnect_limit=\"${MOSAIC_SSH_RECONNECT_LIMIT:-20}\"",
+            "case \"$mosaic_ssh_attach_reconnect_limit\" in ''|*[!0-9]*) mosaic_ssh_attach_reconnect_limit=20 ;; esac",
+            "mosaic_ssh_attach_reconnect_delay=\"${MOSAIC_SSH_RECONNECT_DELAY_SECONDS:-2}\"",
+            "case \"$mosaic_ssh_attach_reconnect_delay\" in ''|*[!0-9]*) mosaic_ssh_attach_reconnect_delay=2 ;; esac",
+            "mosaic_ssh_attach_retry=0",
             "while :; do",
             "  \(command)",
-            "  cmux_ssh_attach_status=$?",
-            "  case \"$cmux_ssh_attach_status\" in 254|255) ;; *) exit \"$cmux_ssh_attach_status\" ;; esac",
-            "  if [ \"$cmux_ssh_attach_retry\" -ge \"$cmux_ssh_attach_reconnect_limit\" ]; then exit \"$cmux_ssh_attach_status\"; fi",
-            "  cmux_ssh_attach_retry=$((cmux_ssh_attach_retry + 1))",
-            "  if [ -t 2 ]; then printf '\\n\\033[33m[cmux] remote PTY bridge closed; reattaching (attempt %s/%s).\\033[0m\\n' \"$cmux_ssh_attach_retry\" \"$cmux_ssh_attach_reconnect_limit\" >&2 || true; fi",
-            "  if [ \"$cmux_ssh_attach_reconnect_delay\" -gt 0 ]; then sleep \"$cmux_ssh_attach_reconnect_delay\"; fi",
+            "  mosaic_ssh_attach_status=$?",
+            "  case \"$mosaic_ssh_attach_status\" in 254|255) ;; *) exit \"$mosaic_ssh_attach_status\" ;; esac",
+            "  if [ \"$mosaic_ssh_attach_retry\" -ge \"$mosaic_ssh_attach_reconnect_limit\" ]; then exit \"$mosaic_ssh_attach_status\"; fi",
+            "  mosaic_ssh_attach_retry=$((mosaic_ssh_attach_retry + 1))",
+            "  if [ -t 2 ]; then printf '\\n\\033[33m[mosaic] remote PTY bridge closed; reattaching (attempt %s/%s).\\033[0m\\n' \"$mosaic_ssh_attach_retry\" \"$mosaic_ssh_attach_reconnect_limit\" >&2 || true; fi",
+            "  if [ \"$mosaic_ssh_attach_reconnect_delay\" -gt 0 ]; then sleep \"$mosaic_ssh_attach_reconnect_delay\"; fi",
             "done",
         ]
     }
@@ -77,12 +77,12 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
         let quotedToken = shellQuote(auth.token)
         return [
             "\(sshCommand)",
-            "cmux_ssh_auth_status=$?",
-            "if [ \"$cmux_ssh_auth_status\" -ne 0 ]; then exit \"$cmux_ssh_auth_status\"; fi",
-            "cmux_ssh_auth_token=\(quotedToken)",
-            "cmux_ssh_auth_payload=\"{\\\"workspace_id\\\":\\\"$CMUX_WORKSPACE_ID\\\",\\\"foreground_auth_token\\\":\\\"$cmux_ssh_auth_token\\\"}\"",
-            "\"$cmux_ssh_attach_cli\" --socket \"$CMUX_SOCKET_PATH\" rpc workspace.remote.foreground_auth_ready \"$cmux_ssh_auth_payload\" >/dev/null 2>&1 || true",
-            "unset cmux_ssh_auth_payload cmux_ssh_auth_status cmux_ssh_auth_token",
+            "mosaic_ssh_auth_status=$?",
+            "if [ \"$mosaic_ssh_auth_status\" -ne 0 ]; then exit \"$mosaic_ssh_auth_status\"; fi",
+            "mosaic_ssh_auth_token=\(quotedToken)",
+            "mosaic_ssh_auth_payload=\"{\\\"workspace_id\\\":\\\"$MOSAIC_WORKSPACE_ID\\\",\\\"foreground_auth_token\\\":\\\"$mosaic_ssh_auth_token\\\"}\"",
+            "\"$mosaic_ssh_attach_cli\" --socket \"$MOSAIC_SOCKET_PATH\" rpc workspace.remote.foreground_auth_ready \"$mosaic_ssh_auth_payload\" >/dev/null 2>&1 || true",
+            "unset mosaic_ssh_auth_payload mosaic_ssh_auth_status mosaic_ssh_auth_token",
         ]
     }
 
@@ -131,9 +131,9 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
 
     private static func restoreControlPathTemplate(relayPort: Int?) -> String {
         if let relayPort, relayPort > 0 {
-            return "/tmp/cmux-ssh-\(getuid())-\(relayPort)-%C"
+            return "/tmp/mosaic-ssh-\(getuid())-\(relayPort)-%C"
         }
-        return "/tmp/cmux-ssh-\(getuid())-%C"
+        return "/tmp/mosaic-ssh-\(getuid())-%C"
     }
 
     static func sshOptionsSupportReusableForegroundAuth(_ options: [String]) -> Bool {

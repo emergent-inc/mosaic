@@ -4,7 +4,7 @@ import postgres, { type Sql } from "postgres";
 import { closeCloudDbForTests } from "../db/client";
 import { recordPushSendOrThrow, PushRateLimitExceededError } from "../services/apns/rateLimit";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 let sql: Sql | null = null;
@@ -13,7 +13,7 @@ beforeAll(() => {
   if (!runDbTests) return;
   const databaseURL = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseURL) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   sql = postgres(databaseURL, { max: 1 });
 });

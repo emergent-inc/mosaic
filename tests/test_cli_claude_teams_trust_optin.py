@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test (#6447): `cmux claude-teams` grants the Claude trust-gate bypass
+Regression test (#6447): `mosaic claude-teams` grants the Claude trust-gate bypass
 (CLAUDE_CODE_SANDBOXED) only when THIS invocation opts in with
 --dangerously-skip-permissions, and clears any ambient opt-in marker inherited
 from a parent session when it does not, so the bypass never leaks across launches.
@@ -13,11 +13,11 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def run(cli_path: str, args: list[str], extra_env: dict[str, str]) -> tuple[str, str]:
-    with tempfile.TemporaryDirectory(prefix="cmux-teams-trust-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-teams-trust-") as td:
         tmp = Path(td)
         real_bin = tmp / "bin"
         real_bin.mkdir()
@@ -27,7 +27,7 @@ def run(cli_path: str, args: list[str], extra_env: dict[str, str]) -> tuple[str,
         fake.write_text(
             "#!/usr/bin/env bash\n"
             'printf "%s" "${CLAUDE_CODE_SANDBOXED-__UNSET__}" > "$L1"\n'
-            'printf "%s" "${CMUX_CLAUDE_TEAMS_SANDBOXED-__UNSET__}" > "$L2"\n',
+            'printf "%s" "${MOSAIC_CLAUDE_TEAMS_SANDBOXED-__UNSET__}" > "$L2"\n',
             encoding="utf-8",
         )
         fake.chmod(0o755)
@@ -54,9 +54,9 @@ def run(cli_path: str, args: list[str], extra_env: dict[str, str]) -> tuple[str,
 
 
 def main() -> int:
-    cli = resolve_cmux_cli()
+    cli = resolve_mosaic_cli()
 
-    # Opted in: both the Claude env var and the cmux propagation marker are set.
+    # Opted in: both the Claude env var and the mosaic propagation marker are set.
     sandboxed, marker = run(cli, ["--dangerously-skip-permissions", "--version"], {})
     if sandboxed != "1" or marker != "1":
         print(f"FAIL: opted-in launch must set markers, got sandboxed={sandboxed!r} marker={marker!r}")
@@ -66,13 +66,13 @@ def main() -> int:
     sandboxed, marker = run(
         cli,
         ["--version"],
-        {"CLAUDE_CODE_SANDBOXED": "1", "CMUX_CLAUDE_TEAMS_SANDBOXED": "1"},
+        {"CLAUDE_CODE_SANDBOXED": "1", "MOSAIC_CLAUDE_TEAMS_SANDBOXED": "1"},
     )
     if sandboxed != "__UNSET__" or marker != "__UNSET__":
         print(f"FAIL: non-opted launch must clear ambient markers, got sandboxed={sandboxed!r} marker={marker!r}")
         return 1
 
-    print("PASS: cmux claude-teams gates the trust bypass on the current opt-in and clears ambient markers")
+    print("PASS: mosaic claude-teams gates the trust bypass on the current opt-in and clears ambient markers")
     return 0
 
 

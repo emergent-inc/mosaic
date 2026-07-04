@@ -101,11 +101,11 @@ export function GitHubStarsBadge({
 
   return (
     <a
-      href="https://github.com/emergent-inc/cmux"
+      href="https://github.com/emergent-inc/mosaic"
       target="_blank"
       rel="noopener noreferrer"
       onClick={() =>
-        posthog.capture("cmuxterm_github_clicked", { location })
+        posthog.capture("mosaicterm_github_clicked", { location })
       }
       className={classes}
     >

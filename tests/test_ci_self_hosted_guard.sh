@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression test for https://github.com/emergent-inc/cmux/issues/385.
+# Regression test for https://github.com/emergent-inc/mosaic/issues/385.
 # Ensures paid CI jobs use a paid macOS runner (Blacksmith or WarpBuild, routed
 # through the MACOS_RUNNER_15 / MACOS_RUNNER_26 repo variables), never a free
 # GitHub-hosted runner. Flip Blacksmith<->Warp by editing those repo variables;
@@ -71,15 +71,15 @@ check_build_lag_deriveddata_cache_path() {
 
     in_job && /- name: Prepare isolated DerivedData/ { in_prepare=1; next }
     in_prepare && /^[[:space:]]*- name:/ { in_prepare=0 }
-    in_prepare && /DERIVED_DATA_PATH="\$RUNNER_TEMP\/cmux-deriveddata-tests-build-and-lag"/ { saw_prepare_path=1 }
+    in_prepare && /DERIVED_DATA_PATH="\$RUNNER_TEMP\/mosaic-deriveddata-tests-build-and-lag"/ { saw_prepare_path=1 }
     in_prepare && /GITHUB_RUN_ID|GITHUB_RUN_ATTEMPT/ { saw_dynamic_prepare_path=1 }
 
     in_job && /- name: Cache DerivedData/ { in_cache=1; after_cache=1; next }
     in_cache && /^[[:space:]]*- name:/ { in_cache=0 }
-    in_cache && /path:[[:space:]]*\$\{\{ runner\.temp \}\}\/cmux-deriveddata-tests-build-and-lag/ { saw_cache_path=1 }
+    in_cache && /path:[[:space:]]*\$\{\{ runner\.temp \}\}\/mosaic-deriveddata-tests-build-and-lag/ { saw_cache_path=1 }
     in_cache && /Library\/Developer\/Xcode\/DerivedData/ { saw_home_cache_path=1 }
 
-    in_job && after_cache && /rm -rf "\$CMUX_DERIVED_DATA_PATH"/ { saw_post_cache_delete=1 }
+    in_job && after_cache && /rm -rf "\$MOSAIC_DERIVED_DATA_PATH"/ { saw_post_cache_delete=1 }
 
     END {
       exit !(saw_prepare_path && saw_cache_path && !saw_dynamic_prepare_path && !saw_home_cache_path && !saw_post_cache_delete)
@@ -317,7 +317,7 @@ if [[ -z "$output" ]]; then
   echo "curl stub missing --output" >&2
   exit 1
 fi
-printf '%s\n' "$*" >> "$CMUX_STUB_CURL_LOG"
+printf '%s\n' "$*" >> "$MOSAIC_STUB_CURL_LOG"
 printf 'fake certificate\n' > "$output"
 EOF
   chmod +x "$bin_dir/curl"
@@ -327,12 +327,12 @@ EOF
 set -euo pipefail
 case "${1:-}" in
   add-certificates)
-    printf '%s\n' "$*" >> "$CMUX_STUB_SECURITY_LOG"
+    printf '%s\n' "$*" >> "$MOSAIC_STUB_SECURITY_LOG"
     ;;
   find-certificate)
-    added_count="$(grep -c '^add-certificates ' "$CMUX_STUB_SECURITY_LOG" 2>/dev/null || true)"
-    if [[ "${CMUX_STUB_CERT_COUNT_OVERRIDE:-}" != "" ]]; then
-      added_count="$CMUX_STUB_CERT_COUNT_OVERRIDE"
+    added_count="$(grep -c '^add-certificates ' "$MOSAIC_STUB_SECURITY_LOG" 2>/dev/null || true)"
+    if [[ "${MOSAIC_STUB_CERT_COUNT_OVERRIDE:-}" != "" ]]; then
+      added_count="$MOSAIC_STUB_CERT_COUNT_OVERRIDE"
     fi
     for ((i = 0; i < added_count; i++)); do
       printf '%s\n' '-----END CERTIFICATE-----'
@@ -348,7 +348,7 @@ EOF
 
   # --- Vendored path (default): the real helper has the certs committed beside
   # it, so it must import both WITHOUT touching the network. ---
-  if ! PATH="$bin_dir:/usr/bin:/bin" CMUX_STUB_CURL_LOG="$curl_log" CMUX_STUB_SECURITY_LOG="$security_log" "$helper" "$keychain" >"$tmp_dir/success.out" 2>"$tmp_dir/success.err"; then
+  if ! PATH="$bin_dir:/usr/bin:/bin" MOSAIC_STUB_CURL_LOG="$curl_log" MOSAIC_STUB_SECURITY_LOG="$security_log" "$helper" "$keychain" >"$tmp_dir/success.out" 2>"$tmp_dir/success.err"; then
     echo "FAIL: signing helper behavior test should import both intermediates from vendored copies"
     cat "$tmp_dir/success.err" >&2 || true
     exit 1
@@ -378,7 +378,7 @@ EOF
   fb_keychain="$tmp_dir/fb_build.keychain"
   touch "$fb_curl_log" "$fb_security_log" "$fb_keychain"
 
-  if ! PATH="$bin_dir:/usr/bin:/bin" CMUX_STUB_CURL_LOG="$fb_curl_log" CMUX_STUB_SECURITY_LOG="$fb_security_log" "$fb_helper" "$fb_keychain" >"$tmp_dir/fb.out" 2>"$tmp_dir/fb.err"; then
+  if ! PATH="$bin_dir:/usr/bin:/bin" MOSAIC_STUB_CURL_LOG="$fb_curl_log" MOSAIC_STUB_SECURITY_LOG="$fb_security_log" "$fb_helper" "$fb_keychain" >"$tmp_dir/fb.out" 2>"$tmp_dir/fb.err"; then
     echo "FAIL: signing helper fallback should download and import both intermediates"
     cat "$tmp_dir/fb.err" >&2 || true
     exit 1
@@ -397,7 +397,7 @@ EOF
   fi
 
   # --- Count guard: helper must fail when fewer than two intermediates land. ---
-  if PATH="$bin_dir:/usr/bin:/bin" CMUX_STUB_CURL_LOG="$curl_log" CMUX_STUB_SECURITY_LOG="$security_log" CMUX_STUB_CERT_COUNT_OVERRIDE=1 "$helper" "$keychain" >"$tmp_dir/fail.out" 2>"$tmp_dir/fail.err"; then
+  if PATH="$bin_dir:/usr/bin:/bin" MOSAIC_STUB_CURL_LOG="$curl_log" MOSAIC_STUB_SECURITY_LOG="$security_log" MOSAIC_STUB_CERT_COUNT_OVERRIDE=1 "$helper" "$keychain" >"$tmp_dir/fail.out" 2>"$tmp_dir/fail.err"; then
     echo "FAIL: signing helper behavior test should fail when fewer than two intermediates are visible"
     exit 1
   fi
@@ -575,12 +575,12 @@ check_create_dmg_uses_run_local_npm_prefix() {
     if ! awk '
       /- name: Install build deps/ { in_step=1; next }
       in_step && /^[[:space:]]*- name:/ { in_step=0 }
-      in_step && /CMUX_NODE_BIN="\$\(command -v node\)"/ { saw_node=1 }
+      in_step && /MOSAIC_NODE_BIN="\$\(command -v node\)"/ { saw_node=1 }
       in_step && /export npm_config_prefix="\$RUNNER_TEMP\/npm-global"/ { saw_prefix=1 }
       in_step && /mkdir -p "\$npm_config_prefix"/ { saw_mkdir=1 }
       in_step && /npm install --global "create-dmg@\$\{CREATE_DMG_VERSION\}"/ { saw_install=1 }
       in_step && /wrapper_dir="\$RUNNER_TEMP\/create-dmg-wrapper"/ { saw_wrapper=1 }
-      in_step && /exec "\$CMUX_NODE_BIN" "\$npm_config_prefix\/lib\/node_modules\/create-dmg\/cli\.js" "\\\$@"/ { saw_exec=1 }
+      in_step && /exec "\$MOSAIC_NODE_BIN" "\$npm_config_prefix\/lib\/node_modules\/create-dmg\/cli\.js" "\\\$@"/ { saw_exec=1 }
       in_step && /echo "\$wrapper_dir" >> "\$GITHUB_PATH"/ { saw_path=1 }
       END { exit !(saw_node && saw_prefix && saw_mkdir && saw_install && saw_wrapper && saw_exec && saw_path) }
     ' "$file"; then
@@ -595,9 +595,9 @@ check_create_dmg_uses_run_local_npm_prefix() {
 check_gui_smoke_unsupported_launch_handling() {
   local helper="$ROOT_DIR/scripts/smoke-launch-macos-app.sh"
   for needle in \
-    'ALLOW_UNSUPPORTED_GUI="${CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI:-0}"' \
-    'DIRECT_EXEC="${CMUX_SMOKE_DIRECT_EXEC:-0}"' \
-    'CMUX_UI_TEST_MODE="${CMUX_UI_TEST_MODE:-1}"' \
+    'ALLOW_UNSUPPORTED_GUI="${MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI:-0}"' \
+    'DIRECT_EXEC="${MOSAIC_SMOKE_DIRECT_EXEC:-0}"' \
+    'MOSAIC_UI_TEST_MODE="${MOSAIC_UI_TEST_MODE:-1}"' \
     'open_log_indicates_unsupported_gui()' \
     "grep -Fq 'OSLaunchdErrorDomain Code=125'" \
     "grep -Fq 'Domain does not support specified action'" \
@@ -609,8 +609,8 @@ check_gui_smoke_unsupported_launch_handling() {
   done
 
   if ! awk '
-    /scripts\/smoke-launch-macos-app\.sh/ && /CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI=1/ { saw_launchservices=1 }
-    /scripts\/smoke-launch-macos-app\.sh/ && /CMUX_SMOKE_DIRECT_EXEC=1/ { saw_direct_exec=1 }
+    /scripts\/smoke-launch-macos-app\.sh/ && /MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI=1/ { saw_launchservices=1 }
+    /scripts\/smoke-launch-macos-app\.sh/ && /MOSAIC_SMOKE_DIRECT_EXEC=1/ { saw_direct_exec=1 }
     END { exit !(saw_launchservices && saw_direct_exec) }
   ' "$ROOT_DIR/.github/workflows/release.yml"; then
     echo "FAIL: release signing smoke must run LaunchServices smoke before direct exec CI launch mode"
@@ -618,8 +618,8 @@ check_gui_smoke_unsupported_launch_handling() {
   fi
 
   if ! awk '
-    /scripts\/smoke-launch-macos-app\.sh/ && /CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI=1/ { saw_launchservices=1 }
-    /scripts\/smoke-launch-macos-app\.sh/ && /CMUX_SMOKE_DIRECT_EXEC=1/ { saw_direct_exec=1 }
+    /scripts\/smoke-launch-macos-app\.sh/ && /MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI=1/ { saw_launchservices=1 }
+    /scripts\/smoke-launch-macos-app\.sh/ && /MOSAIC_SMOKE_DIRECT_EXEC=1/ { saw_direct_exec=1 }
     END { exit !(saw_launchservices && saw_direct_exec) }
   ' "$ROOT_DIR/.github/workflows/nightly.yml"; then
     echo "FAIL: nightly signing smoke must run direct exec after unsupported-GUI LaunchServices smoke"
@@ -669,16 +669,16 @@ check_web_db_behavior_tests() {
   if ! awk '
     /- name: Database behavior tests/ { in_step=1; next }
     in_step && /^[[:space:]]*- name:/ { in_step=0 }
-    in_step && /CMUX_DB_TEST:[[:space:]]*"1"/ { saw_env=1 }
+    in_step && /MOSAIC_DB_TEST:[[:space:]]*"1"/ { saw_env=1 }
     in_step && /bun run test:db:behavior/ { saw_runner=1 }
     END { exit !(saw_env && saw_runner) }
   ' "$CI_FILE"; then
-    echo "FAIL: ci.yml must run the DB behavior test discovery runner with CMUX_DB_TEST=1"
+    echo "FAIL: ci.yml must run the DB behavior test discovery runner with MOSAIC_DB_TEST=1"
     exit 1
   fi
 
-  if ! grep -Fq 'grep -q "process\\.env\\.CMUX_DB_TEST"' "$db_runner"; then
-    echo "FAIL: DB behavior runner must discover CMUX_DB_TEST-gated files instead of hard-coding a subset"
+  if ! grep -Fq 'grep -q "process\\.env\\.MOSAIC_DB_TEST"' "$db_runner"; then
+    echo "FAIL: DB behavior runner must discover MOSAIC_DB_TEST-gated files instead of hard-coding a subset"
     exit 1
   fi
 
@@ -691,8 +691,8 @@ check_tmux_terminal_nightly_isolation() {
   if ! awk '
     /^  terminal-nightly:/ { in_job=1; next }
     in_job && /^  [^[:space:]#][^:]*:[[:space:]]*(#.*)?$/ { in_job=0 }
-    in_job && /CMUX_DERIVED_DATA_PATH/ { saw_env=1 }
-    in_job && /-derivedDataPath "\$CMUX_DERIVED_DATA_PATH"/ { saw_flag=1 }
+    in_job && /MOSAIC_DERIVED_DATA_PATH/ { saw_env=1 }
+    in_job && /-derivedDataPath "\$MOSAIC_DERIVED_DATA_PATH"/ { saw_flag=1 }
     in_job && /scripts\/ci\/xcodebuild_noninteractive\.py/ { saw_noninteractive=1 }
     in_job && /SWIFT_BACKTRACE: "interactive=no,timeout=0s,symbolicate=off,color=no"/ { saw_backtrace=1 }
     in_job && /All failures are expected, treating as pass/ { saw_expected_failure_handling=1 }
@@ -736,7 +736,7 @@ check_no_self_hosted_fleet_runners() {
   # NOTE: reload-build.yml is the dev-build offload path (workflow_dispatch,
   # not required CI) and intentionally targets the fleet via a free-form input;
   # this guard only inspects runner-selection lines, not its input description.
-  local fleet='macos-26|warp-macos-26-arm64-6x|cmux-aws-macos|cmux-macos|cmux-local-macos|macfleet|(^|[^a-z0-9-])mac4([^a-z0-9]|$)|(^|[^a-z0-9-])mac-mini([^a-z0-9]|$)|slot-[0-9]|xcode-[0-9]+-[0-9]|(^|[^a-z0-9-])cmux([^a-z0-9-]|$)'
+  local fleet='macos-26|warp-macos-26-arm64-6x|mosaic-aws-macos|mosaic-macos|mosaic-local-macos|macfleet|(^|[^a-z0-9-])mac4([^a-z0-9]|$)|(^|[^a-z0-9-])mac-mini([^a-z0-9]|$)|slot-[0-9]|xcode-[0-9]+-[0-9]|(^|[^a-z0-9-])mosaic([^a-z0-9-]|$)'
   local allowed='blacksmith-6vcpu-macos-(15|26|latest)|warp-macos-15-arm64-6x|depot-macos-(latest|14)'
 
   # Bare self-hosted/macOS/ARM64 targeting (inline array or multi-line list).
@@ -749,9 +749,9 @@ check_no_self_hosted_fleet_runners() {
   # known fleet/self-hosted label must be caught, every allowed cloud label
   # must pass. Probes are raw YAML values (no path:lineno: prefix).
   local probe
-  for probe in 'runs-on: macfleet' '- mac4' '- mac-mini' '- slot-3' '- xcode-26-3' '- cmux' \
+  for probe in 'runs-on: macfleet' '- mac4' '- mac-mini' '- slot-3' '- xcode-26-3' '- mosaic' \
                "runs-on: \${{ vars.X || 'macos-26' }}" '- warp-macos-26-arm64-6x' \
-               '- cmux-aws-macos-15' '- cmux-macos-26' '- self-hosted' '- macOS' '- ARM64' \
+               '- mosaic-aws-macos-15' '- mosaic-macos-26' '- self-hosted' '- macOS' '- ARM64' \
                'runs-on: [self-hosted, macOS, ARM64]'; do
     if ! printf '%s\n' "$probe" | grep -Eq "($forbidden)"; then
       echo "FAIL: fleet-runner guard self-test missed a known fleet/self-hosted label: $probe"
@@ -773,8 +773,8 @@ check_no_self_hosted_fleet_runners() {
   # items (`  - <label>`, which covers dispatch runner dropdowns and multi-line
   # `runs-on:` arrays). `- name:` / `- uses:` step entries have a colon and are
   # excluded. grep matches against file CONTENT; strip the `path:lineno:` prefix
-  # before matching the value so the checkout path (which contains "cmux") can
-  # never match the bare `cmux` label.
+  # before matching the value so the checkout path (which contains "mosaic") can
+  # never match the bare `mosaic` label.
   while IFS= read -r line; do
     content="${line#*:*:}"
     printf '%s\n' "$content" | grep -Eq "($forbidden)" || continue

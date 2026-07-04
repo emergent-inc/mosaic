@@ -61,7 +61,7 @@ export default function IosLanding() {
           <BrandLogoLink className="shrink-0">
             <img
               src="/logo.png"
-              alt="cmux icon"
+              alt="mosaic icon"
               width={48}
               height={48}
               className="rounded-xl"
@@ -87,7 +87,7 @@ export default function IosLanding() {
           style={{ marginTop: 21, marginBottom: 16 }}
         >
           <a
-            href="https://github.com/emergent-inc/cmux#founders-edition"
+            href="https://github.com/emergent-inc/mosaic#founders-edition"
             className={`${ctaButtonBase} ${ctaButtonDefaultSize}`}
             style={ctaButtonStyle}
           >
@@ -192,7 +192,7 @@ export default function IosLanding() {
           data-dev="ios-cta-bottom"
         >
           <a
-            href="https://github.com/emergent-inc/cmux#founders-edition"
+            href="https://github.com/emergent-inc/mosaic#founders-edition"
             className={`${ctaButtonBase} ${ctaButtonDefaultSize}`}
             style={ctaButtonStyle}
           >

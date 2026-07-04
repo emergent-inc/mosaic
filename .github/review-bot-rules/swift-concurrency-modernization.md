@@ -1,12 +1,12 @@
 # Swift Concurrency Modernization
 
-Flag clear new uses of legacy asynchronous patterns in cmux-owned Swift code when Swift concurrency would be the correct design.
+Flag clear new uses of legacy asynchronous patterns in mosaic-owned Swift code when Swift concurrency would be the correct design.
 
 Report a failure when the diff introduces or materially expands:
 
 - `DispatchQueue.global().async`, custom background queues, `DispatchGroup`, or callback pyramids for ordinary async work that can be modeled with `async` functions, `Task`, `TaskGroup`, or actors.
 - New Combine usage (`ObservableObject`, `@Published`, publishers, subscribers, cancellables) for app state or async flow when `Observation` and async/await are available.
-- Completion-handler APIs in new internal code when the caller and callee are both under cmux control and can use `async throws`.
+- Completion-handler APIs in new internal code when the caller and callee are both under mosaic control and can use `async throws`.
 - Fire-and-forget `Task { ... }` work with meaningful lifecycle that is not stored, cancelled, or tied to a caller-owned operation.
 
 Allowed cases:

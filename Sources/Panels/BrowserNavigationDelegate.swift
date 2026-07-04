@@ -101,7 +101,7 @@ import WebKit
         didFinish?(webView)
         if shouldPrintAfterCurrentNavigationFinishes {
             shouldPrintAfterCurrentNavigationFinishes = false
-            webView.cmuxRunPrintOperation()
+            webView.mosaicRunPrintOperation()
         }
     }
 
@@ -188,7 +188,7 @@ import WebKit
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
 #if DEBUG
-        cmuxDebugLog("browser.webcontent.terminated panel=\(String(describing: self))")
+        mosaicDebugLog("browser.webcontent.terminated panel=\(String(describing: self))")
 #endif
         didTerminateWebContentProcess?(webView)
     }
@@ -227,7 +227,7 @@ import WebKit
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
         if let url = navigationAction.request.url,
-           url.scheme == "cmux-browser-action",
+           url.scheme == "mosaic-browser-action",
            url.host == "bypass-ssl" {
             decisionHandler(.cancel)
             handleSSLTrustBypassAction(url, in: webView)
@@ -243,7 +243,7 @@ import WebKit
                 openInNewTab?(url)
             }
         }
-        let hasRecentMiddleClickIntent = CmuxWebView.hasRecentMiddleClickIntent(for: webView)
+        let hasRecentMiddleClickIntent = MosaicWebView.hasRecentMiddleClickIntent(for: webView)
         let shouldOpenInNewTab = browserNavigationShouldOpenInNewTab(
             navigationType: navigationAction.navigationType,
             modifierFlags: navigationAction.modifierFlags,
@@ -259,7 +259,7 @@ import WebKit
         let requestMethod = navigationAction.request.httpMethod ?? "nil"
         let requestURL = browserNavigationDebugURL(navigationAction.request.url)
         let targetMainFrame = navigationAction.targetFrame.map { $0.isMainFrame ? "1" : "0" } ?? "nil"
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.nav.decidePolicy navType=\(navType) button=\(navigationAction.buttonNumber) " +
             "mods=\(navigationAction.modifierFlags.rawValue) targetNil=\(navigationAction.targetFrame == nil ? 1 : 0) " +
             "targetMain=\(targetMainFrame) method=\(requestMethod) url=\(requestURL) " +
@@ -279,7 +279,7 @@ import WebKit
                 intent = .currentTab
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.nav.decidePolicy.action kind=blockedInsecure intent=\(intent == .newTab ? "newTab" : "currentTab") " +
                 "url=\(url.absoluteString)"
             )
@@ -317,7 +317,7 @@ import WebKit
                 guard hasUserActivation || hasRecordedIntent else { decisionHandler(.cancel); return }
                 if shouldBlockInsecureHTTPSubframeDownload?(url) == true {
                     #if DEBUG
-                    cmuxDebugLog("browser.nav.decidePolicy.action kind=cancelDownload reason=insecureHTTPSubframe url=\(url.absoluteString)")
+                    mosaicDebugLog("browser.nav.decidePolicy.action kind=cancelDownload reason=insecureHTTPSubframe url=\(url.absoluteString)")
                     #endif
                     decisionHandler(.cancel)
                     return
@@ -332,7 +332,7 @@ import WebKit
         if shouldOpenInNewTab,
            let requestURL = navigationAction.request.url {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.nav.decidePolicy.action kind=openInNewTab url=\(requestURL.absoluteString)"
             )
 #endif
@@ -351,7 +351,7 @@ import WebKit
            ),
            let requestURL = navigationAction.request.url {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.nav.decidePolicy.action kind=openInNewTabFromNilTarget url=\(requestURL.absoluteString)"
             )
 #endif
@@ -363,13 +363,13 @@ import WebKit
 
 #if DEBUG
         let targetURL = navigationAction.request.url?.absoluteString ?? "nil"
-        cmuxDebugLog("browser.nav.decidePolicy.action kind=allow url=\(targetURL)")
+        mosaicDebugLog("browser.nav.decidePolicy.action kind=allow url=\(targetURL)")
 #endif
         if navigationAction.targetFrame?.isMainFrame != false {
             if shouldPreserveSSLTrustBypassForErrorPageNavigation(navigationAction) {
 #if DEBUG
                 let targetURL = navigationAction.request.url?.absoluteString ?? "nil"
-                cmuxDebugLog("browser.nav.decidePolicy.action kind=preserveSSLBypassErrorPage url=\(targetURL)")
+                mosaicDebugLog("browser.nav.decidePolicy.action kind=preserveSSLBypassErrorPage url=\(targetURL)")
 #endif
             } else if let url = navigationAction.request.url,
                       let scheme = url.scheme?.lowercased(),
@@ -466,7 +466,7 @@ import WebKit
         }
 
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.nav.response mime=\(mime) canShow=\(canShow ? 1 : 0) mainFrame=\(navigationResponse.isForMainFrame ? 1 : 0)"
         )
         #endif
@@ -508,13 +508,13 @@ import WebKit
                let url = navigationResponse.response.url,
                shouldBlockInsecureHTTPSubframeDownload?(url) == true {
                 #if DEBUG
-                cmuxDebugLog("download.policy=cancel reason=insecureHTTPSubframe url=\(url.absoluteString)")
+                mosaicDebugLog("download.policy=cancel reason=insecureHTTPSubframe url=\(url.absoluteString)")
                 #endif
                 decisionHandler(.cancel)
                 return
             }
             #if DEBUG
-            cmuxDebugLog("download.policy=download reason=\(reason) mime=\(mime) mainFrame=\(navigationResponse.isForMainFrame ? 1 : 0)")
+            mosaicDebugLog("download.policy=download reason=\(reason) mime=\(mime) mainFrame=\(navigationResponse.isForMainFrame ? 1 : 0)")
             #endif
             decisionHandler(.download)
             return
@@ -558,7 +558,7 @@ import WebKit
 
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
         #if DEBUG
-        cmuxDebugLog("download.didBecome source=navigationAction")
+        mosaicDebugLog("download.didBecome source=navigationAction")
         #endif
         NSLog("BrowserPanel download didBecome from navigationAction")
         download.delegate = downloadDelegate
@@ -566,7 +566,7 @@ import WebKit
 
     func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
         #if DEBUG
-        cmuxDebugLog("download.didBecome source=navigationResponse")
+        mosaicDebugLog("download.didBecome source=navigationResponse")
         #endif
         NSLog("BrowserPanel download didBecome from navigationResponse")
         download.delegate = downloadDelegate
@@ -575,7 +575,7 @@ import WebKit
 
 extension WKWebView {
     @MainActor
-    func cmuxRunPrintOperation() {
+    func mosaicRunPrintOperation() {
         guard #available(macOS 11.0, *) else { return }
         let printInfo = (NSPrintInfo.shared.copy() as? NSPrintInfo) ?? NSPrintInfo()
         let operation = printOperation(with: printInfo)

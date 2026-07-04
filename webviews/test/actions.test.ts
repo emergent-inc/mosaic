@@ -36,7 +36,7 @@ test("copyGitApplyCommand falls back to a React-owned textarea when clipboard AP
 
   expect(message).toBe(label("copiedGitApplyCommand"));
   expect(copied).toBe(true);
-  expect(textarea?.value).toContain("git apply <<'CMUX_DIFF_PATCH'");
+  expect(textarea?.value).toContain("git apply <<'MOSAIC_DIFF_PATCH'");
 });
 
 test("copyGitApplyCommand falls back when clipboard writeText rejects", async () => {
@@ -79,12 +79,12 @@ test("copyGitApplyCommand fails when the textarea fallback cannot copy", async (
 
 test("resolveDiffNavigationURL strips query and fragment for custom scheme rewrites", () => {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "cmux-diff-viewer://local/current",
+    url: "mosaic-diff-viewer://local/current",
   });
   (globalThis as any).window = dom.window;
 
   expect(resolveDiffNavigationURL("https://example.com/diff/target?source=worktree#file")).toBe(
-    "cmux-diff-viewer://local/target",
+    "mosaic-diff-viewer://local/target",
   );
 });
 
@@ -94,11 +94,11 @@ test("resolveDiffNavigationURL passes a root-relative URL through unchanged unde
   // token host, so it must not enter the http->scheme segment-drop rewrite (which
   // would drop the query carrying token/repo/group).
   const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "cmux-diff-viewer://tok/diff-g-branch.html",
+    url: "mosaic-diff-viewer://tok/diff-g-branch.html",
   });
   (globalThis as any).window = dom.window;
 
-  const relative = "/__cmux_diff_viewer_branch?group=g&repo=%2Ftmp%2Fr&token=abc&base=develop";
+  const relative = "/__mosaic_diff_viewer_branch?group=g&repo=%2Ftmp%2Fr&token=abc&base=develop";
   expect(resolveDiffNavigationURL(relative)).toBe(relative);
 });
 
@@ -108,6 +108,6 @@ test("resolveDiffNavigationURL passes a root-relative URL through unchanged unde
   });
   (globalThis as any).window = dom.window;
 
-  const relative = "/__cmux_diff_viewer_branch?group=g&repo=%2Ftmp%2Fr&token=abc&base=develop";
+  const relative = "/__mosaic_diff_viewer_branch?group=g&repo=%2Ftmp%2Fr&token=abc&base=develop";
   expect(resolveDiffNavigationURL(relative)).toBe(relative);
 });

@@ -1,4 +1,4 @@
-# cmux Multiplayer Phase 1: Collaborative Editing and Presence
+# mosaic Multiplayer Phase 1: Collaborative Editing and Presence
 
 ## Status
 
@@ -6,21 +6,21 @@ This document is the implementation contract for Phase 1. It deliberately covers
 
 ## Repository Findings
 
-cmux is a shipped macOS application whose primary client is Swift 6 with SwiftUI, AppKit, and Observation. The macOS app still has a large app target under `Sources/`, plus a growing Swift Package Manager graph under `Packages/macOS/`, `Packages/Shared/`, and `Packages/iOS/`. The build is Xcode-driven through `cmux.xcodeproj`/`cmux.xcworkspace`; local debug validation uses `./scripts/reload.sh --tag <tag>`. JavaScript/TypeScript exists for the web app, embedded webviews, and Cloudflare Workers. There is also Zig for Ghostty, Go for the remote daemon, Rust for native FFI, and Python for integration tests.
+mosaic is a shipped macOS application whose primary client is Swift 6 with SwiftUI, AppKit, and Observation. The macOS app still has a large app target under `Sources/`, plus a growing Swift Package Manager graph under `Packages/macOS/`, `Packages/Shared/`, and `Packages/iOS/`. The build is Xcode-driven through `mosaic.xcodeproj`/`mosaic.xcworkspace`; local debug validation uses `./scripts/reload.sh --tag <tag>`. JavaScript/TypeScript exists for the web app, embedded webviews, and Cloudflare Workers. There is also Zig for Ghostty, Go for the remote daemon, Rust for native FFI, and Python for integration tests.
 
-cmux already has an editable file-content surface: `FilePreviewTextEditor` and `SavingTextView` in `Sources/Panels/FilePreviewTextEditor.swift`, hosted by `FilePreviewPanel` and `MarkdownPanel`. This is a production plain-text `NSTextView` editor for file preview panels, not Monaco, CodeMirror, Ace, LSP, syntax highlighting, or a full IDE editor. Phase 1 therefore wires collaboration to the existing plain-text file editor and does not build cmux's first full code editor.
+mosaic already has an editable file-content surface: `FilePreviewTextEditor` and `SavingTextView` in `Sources/Panels/FilePreviewTextEditor.swift`, hosted by `FilePreviewPanel` and `MarkdownPanel`. This is a production plain-text `NSTextView` editor for file preview panels, not Monaco, CodeMirror, Ace, LSP, syntax highlighting, or a full IDE editor. Phase 1 therefore wires collaboration to the existing plain-text file editor and does not build mosaic's first full code editor.
 
-cmux already has a Unix-domain socket and CLI API. The preferred command surface is v2 line-delimited JSON RPC through `CmuxControlSocket` and the CLI in `CLI/cmux.swift`; `cmux rpc <method> <json>` already exposes new v2 methods. Phase 1 must not add a conflicting app-control transport. The collaboration relay is a separate outward WebSocket service used only for multiplayer document traffic, while local configuration/control should fit the existing socket/CLI conventions later.
+mosaic already has a Unix-domain socket and CLI API. The preferred command surface is v2 line-delimited JSON RPC through `MosaicControlSocket` and the CLI in `CLI/mosaic.swift`; `mosaic rpc <method> <json>` already exposes new v2 methods. Phase 1 must not add a conflicting app-control transport. The collaboration relay is a separate outward WebSocket service used only for multiplayer document traffic, while local configuration/control should fit the existing socket/CLI conventions later.
 
-cmux also has a Cloudflare Workers presence service in `workers/presence/`, backed by Durable Objects. That service is team/device presence, not document collaboration. Phase 1 follows its deployment style, but keeps document collaboration on a separate minimal relay so CRDT payloads remain opaque and the relay does not inherit device-registry semantics.
+mosaic also has a Cloudflare Workers presence service in `workers/presence/`, backed by Durable Objects. That service is team/device presence, not document collaboration. Phase 1 follows its deployment style, but keeps document collaboration on a separate minimal relay so CRDT payloads remain opaque and the relay does not inherit device-registry semantics.
 
 ## CRDT Selection
 
 ### Options Considered
 
-Automerge Swift (`automerge/automerge-swift`) is the strongest native fit. It wraps the maintained Automerge Rust core for Apple platforms, is MIT licensed, supports Swift Package Manager, exposes Automerge text/list/map CRDTs, and is designed for offline-first sync. It has credible multi-document support when paired with Automerge Repo Swift, but Phase 1 does not need Automerge Repo's full storage/network stack because cmux needs a dumb relay protocol and app-specific disk reconciliation. Integration cost is moderate: add an SPM dependency, wrap it in a cmux package, define binary update messages, and map `NSTextView` edits to Automerge text changes.
+Automerge Swift (`automerge/automerge-swift`) is the strongest native fit. It wraps the maintained Automerge Rust core for Apple platforms, is MIT licensed, supports Swift Package Manager, exposes Automerge text/list/map CRDTs, and is designed for offline-first sync. It has credible multi-document support when paired with Automerge Repo Swift, but Phase 1 does not need Automerge Repo's full storage/network stack because mosaic needs a dumb relay protocol and app-specific disk reconciliation. Integration cost is moderate: add an SPM dependency, wrap it in a mosaic package, define binary update messages, and map `NSTextView` edits to Automerge text changes.
 
-Yjs is extremely mature in JavaScript, MIT licensed, and has excellent editor ecosystem support. In this repo it would either require a JavaScript runtime/sidecar or YSwift/Yrs bindings. YSwift exists but is explicitly work-in-progress, brings a Rust/XCFramework binding path similar to Automerge, and naturally pairs with Yjs-specific WebSocket providers that are more opinionated than this relay-only design. Choosing Yjs would bias cmux toward a JS collaboration stack despite the host editor being Swift/AppKit.
+Yjs is extremely mature in JavaScript, MIT licensed, and has excellent editor ecosystem support. In this repo it would either require a JavaScript runtime/sidecar or YSwift/Yrs bindings. YSwift exists but is explicitly work-in-progress, brings a Rust/XCFramework binding path similar to Automerge, and naturally pairs with Yjs-specific WebSocket providers that are more opinionated than this relay-only design. Choosing Yjs would bias mosaic toward a JS collaboration stack despite the host editor being Swift/AppKit.
 
 Automerge via a Node or Rust sidecar would work technically, but adds process management, IPC, packaging, crash recovery, and socket security concerns. It also duplicates the app's existing native state-management direction. This is unjustified for Phase 1 because a native Swift binding exists.
 
@@ -28,7 +28,7 @@ A small in-repo text CRDT is possible for tests and prototyping, but it is a lon
 
 ### Decision
 
-Use Automerge Swift as the intended CRDT library for the production Phase 1 client module. The cmux-facing API is a thin `CmuxCollaboration` package so the rest of the app never depends directly on Automerge types. The relay treats Automerge binary changes and snapshots as opaque base64 strings.
+Use Automerge Swift as the intended CRDT library for the production Phase 1 client module. The mosaic-facing API is a thin `MosaicCollaboration` package so the rest of the app never depends directly on Automerge types. The relay treats Automerge binary changes and snapshots as opaque base64 strings.
 
 Undo/redo remains local-editor undo for Phase 1. Automerge preserves causal operations, but collaborative undo semantics are not polished here; remote changes clear or segment local undo groups rather than promising Google Docs-grade shared undo.
 
@@ -56,7 +56,7 @@ Disk reconciliation is deterministic:
 2. While the CRDT document is live, watch or poll the file metadata at save/close boundaries.
 3. On close, compute `currentDiskHash`.
 4. If `currentDiskHash == baseDiskHash` or `currentDiskHash == lastWrittenHash`, write the CRDT text atomically and record the new hash.
-5. If `currentDiskHash` differs, an out-of-band edit occurred, such as an external editor save or `git checkout`. Phase 1 does not merge that external file with the CRDT. It writes the CRDT text to a sibling conflict file named `<filename>.cmux-collab-conflict-<timestamp>` and leaves the externally changed original untouched. The user sees a clear conflict state. This avoids silent data loss.
+5. If `currentDiskHash` differs, an out-of-band edit occurred, such as an external editor save or `git checkout`. Phase 1 does not merge that external file with the CRDT. It writes the CRDT text to a sibling conflict file named `<filename>.mosaic-collab-conflict-<timestamp>` and leaves the externally changed original untouched. The user sees a clear conflict state. This avoids silent data loss.
 
 Files not explicitly opened and shared are never read, watched, updated, or written by this system.
 
@@ -159,7 +159,7 @@ Relay unreachable at session start: session creation/join fails fast with `relay
 
 Relay drops mid-session: the client marks the session `disconnected`, clears remote presence after the heartbeat timeout, and keeps local CRDT editing available. It queues local CRDT changes in memory. On reconnect it rejoins and requests full snapshots for every open shared document, then merges queued local changes. If the app quits before reconnect, unsaved live CRDT state is reconciled to disk through the normal close/termination path.
 
-Local file changes on disk while a CRDT doc is live: the CRDT buffer remains authoritative for the shared session. On close/save reconciliation, if the disk hash changed outside cmux, cmux writes the CRDT text to a conflict sibling and leaves the changed original untouched. This is the deterministic Phase 1 answer; it does not attempt a three-way merge.
+Local file changes on disk while a CRDT doc is live: the CRDT buffer remains authoritative for the shared session. On close/save reconciliation, if the disk hash changed outside mosaic, mosaic writes the CRDT text to a conflict sibling and leaves the changed original untouched. This is the deterministic Phase 1 answer; it does not attempt a three-way merge.
 
 Two peers both try to be first to share the same file: both create CRDT docs from their local file content and broadcast snapshots. The lower `peerID` snapshot is treated as the canonical bootstrap if histories are unrelated. The higher `peerID` peer discards its just-created doc and joins the canonical snapshot, then reapplies any local edits it made after the share attempt. This can briefly replace the higher peer's view. This is accepted in Phase 1 to avoid split-brain document IDs.
 
@@ -195,7 +195,7 @@ Automated tests must cover:
 
 Manual validation before trusting real sessions:
 
-- Two tagged cmux app instances against two separate local clones, sharing one file through the relay.
+- Two tagged mosaic app instances against two separate local clones, sharing one file through the relay.
 - Remote cursor rendering in the plain-text file preview editor.
 - Save/close/reopen behavior on both clones.
 - Relay restart and app sleep/wake.

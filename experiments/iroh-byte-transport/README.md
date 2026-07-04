@@ -1,11 +1,11 @@
 # Iroh Byte Transport Experiment
 
-This is a deliberately small Rust experiment for the cmux mobile Iroh path. It is not linked into the iOS app. It proves the byte-stream shape we need before we decide whether the production bridge is an FFI library, a local helper, or a later Swift-native Iroh package.
+This is a deliberately small Rust experiment for the mosaic mobile Iroh path. It is not linked into the iOS app. It proves the byte-stream shape we need before we decide whether the production bridge is an FFI library, a local helper, or a later Swift-native Iroh package.
 
 The experiment uses one Iroh ALPN:
 
 ```text
-dev.cmux.mobile.terminal/0
+dev.mosaic.mobile.terminal/0
 ```
 
 Run the same-process smoke test:

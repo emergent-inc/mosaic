@@ -76,7 +76,7 @@ enum GrokSessionLocator {
     }
 
     static func sessionRoot(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         homeDirectory: String = NSHomeDirectory()
     ) -> GrokSessionRoot {
@@ -103,7 +103,7 @@ enum GrokSessionLocator {
     }
 
     static func sessionRoots(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         cwdFilter: String?,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         homeDirectory: String = NSHomeDirectory(),
@@ -187,7 +187,7 @@ enum GrokSessionLocator {
     }
 
     private static func registrationUsesDefaultGrokRoot(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         homeDirectory: String
     ) -> Bool {
         guard let configuredRoot = normalized(registration.sessionDirectory) else {
@@ -248,7 +248,7 @@ extension SessionIndexStore {
     }
 
     nonisolated static func loadGrokEntries(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         needle: String,
         cwdFilter: String?,
         offset: Int,
@@ -367,13 +367,13 @@ extension SessionIndexStore {
     }
 
     nonisolated static func loadRegisteredAgentEntries(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         needle: String,
         cwdFilter: String?,
         offset: Int,
         limit: Int
     ) async -> [SessionEntry] {
-        if registration.id == CmuxVaultAgentRegistration.builtInAntigravity.id {
+        if registration.id == MosaicVaultAgentRegistration.builtInAntigravity.id {
             return loadAntigravityHistoryEntries(
                 registration: registration,
                 needle: needle,
@@ -464,7 +464,7 @@ extension SessionIndexStore {
     }
 
     nonisolated private static func loadAntigravityHistoryEntries(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         needle: String,
         cwdFilter: String?,
         offset: Int,
@@ -550,7 +550,7 @@ extension SessionIndexStore {
     }
 
     nonisolated private static func registeredSessionRoots(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         cwdFilter: String?
     ) -> [String] {
         if case .grokSessionDirectory = registration.sessionIdSource {
@@ -569,9 +569,9 @@ extension SessionIndexStore {
     }
 
     nonisolated private static func registrationWithGrokHomePrefix(
-        _ registration: CmuxVaultAgentRegistration,
+        _ registration: MosaicVaultAgentRegistration,
         grokHome: String?
-    ) -> CmuxVaultAgentRegistration {
+    ) -> MosaicVaultAgentRegistration {
         guard let grokHome = grokHome?.trimmingCharacters(in: .whitespacesAndNewlines),
               !grokHome.isEmpty,
               !registration.resumeCommand.contains("GROK_HOME") else {
@@ -673,7 +673,7 @@ extension SessionIndexStore {
 
     nonisolated private static func extractRegisteredJSONLMetadata(
         url: URL,
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         fallbackCWD: String?
     ) -> RegisteredAgentJSONLMetadata {
         var metadata = RegisteredAgentJSONLMetadata()

@@ -1,5 +1,5 @@
 import AppKit
-import CmuxWorkspaces
+import MosaicWorkspaces
 
 /// App-side `UserDefaults`-backed conformance to the window-background settings
 /// seam. The default values match the legacy god-file reads byte-for-byte:
@@ -24,7 +24,7 @@ struct UserDefaultsWindowBackgroundSettings: WindowBackgroundSettingsReading {
 }
 
 /// Transitional composition point for the window-background policy and the
-/// compositor-blur controller, replacing the `cmux*` free functions that lived
+/// compositor-blur controller, replacing the `mosaic*` free functions that lived
 /// in the terminal god file. These read `UserDefaults.standard` exactly as the
 /// legacy free functions did; the proper composition root will inject them
 /// later, mirroring the other transitional `GhosttyApp` statics.

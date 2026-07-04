@@ -63,9 +63,9 @@ describe("agent page variants", () => {
               </a>
               <table>
                 <thead><tr><th>Command</th><th>Description</th></tr></thead>
-                <tbody><tr><td><code>cmux list-workspaces</code></td><td>List workspaces.</td></tr></tbody>
+                <tbody><tr><td><code>mosaic list-workspaces</code></td><td>List workspaces.</td></tr></tbody>
               </table>
-              <pre><code>cmux notify --title Done</code></pre>
+              <pre><code>mosaic notify --title Done</code></pre>
             </main>
           </body>
         </html>`,
@@ -88,15 +88,15 @@ describe("agent page variants", () => {
     const markdown = markdownFromHtml({
       html: `
         <html>
-          <head><title>Settings &amp; Docs &#39;Guide&#39; \u2014 cmux</title></head>
+          <head><title>Settings &amp; Docs &#39;Guide&#39; \u2014 mosaic</title></head>
           <body>
-            <main><p>Configure cmux.</p></main>
+            <main><p>Configure mosaic.</p></main>
           </body>
         </html>`,
       sourceUrl: "https://mosaic.inc/docs/configuration",
     });
 
-    expect(markdown).toStartWith("# Settings & Docs 'Guide'\n\nConfigure cmux.");
+    expect(markdown).toStartWith("# Settings & Docs 'Guide'\n\nConfigure mosaic.");
   });
 
   test("prefers the readable page heading over shell headings", () => {
@@ -147,7 +147,7 @@ describe("agent page variants", () => {
           <body>
             <main>
               <a href="/blog">Back to blog</a>
-              <img src="/logo.png" alt="cmux icon" />
+              <img src="/logo.png" alt="mosaic icon" />
               <h1>Post Title</h1>
               <p>Body text.</p>
             </main>
@@ -192,7 +192,7 @@ describe("agent page variants", () => {
                 <a href="?tab=cli">CLI tab</a>
                 <a href="#install">Install</a>
                 <a href="/download">Download</a>
-                <a href="https://github.com/emergent-inc/cmux">GitHub</a>
+                <a href="https://github.com/emergent-inc/mosaic">GitHub</a>
                 <img src="images/logo.png" alt="Logo" />
               </p>
             </main>
@@ -210,7 +210,7 @@ describe("agent page variants", () => {
       "[Install](https://mosaic.inc/docs/getting-started#install)",
     );
     expect(markdown).toContain("[Download](https://mosaic.inc/download)");
-    expect(markdown).toContain("[GitHub](https://github.com/emergent-inc/cmux)");
+    expect(markdown).toContain("[GitHub](https://github.com/emergent-inc/mosaic)");
     expect(markdown).toContain("![Logo](https://mosaic.inc/docs/images/logo.png)");
   });
 
@@ -219,13 +219,13 @@ describe("agent page variants", () => {
       [
         "# Docs",
         "",
-        "![cmux icon](https://mosaic.inc/logo.png)",
+        "![mosaic icon](https://mosaic.inc/logo.png)",
         "",
         "Read the [API docs](https://mosaic.inc/docs/api).",
         "",
         "| Command | Description |",
         "| --- | --- |",
-        "| `cmux list-workspaces` | List workspaces. |",
+        "| `mosaic list-workspaces` | List workspaces. |",
         "",
         "```",
         "arr.map(fn)[0]",
@@ -236,13 +236,13 @@ describe("agent page variants", () => {
     );
 
     expect(text).toContain("Docs");
-    expect(text).toContain("cmux icon (https://mosaic.inc/logo.png)");
+    expect(text).toContain("mosaic icon (https://mosaic.inc/logo.png)");
     expect(text).toContain("API docs (https://mosaic.inc/docs/api)");
     expect(text).toContain("Command\tDescription");
-    expect(text).toContain("cmux list-workspaces\tList workspaces.");
+    expect(text).toContain("mosaic list-workspaces\tList workspaces.");
     expect(text).toContain("arr.map(fn)[0]");
     expect(text).not.toContain("```");
-    expect(text).not.toContain("![cmux icon]");
+    expect(text).not.toContain("![mosaic icon]");
     expect(text).not.toContain("[API docs]");
   });
 
@@ -260,11 +260,11 @@ describe("agent page variants", () => {
 
   test("removes single-column Markdown table dividers from text", () => {
     const text = plainTextFromMarkdown(
-      ["| Name |", "| --- |", "| cmux |"].join("\n"),
+      ["| Name |", "| --- |", "| mosaic |"].join("\n"),
     );
 
     expect(text).toContain("Name");
-    expect(text).toContain("cmux");
+    expect(text).toContain("mosaic");
     expect(text).not.toContain("---");
   });
 

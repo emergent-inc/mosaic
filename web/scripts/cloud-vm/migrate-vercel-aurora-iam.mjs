@@ -21,9 +21,9 @@ const { migrate } = requireFromWeb("drizzle-orm/node-postgres/migrator");
 try {
   const env = loadTargetEnv(project);
   requireEnvKeys(env, ["AWS_REGION", "PGHOST", "PGPORT", "PGUSER", "PGDATABASE"], `${project.projectName} migration`);
-  if ((env.CMUX_DB_SSL_CA_PEM || env.CMUX_DB_SSL_CA_PEM_BASE64) && process.env.CMUX_ALLOW_DB_CA_OVERRIDE !== "1") {
+  if ((env.MOSAIC_DB_SSL_CA_PEM || env.MOSAIC_DB_SSL_CA_PEM_BASE64) && process.env.MOSAIC_ALLOW_DB_CA_OVERRIDE !== "1") {
     throw new Error(
-      "CMUX_DB_SSL_CA_PEM(_BASE64) is set. Current Vercel Aurora RDS certs chain to Amazon Root CA 1, so Node's default trust store should be used. Remove the override, redeploy, then retry. Set CMUX_ALLOW_DB_CA_OVERRIDE=1 only for a verified private CA.",
+      "MOSAIC_DB_SSL_CA_PEM(_BASE64) is set. Current Vercel Aurora RDS certs chain to Amazon Root CA 1, so Node's default trust store should be used. Remove the override, redeploy, then retry. Set MOSAIC_ALLOW_DB_CA_OVERRIDE=1 only for a verified private CA.",
     );
   }
   const pgPort = Number(env.PGPORT);
@@ -50,7 +50,7 @@ try {
     user: env.PGUSER,
     database: env.PGDATABASE,
     password: authToken,
-    ssl: { rejectUnauthorized: parseBoolean(env.CMUX_DB_SSL_REJECT_UNAUTHORIZED, true) },
+    ssl: { rejectUnauthorized: parseBoolean(env.MOSAIC_DB_SSL_REJECT_UNAUTHORIZED, true) },
     max: 1,
   });
 

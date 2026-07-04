@@ -19,6 +19,6 @@ export function useCommentsBootstrap(
     started.current = true;
     listComments(repoRoot)
       .then((comments) => onLoaded(comments))
-      .catch((error) => console.warn("cmux diff comments load failed", error));
+      .catch((error) => console.warn("mosaic diff comments load failed", error));
   }, [onLoaded, repoRoot]);
 }

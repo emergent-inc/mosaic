@@ -29,7 +29,7 @@ function samplePayload() {
 function samplePayloadWithCanonicalURL() {
   return {
     ...samplePayload(),
-    attach_url: "cmux-ios://attach?v=2&r=100.1.2.3:8080",
+    attach_url: "mosaic-ios://attach?v=2&r=100.1.2.3:8080",
   };
 }
 
@@ -44,7 +44,7 @@ test("builds a dev-scheme attach URL with the version and base64url ticket", () 
   // routes to the dev iOS build via the system Camera, not an installed
   // TestFlight/App Store build.
   const { attachURL } = buildAttachURL(samplePayload());
-  assert.match(attachURL, /^cmux-ios-dev:\/\/attach\?v=1&payload=/);
+  assert.match(attachURL, /^mosaic-ios-dev:\/\/attach\?v=1&payload=/);
   const decoded = decodePayload(attachURL);
   assert.equal(decoded.version, 1);
   assert.equal(decoded.authToken, "secret-token");
@@ -53,10 +53,10 @@ test("builds a dev-scheme attach URL with the version and base64url ticket", () 
 
 test("emits the release scheme when explicitly requested", () => {
   const { attachURL } = buildAttachURL(samplePayload(), { scheme: RELEASE_URL_SCHEME });
-  assert.match(attachURL, /^cmux-ios:\/\/attach\?v=1&payload=/);
+  assert.match(attachURL, /^mosaic-ios:\/\/attach\?v=1&payload=/);
   // The dev default and the release override are the two channel schemes.
-  assert.equal(DEV_URL_SCHEME, "cmux-ios-dev");
-  assert.equal(RELEASE_URL_SCHEME, "cmux-ios");
+  assert.equal(DEV_URL_SCHEME, "mosaic-ios-dev");
+  assert.equal(RELEASE_URL_SCHEME, "mosaic-ios");
 });
 
 test("round-trips the encoded ticket back to the original object", () => {
@@ -99,14 +99,14 @@ test("defaults version to 1 when the ticket omits it", () => {
 
 test("prefers the canonical attach_url returned by the Mac RPC", () => {
   const { attachURL, routes, payload } = buildAttachURL(samplePayloadWithCanonicalURL());
-  assert.equal(attachURL, "cmux-ios://attach?v=2&r=100.1.2.3:8080");
+  assert.equal(attachURL, "mosaic-ios://attach?v=2&r=100.1.2.3:8080");
   assert.equal(payload.attach_url, attachURL);
   assert.equal(routes.length, 2);
 });
 
 test("does not reuse canonical attach_url after local route filtering", () => {
   const { attachURL, routes } = buildAttachURL(samplePayloadWithCanonicalURL(), { routeKind: "tailscale" });
-  assert.match(attachURL, /^cmux-ios:\/\/attach\?v=1&payload=/);
+  assert.match(attachURL, /^mosaic-ios:\/\/attach\?v=1&payload=/);
   assert.equal(routes.length, 1);
   const decoded = decodePayload(attachURL);
   assert.equal(decoded.routes.length, 1);

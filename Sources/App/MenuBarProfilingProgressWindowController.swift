@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFeedback
+import MosaicFeedback
 import Foundation
 
 @MainActor
@@ -102,8 +102,8 @@ final class MenuBarProfilingProgressWindowController: NSWindowController {
         }
 
         do {
-            let outputLog = try makeTemporaryLogFile(prefix: "cmux-profile-output")
-            let errorLog = try makeTemporaryLogFile(prefix: "cmux-profile-error")
+            let outputLog = try makeTemporaryLogFile(prefix: "mosaic-profile-output")
+            let errorLog = try makeTemporaryLogFile(prefix: "mosaic-profile-error")
             outputLogURL = outputLog.0
             outputLogHandle = outputLog.1
             errorLogURL = errorLog.0
@@ -307,7 +307,7 @@ final class MenuBarProfilingProgressWindowController: NSWindowController {
 
     private func parseOutputURL(from text: String) {
         for line in text.components(separatedBy: .newlines) {
-            if let range = line.range(of: "cmux profiling capture written to ") {
+            if let range = line.range(of: "mosaic profiling capture written to ") {
                 let path = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 outputURL = URL(fileURLWithPath: path)
             } else if let range = line.range(of: "Output: ") {

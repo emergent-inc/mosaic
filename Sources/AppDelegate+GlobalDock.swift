@@ -1,5 +1,5 @@
 import AppKit
-import CmuxTerminal
+import MosaicTerminal
 
 /// App-wide Global Dock.
 ///
@@ -19,7 +19,7 @@ extension AppDelegate {
 
     /// The app-wide Global Dock, created on first access and retained for the
     /// app's lifetime (never torn down on workspace close). Seeded from
-    /// `~/.config/cmux/dock.json` with a home base directory.
+    /// `~/.config/mosaic/dock.json` with a home base directory.
     var globalDock: DockSplitStore {
         if let existing = Self._globalDock { return existing }
         let store = DockSplitStore(

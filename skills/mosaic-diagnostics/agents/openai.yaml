@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Diagnostics"
+  short_description: "Check mosaic hooks, restore, CLI, and settings."
+  default_prompt: "Use $mosaic-diagnostics to collect a read-only mosaic health report and explain any hook or session restore problems."

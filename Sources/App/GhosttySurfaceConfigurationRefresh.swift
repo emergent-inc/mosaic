@@ -1,34 +1,34 @@
 @MainActor
 enum GhosttySurfaceConfigurationRefresh {
     nonisolated static let forceRefreshReason = "appDelegate.refreshAfterGhosttyConfigReload"
-    nonisolated static let cmuxThemeReloadLegacySource = "distributed.cmux.themes"
-    nonisolated static let cmuxThemeReloadPreviewSource = "distributed.cmux.themes.preview"
-    nonisolated static let cmuxThemeReloadFinalSource = "distributed.cmux.themes.final"
-    nonisolated static let cmuxThemePreviewReloadDebounceMilliseconds = 180
+    nonisolated static let mosaicThemeReloadLegacySource = "distributed.mosaic.themes"
+    nonisolated static let mosaicThemeReloadPreviewSource = "distributed.mosaic.themes.preview"
+    nonisolated static let mosaicThemeReloadFinalSource = "distributed.mosaic.themes.final"
+    nonisolated static let mosaicThemePreviewReloadDebounceMilliseconds = 180
 
-    nonisolated static func cmuxThemeReloadSource(phase: String?) -> String {
+    nonisolated static func mosaicThemeReloadSource(phase: String?) -> String {
         switch phase {
         case "final", "apply":
-            return cmuxThemeReloadFinalSource
+            return mosaicThemeReloadFinalSource
         case "preview":
-            return cmuxThemeReloadPreviewSource
+            return mosaicThemeReloadPreviewSource
         default:
-            return cmuxThemeReloadLegacySource
+            return mosaicThemeReloadLegacySource
         }
     }
 
-    nonisolated static func shouldDebounceCmuxThemeReload(source: String) -> Bool {
+    nonisolated static func shouldDebounceMosaicThemeReload(source: String) -> Bool {
         switch source {
-        case cmuxThemeReloadLegacySource, cmuxThemeReloadPreviewSource:
+        case mosaicThemeReloadLegacySource, mosaicThemeReloadPreviewSource:
             return true
         default:
             return false
         }
     }
 
-    nonisolated static func isCmuxThemeReloadSource(_ source: String) -> Bool {
+    nonisolated static func isMosaicThemeReloadSource(_ source: String) -> Bool {
         switch source {
-        case cmuxThemeReloadLegacySource, cmuxThemeReloadPreviewSource, cmuxThemeReloadFinalSource:
+        case mosaicThemeReloadLegacySource, mosaicThemeReloadPreviewSource, mosaicThemeReloadFinalSource:
             return true
         default:
             return false

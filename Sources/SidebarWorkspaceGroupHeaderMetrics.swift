@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import CoreGraphics
 
 /// Font sizes, icon/control frames, and badge padding for
@@ -19,7 +19,7 @@ import CoreGraphics
 /// ```swift
 /// let metrics = SidebarWorkspaceGroupHeaderMetrics(fontScale: settings.sidebarFontScale)
 /// Image(systemName: "chevron.down")
-///     .cmuxFont(size: metrics.chevronFontSize, weight: .semibold)
+///     .mosaicFont(size: metrics.chevronFontSize, weight: .semibold)
 ///     .frame(width: metrics.chevronFrame, height: metrics.chevronFrame)
 /// ```
 struct SidebarWorkspaceGroupHeaderMetrics: Equatable {

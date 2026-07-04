@@ -65,7 +65,7 @@ export function bugAlertSlackPayload(alert: BugAlert): { readonly text: string }
   const properties = propertyLines.length > 0 ? `\n${propertyLines.join("\n")}` : "";
   return {
     text:
-      `:rotating_light: cmux ${escapeSlack(alert.severity)} bug alert\n` +
+      `:rotating_light: mosaic ${escapeSlack(alert.severity)} bug alert\n` +
       `*Event:* \`${escapeSlack(alert.event)}\`\n` +
       `*Kind:* \`${escapeSlack(alert.errorKind)}\`\n` +
       `*Source:* \`${escapeSlack(alert.source)}\`` +

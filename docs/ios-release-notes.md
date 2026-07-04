@@ -1,6 +1,6 @@
 # iOS release notes & "What's New"
 
-How cmux tells iOS TestFlight testers what changed in a build, so an install or
+How mosaic tells iOS TestFlight testers what changed in a build, so an install or
 auto-update is never an opaque timestamp.
 
 ## The problem
@@ -54,7 +54,7 @@ Spec for phase 2:
 
 - **Trigger**: on launch, compare the running `CFBundleShortVersionString`
   (MARKETING_VERSION) against the last version the user has seen, persisted in
-  `UserDefaults` (e.g. `cmux.whatsNew.lastSeenVersion`). If the running version is
+  `UserDefaults` (e.g. `mosaic.whatsNew.lastSeenVersion`). If the running version is
   newer, present the sheet once, then write the running version back. First-ever
   install does NOT show it (seed lastSeenVersion at install so onboarding owns the
   first run).

@@ -11,11 +11,11 @@ nonisolated enum GhosttyCrashBreadcrumb {
     static let notificationTabId = UUID(uuidString: "00000000-0000-0000-0000-000000003873")!
 
     nonisolated static var defaultCrashDirectoryURL: URL {
-        SessionPersistencePolicy.defaultCmuxCrashDirectoryURL()
+        SessionPersistencePolicy.defaultMosaicCrashDirectoryURL()
     }
 
     nonisolated static var defaultCrashDirectoryURLs: [URL] {
-        SessionPersistencePolicy.cmuxCrashDirectoryURLs()
+        SessionPersistencePolicy.mosaicCrashDirectoryURLs()
     }
 
     #if compiler(>=6.2)

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   return withApiRouteSpan(
     request,
     "/api/feedback",
-    { "cmux.subsystem": "feedback", "cmux.feedback.operation": "send" },
+    { "mosaic.subsystem": "feedback", "mosaic.feedback.operation": "send" },
     async (span): Promise<Response> => {
       const feedbackConfig = resolveFeedbackConfig();
       if (!feedbackConfig) {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
           { request },
         );
 
-        setSpanAttributes(span, { "cmux.rate_limited": rateLimited || error === "blocked" });
+        setSpanAttributes(span, { "mosaic.rate_limited": rateLimited || error === "blocked" });
         if (rateLimited || error === "blocked") {
           return jsonError("Rate limit exceeded", 429);
         }
@@ -112,8 +112,8 @@ export async function POST(request: Request) {
         return jsonError("Invalid feedback payload", 400);
       }
       setSpanAttributes(span, {
-        "cmux.feedback.message_length": parsed.data.message.length,
-        "cmux.feedback.app_version_set": parsed.data.appVersion.length > 0,
+        "mosaic.feedback.message_length": parsed.data.message.length,
+        "mosaic.feedback.app_version_set": parsed.data.appVersion.length > 0,
       });
 
       const attachmentsResult = await prepareAttachments(
@@ -130,8 +130,8 @@ export async function POST(request: Request) {
       const subject = buildSubject(email, message, appVersion, buildType);
       const attachments = attachmentsResult.attachments;
       setSpanAttributes(span, {
-        "cmux.feedback.attachment_count": attachments.length,
-        "cmux.feedback.attachment_bytes": attachments.reduce((sum, attachment) => sum + attachment.size, 0),
+        "mosaic.feedback.attachment_count": attachments.length,
+        "mosaic.feedback.attachment_bytes": attachments.reduce((sum, attachment) => sum + attachment.size, 0),
       });
       const resend = new Resend(feedbackConfig.resendApiKey);
 
@@ -201,8 +201,8 @@ export async function POST(request: Request) {
 
 function resolveFeedbackConfig() {
   const resendApiKey = env.RESEND_API_KEY;
-  const fromEmail = env.CMUX_FEEDBACK_FROM_EMAIL;
-  const rateLimitId = env.CMUX_FEEDBACK_RATE_LIMIT_ID;
+  const fromEmail = env.MOSAIC_FEEDBACK_FROM_EMAIL;
+  const rateLimitId = env.MOSAIC_FEEDBACK_RATE_LIMIT_ID;
 
   if (!resendApiKey || !fromEmail || !rateLimitId) {
     return null;
@@ -288,7 +288,7 @@ function buildSubject(
   ].filter(Boolean);
   const stamp = stampParts.length > 0 ? ` [${stampParts.join(" ")}]` : "";
 
-  return `cmux feedback from ${email}${stamp}: ${summary}`;
+  return `mosaic feedback from ${email}${stamp}: ${summary}`;
 }
 
 function buildTextBody(input: {
@@ -371,7 +371,7 @@ function buildHtmlBody(input: {
 
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;line-height:1.5">
-      <h1 style="font-size:18px;margin:0 0 16px">cmux feedback</h1>
+      <h1 style="font-size:18px;margin:0 0 16px">mosaic feedback</h1>
       <p><strong>From:</strong> ${escapeHtml(input.email)}</p>
       <p><strong>Build type:</strong> ${escapeHtml(input.buildType || "unknown")}</p>
       <p><strong>App version:</strong> ${escapeHtml(input.appVersion || "unknown")}</p>

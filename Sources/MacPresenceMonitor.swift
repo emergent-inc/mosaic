@@ -14,7 +14,7 @@ import Foundation
 /// 3. The last HARDWARE user input was within
 ///    ``recentHardwareInputThreshold`` seconds. Hardware input is read from
 ///    `CGEventSource`'s `.hidSystemState` — deliberately NOT
-///    `.combinedSessionState` — so synthetic events (cmux agents driving the
+///    `.combinedSessionState` — so synthetic events (mosaic agents driving the
 ///    debug socket, accessibility automation, event-posting tools) do not
 ///    count as the user being present. Input injected from the phone via
 ///    mobile RPC is dispatched in-process and never reaches the HID state

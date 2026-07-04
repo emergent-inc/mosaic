@@ -1,8 +1,8 @@
-import CmuxSettings
+import MosaicSettings
 import Foundation
 
 /// App-side display strings for the sidebar active-workspace indicator
-/// style (the value type lives in CmuxSettings; localized strings resolve
+/// style (the value type lives in MosaicSettings; localized strings resolve
 /// against the app bundle, so they stay app-side).
 extension WorkspaceIndicatorStyle {
     var displayName: String {

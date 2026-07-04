@@ -5,7 +5,7 @@ import Foundation
 /// The value is applied as CSS pixels to the rendered `.markdown-body`
 /// `max-width`. The panel still uses full available width on narrower splits.
 enum MarkdownMaxWidthSettings {
-    /// UserDefaults / cmux.json key (`markdown.maxWidth`).
+    /// UserDefaults / mosaic.json key (`markdown.maxWidth`).
     static let key = "markdown.maxWidth"
     static let defaultCSSPixels: Double = 980
     static let minimumCSSPixels: Double = 320

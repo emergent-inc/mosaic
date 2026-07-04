@@ -39,7 +39,7 @@ describe("VM timing helpers", () => {
     recorder.finish({ status: 200 });
     recorder.finish({ status: 200 });
 
-    expect(attributes.filter((attribute) => attribute.key === "cmux.vm.timing.total_ms")).toHaveLength(1);
-    expect(attributes.filter((attribute) => attribute.key === "cmux.vm.timing.total_count")).toHaveLength(1);
+    expect(attributes.filter((attribute) => attribute.key === "mosaic.vm.timing.total_ms")).toHaveLength(1);
+    expect(attributes.filter((attribute) => attribute.key === "mosaic.vm.timing.total_count")).toHaveLength(1);
   });
 });

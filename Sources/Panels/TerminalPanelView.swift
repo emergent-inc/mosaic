@@ -2,11 +2,11 @@ import SwiftUI
 import Foundation
 import AppKit
 import Bonsplit
-import CmuxAppKitSupportUI
-import CmuxTestSupport
-import CmuxCollaboration
-import CmuxTerminal
-import CmuxFoundation
+import MosaicAppKitSupportUI
+import MosaicTestSupport
+import MosaicCollaboration
+import MosaicTerminal
+import MosaicFoundation
 import UniformTypeIdentifiers
 
 /// View for rendering a terminal panel
@@ -200,13 +200,13 @@ struct TerminalPanelView: View {
     private func agentRoomStatusView(state: AgentRoomHeaderState) -> some View {
         if state.isConnected {
             HStack(spacing: 4) {
-                CmuxSystemSymbolImage(
+                MosaicSystemSymbolImage(
                     systemName: state.isDegraded ? "exclamationmark.triangle.fill" : "link",
                     pointSize: 9,
                     weight: .semibold
                 )
                 Text(state.label)
-                    .cmuxFont(size: 10, weight: .semibold)
+                    .mosaicFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
             .foregroundStyle(Color.white)
@@ -260,12 +260,12 @@ struct TerminalPanelView: View {
             }
         }) {
             HStack(spacing: 5) {
-                CmuxSystemSymbolImage(systemName: "person.2", pointSize: 10, weight: .semibold)
+                MosaicSystemSymbolImage(systemName: "person.2", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
                 Text(pillModel.showsParticipantCount
                     ? String.localizedStringWithFormat("%d", pillModel.otherParticipantCount)
                     : label)
-                    .cmuxFont(size: 10, weight: .semibold)
+                    .mosaicFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
             .foregroundStyle(foregroundColor)
@@ -294,7 +294,7 @@ struct TerminalPanelView: View {
         .onHover { hovering in
             isTerminalSessionPillHovered = hovering
         }
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
         .popover(item: $incomingInviteAlert, arrowEdge: .bottom) { invite in
             TerminalIncomingInviteAlertContent(
                 invite: invite,
@@ -396,7 +396,7 @@ struct TerminalPanelView: View {
                 Image(systemName: icon)
                     .font(.system(size: 9, weight: .semibold))
                 Text(label)
-                    .cmuxFont(size: 10, weight: .semibold)
+                    .mosaicFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
             .foregroundStyle(tint)
@@ -415,7 +415,7 @@ struct TerminalPanelView: View {
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TerminalCollaborationShareButton")
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand, enabled: !state.isMirrored)
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
@@ -574,7 +574,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     .accessibilityHidden(true)
 
                 Text(CollaborationStrings.sessionPopoverTitle)
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
             }
 
             if incomingSessionCount > 0 {
@@ -592,10 +592,10 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     Text(directorySharingEnabled
                         ? CollaborationStrings.directorySessionActive
                         : CollaborationStrings.sessionCodeLabel(code: sessionCode))
-                        .cmuxFont(size: 11, weight: .semibold)
+                        .mosaicFont(size: 11, weight: .semibold)
                         .textSelection(.enabled)
                     Text(isConnected ? CollaborationStrings.sessionConnectedDetail(peerSummary: peerSummary) : CollaborationStrings.sessionJoinedDetail)
-                        .cmuxFont(size: 11)
+                        .mosaicFont(size: 11)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -603,7 +603,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 if !participants.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(CollaborationStrings.sessionParticipantsTitle)
-                            .cmuxFont(size: 11, weight: .semibold)
+                            .mosaicFont(size: 11, weight: .semibold)
                         ForEach(participants) { participant in
                             HStack(spacing: 7) {
                                 CollaborationParticipantAvatarImage(
@@ -614,7 +614,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                                     fallbackUsesRoundedDesign: false
                                 )
                                 Text(participant.displayName)
-                                    .cmuxFont(size: 11)
+                                    .mosaicFont(size: 11)
                                     .lineLimit(1)
                             }
                         }
@@ -732,12 +732,12 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     .accessibilityHidden(true)
 
                 Text(CollaborationStrings.terminalRecipientsShareTitle)
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
             }
 
             if model.showsInviteAction {
                 Text(CollaborationStrings.terminalRecipientsEmpty)
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -770,7 +770,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     ForEach(recipients) { recipient in
                         Toggle(isOn: binding(for: recipient.participantID)) {
                             Text(recipient.displayName)
-                                .cmuxFont(size: 11)
+                                .mosaicFont(size: 11)
                                 .lineLimit(1)
                         }
                         .toggleStyle(.mosaicAccentCheckbox)
@@ -779,11 +779,12 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
 
                 if model.showsStopSharingAction {
                     HStack {
+                        Spacer()
                         TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
                             onStopSharing()
                         }
-                        Spacer()
                     }
+                    .padding(.top, 6)
                 }
             }
         }
@@ -1136,13 +1137,13 @@ private struct AgentHibernationPlaceholderView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            CmuxSystemSymbolImage(magnified: "pause.circle", pointSize: 34, weight: .regular)
+            MosaicSystemSymbolImage(magnified: "pause.circle", pointSize: 34, weight: .regular)
                 .foregroundStyle(.secondary)
             VStack(spacing: 4) {
                 Text(String(localized: "terminal.agentHibernation.title", defaultValue: "Agent hibernated"))
-                    .cmuxFont(.headline)
+                    .mosaicFont(.headline)
                 Text(state.agentDisplayName)
-                    .cmuxFont(.subheadline)
+                    .mosaicFont(.subheadline)
                     .foregroundStyle(.secondary)
                 Text(
                     String.localizedStringWithFormat(
@@ -1150,7 +1151,7 @@ private struct AgentHibernationPlaceholderView: View {
                         lastActivityText
                     )
                 )
-                .cmuxFont(.caption)
+                .mosaicFont(.caption)
                 .foregroundStyle(.tertiary)
             }
             TrackedButton("terminalpanelview_button_859", String(localized: "terminal.agentHibernation.resume", defaultValue: "Resume")) {
@@ -1192,7 +1193,7 @@ private struct TerminalViewportGeometryReporter: ViewModifier {
 @MainActor
 private func recordTerminalViewportGeometryForUITest(proxy: GeometryProxy, panel: TerminalPanel) {
     let env = ProcessInfo.processInfo.environment
-    guard env["CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+    guard env["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
         return
     }
 
@@ -1208,7 +1209,7 @@ private func recordTerminalViewportGeometryForUITest(proxy: GeometryProxy, panel
         hostedFrameInContent = .zero
     }
 
-    _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
+    _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "MOSAIC_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
         payload["terminalViewportPanelId"] = panel.id.uuidString
         payload["terminalViewportPanelWidth"] = terminalViewportFormat(proxy.size.width)
         payload["terminalViewportPanelHeight"] = terminalViewportFormat(proxy.size.height)
@@ -1265,7 +1266,7 @@ struct PanelAppearance {
         let backgroundColor = MosaicChromePalette.workspaceBackgroundColor
         return PanelAppearance(
             backgroundColor: backgroundColor,
-            foregroundColor: cmuxReadableForegroundNSColor(
+            foregroundColor: mosaicReadableForegroundNSColor(
                 preferred: config.foregroundColor,
                 on: backgroundColor
             ),

@@ -2,17 +2,17 @@
 # Clean up tagged dev-build artifacts created by scripts/reload.sh.
 #
 # Each `./scripts/reload.sh --tag <tag>` produces:
-#   ~/Library/Developer/Xcode/DerivedData/cmux-<tag>/      (multi-GB)
-#   /tmp/cmux-<tag>/                                       (build scratch)
-#   /tmp/cmux-debug-<tag>.sock                             (control socket)
-#   /tmp/cmux-debug-<tag>.log                              (debug log)
-#   /tmp/cmux-reload-<tag>.log                             (build log)
-#   ~/Library/Application Support/cmux/cmuxd-dev-<tag>.sock (cmuxd socket)
+#   ~/Library/Developer/Xcode/DerivedData/mosaic-<tag>/      (multi-GB)
+#   /tmp/mosaic-<tag>/                                       (build scratch)
+#   /tmp/mosaic-debug-<tag>.sock                             (control socket)
+#   /tmp/mosaic-debug-<tag>.log                              (debug log)
+#   /tmp/mosaic-reload-<tag>.log                             (build log)
+#   ~/Library/Application Support/mosaic/mosaicd-dev-<tag>.sock (mosaicd socket)
 #
 # This script removes those artifacts for tags that are safe to clean.
 # Safety rules (always on):
 #   - Skip any tag whose `Mosaic DEV <tag>` app is currently running.
-#   - Skip the tag pointed at by /tmp/cmux-last-cli-path (most recent reload).
+#   - Skip the tag pointed at by /tmp/mosaic-last-cli-path (most recent reload).
 # A worktree merely existing on the same name is not treated as a
 # protection. Use --keep TAG when you want to preserve a build whose
 # worktree you still have around, or --older-than DAYS to skip anything
@@ -34,8 +34,8 @@
 set -euo pipefail
 
 DERIVED_DATA_ROOT="$HOME/Library/Developer/Xcode/DerivedData"
-APP_SUPPORT_DIR="$HOME/Library/Application Support/cmux"
-LAST_CLI_PATH_FILE="/tmp/cmux-last-cli-path"
+APP_SUPPORT_DIR="$HOME/Library/Application Support/mosaic"
+LAST_CLI_PATH_FILE="/tmp/mosaic-last-cli-path"
 
 apply=0
 older_than_days=0
@@ -64,30 +64,30 @@ done
 
 # ---- discovery --------------------------------------------------------------
 
-# Tags come from DerivedData dirs named cmux-<tag>. Authoritative because
+# Tags come from DerivedData dirs named mosaic-<tag>. Authoritative because
 # reload.sh always creates one there.
 discover_tags() {
     [[ -d "$DERIVED_DATA_ROOT" ]] || return 0
     local d name
-    for d in "$DERIVED_DATA_ROOT"/cmux-*/; do
+    for d in "$DERIVED_DATA_ROOT"/mosaic-*/; do
         # The glob leaves the literal pattern if no matches exist on macOS.
         [[ -d "$d" ]] || continue
         name="${d%/}"
         name="${name##*/}"
-        printf '%s\n' "${name#cmux-}"
+        printf '%s\n' "${name#mosaic-}"
     done
 }
 
 artifact_paths_for_tag() {
     local tag="$1"
     printf '%s\n' \
-        "$DERIVED_DATA_ROOT/cmux-${tag}" \
-        "/tmp/cmux-${tag}" \
-        "/tmp/cmux-${tag}.tar" \
-        "/tmp/cmux-debug-${tag}.sock" \
-        "/tmp/cmux-debug-${tag}.log" \
-        "/tmp/cmux-reload-${tag}.log" \
-        "$APP_SUPPORT_DIR/cmuxd-dev-${tag}.sock"
+        "$DERIVED_DATA_ROOT/mosaic-${tag}" \
+        "/tmp/mosaic-${tag}" \
+        "/tmp/mosaic-${tag}.tar" \
+        "/tmp/mosaic-debug-${tag}.sock" \
+        "/tmp/mosaic-debug-${tag}.log" \
+        "/tmp/mosaic-reload-${tag}.log" \
+        "$APP_SUPPORT_DIR/mosaicd-dev-${tag}.sock"
 }
 
 bytes_in_path() {
@@ -122,12 +122,12 @@ derived_data_mtime_days() {
 # ---- safety probes ----------------------------------------------------------
 
 # Active tag (most recent reload) per the CLI symlink target. Match
-# `/cmux-<tag>/` anywhere in the path so we cover paths under DerivedData,
+# `/mosaic-<tag>/` anywhere in the path so we cover paths under DerivedData,
 # /tmp, or other locations reload.sh may emit.
 active_tag=""
 if [[ -r "$LAST_CLI_PATH_FILE" ]]; then
     last_path="$(cat "$LAST_CLI_PATH_FILE" 2>/dev/null || true)"
-    if [[ "$last_path" =~ /cmux-([A-Za-z0-9._-]+)/ ]]; then
+    if [[ "$last_path" =~ /mosaic-([A-Za-z0-9._-]+)/ ]]; then
         active_tag="${BASH_REMATCH[1]}"
     fi
 fi
@@ -169,7 +169,7 @@ while IFS= read -r tag; do
         reasons+=("--keep")
     fi
     if (( older_than_days > 0 )); then
-        age="$(derived_data_mtime_days "$DERIVED_DATA_ROOT/cmux-${tag}")"
+        age="$(derived_data_mtime_days "$DERIVED_DATA_ROOT/mosaic-${tag}")"
         # age == -1 means the DerivedData dir is gone (e.g., manually
         # deleted while orphan sockets/logs remain). Treat as "no age
         # signal, age filter does not apply" so the residue still gets

@@ -1,8 +1,8 @@
-# DEV-ONLY config for cmux-presence-dev: same worker + DO as production, but on
-# the workers.dev URL (cmux-presence-dev.<account>.workers.dev), NOT the
-# production presence.cmux.dev custom domain. Use:
+# DEV-ONLY config for mosaic-presence-dev: same worker + DO as production, but on
+# the workers.dev URL (mosaic-presence-dev.<account>.workers.dev), NOT the
+# production presence.mosaic.dev custom domain. Use:
 #   bunx wrangler deploy --config wrangler.dev.toml
-name = "cmux-presence-dev"
+name = "mosaic-presence-dev"
 main = "src/index.ts"
 compatibility_date = "2026-05-01"
 workers_dev = true

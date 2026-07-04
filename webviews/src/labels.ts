@@ -87,7 +87,7 @@ export function createDiffViewerLabelResolver(
 
     if (options.assertMissing && !missingKeys.has(key)) {
       missingKeys.add(key);
-      throw new Error(`Missing cmux diff viewer label: ${key}`);
+      throw new Error(`Missing mosaic diff viewer label: ${key}`);
     }
 
     return DEFAULT_DIFF_VIEWER_LABELS[key];

@@ -3,7 +3,7 @@ import postgres, { type Sql } from "postgres";
 import { closeCloudDbForTests } from "../db/client";
 import { loadUserVmDbSummary } from "../services/vms/dbReadModel";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 let sql: Sql | null = null;
@@ -12,7 +12,7 @@ beforeAll(() => {
   if (!runDbTests) return;
   const databaseURL = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseURL) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   sql = postgres(databaseURL, { max: 1 });
 });
@@ -41,7 +41,7 @@ describe("VM DB read model", () => {
         'user-db-read-model',
         'e2b',
         'read-model-provider-vm-1',
-        'cmuxd-ws:test',
+        'mosaicd-ws:test',
         '2026-04-25.1',
         'running',
         'read-model-idem-1'
@@ -52,7 +52,7 @@ describe("VM DB read model", () => {
       insert into cloud_vms (user_id, provider, provider_vm_id, image_id, status, idempotency_key)
       values
         ('user-db-read-model', 'freestyle', 'read-model-provider-vm-2', 'sc-test', 'failed', 'read-model-idem-2'),
-        ('other-user', 'e2b', 'read-model-provider-vm-other', 'cmuxd-ws:test', 'running', 'read-model-idem-other')
+        ('other-user', 'e2b', 'read-model-provider-vm-other', 'mosaicd-ws:test', 'running', 'read-model-idem-other')
     `;
     await sql`
       insert into cloud_vm_usage_events (user_id, vm_id, event_type, provider, image_id, metadata)
@@ -62,7 +62,7 @@ describe("VM DB read model", () => {
           ${runningVm.id},
           'vm.created',
           'e2b',
-          'cmuxd-ws:test',
+          'mosaicd-ws:test',
           '{"source":"read-model-test"}'::jsonb
         ),
         (
@@ -70,7 +70,7 @@ describe("VM DB read model", () => {
           ${runningVm.id},
           'vm.attach',
           'e2b',
-          'cmuxd-ws:test',
+          'mosaicd-ws:test',
           '{"source":"read-model-test"}'::jsonb
         ),
         (
@@ -78,7 +78,7 @@ describe("VM DB read model", () => {
           null,
           'vm.created',
           'e2b',
-          'cmuxd-ws:test',
+          'mosaicd-ws:test',
           '{"source":"read-model-test"}'::jsonb
         )
     `;

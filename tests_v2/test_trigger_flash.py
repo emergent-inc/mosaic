@@ -12,13 +12,13 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
-def _wait_flash_above(c: cmux, sid: str, base: int, timeout_s: float = 5.0) -> int:
+def _wait_flash_above(c: mosaic, sid: str, base: int, timeout_s: float = 5.0) -> int:
     """Poll flash_count until it exceeds base, returning as soon as the
     asynchronous UI flash increment is observable. trigger_flash schedules the
     increment on the app/main thread, so under load it may not land within a
@@ -34,7 +34,7 @@ def _wait_flash_above(c: cmux, sid: str, base: int, timeout_s: float = 5.0) -> i
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         sid = c.new_surface(panel_type="terminal")
         c.focus_surface(sid)
 
@@ -45,7 +45,7 @@ def main() -> int:
 
         after = _wait_flash_above(c, sid, base)
         if after <= base:
-            raise cmuxError(f"Expected flash count to increase (base={base}, after={after})")
+            raise mosaicError(f"Expected flash count to increase (base={base}, after={after})")
 
     print("PASS: surface.trigger_flash increments flash counter")
     return 0

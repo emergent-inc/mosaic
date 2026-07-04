@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import CmuxTerminalCore
+import MosaicTerminalCore
 
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
@@ -65,7 +65,7 @@ enum AppearanceSettings {
     }
 
     /// The system interface-style snapshot used by terminal color-scheme
-    /// resolution. Lifted to ``TerminalSystemAppearance`` in CmuxTerminalCore so
+    /// resolution. Lifted to ``TerminalSystemAppearance`` in MosaicTerminalCore so
     /// the terminal config type no longer reaches up into the app's appearance
     /// settings; this alias keeps the `AppearanceSettings.SystemAppearance`
     /// call-site name byte-identical.
@@ -102,9 +102,9 @@ enum AppearanceSettings {
         terminalColorSchemePreference(defaults: defaults, systemAppearance: systemAppearance)
     }
 
-    // Ghostty split-theme resolution follows cmux's persisted appearance mode.
+    // Ghostty split-theme resolution follows mosaic's persisted appearance mode.
     // AppKit view/window appearances can lag during live mode changes.
-    // The resolution itself now lives in CmuxTerminalCore
+    // The resolution itself now lives in MosaicTerminalCore
     // (TerminalColorSchemePreference.resolve); this forwards the app's
     // normalized appearance mode into it so both surfaces share one source of
     // truth.
@@ -274,7 +274,7 @@ final class AppearanceSettingsUserDefaultsObserver {
 
     init(
         environment: Environment = .live(),
-        source: String = "cmuxApp.appearanceDefaultsChanged"
+        source: String = "mosaicApp.appearanceDefaultsChanged"
     ) {
         self.environment = environment
         self.source = source
@@ -323,7 +323,7 @@ private struct AppearanceColorSchemeModifier: ViewModifier {
 }
 
 extension View {
-    func cmuxAppearanceColorScheme(_ rawValue: String?) -> some View {
+    func mosaicAppearanceColorScheme(_ rawValue: String?) -> some View {
         modifier(AppearanceColorSchemeModifier(rawValue: rawValue))
     }
 }

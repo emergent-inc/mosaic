@@ -1,4 +1,4 @@
-# iroh as the default cmux iOS-to-Mac transport
+# iroh as the default mosaic iOS-to-Mac transport
 
 Status: spike green, design committed, implementation planned as stacked PRs (see "Delivery plan"). Decision (Lawrence, 2026-06-09): iroh is the DEFAULT transport; Tailscale becomes opt-in. Onboarding "just works" with sign-in plus dial-by-EndpointId; no VPN install, no network setup.
 
@@ -8,11 +8,11 @@ This is a substrate swap, not a protocol rewrite. The existing mobile-host proto
 
 The codebase already reserved the seams for this:
 
-- `CmxAttachTransportKind.iroh` exists and validates against `.peer` endpoints (`Packages/Shared/CMUXMobileCore/Sources/CMUXMobileCore/CmxTransport.swift`).
+- `CmxAttachTransportKind.iroh` exists and validates against `.peer` endpoints (`Packages/Shared/MosaicMobileCore/Sources/MosaicMobileCore/CmxTransport.swift`).
 - `CmxAttachEndpoint.peer(id:relayHint:directAddrs:relayURL:)` already carries exactly what an iroh dial needs.
-- `MobileShellRouteAuthPolicy` already classifies `(.iroh, .peer)` as an encrypted route that may carry Stack tokens (`Packages/iOS/CmuxMobileShellModel/Sources/CmuxMobileShellModel/MobileShellRouteAuthPolicy.swift`).
-- The phone builds transports through `CmxRouteTransportFactory` keyed by route kind; adding a kind is one registration in `ios/cmux/cmuxApp.swift`.
-- The device registry (merged, https://github.com/emergent-inc/cmux/pull/5626) stores `CmxAttachRoute` lists as opaque jsonb, so an `iroh` route needs zero schema change, and the phone's `DeviceRegistryService` already skips unknown route kinds on old builds (forward compatible).
+- `MobileShellRouteAuthPolicy` already classifies `(.iroh, .peer)` as an encrypted route that may carry Stack tokens (`Packages/iOS/MosaicMobileShellModel/Sources/MosaicMobileShellModel/MobileShellRouteAuthPolicy.swift`).
+- The phone builds transports through `CmxRouteTransportFactory` keyed by route kind; adding a kind is one registration in `ios/mosaic/mosaicApp.swift`.
+- The device registry (merged, https://github.com/emergent-inc/mosaic/pull/5626) stores `CmxAttachRoute` lists as opaque jsonb, so an `iroh` route needs zero schema change, and the phone's `DeviceRegistryService` already skips unknown route kinds on old builds (forward compatible).
 - Settings diagnostics already have a localized "Iroh" route label (`Sources/HostSettingsActions.swift`).
 
 ## Spike results (gating risk: retired)
@@ -30,7 +30,7 @@ Spike code: `experiments/iroh-swift-ffi-spike/` (full notes in its README).
 
 `MobileHostService` gains an iroh listener lane next to the existing `NWListener`:
 
-1. On host start, bind one long-lived iroh endpoint (ALPN `dev.cmux.mobile.terminal/0`) with a persisted secret key (Keychain, below). Bind is lazy with the same enable gates as the TCP listener.
+1. On host start, bind one long-lived iroh endpoint (ALPN `dev.mosaic.mobile.terminal/0`) with a persisted secret key (Keychain, below). Bind is lazy with the same enable gates as the TCP listener.
 2. Accept loop: each accepted connection plus first bi-stream becomes a `MobileHostConnection`. Today that actor talks to `NWConnection` directly in exactly three places (`receiveNext`, send, state handler). Introduce a small `MobileHostByteConnection` protocol (receive/send/close, the server-side mirror of `CmxByteTransport`) with an `NWConnection` adapter and an iroh adapter. All connection-lifecycle logic (frame codec, first-frame and idle timeouts, subscriptions, RPC dispatch, connection registry, max-connection cap) is already transport-agnostic and is reused unchanged.
 3. Route publication: `MobileRouteResolver` adds one `iroh` route built from the endpoint (EndpointId, current relay URL, direct addrs) at a priority that beats Tailscale (lower number wins in `preferredRoute`). The route flows everywhere routes already flow: attach tickets, QR payloads, and `DeviceRegistryClient` POSTs to `/api/devices`.
 4. The loopback-reject rule stays on the TCP lane. The iroh lane has no loopback concept; its equivalent floor is that QUIC handshake requires the dialer to know the EndpointId, and the Stack same-account check still gates every RPC.
@@ -40,7 +40,7 @@ Spike code: `experiments/iroh-swift-ffi-spike/` (full notes in its README).
 One new transport, one registration:
 
 1. `CmxIrohByteTransport: CmxByteTransport` (actor) wrapping the C FFI: `connect()` binds the phone endpoint (if needed) and dials the route's peer endpoint with relay/addr hints; `receive()`/`send()` map to stream reads/writes off the main thread; `close()` finishes the stream and closes. The blocking FFI calls run inside the actor like `CmxNetworkByteTransport` runs its continuation plumbing today; the shared tokio runtime in the staticlib does the async work.
-2. Register `.iroh` in `cmuxApp.swift`'s `supportedKinds`. `CmxAttachTicket.preferredRoute(supportedKinds:)` then automatically prefers the iroh route on new builds while old builds keep picking Tailscale.
+2. Register `.iroh` in `mosaicApp.swift`'s `supportedKinds`. `CmxAttachTicket.preferredRoute(supportedKinds:)` then automatically prefers the iroh route on new builds while old builds keep picking Tailscale.
 3. Connection failure classification: map iroh connect errors into the existing `CmxConnectFailureKind` so the UI keeps giving actionable messages ("Mac offline" vs "relay unreachable").
 
 ### Onboarding flow (the point of all this)
@@ -48,7 +48,7 @@ One new transport, one registration:
 1. User signs into the iOS app (Stack).
 2. `DeviceRegistryService` lists the account's Macs; each instance's routes jsonb now includes the iroh route with the Mac's EndpointId.
 3. Phone dials by EndpointId. n0 discovery finds the Mac through its home relay; QUIC holepunches to a direct path when possible, relay carries traffic otherwise. No VPN, no LAN requirement, no QR.
-4. Every RPC still carries the Stack access token; the Mac verifies same-account server-side. The registry is rendezvous, never authority (unchanged from https://github.com/emergent-inc/cmux/pull/5626).
+4. Every RPC still carries the Stack access token; the Mac verifies same-account server-side. The registry is rendezvous, never authority (unchanged from https://github.com/emergent-inc/mosaic/pull/5626).
 
 QR pairing remains exactly what it is today: first-trust UX and the fallback when the registry is unreachable. The QR payload's routes list simply includes the iroh route, so a QR pair also yields an EndpointId the phone can keep dialing from anywhere.
 
@@ -66,19 +66,19 @@ So EndpointId pinning ships in the first iroh lane (PR 3/4), not later:
 
 Key custody: the iroh secret key is a 32-byte Ed25519 key. Mac and phone each generate once and store in Keychain as `kSecClassGenericPassword` with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no iCloud sync (a synced key would make two devices claim one EndpointId). The FFI gains `bind` taking an optional caller-provided key plus a key-generation call, so key material lives in Swift/Keychain and is passed in, not minted and held inside Rust.
 
-A stable phone-side key also gives every phone a stable EndpointId, which is the natural per-device identity the device-revoke design (cmuxterm-hq `plans/feat-ios-device-revoke/DESIGN.md`) was missing; the Mac can pin known client EndpointIds later. Not in scope for P1, but the keys are persisted from day one so the option exists.
+A stable phone-side key also gives every phone a stable EndpointId, which is the natural per-device identity the device-revoke design (mosaicterm-hq `plans/feat-ios-device-revoke/DESIGN.md`) was missing; the Mac can pin known client EndpointIds later. Not in scope for P1, but the keys are persisted from day one so the option exists.
 
 ## Relay strategy
 
 Now: n0's default relay fleet via `presets::N0` (free public infrastructure run by n0; relays are dumb encrypted-byte forwarders). Note from the spike: iroh 1.0.0-rc endpoints currently land on n0's canary relays (`relay.n0.iroh-canary.iroh.link`); before shipping, pin the stable relay map and re-verify at iroh 1.0 GA.
 
-Later: self-host `iroh-relay` (open source, stateless, cheap) under cmux.dev and set it as the relay map, keeping n0 as fallback. The `relay_url` field in routes means each Mac advertises whichever relay it actually homes on, so mixed fleets work during any migration. Self-hosting removes the third-party availability dependency and is the right place to add usage metrics.
+Later: self-host `iroh-relay` (open source, stateless, cheap) under mosaic.dev and set it as the relay map, keeping n0 as fallback. The `relay_url` field in routes means each Mac advertises whichever relay it actually homes on, so mixed fleets work during any migration. Self-hosting removes the third-party availability dependency and is the right place to add usage metrics.
 
 ## iOS background and battery behavior
 
-An idle iroh endpoint maintains a relay connection and periodic keepalives. Policy: the phone's endpoint lifecycle is tied to the attach session and scene phase, exactly like today's TCP connections. Bind on first connect, close the endpoint when the app backgrounds (the existing scenePhase handling in `cmuxApp.swift` is the hook) and rebind on foreground attach. No background networking entitlement, no persistent background socket, so no new battery cost class: radio use happens only while the user is actually attached. Reconnect-on-foreground is fast (sub-second connect in the spike, plus the session/RPC layer already handles transport drops and re-dials).
+An idle iroh endpoint maintains a relay connection and periodic keepalives. Policy: the phone's endpoint lifecycle is tied to the attach session and scene phase, exactly like today's TCP connections. Bind on first connect, close the endpoint when the app backgrounds (the existing scenePhase handling in `mosaicApp.swift` is the hook) and rebind on foreground attach. No background networking entitlement, no persistent background socket, so no new battery cost class: radio use happens only while the user is actually attached. Reconnect-on-foreground is fast (sub-second connect in the spike, plus the session/RPC layer already handles transport drops and re-dials).
 
-The Mac side keeps its endpoint bound whenever the mobile host is enabled, same as the TCP listener today. Mac battery impact is a relay keepalive, negligible against a running cmux.
+The Mac side keeps its endpoint bound whenever the mobile host is enabled, same as the TCP listener today. Mac battery impact is a relay keepalive, negligible against a running mosaic.
 
 ## Tailscale and LAN: opt-in fallback
 
@@ -91,17 +91,17 @@ Rollout compatibility: during the transition the toggle defaults ON so existing 
 
 ## Packaging (no vendored binaries)
 
-The spike's Rust crate graduates to `native/cmux-iroh/` in-repo (source only, Cargo.lock committed). A `scripts/ensure-cmux-iroh.sh` builds `CmuxIrohFFI.xcframework` (macOS arm64+x86_64, iOS device arm64, iOS sim arm64) into a gitignored path, mirroring the GhosttyKit pattern (`scripts/ensure-ghosttykit.sh`, gitignored `GhosttyKit.xcframework`). CI and fleet builders gain a pinned Rust toolchain step next to the existing pinned Zig step (`scripts/install-zig-ci.sh` precedent). The xcframework links into the Mac app and the iOS app; binary cost is about +7.7 MB per slice (measured in the spike), which is acceptable against the existing GhosttyKit payload.
+The spike's Rust crate graduates to `native/mosaic-iroh/` in-repo (source only, Cargo.lock committed). A `scripts/ensure-mosaic-iroh.sh` builds `MosaicIrohFFI.xcframework` (macOS arm64+x86_64, iOS device arm64, iOS sim arm64) into a gitignored path, mirroring the GhosttyKit pattern (`scripts/ensure-ghosttykit.sh`, gitignored `GhosttyKit.xcframework`). CI and fleet builders gain a pinned Rust toolchain step next to the existing pinned Zig step (`scripts/install-zig-ci.sh` precedent). The xcframework links into the Mac app and the iOS app; binary cost is about +7.7 MB per slice (measured in the spike), which is acceptable against the existing GhosttyKit payload.
 
 This toolchain addition (Rust on every CI runner and fleet builder) is the main reason P1 is its own PR rather than bundled with the spike: it touches build infrastructure shared by every job and deserves isolated review and a canary CI run.
 
 ## Reconciliation with the hive design
 
-cmuxterm-hq `plans/feat-hive/DESIGN.md` assumed "Tailscale is the substrate the user sets up; cmux assumes it and verifies it" with iroh as a P3 seam. This decision inverts that for phone-to-host: iroh is the default substrate and Tailscale is the opt-in. What carries over unchanged from hive, because the hive node contract was deliberately transport-pluggable:
+mosaicterm-hq `plans/feat-hive/DESIGN.md` assumed "Tailscale is the substrate the user sets up; mosaic assumes it and verifies it" with iroh as a P3 seam. This decision inverts that for phone-to-host: iroh is the default substrate and Tailscale is the opt-in. What carries over unchanged from hive, because the hive node contract was deliberately transport-pluggable:
 
 - The hive node contract (frame codec, Stack auth, capabilities, render-grid, registry) does not name a transport; an iroh route is just another `CmxAttachRoute` kind in the registry's opaque routes jsonb.
-- Linux hive nodes get iroh almost free: the host body is the Go `cmuxd-remote`, which can cgo the same C FFI staticlib (it is the same Rust crate, built for linux targets), or n0's Go path if that is cleaner at implementation time. The "headless box needs its own Stack credential" problem from hive is unchanged and orthogonal.
-- Hive's "verify, don't manage" Tailscale UX (the phone-side `TailscaleStatus` detector, https://github.com/emergent-inc/cmux/pull/5722) becomes the opt-in lane's diagnostics instead of the default lane's.
+- Linux hive nodes get iroh almost free: the host body is the Go `mosaicd-remote`, which can cgo the same C FFI staticlib (it is the same Rust crate, built for linux targets), or n0's Go path if that is cleaner at implementation time. The "headless box needs its own Stack credential" problem from hive is unchanged and orthogonal.
+- Hive's "verify, don't manage" Tailscale UX (the phone-side `TailscaleStatus` detector, https://github.com/emergent-inc/mosaic/pull/5722) becomes the opt-in lane's diagnostics instead of the default lane's.
 - Hive's P1 "tailnet-only, WireGuard is the encryption" security story is superseded on the default lane by iroh's QUIC raw-public-key TLS, which is stronger in one respect: it is end to end per-peer rather than per-network.
 
 The hive doc should be updated to say: default connectivity = registry routes dialed iroh-first; Tailscale/LAN = opt-in fallback routes. Nothing else in it changes.
@@ -111,8 +111,8 @@ The hive doc should be updated to say: default connectivity = registry routes di
 P1 is not bundled here because it carries a build-toolchain change for all CI and fleet builders; the seam work itself is mechanical. Stack, each independently revertable:
 
 1. **This PR**: spike (`experiments/iroh-swift-ffi-spike/`) plus this design doc. No app/runtime changes, no reload needed.
-2. **PR 2, packaging**: `native/cmux-iroh/` crate (FFI grown to caller-provided keys and error-kind codes), `scripts/ensure-cmux-iroh.sh`, Rust toolchain in CI, xcframework linked into both apps but referenced by nothing. Proves the build matrix everywhere without behavior change.
-3. **PR 3, phone dial lane**: `CmxIrohByteTransport` in `Packages/iOS/CmuxMobileTransport` plus registration, behind a feature flag (DEBUG default ON, release default OFF). Includes the EndpointId pin gate from the security section: pin at first trust in `MobilePairedMacStore`, refuse to send Stack tokens to a non-matching EndpointId, explicit re-trust UX on change. Unit tests with the existing transport test doubles; one loopback-style integration test dialing a local iroh listener.
+2. **PR 2, packaging**: `native/mosaic-iroh/` crate (FFI grown to caller-provided keys and error-kind codes), `scripts/ensure-mosaic-iroh.sh`, Rust toolchain in CI, xcframework linked into both apps but referenced by nothing. Proves the build matrix everywhere without behavior change.
+3. **PR 3, phone dial lane**: `CmxIrohByteTransport` in `Packages/iOS/MosaicMobileTransport` plus registration, behind a feature flag (DEBUG default ON, release default OFF). Includes the EndpointId pin gate from the security section: pin at first trust in `MobilePairedMacStore`, refuse to send Stack tokens to a non-matching EndpointId, explicit re-trust UX on change. Unit tests with the existing transport test doubles; one loopback-style integration test dialing a local iroh listener.
 4. **PR 4, Mac host lane**: `MobileHostByteConnection` seam extraction in `MobileHostService` (pure refactor commit first, NWConnection adapter only, zero behavior change), then the iroh accept loop, Keychain key custody, route publication in `MobileRouteResolver`, registry propagation. Same feature flag.
 5. **PR 5, default-on plus Settings**: flag becomes a real Settings toggle pair (iroh on by default; "Also publish Tailscale/LAN routes" on by default for compat), strings en+ja, docs. Flip of the Tailscale-publication default is a later standalone change.
 

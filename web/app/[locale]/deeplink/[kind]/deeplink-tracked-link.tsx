@@ -31,8 +31,8 @@ export function DeeplinkTrackedLink({
       onClick={() => {
         const properties = { kind, result };
         posthog.capture(event, properties);
-        if (event !== "cmuxterm_linking_started") {
-          posthog.capture("cmuxterm_linking_started", properties);
+        if (event !== "mosaicterm_linking_started") {
+          posthog.capture("mosaicterm_linking_started", properties);
         }
         captureWebAcquisitionEvent("web_deeplink_started", {
           entrypoint: "deeplink_page",

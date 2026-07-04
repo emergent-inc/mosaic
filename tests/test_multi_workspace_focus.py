@@ -10,7 +10,7 @@ workspaces via bonsplit's isInteractive flag.
 
 Bug 2 (webview click focus): Clicking inside a WKWebView didn't focus the browser
 tab because AppKit delivers the click to WKWebView, not to the SwiftUI Color.clear
-overlay used for focus tracking. Fix: CmuxWebView.mouseDown posts a notification
+overlay used for focus tracking. Fix: MosaicWebView.mouseDown posts a notification
 that BrowserPanelView listens for to call onRequestPanelFocus().
 
 This test validates:
@@ -27,14 +27,14 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 MARKER_DIR = Path(tempfile.gettempdir())
 
 
 def _marker(name: str) -> Path:
-    return MARKER_DIR / f"cmux_mwf_{name}_{os.getpid()}"
+    return MARKER_DIR / f"mosaic_mwf_{name}_{os.getpid()}"
 
 
 def _clear(marker: Path):
@@ -50,7 +50,7 @@ def _wait_marker(marker: Path, timeout: float = 5.0) -> bool:
     return False
 
 
-def _verify_responsive(c: cmux, marker: Path, surface_idx: int, retries: int = 3) -> bool:
+def _verify_responsive(c: mosaic, marker: Path, surface_idx: int, retries: int = 3) -> bool:
     """Send a touch command to a specific terminal surface and check the marker appears."""
     for attempt in range(retries):
         _clear(marker)
@@ -71,7 +71,7 @@ def _verify_responsive(c: cmux, marker: Path, surface_idx: int, retries: int = 3
     return False
 
 
-def _wait_terminal_in_window(c: cmux, surface_idx: int, timeout: float = 5.0) -> bool:
+def _wait_terminal_in_window(c: mosaic, surface_idx: int, timeout: float = 5.0) -> bool:
     start = time.time()
     while time.time() - start < timeout:
         try:
@@ -85,7 +85,7 @@ def _wait_terminal_in_window(c: cmux, surface_idx: int, timeout: float = 5.0) ->
     return False
 
 
-def test_multi_workspace_terminal_responsive(c: cmux) -> None:
+def test_multi_workspace_terminal_responsive(c: mosaic) -> None:
     """
     Create two workspaces with splits, cycle between them, and verify all terminals
     in each workspace remain responsive. Before the isHidden fix, terminals in
@@ -154,7 +154,7 @@ def test_multi_workspace_terminal_responsive(c: cmux) -> None:
     time.sleep(0.3)
 
 
-def test_three_workspaces_non_last_responsive(c: cmux) -> None:
+def test_three_workspaces_non_last_responsive(c: mosaic) -> None:
     """
     Three workspaces: verify the FIRST workspace (furthest back in ZStack) is still
     responsive. This is the worst case for the old bug since it has two inactive
@@ -197,7 +197,7 @@ def test_three_workspaces_non_last_responsive(c: cmux) -> None:
     time.sleep(0.2)
 
 
-def test_rapid_workspace_switching_preserves_focus(c: cmux) -> None:
+def test_rapid_workspace_switching_preserves_focus(c: mosaic) -> None:
     """
     Rapidly switch between workspaces and verify terminals remain responsive.
     The isHidden toggle must not break view attachment or cause blank terminals.
@@ -241,7 +241,7 @@ def test_rapid_workspace_switching_preserves_focus(c: cmux) -> None:
     time.sleep(0.2)
 
 
-def test_browser_panel_focus_and_return(c: cmux) -> None:
+def test_browser_panel_focus_and_return(c: mosaic) -> None:
     """
     Create a terminal and a browser surface in the same pane, focus the browser,
     then switch back to the terminal. Verifies focus routing works correctly for
@@ -253,7 +253,7 @@ def test_browser_panel_focus_and_return(c: cmux) -> None:
     # Get the terminal panel ID
     surfaces = c.list_pane_surfaces()
     if not surfaces:
-        raise cmuxError("No surfaces after new_workspace")
+        raise mosaicError("No surfaces after new_workspace")
     term_panel_id = surfaces[0][1]
 
     # Create a browser surface in the same pane
@@ -265,7 +265,7 @@ def test_browser_panel_focus_and_return(c: cmux) -> None:
     c.focus_webview(browser_panel_id)
     try:
         c.wait_for_webview_focus(browser_panel_id, timeout_s=5.0)
-    except cmuxError as e:
+    except mosaicError as e:
         raise AssertionError(
             "Browser panel should have focus after focus_webview"
         ) from e
@@ -290,7 +290,7 @@ def test_browser_panel_focus_and_return(c: cmux) -> None:
     time.sleep(0.2)
 
 
-def test_browser_focus_across_workspaces(c: cmux) -> None:
+def test_browser_focus_across_workspaces(c: mosaic) -> None:
     """
     Workspace A has a terminal, workspace B has a browser. Switching between them
     should correctly route focus to each panel type.
@@ -308,7 +308,7 @@ def test_browser_focus_across_workspaces(c: cmux) -> None:
     c.focus_webview(browser_panel_id)
     try:
         c.wait_for_webview_focus(browser_panel_id, timeout_s=5.0)
-    except cmuxError as e:
+    except mosaicError as e:
         raise AssertionError(
             "Browser should have focus in workspace B"
         ) from e
@@ -331,7 +331,7 @@ def test_browser_focus_across_workspaces(c: cmux) -> None:
     c.focus_webview(browser_panel_id)
     try:
         c.wait_for_webview_focus(browser_panel_id, timeout_s=5.0)
-    except cmuxError as e:
+    except mosaicError as e:
         raise AssertionError(
             "Browser should regain focus after switching back to workspace B"
         ) from e
@@ -357,7 +357,7 @@ def main() -> int:
         ("Browser focus across workspaces", test_browser_focus_across_workspaces),
     ]
 
-    with cmux() as c:
+    with mosaic() as c:
         c.activate_app()
         time.sleep(0.2)
 
@@ -370,7 +370,7 @@ def main() -> int:
                 test_fn(c)
                 print("PASS")
                 passed += 1
-            except (AssertionError, cmuxError) as e:
+            except (AssertionError, mosaicError) as e:
                 print(f"FAIL: {e}")
                 failed += 1
             except Exception as e:

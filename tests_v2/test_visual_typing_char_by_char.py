@@ -15,10 +15,10 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _wait_for(pred, timeout_s: float, step_s: float = 0.05) -> None:
@@ -27,11 +27,11 @@ def _wait_for(pred, timeout_s: float, step_s: float = 0.05) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         c.activate_app()
         time.sleep(0.25)
 
@@ -41,13 +41,13 @@ def main() -> int:
 
         surfaces = c.list_surfaces()
         if not surfaces:
-            raise cmuxError("Expected at least 1 surface after new_workspace")
+            raise mosaicError("Expected at least 1 surface after new_workspace")
         panel_id = next((sid for _i, sid, focused in surfaces if focused), surfaces[0][1])
 
         _wait_for(lambda: c.is_terminal_focused(panel_id), timeout_s=3.0)
 
         # Type into the shell prompt without pressing Enter.
-        text = "cmux"
+        text = "mosaic"
 
         # A single glyph can be surprisingly small at some font sizes; keep this low but
         # non-zero to still catch the "no visual updates until Enter/unfocus" regression.
@@ -75,9 +75,9 @@ def main() -> int:
 
             try:
                 _wait_for(_frame_changed, timeout_s=5.0, step_s=0.05)
-            except cmuxError:
+            except mosaicError:
                 changed = int(snap.get("changed_pixels", -1))
-                raise cmuxError(
+                raise mosaicError(
                     "Expected visible pixel changes after typing a character.\n"
                     f"char={ch!r} index={i} changed_pixels={changed} min_pixels={min_pixels}\n"
                     f"snapshot_path={snap.get('path')}"
@@ -95,9 +95,9 @@ def main() -> int:
 
             try:
                 _wait_for(_buffer_echoed, timeout_s=5.0, step_s=0.05)
-            except cmuxError:
+            except mosaicError:
                 tail = buf[-600:].replace("\r", "\\r")
-                raise cmuxError(
+                raise mosaicError(
                     "Terminal text did not update after typing.\n"
                     f"expected_prefix={text[:i+1]!r}\n"
                     f"last_tail:\n{tail}"

@@ -27,7 +27,7 @@ extension GhosttyApp {
 
     private func finishSurfaceConfigurationReload(source: String, soft: Bool, mode: String) {
 #if DEBUG
-        cmuxDebugLog("surface.config.reload source=\(source) soft=\(soft) mode=\(mode)")
+        mosaicDebugLog("surface.config.reload source=\(source) soft=\(soft) mode=\(mode)")
 #endif
         GhosttyConfig.invalidateLoadCache()
         // Do not post .ghosttyConfigDidReload here. Its observers read the

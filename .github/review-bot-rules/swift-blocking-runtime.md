@@ -19,7 +19,7 @@ Allowed cases:
 
 Do not allow `Task.sleep` in production code just because it is inside an async function, including for animation timing. Retry backoff, keepalive loops, readiness waits, delayed dispatch, and polling still need a real cancellation-aware scheduler, timer abstraction, async sequence, callback, notification, or state transition unless the changed code is marked test-only.
 
-cmux-specific emphasis:
+mosaic-specific emphasis:
 
 - Typing, terminal rendering, socket telemetry, and focus paths are latency-sensitive. Blocking or sleep-based coordination in these paths should fail CI.
 - A fix should wait on a real signal, callback, state transition, actor message, notification, or explicit completion point.

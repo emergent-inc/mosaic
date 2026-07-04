@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Interactive terminal cadence probe for cmux notification lag.
+Interactive terminal cadence probe for mosaic notification lag.
 
 This is a terminal-side proxy, not a compositor frame counter. It measures how
 regularly this process can wake up and repaint a small TUI while other work,
-such as `cmux notify`, runs. Gaps over two 120 Hz intervals are the useful
+such as `mosaic notify`, runs. Gaps over two 120 Hz intervals are the useful
 "likely missed frame interval" signal.
 """
 
@@ -118,46 +118,46 @@ def percentile(values: Iterable[float], pct: float) -> float:
     return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
 
 
-def cmux_bin_from_args(value: str | None) -> str:
+def mosaic_bin_from_args(value: str | None) -> str:
     if value:
         return value
-    env_value = os.environ.get("CMUX_FRAME_PROBE_CMUX")
+    env_value = os.environ.get("MOSAIC_FRAME_PROBE_MOSAIC")
     if env_value:
         return env_value
-    tmp_cli = "/tmp/cmux-cli"
+    tmp_cli = "/tmp/mosaic-cli"
     if os.access(tmp_cli, os.X_OK):
         return tmp_cli
-    for candidate in ("cmux-dev", "cmux"):
+    for candidate in ("mosaic-dev", "mosaic"):
         resolved = shutil.which(candidate)
         if resolved:
             return resolved
-    return "cmux"
+    return "mosaic"
 
 
-def notify_command(cmux_bin: str, index: int) -> list[str]:
+def notify_command(mosaic_bin: str, index: int) -> list[str]:
     return [
-        cmux_bin,
+        mosaic_bin,
         "notify",
         "--title",
-        "cmux frame probe",
+        "mosaic frame probe",
         "--body",
         f"notify burst {index}",
     ]
 
 
-def clear_command(cmux_bin: str) -> list[str]:
-    return [cmux_bin, "clear-notifications"]
+def clear_command(mosaic_bin: str) -> list[str]:
+    return [mosaic_bin, "clear-notifications"]
 
 
 def socket_env(socket_path: str | None) -> dict[str, str]:
     env = os.environ.copy()
     if socket_path:
-        env["CMUX_SOCKET_PATH"] = socket_path
+        env["MOSAIC_SOCKET_PATH"] = socket_path
     return env
 
 
 def run_notify_burst(
-    cmux_bin: str,
+    mosaic_bin: str,
     socket_path: str | None,
     count: int,
     interval_ms: float,
@@ -175,7 +175,7 @@ def run_notify_burst(
             start = time.perf_counter()
             try:
                 subprocess.run(
-                    notify_command(cmux_bin, index),
+                    notify_command(mosaic_bin, index),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                     env=socket_env(socket_path),
@@ -197,7 +197,7 @@ def run_notify_burst(
 
 
 def start_notify_burst(
-    cmux_bin: str,
+    mosaic_bin: str,
     socket_path: str | None,
     count: int,
     interval_ms: float,
@@ -207,18 +207,18 @@ def start_notify_burst(
         return
     thread = threading.Thread(
         target=run_notify_burst,
-        args=(cmux_bin, socket_path, count, interval_ms, state),
+        args=(mosaic_bin, socket_path, count, interval_ms, state),
         daemon=True,
     )
     state.thread = thread
     thread.start()
 
 
-def run_clear(cmux_bin: str, socket_path: str | None, state: NotifyState) -> None:
+def run_clear(mosaic_bin: str, socket_path: str | None, state: NotifyState) -> None:
     start = time.perf_counter()
     try:
         subprocess.run(
-            clear_command(cmux_bin),
+            clear_command(mosaic_bin),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             env=socket_env(socket_path),
@@ -254,11 +254,11 @@ def draw(stdscr: curses.window, stats: FrameStats, notify: NotifyState, args: ar
     summary = stats.summary()
     budget = stats.budget_ms
     rows = [
-        "cmux frame probe TUI",
+        "mosaic frame probe TUI",
         f"visible terminal cells: columns={width} rows={height} inner={content_width}x{content_height}",
         "terminal cadence proxy, not a Core Animation compositor counter",
-        f"target={stats.hz:.1f}Hz budget={budget:.2f}ms hiccup>={stats.hiccup_ms:.2f}ms cmux={args.cmux_bin}",
-        f"socket={args.socket_path or os.environ.get('CMUX_SOCKET_PATH') or '(auto)'}",
+        f"target={stats.hz:.1f}Hz budget={budget:.2f}ms hiccup>={stats.hiccup_ms:.2f}ms mosaic={args.mosaic_bin}",
+        f"socket={args.socket_path or os.environ.get('MOSAIC_SOCKET_PATH') or '(auto)'}",
         "",
         (
             f"frames={summary['frames']} elapsed={summary['elapsed_ms'] / 1000.0:.1f}s "
@@ -340,7 +340,7 @@ def run_tui(args: argparse.Namespace) -> int:
     stats = FrameStats(hz=args.hz, history_limit=args.history)
     if args.auto_notify:
         start_notify_burst(
-            args.cmux_bin,
+            args.mosaic_bin,
             args.socket_path,
             args.notify_count,
             args.notify_interval_ms,
@@ -369,7 +369,7 @@ def run_tui(args: argparse.Namespace) -> int:
                 stats.reset()
             if key in (ord("n"), ord("N")):
                 start_notify_burst(
-                    args.cmux_bin,
+                    args.mosaic_bin,
                     args.socket_path,
                     args.notify_count,
                     args.notify_interval_ms,
@@ -377,7 +377,7 @@ def run_tui(args: argparse.Namespace) -> int:
                 )
             if key in (ord("c"), ord("C")):
                 threading.Thread(
-                    target=run_clear, args=(args.cmux_bin, args.socket_path, notify), daemon=True
+                    target=run_clear, args=(args.mosaic_bin, args.socket_path, notify), daemon=True
                 ).start()
 
             next_deadline += interval
@@ -396,7 +396,7 @@ def run_headless(args: argparse.Namespace) -> int:
     stats = FrameStats(hz=args.hz, history_limit=args.history)
     if args.auto_notify:
         start_notify_burst(
-            args.cmux_bin,
+            args.mosaic_bin,
             args.socket_path,
             args.notify_count,
             args.notify_interval_ms,
@@ -418,7 +418,7 @@ def run_headless(args: argparse.Namespace) -> int:
 
     summary = stats.summary()
     print(
-        "CMUX_FRAME_PROBE_TUI_RESULT "
+        "MOSAIC_FRAME_PROBE_TUI_RESULT "
         f"frames={summary['frames']} "
         f"duration_ms={summary['elapsed_ms']:.3f} "
         f"late_frames={summary['late_frames']} "
@@ -432,7 +432,7 @@ def run_headless(args: argparse.Namespace) -> int:
         f"notify_max_ms={notify.max_ms:.3f}"
     )
     if notify.last_error:
-        print(f"CMUX_FRAME_PROBE_NOTIFY_ERROR {notify.last_error}", file=sys.stderr)
+        print(f"MOSAIC_FRAME_PROBE_NOTIFY_ERROR {notify.last_error}", file=sys.stderr)
         return 2
     return 0
 
@@ -440,7 +440,7 @@ def run_headless(args: argparse.Namespace) -> int:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Show a live terminal cadence meter and optionally trigger cmux notify bursts."
+            "Show a live terminal cadence meter and optionally trigger mosaic notify bursts."
         )
     )
     parser.add_argument("--hz", type=float, default=DEFAULT_HZ, help="target repaint rate")
@@ -454,7 +454,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--notify-count",
         type=int,
         default=250,
-        help="number of cmux notify commands to run per burst",
+        help="number of mosaic notify commands to run per burst",
     )
     parser.add_argument(
         "--notify-interval-ms",
@@ -463,14 +463,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="delay between notify commands in a burst",
     )
     parser.add_argument(
-        "--cmux-bin",
+        "--mosaic-bin",
         default=None,
-        help="cmux binary path, defaults to CMUX_FRAME_PROBE_CMUX, /tmp/cmux-cli, cmux-dev, then cmux",
+        help="mosaic binary path, defaults to MOSAIC_FRAME_PROBE_MOSAIC, /tmp/mosaic-cli, mosaic-dev, then mosaic",
     )
     parser.add_argument(
         "--socket-path",
-        default=os.environ.get("CMUX_FRAME_PROBE_SOCKET"),
-        help="cmux Unix socket path, also accepted from CMUX_FRAME_PROBE_SOCKET",
+        default=os.environ.get("MOSAIC_FRAME_PROBE_SOCKET"),
+        help="mosaic Unix socket path, also accepted from MOSAIC_FRAME_PROBE_SOCKET",
     )
     parser.add_argument(
         "--auto-notify",
@@ -498,14 +498,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         parser.error("--notify-count must be non-negative")
     if args.notify_interval_ms < 0:
         parser.error("--notify-interval-ms must be non-negative")
-    args.cmux_bin = cmux_bin_from_args(args.cmux_bin)
+    args.mosaic_bin = mosaic_bin_from_args(args.mosaic_bin)
     return args
 
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     if args.print_notify_command:
-        print(shlex.join(notify_command(args.cmux_bin, 1)))
+        print(shlex.join(notify_command(args.mosaic_bin, 1)))
         return 0
     if args.headless > 0:
         return run_headless(args)

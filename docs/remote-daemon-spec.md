@@ -1,9 +1,9 @@
 # Remote SSH Living Spec
 
 Last updated: June 3, 2026
-Tracking issue: https://github.com/emergent-inc/cmux/issues/151
-Primary PR: https://github.com/emergent-inc/cmux/pull/1296
-CLI relay PR: https://github.com/emergent-inc/cmux/pull/374
+Tracking issue: https://github.com/emergent-inc/mosaic/issues/151
+Primary PR: https://github.com/emergent-inc/mosaic/pull/1296
+CLI relay PR: https://github.com/emergent-inc/mosaic/pull/374
 
 This document is the working source of truth for:
 1. what is implemented now
@@ -16,7 +16,7 @@ This is a **living implementation spec** (also called an **execution spec**): a 
 
 ## 2. Objective
 
-`cmux ssh` should provide:
+`mosaic ssh` should provide:
 1. durable remote terminals with reconnect/reuse
 2. browser traffic that egresses from the remote host via proxying
 3. tmux-style PTY resize semantics (`smallest screen wins`)
@@ -24,13 +24,13 @@ This is a **living implementation spec** (also called an **execution spec**): a 
 ## 3. Current State (Implemented)
 
 ### 3.1 Remote Workspace + Reconnect UX
-- `DONE` `cmux ssh` creates remote-tagged workspaces and does not require `--name`.
-- `DONE` scoped shell niceties are applied only for `cmux ssh` launches.
+- `DONE` `mosaic ssh` creates remote-tagged workspaces and does not require `--name`.
+- `DONE` scoped shell niceties are applied only for `mosaic ssh` launches.
 - `DONE` context menu actions exist for remote workspaces (`Reconnect Workspace(s)`, `Disconnect Workspace(s)`).
 - `DONE` socket API includes `workspace.remote.reconnect`.
 
 ### 3.2 Bootstrap + Daemon
-- `DONE` local app probes remote platform, verifies a release-pinned `cmuxd-remote` artifact by embedded manifest SHA-256, uploads it when missing, and runs `serve --stdio`.
+- `DONE` local app probes remote platform, verifies a release-pinned `mosaicd-remote` artifact by embedded manifest SHA-256, uploads it when missing, and runs `serve --stdio`.
 - `DONE` daemon `hello` handshake is enforced.
 - `DONE` daemon now exposes proxy stream RPC (`proxy.open`, `proxy.close`, `proxy.write`, `proxy.stream.subscribe`) plus pushed `proxy.stream.*` events.
 - `DONE` local proxy broker now tunnels SOCKS5/CONNECT traffic over daemon stream RPC instead of `ssh -D`.
@@ -39,30 +39,30 @@ This is a **living implementation spec** (also called an **execution spec**): a 
 - `DONE` SOCKS handshake parsing now preserves pipelined post-connect payload bytes instead of dropping request-prefix bytes.
 - `DONE` `workspace.remote.configure.local_proxy_port` exists as an internal deterministic test hook for bind-conflict regression coverage.
 - `DONE` bootstrap/probe failures surface actionable details.
-- `DONE` bootstrap installs `~/.cmux/bin/cmux` wrapper (also tries `/usr/local/bin/cmux`) so `cmux` is available in PATH on the remote.
-- `DONE` normal `cmux ssh` launches `cmuxd-remote serve --stdio --persistent --slot <slot>`, where the stdio process proxies to a long-lived authenticated daemon with slot credentials under `~/.cmux/daemon/<version>/<slot>/` and a short per-user socket path under `/tmp/cmuxd-remote-<uid>/`.
-- `DONE` persistent daemon slots advertise `pty.session.persistent_daemon`; cmux requires that capability before preserving a saved remote PTY session ID across app relaunch.
+- `DONE` bootstrap installs `~/.mosaic/bin/mosaic` wrapper (also tries `/usr/local/bin/mosaic`) so `mosaic` is available in PATH on the remote.
+- `DONE` normal `mosaic ssh` launches `mosaicd-remote serve --stdio --persistent --slot <slot>`, where the stdio process proxies to a long-lived authenticated daemon with slot credentials under `~/.mosaic/daemon/<version>/<slot>/` and a short per-user socket path under `/tmp/mosaicd-remote-<uid>/`.
+- `DONE` persistent daemon slots advertise `pty.session.persistent_daemon`; mosaic requires that capability before preserving a saved remote PTY session ID across app relaunch.
 
-### 3.5 CLI Relay (Running cmux Commands From Remote)
-- `DONE` `cmuxd-remote` includes a table-driven CLI relay (`cli` subcommand) that maps CLI args to v1 text or v2 JSON-RPC messages.
-- `DONE` busybox-style argv[0] detection: when invoked as `cmux` via wrapper/symlink, auto-dispatches to CLI relay.
+### 3.5 CLI Relay (Running mosaic Commands From Remote)
+- `DONE` `mosaicd-remote` includes a table-driven CLI relay (`cli` subcommand) that maps CLI args to v1 text or v2 JSON-RPC messages.
+- `DONE` busybox-style argv[0] detection: when invoked as `mosaic` via wrapper/symlink, auto-dispatches to CLI relay.
 - `DONE` background `ssh -N -R 127.0.0.1:PORT:127.0.0.1:LOCAL_RELAY_PORT` process reverse-forwards a TCP port to a dedicated authenticated local relay server. Uses TCP instead of Unix socket forwarding because many servers have `AllowStreamLocalForwarding` disabled.
 - `DONE` relay process uses `-S none` / standalone SSH transport (avoids ControlMaster multiplexing and inherited `RemoteForward` directives) and `ExitOnForwardFailure=yes` so dead reverse binds fail fast instead of publishing bad relay metadata.
-- `DONE` relay address written to `~/.cmux/socket_addr` on the remote only after the reverse forward survives startup validation.
-- `DONE` Go CLI no longer polls for relay readiness. It dials the published relay once and only refreshes `~/.cmux/socket_addr` a single time to recover from a stale shared address rewrite.
-- `DONE` `cmux ssh` startup exports session-local `CMUX_SOCKET_PATH=127.0.0.1:<relay_port>` so parallel sessions pin to their own relay instead of racing on shared socket_addr.
-- `DONE` session snapshots persist the relay port for persistent SSH PTYs and mint fresh relay credentials on restore, so a reattached remote shell can keep using its existing `CMUX_SOCKET_PATH=127.0.0.1:<relay_port>` after app relaunch.
-- `DONE` relay startup writes `~/.cmux/relay/<relay_port>.daemon_path`; remote `cmux` wrapper uses this to select the right daemon binary per session, including mixed local cmux versions.
-- `DONE` relay startup writes `~/.cmux/relay/<relay_port>.auth` with a relay ID and token; the local relay requires HMAC-SHA256 challenge-response before forwarding any command to the real local socket.
-- `DONE` SSH agent forwarding is opt-in. `cmux ssh` preserves its live `SSH_AUTH_SOCK` for app-launched OpenSSH transports so `ForwardAgent yes` from ssh_config works normally, and accepts `-A` / `--forward-agent` or `-a` / `--no-forward-agent` for explicit forwarding control.
+- `DONE` relay address written to `~/.mosaic/socket_addr` on the remote only after the reverse forward survives startup validation.
+- `DONE` Go CLI no longer polls for relay readiness. It dials the published relay once and only refreshes `~/.mosaic/socket_addr` a single time to recover from a stale shared address rewrite.
+- `DONE` `mosaic ssh` startup exports session-local `MOSAIC_SOCKET_PATH=127.0.0.1:<relay_port>` so parallel sessions pin to their own relay instead of racing on shared socket_addr.
+- `DONE` session snapshots persist the relay port for persistent SSH PTYs and mint fresh relay credentials on restore, so a reattached remote shell can keep using its existing `MOSAIC_SOCKET_PATH=127.0.0.1:<relay_port>` after app relaunch.
+- `DONE` relay startup writes `~/.mosaic/relay/<relay_port>.daemon_path`; remote `mosaic` wrapper uses this to select the right daemon binary per session, including mixed local mosaic versions.
+- `DONE` relay startup writes `~/.mosaic/relay/<relay_port>.auth` with a relay ID and token; the local relay requires HMAC-SHA256 challenge-response before forwarding any command to the real local socket.
+- `DONE` SSH agent forwarding is opt-in. `mosaic ssh` preserves its live `SSH_AUTH_SOCK` for app-launched OpenSSH transports so `ForwardAgent yes` from ssh_config works normally, and accepts `-A` / `--forward-agent` or `-a` / `--no-forward-agent` for explicit forwarding control.
 - `DONE` ephemeral port range (49152-65535) filtered from probe results to exclude relay ports from other workspaces.
 - `DONE` multi-workspace port conflict detection uses TCP connect check (`isLoopbackPortReachable`) so ports already forwarded by another workspace are silently skipped instead of flagged as conflicts.
 - `DONE` orphaned relay SSH processes from previous app sessions are cleaned up before starting a new relay.
 
 ### 3.6 Artifact Trust
-- `DONE` release and nightly workflows publish `cmuxd-remote` assets for `darwin/linux × arm64/amd64`.
-- `DONE` release and nightly apps embed a compact `CMUXRemoteDaemonManifestJSON` in `Info.plist` with exact asset URLs and SHA-256 digests.
-- `DONE` `cmux remote-daemon-status` exposes the current manifest entry, local cache verification state, release download command, and GitHub attestation verification command.
+- `DONE` release and nightly workflows publish `mosaicd-remote` assets for `darwin/linux × arm64/amd64`.
+- `DONE` release and nightly apps embed a compact `MosaicRemoteDaemonManifestJSON` in `Info.plist` with exact asset URLs and SHA-256 digests.
+- `DONE` `mosaic remote-daemon-status` exposes the current manifest entry, local cache verification state, release download command, and GitHub attestation verification command.
 
 ### 3.3 Error Surfacing
 - `DONE` remote errors are surfaced in sidebar status + logs + notifications.
@@ -90,7 +90,7 @@ This is a **living implementation spec** (also called an **execution spec**): a 
 5. `DONE` re-apply proxy config on reconnect/state updates.
 
 ### 4.3 Remote Daemon + Transport
-1. `DONE` `cmuxd-remote` now supports proxy stream RPC (`proxy.open`, `proxy.close`, `proxy.write`, `proxy.stream.subscribe`) with pushed `proxy.stream.data/eof/error` events.
+1. `DONE` `mosaicd-remote` now supports proxy stream RPC (`proxy.open`, `proxy.close`, `proxy.write`, `proxy.stream.subscribe`) with pushed `proxy.stream.data/eof/error` events.
 2. `DONE` local side now runs a shared local broker that serves SOCKS5/CONNECT and tunnels each stream over persistent daemon stdio RPC without polling reads.
 3. `DONE` removed remote service-port discovery/probing from browser routing path.
 
@@ -128,18 +128,18 @@ Recompute effective size on:
 
 | ID | Milestone | Status | Notes |
 |---|---|---|---|
-| M-001 | `cmux ssh` workspace creation + metadata + optional `--name` | DONE | Covered by `tests_v2/test_ssh_remote_cli_metadata.py` |
+| M-001 | `mosaic ssh` workspace creation + metadata + optional `--name` | DONE | Covered by `tests_v2/test_ssh_remote_cli_metadata.py` |
 | M-002 | Remote bootstrap/upload/start + hello handshake | DONE | Includes daemon capability handshake + status surfacing |
 | M-003 | Reconnect/disconnect UX + API + improved error surfacing | DONE | Includes retry count in surfaced errors |
 | M-004 | Docker e2e for bootstrap/reconnect shell niceties | DONE | Docker suites validate proxy-path bootstrap and reconnect behavior |
-| M-004b | CLI relay: run cmux commands from within SSH sessions | DONE | Reverse TCP forward + Go CLI relay + bootstrap wrapper |
+| M-004b | CLI relay: run mosaic commands from within SSH sessions | DONE | Reverse TCP forward + Go CLI relay + bootstrap wrapper |
 | M-005 | Remove automatic remote port mirroring path | DONE | `WorkspaceRemoteSessionController` now uses one shared daemon-backed proxy endpoint |
 | M-006 | Transport-scoped local proxy broker (SOCKS5 + CONNECT) | DONE | Identical SSH transports now reuse one local proxy endpoint |
-| M-007 | Remote proxy stream RPC in `cmuxd-remote` | DONE | `proxy.open/close/write/proxy.stream.subscribe` plus pushed stream events implemented |
+| M-007 | Remote proxy stream RPC in `mosaicd-remote` | DONE | `proxy.open/close/write/proxy.stream.subscribe` plus pushed stream events implemented |
 | M-008 | WebView proxy auto-wiring for remote workspaces | DONE | Workspace-scoped `WKWebsiteDataStore.proxyConfigurations` wiring is active |
 | M-009 | PTY resize coordinator (`smallest screen wins`) | DONE | Daemon session RPC now tracks attachments and applies min cols/rows semantics with unit tests |
 | M-010 | Resize + proxy reconnect e2e test suites | DONE | `tests_v2/test_ssh_remote_docker_forwarding.py` validates HTTP/websocket egress plus SOCKS pipelined-payload handling; `tests_v2/test_ssh_remote_docker_reconnect.py` verifies reconnect recovery and repeats SOCKS pipelined-payload checks after host restart; `tests_v2/test_ssh_remote_proxy_bind_conflict.py` validates structured `proxy_unavailable` bind-conflict surfacing and `local_proxy_port` status retention under bind conflict; `tests_v2/test_ssh_remote_daemon_resize_stdio.py` validates session resize semantics over real stdio RPC process boundaries; `tests_v2/test_ssh_remote_cli_metadata.py` validates `workspace.remote.configure` numeric-string compatibility, explicit `null` clear semantics (including `workspace.remote.status` reflection), strict `port`/`local_proxy_port` validation (bounds/type), case-insensitive SSH option override precedence for StrictHostKeyChecking/control-socket keys, and `local_proxy_port` payload echo for deterministic bind-conflict test hook behavior |
-| M-011 | Detachable persistent `cmux ssh` PTY sessions | IN PROGRESS | Persistent remote daemon slots keep PTY sessions alive across local surface close and app relaunch; coverage includes Go daemon auth/reattach tests, Swift restore tests, CLI contract tests, and `tests_v2/test_ssh_remote_detachable_pty.py` |
+| M-011 | Detachable persistent `mosaic ssh` PTY sessions | IN PROGRESS | Persistent remote daemon slots keep PTY sessions alive across local surface close and app relaunch; coverage includes Go daemon auth/reattach tests, Swift restore tests, CLI contract tests, and `tests_v2/test_ssh_remote_detachable_pty.py` |
 
 ## 7. Acceptance Test Matrix (With Status)
 
@@ -157,10 +157,10 @@ Recompute effective size on:
 
 | ID | Scenario | Status |
 |---|---|---|
-| C-001 | `cmux ping` from remote session | DONE |
-| C-002 | `cmux list-workspaces --json` from remote | DONE |
-| C-003 | `cmux new-workspace` from remote | DONE |
-| C-004 | `cmux rpc system.capabilities` passthrough | DONE |
+| C-001 | `mosaic ping` from remote session | DONE |
+| C-002 | `mosaic list-workspaces --json` from remote | DONE |
+| C-003 | `mosaic new-workspace` from remote | DONE |
+| C-004 | `mosaic rpc system.capabilities` passthrough | DONE |
 | C-005 | TCP retry handles relay not yet established | DONE |
 | C-006 | multi-workspace port conflict silent skip | DONE |
 | C-007 | ephemeral port filtering excludes relay ports | DONE |
@@ -193,12 +193,12 @@ Recompute effective size on:
 
 | ID | Scenario | Status |
 |---|---|---|
-| DP-001 | `cmux ssh` creates a persistent daemon slot and PTY session ID | IN PROGRESS |
+| DP-001 | `mosaic ssh` creates a persistent daemon slot and PTY session ID | IN PROGRESS |
 | DP-002 | closing the local SSH surface detaches the attachment without killing the remote shell | IN PROGRESS |
-| DP-003 | `cmux ssh-session-list` reports detached persisted sessions with bounded scrollback metadata | IN PROGRESS |
-| DP-004 | `cmux ssh-session-attach` reattaches to the same remote shell PID and env | IN PROGRESS |
+| DP-003 | `mosaic ssh-session-list` reports detached persisted sessions with bounded scrollback metadata | IN PROGRESS |
+| DP-004 | `mosaic ssh-session-attach` reattaches to the same remote shell PID and env | IN PROGRESS |
 | DP-005 | app relaunch restores saved remote PTY session IDs only when the snapshot has a persistent daemon slot | IN PROGRESS |
-| DP-006 | `cmux ssh-session-cleanup` terminates persisted PTY sessions explicitly | DONE |
+| DP-006 | `mosaic ssh-session-cleanup` terminates persisted PTY sessions explicitly | DONE |
 
 ## 8. Removal Checklist (Port Mirroring)
 
@@ -227,6 +227,6 @@ Before declaring browser proxying complete:
 3. SSH option key matching is case-insensitive for precedence checks in both CLI-built commands and remote configure payloads.
 
 ### 10.3 SSH Docker E2E Harness Knobs
-1. `CMUX_SSH_TEST_DOCKER_HOST` sets the SSH destination host/IP used by docker-backed SSH fixtures (default `127.0.0.1`).
-2. `CMUX_SSH_TEST_DOCKER_BIND_ADDR` sets the bind address used in fixture container publish mappings (default `127.0.0.1`).
+1. `MOSAIC_SSH_TEST_DOCKER_HOST` sets the SSH destination host/IP used by docker-backed SSH fixtures (default `127.0.0.1`).
+2. `MOSAIC_SSH_TEST_DOCKER_BIND_ADDR` sets the bind address used in fixture container publish mappings (default `127.0.0.1`).
 3. Defaults preserve loopback behavior on a single host; override both when docker runs on a different host (for example VM -> host OrbStack).

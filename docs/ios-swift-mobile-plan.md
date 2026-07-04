@@ -1,6 +1,6 @@
 # iOS Swift Mobile Plan
 
-Goal: ship the iOS path from current cmux main with Swift-owned app, session, transport, and storage code. Ghostty remains the terminal engine through GhosttyKit.
+Goal: ship the iOS path from current mosaic main with Swift-owned app, session, transport, and storage code. Ghostty remains the terminal engine through GhosttyKit.
 
 ## Baseline
 
@@ -11,8 +11,8 @@ Goal: ship the iOS path from current cmux main with Swift-owned app, session, tr
 
 ## Architecture
 
-- `Packages/Shared/CMUXMobileCore` owns the cross-platform Swift protocol layer: attach tickets, routes, frame codec, and Ghostty snapshot models.
-- The iOS shell depends on `CMUXMobileCore` and a `CmxByteTransport`, not on Tailscale, Iroh, WebSocket, or daemon details.
+- `Packages/Shared/MosaicMobileCore` owns the cross-platform Swift protocol layer: attach tickets, routes, frame codec, and Ghostty snapshot models.
+- The iOS shell depends on `MosaicMobileCore` and a `CmxByteTransport`, not on Tailscale, Iroh, WebSocket, or daemon details.
 - The Mac host publishes a `CmxAttachTicket` with one or more `CmxAttachRoute` values. iOS chooses the first supported route.
 - Tailscale ships first as a Swift `Network` transport over the tailnet host and port.
 - Iroh is added as another `CmxByteTransport` implementation. The shell and terminal session do not change. A minimal Rust edge is acceptable for the Iroh endpoint/dialer if the Swift code keeps owning route selection, attach-ticket decoding, framing, auth, and app state.
@@ -23,7 +23,7 @@ Goal: ship the iOS path from current cmux main with Swift-owned app, session, tr
 `experiments/iroh-byte-transport` is the current Rust spike. It proves a single ALPN byte stream and prints an attach-route JSON object that the Swift `CmxAttachRoute` decoder accepts:
 
 ```text
-dev.cmux.mobile.terminal/0
+dev.mosaic.mobile.terminal/0
 ```
 
 The Swift peer endpoint schema now carries `direct_addrs` and `relay_url` hints so an Iroh route has enough information to dial without changing the app shell.
@@ -34,7 +34,7 @@ Central workspace storage should keep durable records for workspace id, display 
 
 ## Milestones
 
-1. Land `CMUXMobileCore` with route selection, frame codec, snapshot schema, and tests.
+1. Land `MosaicMobileCore` with route selection, frame codec, snapshot schema, and tests.
 2. Copy the proven SwiftUI shell into `ios/` and wire it to `CmxByteTransport`.
 3. Add a Mac Tailscale listener that emits attach tickets and streams framed terminal bytes.
 4. Replace the Mac `text_vt` terminal snapshot path with a Swift-owned styled-cell exporter from Ghostty so iOS receives foreground/background/bold/inverse/underline data instead of plain text.

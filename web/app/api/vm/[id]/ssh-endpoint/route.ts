@@ -10,11 +10,11 @@ import { openSshEndpoint, runVmWorkflow } from "../../../../../services/vms/work
 export const dynamic = "force-dynamic";
 
 /**
- * Returns the SSH endpoint the mac client will dial to reach this VM's cmuxd-remote.
+ * Returns the SSH endpoint the mac client will dial to reach this VM's mosaicd-remote.
  *
  * Freestyle response shape: `{ host: "vm-ssh.freestyle.sh", port: 22,
- * username: "<vmId>+cmux", credential: { kind: "password", value: "<one-time token>" } }`.
- * Mac client hands this to the existing `cmux ssh` transport; no Next.js in the data plane.
+ * username: "<vmId>+mosaic", credential: { kind: "password", value: "<one-time token>" } }`.
+ * Mac client hands this to the existing `mosaic ssh` transport; no Next.js in the data plane.
  *
  * E2B returns 501-ish (provider throws) because E2B sandboxes don't expose raw TCP.
  *
@@ -28,14 +28,14 @@ export async function POST(
   return withAuthedVmApiRoute(
     request,
     "/api/vm/[id]/ssh-endpoint",
-    { "cmux.vm.operation": "open_ssh" },
+    { "mosaic.vm.operation": "open_ssh" },
     "/api/vm/[id]/ssh-endpoint failed",
     async ({ user, span }) => {
       const { id } = await params;
-      setSpanAttributes(span, { "cmux.vm.id": id });
+      setSpanAttributes(span, { "mosaic.vm.id": id });
       try {
         const endpoint = await runVmWorkflow(openSshEndpoint({ userId: user.id, providerVmId: id }));
-        setSpanAttributes(span, { "cmux.ssh.credential_kind": endpoint.credential.kind });
+        setSpanAttributes(span, { "mosaic.ssh.credential_kind": endpoint.credential.kind });
         return jsonResponse(endpoint);
       } catch (err) {
         if (isVmNotFoundError(err)) return notFoundVm(id);

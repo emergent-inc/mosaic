@@ -18,7 +18,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Stripe checkout sessions created from the cmux Founder's Edition payment link
+// Stripe checkout sessions created from the mosaic Founder's Edition payment link
 // carry this metadata key (copied automatically onto each session). We only send
 // the welcome email when it is present and truthy.
 const FOUNDERS_METADATA_KEY = "founders_edition";
@@ -42,7 +42,7 @@ function resolveConfig(): FoundersConfig | null {
   return {
     resendApiKey,
     webhookSecret,
-    fromEmail: env.CMUX_FOUNDERS_FROM_EMAIL ?? DEFAULT_FROM_EMAIL,
+    fromEmail: env.MOSAIC_FOUNDERS_FROM_EMAIL ?? DEFAULT_FROM_EMAIL,
   };
 }
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   return withApiRouteSpan(
     request,
     "/api/stripe/founders-welcome",
-    { "cmux.subsystem": "stripe", "cmux.stripe.operation": "founders_welcome" },
+    { "mosaic.subsystem": "stripe", "mosaic.stripe.operation": "founders_welcome" },
     async (span): Promise<Response> => {
       const config = resolveConfig();
       if (!config) {
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         config.webhookSecret,
         nowSeconds,
       );
-      setSpanAttributes(span, { "cmux.stripe.signature_valid": valid });
+      setSpanAttributes(span, { "mosaic.stripe.signature_valid": valid });
       if (!valid) {
         return jsonError("Invalid Stripe signature", 400);
       }
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
         return jsonError("Invalid JSON payload", 400);
       }
 
-      setSpanAttributes(span, { "cmux.stripe.event_type": event.type ?? "" });
+      setSpanAttributes(span, { "mosaic.stripe.event_type": event.type ?? "" });
 
       // Only react to completed checkout sessions flagged as Founder's Edition.
       // Everything else (including renewals, which never create a checkout
@@ -140,8 +140,8 @@ export async function POST(request: Request) {
         session?.metadata?.[FOUNDERS_METADATA_KEY] === "true";
       const customerEmail = session?.customer_details?.email ?? null;
       setSpanAttributes(span, {
-        "cmux.stripe.is_founders": isFounders,
-        "cmux.stripe.has_customer_email": Boolean(customerEmail),
+        "mosaic.stripe.is_founders": isFounders,
+        "mosaic.stripe.has_customer_email": Boolean(customerEmail),
       });
       if (!isFounders) {
         return NextResponse.json({ ok: true, skipped: "not_founders" });

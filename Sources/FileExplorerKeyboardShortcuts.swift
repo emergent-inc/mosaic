@@ -1,6 +1,6 @@
 import AppKit
-import CmuxSettings
-import CmuxWorkspaces
+import MosaicSettings
+import MosaicWorkspaces
 
 /// Perform the configured action for opening a local file from the file explorer.
 @MainActor

@@ -16,7 +16,7 @@ enum TmuxResumeParser {
         guard let invocation = resumeInvocation(observed: observed) else { return nil }
 
         let command = invocation.argv.map(shellSingleQuoted).joined(separator: " ")
-        let cwd = normalized(environment["CMUX_AGENT_LAUNCH_CWD"] ?? environment["PWD"])
+        let cwd = normalized(environment["MOSAIC_AGENT_LAUNCH_CWD"] ?? environment["PWD"])
         let resumeEnvironment = tmuxResumeEnvironment(from: environment)
         return SurfaceResumeBindingSnapshot(
             name: invocation.sessionName.map { "tmux \($0)" } ?? "tmux",

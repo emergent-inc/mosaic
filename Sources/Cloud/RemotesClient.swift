@@ -1,9 +1,9 @@
-import CMUXMobileCore
-import CmuxAuthRuntime
+import MosaicMobileCore
+import MosaicAuthRuntime
 import CryptoKit
 import Foundation
 
-/// Errors surfaced by the `cmux remotes` flow. `CustomStringConvertible` so the
+/// Errors surfaced by the `mosaic remotes` flow. `CustomStringConvertible` so the
 /// CLI can print a clear, actionable line for each failure mode.
 enum RemotesClientError: Error, CustomStringConvertible, Equatable {
     case notSignedIn
@@ -20,7 +20,7 @@ enum RemotesClientError: Error, CustomStringConvertible, Equatable {
     var description: String {
         switch self {
         case .notSignedIn:
-            return "Not signed in. Run `cmux auth login`, then retry."
+            return "Not signed in. Run `mosaic auth login`, then retry."
         case let .invalidRoute(value):
             return "Invalid route '\(value)'. Use host:port, e.g. 100.64.1.2:51001 or my-mac.tailnet.ts.net:51001."
         case let .loopbackRoute(host):
@@ -36,17 +36,17 @@ enum RemotesClientError: Error, CustomStringConvertible, Equatable {
                 show in the device list but fail to connect. Run `tailscale ip -4` on the Mac for its 100.x address.
                 """
         case .noRoutes:
-            return "At least one --route host:port is required. Example: cmux remotes add my-mac --route 100.64.1.2:51001"
+            return "At least one --route host:port is required. Example: mosaic remotes add my-mac --route 100.64.1.2:51001"
         case .emptyName:
-            return "A non-empty remote name is required. Example: cmux remotes add my-mac --route 100.64.1.2:51001"
+            return "A non-empty remote name is required. Example: mosaic remotes add my-mac --route 100.64.1.2:51001"
         case let .notFound(target):
-            return "No remote matching '\(target)'. Run `cmux remotes list` to see registered remotes."
+            return "No remote matching '\(target)'. Run `mosaic remotes list` to see registered remotes."
         case let .httpStatus(status, body):
             return RemotesClient.formatHTTPError(status: status, body: body)
         case let .malformedResponse(message):
             return "The device registry returned an unexpected response: \(message)"
         case let .backendUnreachable(url, detail):
-            return "Could not reach the cmux backend at \(url): \(detail)"
+            return "Could not reach the mosaic backend at \(url): \(detail)"
         }
     }
 }
@@ -57,7 +57,7 @@ enum RemotesClientError: Error, CustomStringConvertible, Equatable {
 /// ``AuthCoordinator`` and ``URLSession`` that attaches the Stack bearer +
 /// refresh + team headers to every request. This is the single registry
 /// mutation path behind the `remotes.list/add/remove` socket methods and the
-/// `cmux remotes` CLI verb.
+/// `mosaic remotes` CLI verb.
 actor RemotesClient {
     @MainActor private(set) static var shared: RemotesClient!
 
@@ -83,7 +83,7 @@ actor RemotesClient {
     // MARK: - Public operations
 
     /// List the caller's team's MANUAL remotes (those added via
-    /// `cmux remotes add`), flattened to one row per device for display.
+    /// `mosaic remotes add`), flattened to one row per device for display.
     /// Self-registered Macs are excluded so this command never lists or removes
     /// a device the user did not add through the CLI.
     func list() async throws -> [RemoteSummary] {
@@ -182,7 +182,7 @@ actor RemotesClient {
 
     /// The fixed instance tag for every manual remote, so re-adding the same
     /// name updates one instance regardless of the user's display `--tag`.
-    static let manualInstanceTag = "cmux-remotes-manual"
+    static let manualInstanceTag = "mosaic-remotes-manual"
 
     /// Remove a remote by display name or device UUID. Resolves a name to its
     /// device UUID via the registry list first, then DELETEs. Returns the
@@ -210,7 +210,7 @@ actor RemotesClient {
     // MARK: - Resolution
 
     /// Resolve a `name-or-deviceId` target to a MANUAL remote's device UUID.
-    /// Only manual remotes (added via `cmux remotes add`) are candidates, so this
+    /// Only manual remotes (added via `mosaic remotes add`) are candidates, so this
     /// command can never delete a self-registered Mac's registry row and break
     /// the phone's reconnect.
     private func resolveDeviceId(target: String) async throws -> String {
@@ -344,9 +344,9 @@ actor RemotesClient {
         req.httpMethod = method
         req.timeoutInterval = 15
         req.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
+        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Mosaic-Refresh-Token")
         if let teamID, !teamID.isEmpty {
-            req.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
+            req.setValue(teamID, forHTTPHeaderField: "X-Mosaic-Team-Id")
         }
         if let jsonBody {
             req.setValue("application/json", forHTTPHeaderField: "content-type")
@@ -403,14 +403,14 @@ actor RemotesClient {
         case "device_not_owned":
             return "That remote is owned by another team member and cannot be modified from this account."
         case "too_many_devices":
-            return "This team has reached the maximum number of registered remotes. Remove one with `cmux remotes remove <name>` first."
+            return "This team has reached the maximum number of registered remotes. Remove one with `mosaic remotes remove <name>` first."
         case "team_not_found":
-            return "You are not a member of the requested team. Run `cmux auth status` to check the signed-in account."
+            return "You are not a member of the requested team. Run `mosaic auth status` to check the signed-in account."
         default:
             break
         }
         if status == 401 {
-            return "Not signed in or session expired. Run `cmux auth login`, then retry."
+            return "Not signed in or session expired. Run `mosaic auth login`, then retry."
         }
         return "Device registry request failed (HTTP \(status)): \(trimmed.isEmpty ? "<empty>" : trimmed)"
     }

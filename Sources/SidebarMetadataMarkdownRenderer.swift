@@ -7,8 +7,8 @@ import Foundation
 /// appearance of every metadata block performed a guaranteed nil -> attributed
 /// swap, changing the row's intrinsic height mid-scroll and re-feeding the
 /// sidebar-wide layout/measurement cycle
-/// (https://github.com/emergent-inc/cmux/issues/5764,
-/// https://github.com/emergent-inc/cmux/issues/5845). Lazy rows must be
+/// (https://github.com/emergent-inc/mosaic/issues/5764,
+/// https://github.com/emergent-inc/mosaic/issues/5845). Lazy rows must be
 /// height-stable after they appear, and row state belongs in the initializer or
 /// the model, not `onAppear`.
 ///

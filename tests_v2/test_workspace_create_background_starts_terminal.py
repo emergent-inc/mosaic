@@ -11,15 +11,15 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _wait_for_file_text(path: Path, needle: str, timeout_s: float = 8.0) -> str:
@@ -31,17 +31,17 @@ def _wait_for_file_text(path: Path, needle: str, timeout_s: float = 8.0) -> str:
         if needle in last_text:
             return last_text
         time.sleep(0.1)
-    raise cmuxError(f"Timed out waiting for {needle!r} in background workspace file: {last_text!r}")
+    raise mosaicError(f"Timed out waiting for {needle!r} in background workspace file: {last_text!r}")
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         baseline_workspace = c.current_workspace()
         created_workspaces: list[str] = []
-        marker_path = Path(tempfile.gettempdir()) / f"cmux-bg-start-{int(time.time() * 1000)}.txt"
-        layout_marker_path = Path(tempfile.gettempdir()) / f"cmux-bg-layout-start-{int(time.time() * 1000)}.txt"
+        marker_path = Path(tempfile.gettempdir()) / f"mosaic-bg-start-{int(time.time() * 1000)}.txt"
+        layout_marker_path = Path(tempfile.gettempdir()) / f"mosaic-bg-layout-start-{int(time.time() * 1000)}.txt"
         try:
-            token = f"CMUX_BG_START_{int(time.time() * 1000)}"
+            token = f"MOSAIC_BG_START_{int(time.time() * 1000)}"
             initial_command = (
                 "python3 -c " +
                 shlex.quote(
@@ -67,7 +67,7 @@ def main() -> int:
                 "background eager load should not switch the selected workspace",
             )
 
-            layout_token = f"CMUX_BG_LAYOUT_START_{int(time.time() * 1000)}"
+            layout_token = f"MOSAIC_BG_LAYOUT_START_{int(time.time() * 1000)}"
             layout_command = (
                 "python3 -c " +
                 shlex.quote(

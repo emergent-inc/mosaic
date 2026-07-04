@@ -3,7 +3,7 @@ import postgres, { type Sql } from "postgres";
 
 import { closeCloudDbForTests } from "../db/client";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 const getUser = mock(async () => ({
@@ -28,7 +28,7 @@ beforeAll(() => {
   if (!runDbTests) return;
   const databaseURL = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseURL) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   sql = postgres(databaseURL, { max: 1 });
 });
@@ -47,7 +47,7 @@ describe("device token route", () => {
     const responses = await Promise.all(
       Array.from({ length: 12 }, (_, index) =>
         POST(
-          new Request("https://cmux.test/api/device-tokens", {
+          new Request("https://mosaic.test/api/device-tokens", {
             method: "POST",
             headers: {
               authorization: "Bearer access-token",
@@ -55,7 +55,7 @@ describe("device token route", () => {
             },
             body: JSON.stringify({
               deviceToken: index.toString(16).padStart(64, "0"),
-              bundleId: "dev.cmux.ios.push1",
+              bundleId: "dev.mosaic.ios.push1",
               platform: "ios",
             }),
           }),
@@ -83,12 +83,12 @@ describe("device token route", () => {
     };
     const register = (deviceToken: string) =>
       POST(
-        new Request("https://cmux.test/api/device-tokens", {
+        new Request("https://mosaic.test/api/device-tokens", {
           method: "POST",
           headers,
           body: JSON.stringify({
             deviceToken,
-            bundleId: "dev.cmux.ios.push1",
+            bundleId: "dev.mosaic.ios.push1",
             platform: "ios",
           }),
         }),
@@ -103,7 +103,7 @@ describe("device token route", () => {
     expect(stored).toEqual({ total: 1, token });
 
     const deleteResponse = await DELETE(
-      new Request("https://cmux.test/api/device-tokens", {
+      new Request("https://mosaic.test/api/device-tokens", {
         method: "DELETE",
         headers,
         body: JSON.stringify({ deviceToken: token.toUpperCase() }),

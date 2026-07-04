@@ -2,7 +2,7 @@ import Foundation
 import WebKit
 
 /// Name of the `WKScriptMessageHandler` the injected media-playback hook posts to.
-private let mediaPlaybackMessageHandlerName = "cmuxMediaPlayback"
+private let mediaPlaybackMessageHandlerName = "mosaicMediaPlayback"
 
 extension BrowserPanel {
     /// Isolated content world for the media-playback hook.
@@ -23,7 +23,7 @@ extension BrowserPanel {
     /// its hidden pane alive too. Each frame tags its report with a stable
     /// per-document id; the native side keeps a pane alive while any frame is
     /// playing and releases it once every frame has stopped
-    /// (https://github.com/emergent-inc/cmux/issues/5409).
+    /// (https://github.com/emergent-inc/mosaic/issues/5409).
     ///
     /// Reports only on change (debounced via `lastReported`) and on `pagehide`.
     /// The broad `playing` state uses `paused`/`ended`, so muted playback still
@@ -262,7 +262,7 @@ extension BrowserPanel {
         guard instanceID == webViewInstanceID else { return }
         applyMediaPlaybackReport(frameID: report.frameID, isPlaying: report.isPlaying, isAudible: report.isAudible)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.media.playback panel=\(id.uuidString.prefix(5)) " +
             "frame=\(report.frameID.prefix(5)) playing=\(report.isPlaying ? 1 : 0) " +
             "audible=\(report.isAudible ? 1 : 0) anyPlaying=\(isPlayingMedia ? 1 : 0) " +

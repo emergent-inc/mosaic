@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Keyboard Shortcuts"
+  short_description: "Customize mosaic shortcuts and preset layouts."
+  default_prompt: "Use this skill to help choose and apply mosaic keyboard shortcut templates: inspect current bindings, propose layouts, apply selected action paths, validate mosaic.json, and report exact revert commands."

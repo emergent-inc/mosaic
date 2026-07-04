@@ -5,7 +5,7 @@ import { isAllowedAnalyticsEvent } from "../services/analytics/iosEventPolicy";
 describe("analytics event policy", () => {
   test("allows iOS and macOS native events", () => {
     expect(isAllowedAnalyticsEvent("ios_app_launched")).toBe(true);
-    expect(isAllowedAnalyticsEvent("cmux_daily_active")).toBe(true);
+    expect(isAllowedAnalyticsEvent("mosaic_daily_active")).toBe(true);
     expect(isAllowedAnalyticsEvent("mac_action_performed")).toBe(true);
     expect(isAllowedAnalyticsEvent("mac_error_notification_shown")).toBe(true);
     expect(isAllowedAnalyticsEvent("mac_collaboration_terminal_shared")).toBe(true);

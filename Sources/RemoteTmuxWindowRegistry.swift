@@ -1,7 +1,7 @@
 import Foundation
 
 /// Owns the dedicated-window bookkeeping ``RemoteTmuxController`` uses for the
-/// "one cmux window per remote endpoint" mirror mode (Option 1): the host↔window
+/// "one mosaic window per remote endpoint" mirror mode (Option 1): the host↔window
 /// bindings and the in-flight-attach guard set.
 ///
 /// Factored out of the controller so the two-way binding (and its always-paired
@@ -11,10 +11,10 @@ import Foundation
 /// suspension point.
 @MainActor
 final class RemoteTmuxWindowRegistry {
-    /// ``RemoteTmuxHost/connectionHash`` → the dedicated cmux window mirroring that
+    /// ``RemoteTmuxHost/connectionHash`` → the dedicated mosaic window mirroring that
     /// endpoint (Option 1).
     private var windowIdByHost: [String: UUID] = [:]
-    /// Reverse map: cmux window id → the full host it mirrors (for window-close
+    /// Reverse map: mosaic window id → the full host it mirrors (for window-close
     /// detach and new-session-in-window, which need the endpoint's port/identity).
     private var hostByWindowId: [UUID: RemoteTmuxHost] = [:]
     /// Endpoint ``RemoteTmuxHost/connectionHash`` values with an in-flight

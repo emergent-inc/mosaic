@@ -60,27 +60,27 @@ export default function NotificationsPage() {
         </thead>
         <tbody>
           <tr>
-            <td><code>CMUX_NOTIFICATION_TITLE</code></td>
+            <td><code>MOSAIC_NOTIFICATION_TITLE</code></td>
             <td>{t("envTitle")}</td>
           </tr>
           <tr>
-            <td><code>CMUX_NOTIFICATION_SUBTITLE</code></td>
+            <td><code>MOSAIC_NOTIFICATION_SUBTITLE</code></td>
             <td>{t("envSubtitle")}</td>
           </tr>
           <tr>
-            <td><code>CMUX_NOTIFICATION_BODY</code></td>
+            <td><code>MOSAIC_NOTIFICATION_BODY</code></td>
             <td>{t("envBody")}</td>
           </tr>
         </tbody>
       </table>
       <CodeBlock title="Examples" lang="bash">{`# Text-to-speech
-say "$CMUX_NOTIFICATION_TITLE"
+say "$MOSAIC_NOTIFICATION_TITLE"
 
 # Custom sound file
 afplay /path/to/sound.aiff
 
 # Log to file
-echo "$CMUX_NOTIFICATION_TITLE: $CMUX_NOTIFICATION_BODY" >> ~/notifications.log`}</CodeBlock>
+echo "$MOSAIC_NOTIFICATION_TITLE: $MOSAIC_NOTIFICATION_BODY" >> ~/notifications.log`}</CodeBlock>
       <p>{t("customCommandNote")}</p>
 
       <DocsHeading level={2} id="notification-hooks">{t("hooksTitle")}</DocsHeading>
@@ -112,7 +112,7 @@ echo "$CMUX_NOTIFICATION_TITLE: $CMUX_NOTIFICATION_BODY" >> ~/notifications.log`
   },
   "context": {
     "cwd": "/path/to/project",
-    "configPath": "/path/to/project/.cmux/cmux.json",
+    "configPath": "/path/to/project/.mosaic/mosaic.json",
     "hookId": "quiet-docs",
     "appFocused": false,
     "focusedPanel": false
@@ -141,8 +141,8 @@ echo "$CMUX_NOTIFICATION_TITLE: $CMUX_NOTIFICATION_BODY" >> ~/notifications.log`
       <DocsHeading level={2} id="sending">{t("sending")}</DocsHeading>
 
       <DocsHeading level={3} id="cli-usage">{t("cli")}</DocsHeading>
-      <CodeBlock lang="bash">{`cmux notify --title "Task Complete" --body "Your build finished"
-cmux notify --title "Claude Code" --subtitle "Waiting" --body "Agent needs input"`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic notify --title "Task Complete" --body "Your build finished"
+mosaic notify --title "Claude Code" --subtitle "Waiting" --body "Agent needs input"`}</CodeBlock>
 
       <DocsHeading level={3} id="osc777-title">{t("osc777Title")}</DocsHeading>
       <p>{t("osc777Desc")}</p>
@@ -213,9 +213,9 @@ printf '\\e]99;i=1;e=1;d=1;p=body:All tests passed\\e\\\\'`}</CodeBlock>
       </p>
 
       <DocsHeading level={3} id="create-hook-script">{t("createHookScript")}</DocsHeading>
-      <CodeBlock title="~/.claude/hooks/cmux-notify.sh" lang="bash">{`#!/bin/bash
-# Skip if not in cmux
-[ -S /tmp/cmux.sock ] || exit 0
+      <CodeBlock title="~/.claude/hooks/mosaic-notify.sh" lang="bash">{`#!/bin/bash
+# Skip if not in mosaic
+[ -S /tmp/mosaic.sock ] || exit 0
 
 EVENT=$(cat)
 EVENT_TYPE=$(echo "$EVENT" | jq -r '.hook_event_name // "unknown"')
@@ -223,13 +223,13 @@ TOOL=$(echo "$EVENT" | jq -r '.tool_name // ""')
 
 case "$EVENT_TYPE" in
     "Stop")
-        cmux notify --title "Claude Code" --body "Session complete"
+        mosaic notify --title "Claude Code" --body "Session complete"
         ;;
     "PostToolUse")
-        [ "$TOOL" = "Task" ] && cmux notify --title "Claude Code" --body "Agent finished"
+        [ "$TOOL" = "Task" ] && mosaic notify --title "Claude Code" --body "Agent finished"
         ;;
 esac`}</CodeBlock>
-      <CodeBlock lang="bash">{`chmod +x ~/.claude/hooks/cmux-notify.sh`}</CodeBlock>
+      <CodeBlock lang="bash">{`chmod +x ~/.claude/hooks/mosaic-notify.sh`}</CodeBlock>
 
       <DocsHeading level={3} id="configure-claude">{t("configureClaude")}</DocsHeading>
       <CodeBlock title="~/.claude/settings.json" lang="json">{`{
@@ -240,7 +240,7 @@ esac`}</CodeBlock>
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/cmux-notify.sh"
+            "command": "~/.claude/hooks/mosaic-notify.sh"
           }
         ]
       }
@@ -251,7 +251,7 @@ esac`}</CodeBlock>
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/cmux-notify.sh"
+            "command": "~/.claude/hooks/mosaic-notify.sh"
           }
         ]
       }
@@ -273,28 +273,28 @@ esac`}</CodeBlock>
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "if command -v cmux &>/dev/null; then cmux set-status copilot_cli Running; fi",
+        "bash": "if command -v mosaic &>/dev/null; then mosaic set-status copilot_cli Running; fi",
         "timeoutSec": 3
       }
     ],
     "agentStop": [
       {
         "type": "command",
-        "bash": "if command -v cmux &>/dev/null; then cmux notify --title 'Copilot CLI' --body 'Done'; cmux set-status copilot_cli Idle; fi",
+        "bash": "if command -v mosaic &>/dev/null; then mosaic notify --title 'Copilot CLI' --body 'Done'; mosaic set-status copilot_cli Idle; fi",
         "timeoutSec": 5
       }
     ],
     "errorOccurred": [
       {
         "type": "command",
-        "bash": "if command -v cmux &>/dev/null; then cmux notify --title 'Copilot CLI' --subtitle 'Error' --body 'An error occurred'; cmux set-status copilot_cli Error; fi",
+        "bash": "if command -v mosaic &>/dev/null; then mosaic notify --title 'Copilot CLI' --subtitle 'Error' --body 'An error occurred'; mosaic set-status copilot_cli Error; fi",
         "timeoutSec": 5
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "bash": "if command -v cmux &>/dev/null; then cmux clear-status copilot_cli; fi",
+        "bash": "if command -v mosaic &>/dev/null; then mosaic clear-status copilot_cli; fi",
         "timeoutSec": 3
       }
     ]
@@ -317,9 +317,9 @@ notify-after() {
   "$@"
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    cmux notify --title "✓ Command Complete" --body "$1"
+    mosaic notify --title "✓ Command Complete" --body "$1"
   else
-    cmux notify --title "✗ Command Failed" --body "$1 (exit $exit_code)"
+    mosaic notify --title "✗ Command Failed" --body "$1 (exit $exit_code)"
   fi
   return $exit_code
 }

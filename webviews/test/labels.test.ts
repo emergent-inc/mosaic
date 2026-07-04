@@ -17,13 +17,13 @@ describe("createDiffViewerLabelResolver", () => {
   test("fails fast for missing payload labels in development mode", () => {
     const label = createDiffViewerLabelResolver(undefined, { assertMissing: true });
 
-    expect(() => label("hideFiles")).toThrow("Missing cmux diff viewer label: hideFiles");
+    expect(() => label("hideFiles")).toThrow("Missing mosaic diff viewer label: hideFiles");
   });
 
   test("deduplicates missing payload label assertions", () => {
     const label = createDiffViewerLabelResolver(undefined, { assertMissing: true });
 
-    expect(() => label("hideFiles")).toThrow("Missing cmux diff viewer label: hideFiles");
+    expect(() => label("hideFiles")).toThrow("Missing mosaic diff viewer label: hideFiles");
     expect(label("hideFiles")).toBe("Hide files");
   });
 

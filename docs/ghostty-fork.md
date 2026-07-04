@@ -12,10 +12,10 @@ When we change the fork, update this document and the parent submodule SHA.
 
 ## Current fork changes
 
-Current cmux pinned fork head: `05c3e2908`, which adds
+Current mosaic pinned fork head: `05c3e2908`, which adds
 the Darwin-only `ghostty_surface_set_renderer_realized` C API (a
 `display_realized` renderer-thread mailbox message that drives
-`displayUnrealized()`/`displayRealized()`) on top of `5697db81`. cmux uses it to
+`displayUnrealized()`/`displayRealized()`) on top of `5697db81`. mosaic uses it to
 release an occluded terminal's GPU renderer resources (Metal swap chain /
 IOSurface) while keeping its PTY alive, then rebuild them on re-show. The API
 returns whether the message was enqueued so the embedder only advances its
@@ -24,30 +24,30 @@ realize/unrealize mirror state on success. The push is `.instant`
 renderer. See emergent-inc/ghostty branch `feat-renderer-realized-offscreen`,
 the copy-mode read branches `issue-6170-surface-read-screen-text-main` and
 `issue-6170-screen-clipboard-text`, and
-https://github.com/emergent-inc/cmux/issues/4607. The corresponding prebuilt
+https://github.com/emergent-inc/mosaic/issues/4607. The corresponding prebuilt
 archive is published at
-https://github.com/emergent-inc/ghostty/releases/tag/xcframework-49cb510f759aa109a5b1d30329583195155e58a4-crashsubdir-cmux-crash-v1
+https://github.com/emergent-inc/ghostty/releases/tag/xcframework-49cb510f759aa109a5b1d30329583195155e58a4-crashsubdir-mosaic-crash-v1
 and pinned in `scripts/ghosttykit-checksums.txt`.
 
 The prior head was refreshed from upstream `main` on May 1, 2026.
-Earlier cmux pinned fork head: `34cbf180d`, merging the surface registry
-serialization for https://github.com/emergent-inc/cmux/issues/5458 (`e5c962a72`,
-landed on cmux `main`) into the iOS render bounded-acquire line (`f78189ac1`)
+Earlier mosaic pinned fork head: `34cbf180d`, merging the surface registry
+serialization for https://github.com/emergent-inc/mosaic/issues/5458 (`e5c962a72`,
+landed on mosaic `main`) into the iOS render bounded-acquire line (`f78189ac1`)
 combined with the cmd-click link refresh under mouse reporting (`df789cd4b`,
 emergent-inc/ghostty#71 and PRs #74 through #79) for
-https://github.com/emergent-inc/cmux/issues/5128. This keeps the previous head's
+https://github.com/emergent-inc/mosaic/issues/5128. This keeps the previous head's
 manual embedded IO patch in https://github.com/emergent-inc/ghostty/pull/53,
-the Metal renderer row rebuild guard for https://github.com/emergent-inc/cmux/issues/3369,
+the Metal renderer row rebuild guard for https://github.com/emergent-inc/mosaic/issues/3369,
 the URL/path regex bound for spaced file paths followed by prose, and the iOS
 render serial-queue bounded acquire fix from emergent-inc/ghostty#80. This head
-keeps the cmux theme picker hooks, exposes the manual surface IO needed by
+keeps the mosaic theme picker hooks, exposes the manual surface IO needed by
 libghostty iOS clients, bounds shaped glyph iteration during IME/preedit row
 rebuilds, prevents Cmd-hover from highlighting normal sentence text after a file
 path, and lets Cmd-click open links even while a mouse-reporting alt-screen TUI
 (Claude Code, Codex) has grabbed the mouse.
-It also supports Ctrl-N and Ctrl-P in the cmux theme picker.
+It also supports Ctrl-N and Ctrl-P in the mosaic theme picker.
 The corresponding prebuilt archive is published at
-https://github.com/emergent-inc/ghostty/releases/tag/xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-cmux-crash-v1
+https://github.com/emergent-inc/ghostty/releases/tag/xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-mosaic-crash-v1
 and pinned in `scripts/ghosttykit-checksums.txt`.
 
 ### 1) macOS display link restart on display changes
@@ -89,32 +89,32 @@ tend to conflict together during rebases.
   - `src/terminal/osc/parsers/kitty_notification.zig`
 - Summary:
   - Adds a parser for kitty OSC 99 notifications and wires it into the OSC dispatcher.
-  - Adapts the parser to upstream's newer capture API so the cmux OSC 99 hook survives the March 30 upstream sync.
+  - Adapts the parser to upstream's newer capture API so the mosaic OSC 99 hook survives the March 30 upstream sync.
 
-### 4) cmux theme picker helper hooks
+### 4) mosaic theme picker helper hooks
 
 - Commits:
-  - `66ff6ec4d` (Add cmux theme picker helper hooks)
-  - `aa650937d` (Fix cmux theme picker preview writes)
-  - `89d3612c9` (Improve cmux theme picker footer contrast)
-  - `0dc979889` (Respect system theme in cmux picker)
-  - `d9e0ab512` (Skip theme detection in cmux picker)
+  - `66ff6ec4d` (Add mosaic theme picker helper hooks)
+  - `aa650937d` (Fix mosaic theme picker preview writes)
+  - `89d3612c9` (Improve mosaic theme picker footer contrast)
+  - `0dc979889` (Respect system theme in mosaic picker)
+  - `d9e0ab512` (Skip theme detection in mosaic picker)
   - `042cbaaab` (Match Ghostty theme picker startup)
-  - `eb34bcdd6` (Harden cmux theme override writes)
-  - `04ec69173` (Apply highlighted cmux theme on Enter)
-  - `4265d3428` (Apply cmux theme from picker search)
-  - `176bd550f` (Add ctrl navigation to cmux theme picker)
+  - `eb34bcdd6` (Harden mosaic theme override writes)
+  - `04ec69173` (Apply highlighted mosaic theme on Enter)
+  - `4265d3428` (Apply mosaic theme from picker search)
+  - `176bd550f` (Add ctrl navigation to mosaic theme picker)
 - Files:
   - `build.zig`
   - `src/cli/list_themes.zig`
   - `src/main_ghostty.zig`
 - Summary:
-  - Adds a `zig build cli-helper` step so cmux can bundle Ghostty's CLI helper binary on macOS.
-  - Lets `+list-themes` switch into a cmux-managed mode via env vars, writing the cmux theme override file and posting the existing cmux reload notification for live app-wide preview.
-  - Keeps the preview UI readable in light mode, matches upstream picker startup behavior, and hardens writes to the cmux-managed theme override file.
-  - Restores Enter as the cmux apply action by writing the currently highlighted theme before the picker exits.
-  - Applies the highlighted search result when Enter is pressed from search mode in cmux-managed picker sessions.
-  - Supports Ctrl-N and Ctrl-P as one-row down/up navigation in cmux-managed picker sessions.
+  - Adds a `zig build cli-helper` step so mosaic can bundle Ghostty's CLI helper binary on macOS.
+  - Lets `+list-themes` switch into a mosaic-managed mode via env vars, writing the mosaic theme override file and posting the existing mosaic reload notification for live app-wide preview.
+  - Keeps the preview UI readable in light mode, matches upstream picker startup behavior, and hardens writes to the mosaic-managed theme override file.
+  - Restores Enter as the mosaic apply action by writing the currently highlighted theme before the picker exits.
+  - Applies the highlighted search result when Enter is pressed from search mode in mosaic-managed picker sessions.
+  - Supports Ctrl-N and Ctrl-P as one-row down/up navigation in mosaic-managed picker sessions.
 
 ### 5) Color scheme mode 2031 reporting
 
@@ -126,12 +126,12 @@ tend to conflict together during rebases.
   - `src/termio/stream_handler.zig`
 - Summary:
   - Keeps Ghostty's mode 2031 color-scheme response aligned with the surface's actual conditional state after config reloads.
-  - Sends the initial DSR 997 report as soon as mode 2031 is enabled, which cmux relies on for immediate color-scheme awareness.
+  - Sends the initial DSR 997 report as soon as mode 2031 is enabled, which mosaic relies on for immediate color-scheme awareness.
 
 ### 6) Keyboard copy mode selection C API
 
 - Commits:
-  - `0b231db94` (Re-export cmux selection APIs removed from upstream)
+  - `0b231db94` (Re-export mosaic selection APIs removed from upstream)
   - `46bd03a7` (surface: add absolute screen row text read)
   - `edad0cfec` (surface: format screen row clipboard text)
   - `e81fb65f` (surface: bound screen clipboard text formatting)
@@ -141,7 +141,7 @@ tend to conflict together during rebases.
   - `src/Surface.zig`
 - Summary:
   - Restores `ghostty_surface_select_cursor_cell` and `ghostty_surface_clear_selection`.
-  - Keeps cmux keyboard copy mode working against the refreshed Ghostty base after upstream removed those exports.
+  - Keeps mosaic keyboard copy mode working against the refreshed Ghostty base after upstream removed those exports.
 
 ### 7) macos-background-from-layer config flag
 
@@ -158,7 +158,7 @@ tend to conflict together during rebases.
   - Adds a `macos-background-from-layer` bool config (default false).
   - When true, sets `bg_color[3] = 0` in the per-frame uniform update so the Metal renderer skips the full-screen background fill.
   - Allows the host app to provide the terminal background via `CALayer.backgroundColor` for instant coverage during view resizes, avoiding alpha double-stacking.
-  - Replays the layer-background restore on top of the refreshed Ghostty base so cmux keeps the resize-coverage fix after the upstream sync.
+  - Replays the layer-background restore on top of the refreshed Ghostty base so mosaic keeps the resize-coverage fix after the upstream sync.
 
 ### 8) TerminalStream kitty graphics APC handling
 
@@ -167,7 +167,7 @@ tend to conflict together during rebases.
   - `src/terminal/stream_terminal.zig`
 - Summary:
   - Wires `.apc_start`, `.apc_put`, and `.apc_end` through the shared APC parser in `TerminalStream`.
-  - Restores kitty graphics execution and APC OK/error replies for the non-termio stream path used by cmux/libghostty integrations.
+  - Restores kitty graphics execution and APC OK/error replies for the non-termio stream path used by mosaic/libghostty integrations.
 
 ### 9) Config load string C API
 
@@ -178,7 +178,7 @@ tend to conflict together during rebases.
   - `src/config/Config.zig`
 - Summary:
   - Adds a C API for loading Ghostty config from an in-memory string.
-  - Lets cmux parse generated or override config without materializing a separate config file first.
+  - Lets mosaic parse generated or override config without materializing a separate config file first.
 
 ### 10) Manual embedded IO for libghostty iOS
 
@@ -220,8 +220,8 @@ tend to conflict together during rebases.
   - Bounds the shaped glyph cursor before reading from the shaped-cell slice, so
     `GenericRenderer(Metal).rebuildRow` no longer assumes terminal cells and
     shaped glyph cells have one-to-one cardinality.
-  - The first commit intentionally preserves the panic so cmux can keep the
-    required failing-test-then-fix history for https://github.com/emergent-inc/cmux/issues/3369.
+  - The first commit intentionally preserves the panic so mosaic can keep the
+    required failing-test-then-fix history for https://github.com/emergent-inc/mosaic/issues/3369.
 
 ### 12) URL/path regex bounds for spaced file paths
 
@@ -268,13 +268,13 @@ tend to conflict together during rebases.
     capture. Holding the ctrl/super link-activation modifier was not considered,
     so under a mouse-grabbing alt-screen TUI (Claude Code, Codex) `over_link`
     stayed `false`, the link-click branch in `mouseButtonCallback` was skipped,
-    and the Cmd-click was reported to the program — which made cmux fall back to
+    and the Cmd-click was reported to the program — which made mosaic fall back to
     the OS default browser instead of honoring the configured link-open target.
   - Adds a shared `mouseLinkRefreshAllowed` gate (pure logic in
     `mouseLinkRefreshAllowedState`) that also allows local link handling when the
     ctrl/super modifier is held, using the effective mouse-reporting state
     (`isMouseReporting()`), matching iTerm2 and macOS Terminal. Fixes
-    https://github.com/emergent-inc/cmux/issues/5128.
+    https://github.com/emergent-inc/mosaic/issues/5128.
   - Follow-up (#74): `mouseButtonCallback` ran the link-open path only on
     release, while the mouse-report path ran for both press and release and only
     broke out for the shift-release case — so a Cmd-click over a link still
@@ -333,13 +333,13 @@ tend to conflict together during rebases.
     `App.focusedSurface`, or the embedded surface close path should preserve
     serialization of registry/focus mutation across create and free.
 
-The current cmux pin is the merged head `34cbf180d`, which merges the surface
-registry serialization (`e5c962a72`, section 14, landed on cmux `main` via
+The current mosaic pin is the merged head `34cbf180d`, which merges the surface
+registry serialization (`e5c962a72`, section 14, landed on mosaic `main` via
 branch `issue-5458-surface-registry-lock`) into the Cmd-click link fix line
 (`df789cd4b`, section 13) on top of the iOS render bounded-acquire pin
 (`f78189ac1`). It is reachable from `emergent-inc/ghostty` through branch
 `issue-5128-alt-screen-link-open`. Published
-`xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-cmux-crash-v1`
+`xcframework-34cbf180d8917b802d61d9929cfb493594f2ab52-crashsubdir-mosaic-crash-v1`
 and pinned its archive checksum in `scripts/ghosttykit-checksums.txt`. The
 release and checksum pin must be regenerated whenever this commit changes, even
 for comment-only amends, because the release tag is keyed by the Ghostty commit
@@ -355,12 +355,12 @@ SHA.
 ### zsh prompt redraw follow-ups
 
 - Were local in the fork as `8ade43ce5`, `0cf559581`, `312c7b23a`, and `404a3f175`.
-- Dropped during the March 30, 2026 rebase because newer Ghostty prompt-marking changes on the refreshed base superseded these fork-only zsh redraw patches, so cmux no longer carries them separately.
+- Dropped during the March 30, 2026 rebase because newer Ghostty prompt-marking changes on the refreshed base superseded these fork-only zsh redraw patches, so mosaic no longer carries them separately.
 
 ### initial focus seeding and DECSET 1004 startup behavior
 
 - Was local in the fork as `c19c82bfd`.
-- Dropped from the current pinned fork head when cmux removed the corresponding
+- Dropped from the current pinned fork head when mosaic removed the corresponding
   app-side initial focus seed and went back to post-create focus sync.
 
 ## Merge conflict notes
@@ -369,8 +369,8 @@ These files change frequently upstream; be careful when rebasing the fork:
 
 - April 28, 2026, upstream merge:
   - Merged upstream `659019666` into `465a9a621` without textual conflicts.
-  - Verified with `CMUX_GHOSTTYKIT_NO_PREBUILT=1 ./scripts/ensure-ghosttykit.sh`.
-  - Verified cmux with `./scripts/reload.sh --tag gtyup`.
+  - Verified with `MOSAIC_GHOSTTYKIT_NO_PREBUILT=1 ./scripts/ensure-ghosttykit.sh`.
+  - Verified mosaic with `./scripts/reload.sh --tag gtyup`.
   - Published `xcframework-d3117e03ea19665bc83a28f7e0428c63937e6140` and pinned
     its archive checksum in `scripts/ghosttykit-checksums.txt`.
   - Merged `d3117e03e` into fork `main` with https://github.com/emergent-inc/ghostty/pull/48.
@@ -378,8 +378,8 @@ These files change frequently upstream; be careful when rebasing the fork:
     macOS AppleDouble entries such as `._GhosttyKit.xcframework`.
 
 - April 28, 2026, theme picker restore:
-  - Reapplied the section 4 cmux picker hooks on top of `d3117e03e`.
-  - Enter in cmux mode must call the same selection-apply path used by keyboard/mouse navigation
+  - Reapplied the section 4 mosaic picker hooks on top of `d3117e03e`.
+  - Enter in mosaic mode must call the same selection-apply path used by keyboard/mouse navigation
     before setting the picker outcome to apply.
   - Verified with `zig build cli-helper -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=false -Doptimize=ReleaseFast`.
   - Verified Enter writes `theme = light:0x96f,dark:0x96f` in a PTY temp-config run.
@@ -387,7 +387,7 @@ These files change frequently upstream; be careful when rebasing the fork:
     its archive checksum in `scripts/ghosttykit-checksums.txt`.
 
 - April 30, 2026, theme picker search Enter:
-  - Search-mode Enter in cmux mode must apply the current filtered selection and exit with
+  - Search-mode Enter in mosaic mode must apply the current filtered selection and exit with
     outcome `apply`.
   - Escape still leaves search mode, and stock Ghostty search Enter still returns to normal mode.
   - Verified with `./scripts/reload.sh --tag thmenter`.
@@ -403,7 +403,7 @@ These files change frequently upstream; be careful when rebasing the fork:
     an upstream implementation when one exists.
   - Verified with `zig build test`.
   - Verified the universal macOS plus iOS xcframework path with
-    `CMUX_GHOSTTYKIT_NO_PREBUILT=1 ./scripts/ensure-ghosttykit.sh`.
+    `MOSAIC_GHOSTTYKIT_NO_PREBUILT=1 ./scripts/ensure-ghosttykit.sh`.
   - Published `xcframework-22fa801f88f96fa842e54ecce6c34a5d36003d19` and pinned
     its archive checksum in `scripts/ghosttykit-checksums.txt`.
   - Merged https://github.com/emergent-inc/ghostty/pull/53 so the submodule SHA is
@@ -417,16 +417,16 @@ These files change frequently upstream; be careful when rebasing the fork:
   - Ensure `kitty_notification` stays imported after upstream parser reorganizations.
 
 - `src/cli/list_themes.zig`
-  - cmux now relies on the upstream picker UI plus local env-driven hooks for live preview and restore.
-    If upstream reorganizes the preview loop or key handling, re-check the cmux mode path and keep the
-    stock Ghostty behavior unchanged when the cmux env vars are absent.
-  - The April 28, 2026 restore requires Enter in cmux mode to call the same selection-apply path
+  - mosaic now relies on the upstream picker UI plus local env-driven hooks for live preview and restore.
+    If upstream reorganizes the preview loop or key handling, re-check the mosaic mode path and keep the
+    stock Ghostty behavior unchanged when the mosaic env vars are absent.
+  - The April 28, 2026 restore requires Enter in mosaic mode to call the same selection-apply path
     used by keyboard/mouse navigation before setting the picker outcome to apply.
   - The April 30, 2026 follow-up requires the same behavior from search mode, while preserving Escape
     as the search cancel path.
 
 - `build.zig`
-  - Upstream's new wasm/libghostty work touched the same build graph. Keep the cmux-only `cli-helper`
+  - Upstream's new wasm/libghostty work touched the same build graph. Keep the mosaic-only `cli-helper`
     step wired in without regressing the upstream `lib-vt` or wasm build paths.
 
 - `src/main_ghostty.zig`
@@ -434,7 +434,7 @@ These files change frequently upstream; be careful when rebasing the fork:
     `std.fs.File.stdout().writer(&buf)` API plus explicit flush.
 
 - `include/ghostty.h`, `src/Surface.zig`, `src/apprt/embedded.zig`
-  - Upstream removed cmux-used selection exports. Preserve the re-exported
+  - Upstream removed mosaic-used selection exports. Preserve the re-exported
     `ghostty_surface_select_cursor_cell` and `ghostty_surface_clear_selection` functions.
 
 - `src/renderer/generic.zig`
@@ -449,7 +449,7 @@ These files change frequently upstream; be careful when rebasing the fork:
 
 - `src/Surface.zig` (modifier tracking)
   - `modsChanged` and the key callback's link-highlight gate must compare binding mods against
-    binding mods (stored mouse mods are binding-only). cmux sends sided modifier bits on key
+    binding mods (stored mouse mods are binding-only). mosaic sends sided modifier bits on key
     events for `macos-option-as-alt = left|right`; comparing raw mods re-dirties the screen and
     re-runs the link refresh on every event while a sided or lock modifier is held. If upstream
     refactors modifier tracking, keep the binding-normalized comparison.

@@ -58,7 +58,7 @@ export default function TaskManagerPage() {
 
       <p className="mt-6">{t("p1")}</p>
       <p>{t("p2")}</p>
-      <CodeBlock lang="bash">{`cmux top`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic top`}</CodeBlock>
       <p>{t("p3")}</p>
       <p>{t("p4")}</p>
     </>

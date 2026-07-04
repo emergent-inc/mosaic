@@ -8,8 +8,8 @@ fi
 
 url="$1"
 output="$2"
-attempts="${CMUX_DOWNLOAD_ATTEMPTS:-8}"
-max_time="${CMUX_DOWNLOAD_MAX_TIME:-300}"
+attempts="${MOSAIC_DOWNLOAD_ATTEMPTS:-8}"
+max_time="${MOSAIC_DOWNLOAD_MAX_TIME:-300}"
 
 mkdir -p "$(dirname "$output")"
 

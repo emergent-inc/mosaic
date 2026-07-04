@@ -1,8 +1,8 @@
-import CmuxControlSocket
-import CmuxRemoteSession
+import MosaicControlSocket
+import MosaicRemoteSession
 import Foundation
-import CmuxWorkspaces
-import CmuxSidebar
+import MosaicWorkspaces
+import MosaicSidebar
 
 /// The live-app half of the v1 sidebar telemetry/report commands
 /// (`report_git_branch` / `report_pr` / `report_ports` / `report_pwd` /

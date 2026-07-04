@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: the generated Amp plugin is importable and emits cmux hook calls.
+Regression test: the generated Amp plugin is importable and emits mosaic hook calls.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -43,12 +43,12 @@ def main() -> int:
         return 0
 
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-amp-extension-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-amp-extension-") as td:
         root = Path(td)
         # `amp` has no documented config-dir override, so install resolves
         # the plugin path against $HOME. Point HOME at the temp dir for the
@@ -71,51 +71,51 @@ def main() -> int:
             print(f"stderr={install.stderr.strip()}")
             return 1
 
-        extension_path = root / ".config" / "amp" / "plugins" / "cmux-session.ts"
+        extension_path = root / ".config" / "amp" / "plugins" / "mosaic-session.ts"
         if not extension_path.exists():
             print(f"FAIL: expected plugin at {extension_path}")
             return 1
         extension_text = extension_path.read_text(encoding="utf-8")
-        if "cmux-amp-session-extension-marker" not in extension_text:
-            print(f"FAIL: expected cmux marker in {extension_path}")
+        if "mosaic-amp-session-extension-marker" not in extension_text:
+            print(f"FAIL: expected mosaic marker in {extension_path}")
             return 1
 
-        fake_cmux = root / "fake-cmux"
-        fake_args_log = root / "fake-cmux-args.log"
-        fake_stdin_log = root / "fake-cmux-stdin.log"
-        fake_env_log = root / "fake-cmux-env.log"
+        fake_mosaic = root / "fake-mosaic"
+        fake_args_log = root / "fake-mosaic-args.log"
+        fake_stdin_log = root / "fake-mosaic-stdin.log"
+        fake_env_log = root / "fake-mosaic-env.log"
         fake_bin = root / "bin"
         fake_bin.mkdir()
         fake_amp = fake_bin / "amp"
         make_executable(fake_amp, "#!/usr/bin/env bash\nexit 0\n")
         make_executable(
-            fake_cmux,
+            fake_mosaic,
             """#!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$*" >> "$FAKE_CMUX_ARGS_LOG"
-cat >> "$FAKE_CMUX_STDIN_LOG"
-printf '\n---\n' >> "$FAKE_CMUX_STDIN_LOG"
+printf '%s\n' "$*" >> "$FAKE_MOSAIC_ARGS_LOG"
+cat >> "$FAKE_MOSAIC_STDIN_LOG"
+printf '\n---\n' >> "$FAKE_MOSAIC_STDIN_LOG"
 {
-  printf 'kind=%s\n' "${CMUX_AGENT_LAUNCH_KIND-}"
-  printf 'cwd=%s\n' "${CMUX_AGENT_LAUNCH_CWD-}"
-  printf 'argv=%s\n' "${CMUX_AGENT_LAUNCH_ARGV_B64-}"
+  printf 'kind=%s\n' "${MOSAIC_AGENT_LAUNCH_KIND-}"
+  printf 'cwd=%s\n' "${MOSAIC_AGENT_LAUNCH_CWD-}"
+  printf 'argv=%s\n' "${MOSAIC_AGENT_LAUNCH_ARGV_B64-}"
   printf 'amp_api_key=%s\n' "${AMP_API_KEY-}"
-} >> "$FAKE_CMUX_ENV_LOG"
+} >> "$FAKE_MOSAIC_ENV_LOG"
 """,
         )
 
         check_env = env.copy()
-        check_env["CMUX_TEST_AMP_EXTENSION_PATH"] = str(extension_path)
-        check_env["CMUX_SURFACE_ID"] = "surface-amp-test"
-        check_env["CMUX_AMP_CMUX_BIN"] = str(fake_cmux)
+        check_env["MOSAIC_TEST_AMP_EXTENSION_PATH"] = str(extension_path)
+        check_env["MOSAIC_SURFACE_ID"] = "surface-amp-test"
+        check_env["MOSAIC_AMP_MOSAIC_BIN"] = str(fake_mosaic)
         check_env["AMP_API_KEY"] = "secret-should-not-propagate"
-        check_env["FAKE_CMUX_ARGS_LOG"] = str(fake_args_log)
-        check_env["FAKE_CMUX_STDIN_LOG"] = str(fake_stdin_log)
-        check_env["FAKE_CMUX_ENV_LOG"] = str(fake_env_log)
+        check_env["FAKE_MOSAIC_ARGS_LOG"] = str(fake_args_log)
+        check_env["FAKE_MOSAIC_STDIN_LOG"] = str(fake_stdin_log)
+        check_env["FAKE_MOSAIC_ENV_LOG"] = str(fake_env_log)
         check_env["PWD"] = "/tmp/amp-project"
         check_env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
         check_source = """
-const extensionPath = process.env.CMUX_TEST_AMP_EXTENSION_PATH;
+const extensionPath = process.env.MOSAIC_TEST_AMP_EXTENSION_PATH;
 const mod = await import(extensionPath);
 if (typeof mod.default !== "function") throw new Error("missing default export");
 const handlers = new Map();
@@ -213,7 +213,7 @@ await handlers.get("agent.end")({ thread, message: "hello amp", id: "msg-user-1"
             print(f"FAIL: plugin captured wrong Amp launch argv; expected {expected_argv!r}, got {decoded_argv!r}")
             return 1
 
-    print("PASS: generated Amp plugin installs and emits cmux hooks")
+    print("PASS: generated Amp plugin installs and emits mosaic hooks")
     return 0
 
 

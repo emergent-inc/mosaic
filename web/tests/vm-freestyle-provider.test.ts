@@ -9,7 +9,7 @@ const sshEndpoint: SSHEndpoint = {
   transport: "ssh",
   host: "vm-ssh.freestyle.sh",
   port: 22,
-  username: "vm-1+cmux",
+  username: "vm-1+mosaic",
   publicKeyFingerprint: null,
   credential: { kind: "password", value: "token" },
   identityHandle: "identity-1",
@@ -44,7 +44,7 @@ class TestFreestyleProvider extends FreestyleProvider {
 describe("FreestyleProvider attach fallback", () => {
   test("falls back to SSH when a required daemon attach is unavailable", async () => {
     const provider = new TestFreestyleProvider();
-    provider.websocketResult = new Error("Freestyle cmuxd websocket health check returned 502");
+    provider.websocketResult = new Error("Freestyle mosaicd websocket health check returned 502");
 
     const endpoint = await provider.openAttach("vm-1", { requireDaemon: true });
 
@@ -55,7 +55,7 @@ describe("FreestyleProvider attach fallback", () => {
   test("falls back to SSH when the WebSocket health check times out", async () => {
     const provider = new TestFreestyleProvider();
     provider.websocketResult = new Error(
-      "Freestyle cmuxd websocket health check failed: The operation was aborted",
+      "Freestyle mosaicd websocket health check failed: The operation was aborted",
     );
 
     const endpoint = await provider.openAttach("vm-1", { requireDaemon: true });

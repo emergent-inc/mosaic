@@ -9,7 +9,7 @@ states that a sparse permanent diagnostic is intended.
 Report a failure when the diff introduces or materially expands:
 
 - `print`, `debugPrint`, `dump`, or `NSLog` in app/runtime Swift code.
-- Ad hoc file logging or stdout/stderr logging for production diagnostics when `Logger` or the existing cmux debug log should be used.
+- Ad hoc file logging or stdout/stderr logging for production diagnostics when `Logger` or the existing mosaic debug log should be used.
 - A file-scoped `Logger` that is not declared as `nonisolated private let` in code affected by MainActor-by-default isolation.
 - Logging of secrets, tokens, passwords, private keys, customer content, or personal data without explicit private redaction.
 
@@ -17,7 +17,7 @@ Allowed cases:
 
 - CLI command output that is the intended user-facing result.
 - Tests and fixtures where stdout is part of the harness.
-- Debug-only `NSLog` or cmux event logging guarded by `#if DEBUG`.
+- Debug-only `NSLog` or mosaic event logging guarded by `#if DEBUG`.
 - Sanitized release diagnostics in `Sources/Providers/*` that intentionally use `NSLog` for provider observability, as long as the changed log cannot expose secrets or personal data.
 - One-off local debugging that is removed before merge.
 

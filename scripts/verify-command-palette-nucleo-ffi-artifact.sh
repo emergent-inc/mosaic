@@ -7,7 +7,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 TARGET="$1"
-LIB_NAME="libcmux_command_palette_nucleo_ffi.dylib"
+LIB_NAME="libmosaic_command_palette_nucleo_ffi.dylib"
 
 if [[ -d "$TARGET/Contents" ]]; then
   DYLIB="$TARGET/Contents/Frameworks/$LIB_NAME"

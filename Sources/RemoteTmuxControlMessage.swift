@@ -49,7 +49,7 @@ enum RemoteTmuxControlMessage: Sendable, Equatable {
     case sessionWindowChanged(sessionId: Int, windowId: Int)
 
     /// `%subscription-changed <name> … : <value>` — a `refresh-client -B`
-    /// subscription's value changed. cmux subscribes per-pane `pane_current_path`
+    /// subscription's value changed. mosaic subscribes per-pane `pane_current_path`
     /// for live working-directory tracking. Parsed leniently: `name` is the first
     /// field and `value` is everything after the first ` : ` separator, so the
     /// version-variable middle fields (session/window/pane/flags) are ignored.
@@ -62,7 +62,7 @@ enum RemoteTmuxControlMessage: Sendable, Equatable {
     /// unterminated line or command block exceeded the parser's memory budget.
     case streamError(String)
 
-    /// A recognized notification cmux does not act on (kept for diagnostics).
+    /// A recognized notification mosaic does not act on (kept for diagnostics).
     case ignoredNotification(String)
 
     /// A line that could not be classified.

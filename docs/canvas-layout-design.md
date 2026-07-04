@@ -16,7 +16,7 @@ or spatial focus keys, instead of nesting ever-smaller splits.
 
 Two layers, enforced by SPM separation:
 
-1. `Packages/macOS/CmuxCanvas` — the pure model. Pane frames, gap math, snapping,
+1. `Packages/macOS/MosaicCanvas` — the pure model. Pane frames, gap math, snapping,
    alignment/distribution commands, spatial focus, placement of new panes,
    viewport math (scroll-to-reveal, fit-all). Foundation-only, no
    AppKit/CoreGraphics, deterministic, fully unit tested. Declares macOS and
@@ -72,7 +72,7 @@ time the visible rect changes (scroll/resize/zoom):
 
 Frames never change while offscreen, so no reflow happens on re-entry.
 
-## Model (CmuxCanvas)
+## Model (MosaicCanvas)
 
 - `CanvasRect/CanvasPoint/CanvasSize` — Double-based, Codable, Hashable.
 - `CanvasLayout` — ordered pane list (back→front z-order), frames, focused
@@ -109,7 +109,7 @@ lefts/rights/tops/bottoms, equalize widths/heights, distribute
 horizontally/vertically, tidy canvas.
 
 All new shortcuts are registered in `KeyboardShortcutSettings`, editable in
-Settings, configurable in `~/.config/cmux/cmux.json`, and documented in the
+Settings, configurable in `~/.config/mosaic/mosaic.json`, and documented in the
 web docs. Settings: `canvas.paneGap` (points), `canvas.snapping` (bool).
 All user-facing strings localized (en + ja).
 

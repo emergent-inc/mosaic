@@ -457,7 +457,7 @@ final class BonsplitTests: XCTestCase {
     }
 
     func testSplitActionSystemImageUsesFallbackForUnknownSymbols() {
-        let image = TabBarStyling.splitActionSystemImage(for: "cmux.definitely.missing.symbol")
+        let image = TabBarStyling.splitActionSystemImage(for: "mosaic.definitely.missing.symbol")
 
         XCTAssertEqual(image, TabBarStyling.SplitActionSystemImage(name: "questionmark.circle", rotationDegrees: 0, pointSize: 12))
     }

@@ -13,10 +13,10 @@ final class MobilePairingWindowController: ReleasingWindowController {
     static let shared = MobilePairingWindowController()
 
     /// The pairing window's identifier. Listed in
-    /// `cmuxAuxiliaryWindowIdentifiers` (cmuxApp.swift) so the standard close
+    /// `mosaicAuxiliaryWindowIdentifiers` (mosaicApp.swift) so the standard close
     /// shortcut closes this window instead of a terminal tab in the main
     /// window behind it; referenced from the Cmd+W regression test.
-    static let windowIdentifier = "cmux.mobilePairingWindow"
+    static let windowIdentifier = "mosaic.mobilePairingWindow"
 
     private override init() {
         super.init()
@@ -45,7 +45,7 @@ final class MobilePairingWindowController: ReleasingWindowController {
     override func makeWindow() -> NSWindow {
         let appearanceMode = UserDefaults.standard.string(forKey: AppearanceSettings.appearanceModeKey)
         let root = MobilePairingView()
-            .cmuxAppearanceColorScheme(appearanceMode)
+            .mosaicAppearanceColorScheme(appearanceMode)
         let hostingController = NSHostingController(rootView: root)
 
         let window = NSWindow(contentViewController: hostingController)

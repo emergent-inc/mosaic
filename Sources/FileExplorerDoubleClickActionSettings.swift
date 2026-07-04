@@ -5,9 +5,9 @@ import Foundation
 ///
 /// Directories are unaffected — they always expand/collapse regardless of this
 /// setting. The default, ``preview``, preserves the historical behavior of
-/// opening the built-in cmux file preview, so existing users see no change.
+/// opening the built-in mosaic file preview, so existing users see no change.
 enum FileExplorerDoubleClickAction: String, CaseIterable, Sendable {
-    /// Open the built-in cmux file preview (historical default).
+    /// Open the built-in mosaic file preview (historical default).
     case preview
     /// Open with the macOS default application for the file type — identical to
     /// the file explorer context menu's "Open in <App>" action.
@@ -29,7 +29,7 @@ enum FileExplorerFileActivation: Equatable, Sendable {
 
 enum FileExplorerDoubleClickActionSettings {
     static let key = "fileExplorerDoubleClickAction"
-    static let didChangeNotification = Notification.Name("cmux.fileExplorerDoubleClickActionDidChange")
+    static let didChangeNotification = Notification.Name("mosaic.fileExplorerDoubleClickActionDidChange")
     static let defaultValue: FileExplorerDoubleClickAction = .preview
 
     /// Parse a raw config/UserDefaults string into an action, falling back to

@@ -18,77 +18,77 @@ enum RemoteInteractiveShellBootstrapBuilder {
         )
         var zshShellLines = commonShellExportLines
         zshShellLines.append(
-            #"if [ "${CMUX_SHELL_INTEGRATION:-1}" != "0" ] && [ -r "${CMUX_SHELL_INTEGRATION_DIR}/cmux-zsh-integration.zsh" ]; then . "${CMUX_SHELL_INTEGRATION_DIR}/cmux-zsh-integration.zsh"; fi"#
+            #"if [ "${MOSAIC_SHELL_INTEGRATION:-1}" != "0" ] && [ -r "${MOSAIC_SHELL_INTEGRATION_DIR}/mosaic-zsh-integration.zsh" ]; then . "${MOSAIC_SHELL_INTEGRATION_DIR}/mosaic-zsh-integration.zsh"; fi"#
         )
         var bashShellLines = commonShellExportLines
         bashShellLines.append(
-            #"if [ "${CMUX_SHELL_INTEGRATION:-1}" != "0" ] && [ -r "${CMUX_SHELL_INTEGRATION_DIR}/cmux-bash-integration.bash" ]; then . "${CMUX_SHELL_INTEGRATION_DIR}/cmux-bash-integration.bash"; fi"#
+            #"if [ "${MOSAIC_SHELL_INTEGRATION:-1}" != "0" ] && [ -r "${MOSAIC_SHELL_INTEGRATION_DIR}/mosaic-bash-integration.bash" ]; then . "${MOSAIC_SHELL_INTEGRATION_DIR}/mosaic-bash-integration.bash"; fi"#
         )
         let zshBootstrap = RemoteRelayZshBootstrap(shellStateDir: shellStateDir)
         let relayWarmupLines = relayWarmupLines(remoteRelayPort: remoteRelayPort)
 
         var outerLines: [String] = [
-            "mkdir -p \"$HOME/.cmux/relay\"",
-            "cmux_shell_dir=\"\(shellStateDir)\"",
-            "mkdir -p \"$cmux_shell_dir\"",
+            "mkdir -p \"$HOME/.mosaic/relay\"",
+            "mosaic_shell_dir=\"\(shellStateDir)\"",
+            "mkdir -p \"$mosaic_shell_dir\"",
         ]
         if let bundledZshIntegration {
             outerLines += [
-                "cat > \"$cmux_shell_dir/cmux-zsh-integration.zsh\" <<'CMUXCMUXZSH'",
+                "cat > \"$mosaic_shell_dir/mosaic-zsh-integration.zsh\" <<'MOSAICMOSAICZSH'",
                 bundledZshIntegration,
-                "CMUXCMUXZSH",
+                "MOSAICMOSAICZSH",
             ]
         }
         if let bundledBashIntegration {
             outerLines += [
-                "cat > \"$cmux_shell_dir/cmux-bash-integration.bash\" <<'CMUXCMUXBASH'",
+                "cat > \"$mosaic_shell_dir/mosaic-bash-integration.bash\" <<'MOSAICMOSAICBASH'",
                 bundledBashIntegration,
-                "CMUXCMUXBASH",
+                "MOSAICMOSAICBASH",
             ]
         }
         if let bundledFishIntegration {
             outerLines += [
-                "mkdir -p \"$cmux_shell_dir/fish\"",
-                "cat > \"$cmux_shell_dir/fish/config.fish\" <<'CMUXCMUXFISH'",
+                "mkdir -p \"$mosaic_shell_dir/fish\"",
+                "cat > \"$mosaic_shell_dir/fish/config.fish\" <<'MOSAICMOSAICFISH'",
                 bundledFishIntegration,
-                "CMUXCMUXFISH",
+                "MOSAICMOSAICFISH",
             ]
         }
         outerLines.append(contentsOf: commonShellExportLines)
         outerLines += [
-            "CMUX_LOGIN_SHELL=\"${SHELL:-/bin/zsh}\"",
-            "case \"${CMUX_LOGIN_SHELL##*/}\" in",
+            "MOSAIC_LOGIN_SHELL=\"${SHELL:-/bin/zsh}\"",
+            "case \"${MOSAIC_LOGIN_SHELL##*/}\" in",
             "  zsh)",
-            "    cat > \"$cmux_shell_dir/.zshenv\" <<'CMUXZSHENV'",
+            "    cat > \"$mosaic_shell_dir/.zshenv\" <<'MOSAICZSHENV'",
         ]
         outerLines.append(contentsOf: zshBootstrap.zshEnvLines)
         outerLines += [
-            "CMUXZSHENV",
-            "    cat > \"$cmux_shell_dir/.zprofile\" <<'CMUXZSHPROFILE'",
+            "MOSAICZSHENV",
+            "    cat > \"$mosaic_shell_dir/.zprofile\" <<'MOSAICZSHPROFILE'",
         ]
         outerLines.append(contentsOf: zshBootstrap.zshProfileLines)
         outerLines += [
-            "CMUXZSHPROFILE",
-            "    cat > \"$cmux_shell_dir/.zshrc\" <<'CMUXZSHRC'",
+            "MOSAICZSHPROFILE",
+            "    cat > \"$mosaic_shell_dir/.zshrc\" <<'MOSAICZSHRC'",
         ]
         outerLines.append(contentsOf: zshBootstrap.zshRCLines(commonShellLines: zshShellLines))
         outerLines += [
-            "CMUXZSHRC",
-            "    cat > \"$cmux_shell_dir/.zlogin\" <<'CMUXZSHLOGIN'",
+            "MOSAICZSHRC",
+            "    cat > \"$mosaic_shell_dir/.zlogin\" <<'MOSAICZSHLOGIN'",
         ]
         outerLines.append(contentsOf: zshBootstrap.zshLoginLines)
         outerLines += [
-            "CMUXZSHLOGIN",
-            "    chmod 600 \"$cmux_shell_dir/.zshenv\" \"$cmux_shell_dir/.zprofile\" \"$cmux_shell_dir/.zshrc\" \"$cmux_shell_dir/.zlogin\" >/dev/null 2>&1 || true",
+            "MOSAICZSHLOGIN",
+            "    chmod 600 \"$mosaic_shell_dir/.zshenv\" \"$mosaic_shell_dir/.zprofile\" \"$mosaic_shell_dir/.zshrc\" \"$mosaic_shell_dir/.zlogin\" >/dev/null 2>&1 || true",
         ]
         outerLines.append(contentsOf: relayWarmupLines.map { "    " + $0 })
         outerLines += [
-            "    export CMUX_REAL_ZDOTDIR=\"${ZDOTDIR:-$HOME}\"",
-            "    export ZDOTDIR=\"$cmux_shell_dir\"",
-            "    exec \"$CMUX_LOGIN_SHELL\" -il",
+            "    export MOSAIC_REAL_ZDOTDIR=\"${ZDOTDIR:-$HOME}\"",
+            "    export ZDOTDIR=\"$mosaic_shell_dir\"",
+            "    exec \"$MOSAIC_LOGIN_SHELL\" -il",
             "    ;;",
             "  bash)",
-            "    cat > \"$cmux_shell_dir/.bashrc\" <<'CMUXBASHRC'",
+            "    cat > \"$mosaic_shell_dir/.bashrc\" <<'MOSAICBASHRC'",
         ]
         outerLines.append(contentsOf: [
             "if [ -f \"$HOME/.bash_profile\" ]; then",
@@ -101,26 +101,26 @@ enum RemoteInteractiveShellBootstrapBuilder {
             "[ -f \"$HOME/.bashrc\" ] && . \"$HOME/.bashrc\"",
         ] + bashShellLines)
         outerLines += [
-            "CMUXBASHRC",
-            "    chmod 600 \"$cmux_shell_dir/.bashrc\" >/dev/null 2>&1 || true",
+            "MOSAICBASHRC",
+            "    chmod 600 \"$mosaic_shell_dir/.bashrc\" >/dev/null 2>&1 || true",
         ]
         outerLines.append(contentsOf: relayWarmupLines.map { "    " + $0 })
         outerLines += [
-            "    exec \"$CMUX_LOGIN_SHELL\" --rcfile \"$cmux_shell_dir/.bashrc\" -i",
+            "    exec \"$MOSAIC_LOGIN_SHELL\" --rcfile \"$mosaic_shell_dir/.bashrc\" -i",
             "    ;;",
             "  fish)",
         ]
         outerLines.append(contentsOf: relayWarmupLines.map { "    " + $0 })
         outerLines += [
-            "    export CMUX_FISH_INTEGRATION_FILE=\"$cmux_shell_dir/fish/config.fish\"",
-            "    export CMUX_FISH_USER_CONFIG_ALREADY_LOADED=1",
-            "    exec \"$CMUX_LOGIN_SHELL\" -il --init-command 'source \"$CMUX_FISH_INTEGRATION_FILE\"'",
+            "    export MOSAIC_FISH_INTEGRATION_FILE=\"$mosaic_shell_dir/fish/config.fish\"",
+            "    export MOSAIC_FISH_USER_CONFIG_ALREADY_LOADED=1",
+            "    exec \"$MOSAIC_LOGIN_SHELL\" -il --init-command 'source \"$MOSAIC_FISH_INTEGRATION_FILE\"'",
             "    ;;",
             "  *)",
         ]
         outerLines.append(contentsOf: relayWarmupLines)
         outerLines += [
-            "exec \"$CMUX_LOGIN_SHELL\" -i",
+            "exec \"$MOSAIC_LOGIN_SHELL\" -i",
             ";;",
             "esac",
         ]
@@ -179,21 +179,21 @@ enum RemoteInteractiveShellBootstrapBuilder {
         var lines = terminalSetupLines(terminfoSource: terminfoSource)
         lines.append(contentsOf: RemoteShellEnvironment.utf8LocaleSetupLines())
         lines.append(contentsOf: shellExportLines(shellFeatures: shellFeatures))
-        lines.append("export PATH=\"$HOME/.cmux/bin:$PATH\"")
-        lines.append("export CMUX_BUNDLED_CLI_PATH=\"$HOME/.cmux/bin/cmux\"")
-        lines.append("export CMUX_SHELL_INTEGRATION_DIR=\"\(shellStateDir)\"")
+        lines.append("export PATH=\"$HOME/.mosaic/bin:$PATH\"")
+        lines.append("export MOSAIC_BUNDLED_CLI_PATH=\"$HOME/.mosaic/bin/mosaic\"")
+        lines.append("export MOSAIC_SHELL_INTEGRATION_DIR=\"\(shellStateDir)\"")
         if let relaySocket {
-            lines.append("export CMUX_SOCKET_PATH=\(relaySocket)")
+            lines.append("export MOSAIC_SOCKET_PATH=\(relaySocket)")
         }
         // The assignment placeholders are replaced by `ssh-pty-attach` before
         // this script runs. Split the sentinel patterns so a missed replacement
         // does not export literal placeholder IDs into the remote shell.
         lines.append(contentsOf: [
-            "cmux_workspace_id='__CMUX_WORKSPACE_ID__'",
-            "case \"$cmux_workspace_id\" in \"\"|'__CMUX_''WORKSPACE_ID__') ;; *) export CMUX_WORKSPACE_ID=\"$cmux_workspace_id\"; export CMUX_TAB_ID=\"$cmux_workspace_id\" ;; esac",
-            "cmux_surface_id='__CMUX_SURFACE_ID__'",
-            "case \"$cmux_surface_id\" in \"\"|'__CMUX_''SURFACE_ID__') ;; *) export CMUX_SURFACE_ID=\"$cmux_surface_id\"; export CMUX_PANEL_ID=\"$cmux_surface_id\" ;; esac",
-            "unset cmux_workspace_id cmux_surface_id",
+            "mosaic_workspace_id='__MOSAIC_WORKSPACE_ID__'",
+            "case \"$mosaic_workspace_id\" in \"\"|'__MOSAIC_''WORKSPACE_ID__') ;; *) export MOSAIC_WORKSPACE_ID=\"$mosaic_workspace_id\"; export MOSAIC_TAB_ID=\"$mosaic_workspace_id\" ;; esac",
+            "mosaic_surface_id='__MOSAIC_SURFACE_ID__'",
+            "case \"$mosaic_surface_id\" in \"\"|'__MOSAIC_''SURFACE_ID__') ;; *) export MOSAIC_SURFACE_ID=\"$mosaic_surface_id\"; export MOSAIC_PANEL_ID=\"$mosaic_surface_id\" ;; esac",
+            "unset mosaic_workspace_id mosaic_surface_id",
             "hash -r >/dev/null 2>&1 || true",
             "rehash >/dev/null 2>&1 || true",
         ])
@@ -207,11 +207,11 @@ enum RemoteInteractiveShellBootstrapBuilder {
             // Without a bundled terminfo to install we can only probe what the
             // remote already has and fall back to a universally-present entry.
             return [
-                "cmux_term='xterm-256color'",
+                "mosaic_term='xterm-256color'",
                 "if command -v infocmp >/dev/null 2>&1 && infocmp xterm-ghostty >/dev/null 2>&1; then",
-                "  cmux_term='xterm-ghostty'",
+                "  mosaic_term='xterm-ghostty'",
                 "fi",
-                "export TERM=\"$cmux_term\"",
+                "export TERM=\"$mosaic_term\"",
             ]
         }
         // Install the bundled xterm-ghostty terminfo *synchronously*, before
@@ -224,44 +224,44 @@ enum RemoteInteractiveShellBootstrapBuilder {
         // and garble output (#6352). Here we compile into a private temp
         // directory on the same filesystem as ~/.terminfo, then move each
         // compiled entry into place with an atomic rename, so a concurrent reader
-        // in another cmux ssh session sharing $HOME never observes a partially
+        // in another mosaic ssh session sharing $HOME never observes a partially
         // written database. The temp directory comes from `mktemp` when present,
         // otherwise a per-process `$$` directory (unique among live processes) so
         // the atomic-rename path applies even without `mktemp` — no branch ever
         // compiles terminfo directly into ~/.terminfo.
         return [
-            "cmux_term='xterm-256color'",
+            "mosaic_term='xterm-256color'",
             "if command -v infocmp >/dev/null 2>&1 && infocmp xterm-ghostty >/dev/null 2>&1; then",
-            "  cmux_term='xterm-ghostty'",
+            "  mosaic_term='xterm-ghostty'",
             "elif command -v tic >/dev/null 2>&1; then",
             "  mkdir -p \"$HOME/.terminfo\" 2>/dev/null",
-            "  cmux_ti_tmp=$(mktemp -d \"$HOME/.terminfo.cmux.XXXXXX\" 2>/dev/null) || cmux_ti_tmp=''",
-            "  if [ -z \"$cmux_ti_tmp\" ]; then",
-            "    cmux_ti_tmp=\"$HOME/.terminfo.cmux.$$\"",
-            "    rm -rf \"$cmux_ti_tmp\" 2>/dev/null",
-            "    mkdir \"$cmux_ti_tmp\" 2>/dev/null || cmux_ti_tmp=''",
+            "  mosaic_ti_tmp=$(mktemp -d \"$HOME/.terminfo.mosaic.XXXXXX\" 2>/dev/null) || mosaic_ti_tmp=''",
+            "  if [ -z \"$mosaic_ti_tmp\" ]; then",
+            "    mosaic_ti_tmp=\"$HOME/.terminfo.mosaic.$$\"",
+            "    rm -rf \"$mosaic_ti_tmp\" 2>/dev/null",
+            "    mkdir \"$mosaic_ti_tmp\" 2>/dev/null || mosaic_ti_tmp=''",
             "  fi",
             "  {",
-            "    cat <<'CMUXTERMINFO'",
+            "    cat <<'MOSAICTERMINFO'",
             trimmedTerminfoSource,
-            "CMUXTERMINFO",
+            "MOSAICTERMINFO",
             "  } | {",
-            "    if [ -n \"$cmux_ti_tmp\" ] && tic -x -o \"$cmux_ti_tmp\" - >/dev/null 2>&1; then",
-            "      find \"$cmux_ti_tmp\" -type f 2>/dev/null | while IFS= read -r cmux_ti_file; do",
-            "        cmux_ti_rel=${cmux_ti_file#\"$cmux_ti_tmp\"/}",
-            "        cmux_ti_dest=\"$HOME/.terminfo/$cmux_ti_rel\"",
-            "        mkdir -p \"$(dirname \"$cmux_ti_dest\")\" 2>/dev/null",
-            "        mv -f \"$cmux_ti_file\" \"$cmux_ti_dest\" 2>/dev/null || cp -f \"$cmux_ti_file\" \"$cmux_ti_dest\" 2>/dev/null",
+            "    if [ -n \"$mosaic_ti_tmp\" ] && tic -x -o \"$mosaic_ti_tmp\" - >/dev/null 2>&1; then",
+            "      find \"$mosaic_ti_tmp\" -type f 2>/dev/null | while IFS= read -r mosaic_ti_file; do",
+            "        mosaic_ti_rel=${mosaic_ti_file#\"$mosaic_ti_tmp\"/}",
+            "        mosaic_ti_dest=\"$HOME/.terminfo/$mosaic_ti_rel\"",
+            "        mkdir -p \"$(dirname \"$mosaic_ti_dest\")\" 2>/dev/null",
+            "        mv -f \"$mosaic_ti_file\" \"$mosaic_ti_dest\" 2>/dev/null || cp -f \"$mosaic_ti_file\" \"$mosaic_ti_dest\" 2>/dev/null",
             "      done",
             "    fi",
             "  }",
-            "  [ -n \"$cmux_ti_tmp\" ] && rm -rf \"$cmux_ti_tmp\" 2>/dev/null",
+            "  [ -n \"$mosaic_ti_tmp\" ] && rm -rf \"$mosaic_ti_tmp\" 2>/dev/null",
             "  if infocmp xterm-ghostty >/dev/null 2>&1; then",
-            "    cmux_term='xterm-ghostty'",
+            "    mosaic_term='xterm-ghostty'",
             "  fi",
-            "  unset cmux_ti_tmp cmux_ti_file cmux_ti_rel cmux_ti_dest 2>/dev/null || true",
+            "  unset mosaic_ti_tmp mosaic_ti_file mosaic_ti_rel mosaic_ti_dest 2>/dev/null || true",
             "fi",
-            "export TERM=\"$cmux_term\"",
+            "export TERM=\"$mosaic_term\"",
         ]
     }
 
@@ -292,33 +292,33 @@ enum RemoteInteractiveShellBootstrapBuilder {
             return []
         }
         return [
-            "cmux_relay_cli=\"${CMUX_BUNDLED_CLI_PATH:-$HOME/.cmux/bin/cmux}\"",
-            "if [ ! -x \"$cmux_relay_cli\" ]; then cmux_relay_cli=\"$(command -v cmux 2>/dev/null || true)\"; fi",
-            "cmux_relay_tty=\"${CMUX_BOOTSTRAP_TTY:-}\"",
-            "if [ -z \"$cmux_relay_tty\" ]; then cmux_relay_tty=\"$(tty 2>/dev/null || true)\"; fi",
-            "cmux_relay_tty=\"${cmux_relay_tty##*/}\"",
-            "if [ -n \"$cmux_relay_tty\" ] && [ \"$cmux_relay_tty\" != \"not a tty\" ]; then",
-            "  mkdir -p \"$HOME/.cmux/relay\" >/dev/null 2>&1 || true",
-            "  printf '%s' \"$cmux_relay_tty\" > \"$HOME/.cmux/relay/\(remoteRelayPort).tty\" 2>/dev/null || true",
+            "mosaic_relay_cli=\"${MOSAIC_BUNDLED_CLI_PATH:-$HOME/.mosaic/bin/mosaic}\"",
+            "if [ ! -x \"$mosaic_relay_cli\" ]; then mosaic_relay_cli=\"$(command -v mosaic 2>/dev/null || true)\"; fi",
+            "mosaic_relay_tty=\"${MOSAIC_BOOTSTRAP_TTY:-}\"",
+            "if [ -z \"$mosaic_relay_tty\" ]; then mosaic_relay_tty=\"$(tty 2>/dev/null || true)\"; fi",
+            "mosaic_relay_tty=\"${mosaic_relay_tty##*/}\"",
+            "if [ -n \"$mosaic_relay_tty\" ] && [ \"$mosaic_relay_tty\" != \"not a tty\" ]; then",
+            "  mkdir -p \"$HOME/.mosaic/relay\" >/dev/null 2>&1 || true",
+            "  printf '%s' \"$mosaic_relay_tty\" > \"$HOME/.mosaic/relay/\(remoteRelayPort).tty\" 2>/dev/null || true",
             "fi",
-            "if [ -n \"$cmux_relay_cli\" ] && [ -n \"$CMUX_WORKSPACE_ID\" ] && [ -n \"$cmux_relay_tty\" ] && [ \"$cmux_relay_tty\" != \"not a tty\" ]; then",
+            "if [ -n \"$mosaic_relay_cli\" ] && [ -n \"$MOSAIC_WORKSPACE_ID\" ] && [ -n \"$mosaic_relay_tty\" ] && [ \"$mosaic_relay_tty\" != \"not a tty\" ]; then",
             "  (",
-            "    cmux_relay_report_tty=\"{\\\"workspace_id\\\":\\\"$CMUX_WORKSPACE_ID\\\",\\\"tty_name\\\":\\\"$cmux_relay_tty\\\"}\"",
-            "    cmux_relay_ports_kick=\"{\\\"workspace_id\\\":\\\"$CMUX_WORKSPACE_ID\\\",\\\"reason\\\":\\\"command\\\"}\"",
-            "    if [ -n \"$CMUX_SURFACE_ID\" ]; then",
-            "      cmux_relay_report_tty=\"{\\\"workspace_id\\\":\\\"$CMUX_WORKSPACE_ID\\\",\\\"surface_id\\\":\\\"$CMUX_SURFACE_ID\\\",\\\"tty_name\\\":\\\"$cmux_relay_tty\\\"}\"",
-            "      cmux_relay_ports_kick=\"{\\\"workspace_id\\\":\\\"$CMUX_WORKSPACE_ID\\\",\\\"surface_id\\\":\\\"$CMUX_SURFACE_ID\\\",\\\"reason\\\":\\\"command\\\"}\"",
+            "    mosaic_relay_report_tty=\"{\\\"workspace_id\\\":\\\"$MOSAIC_WORKSPACE_ID\\\",\\\"tty_name\\\":\\\"$mosaic_relay_tty\\\"}\"",
+            "    mosaic_relay_ports_kick=\"{\\\"workspace_id\\\":\\\"$MOSAIC_WORKSPACE_ID\\\",\\\"reason\\\":\\\"command\\\"}\"",
+            "    if [ -n \"$MOSAIC_SURFACE_ID\" ]; then",
+            "      mosaic_relay_report_tty=\"{\\\"workspace_id\\\":\\\"$MOSAIC_WORKSPACE_ID\\\",\\\"surface_id\\\":\\\"$MOSAIC_SURFACE_ID\\\",\\\"tty_name\\\":\\\"$mosaic_relay_tty\\\"}\"",
+            "      mosaic_relay_ports_kick=\"{\\\"workspace_id\\\":\\\"$MOSAIC_WORKSPACE_ID\\\",\\\"surface_id\\\":\\\"$MOSAIC_SURFACE_ID\\\",\\\"reason\\\":\\\"command\\\"}\"",
             "    fi",
-            "    \"$cmux_relay_cli\" rpc surface.report_tty \"$cmux_relay_report_tty\" >/dev/null 2>&1 || true",
-            "    \"$cmux_relay_cli\" rpc surface.ports_kick \"$cmux_relay_ports_kick\" >/dev/null 2>&1 || true",
+            "    \"$mosaic_relay_cli\" rpc surface.report_tty \"$mosaic_relay_report_tty\" >/dev/null 2>&1 || true",
+            "    \"$mosaic_relay_cli\" rpc surface.ports_kick \"$mosaic_relay_ports_kick\" >/dev/null 2>&1 || true",
             "  ) </dev/null >/dev/null 2>&1 &",
             "fi",
-            "unset CMUX_BOOTSTRAP_TTY cmux_relay_cli cmux_relay_tty cmux_relay_report_tty cmux_relay_ports_kick",
+            "unset MOSAIC_BOOTSTRAP_TTY mosaic_relay_cli mosaic_relay_tty mosaic_relay_report_tty mosaic_relay_ports_kick",
         ]
     }
 
     private static func shellStateDirForRemoteRelayPort(_ remoteRelayPort: Int) -> String {
-        "$HOME/.cmux/relay/\(max(remoteRelayPort, 0)).shell"
+        "$HOME/.mosaic/relay/\(max(remoteRelayPort, 0)).shell"
     }
 
     private static func normalizedEnvValue(_ value: String?) -> String? {

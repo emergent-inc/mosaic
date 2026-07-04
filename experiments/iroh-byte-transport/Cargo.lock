@@ -365,7 +365,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f88a43d011fc4a6876cb7344703e297c71dda42494fee094d5f7c76bf13f746"
 
 [[package]]
-name = "cmux-iroh-byte-transport"
+name = "mosaic-iroh-byte-transport"
 version = "0.1.0"
 dependencies = [
  "clap",

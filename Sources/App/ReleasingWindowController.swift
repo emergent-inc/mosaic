@@ -75,7 +75,7 @@ class ReleasingWindowController: NSWindowController, NSWindowDelegate {
     private func releaseManagedWindow(_ window: NSWindow) {
         #if DEBUG
         let identifier = window.identifier?.rawValue ?? "<nil>"
-        cmuxDebugLog("window.lifecycle.release controller=\(String(describing: type(of: self))) identifier=\(identifier)")
+        mosaicDebugLog("window.lifecycle.release controller=\(String(describing: type(of: self))) identifier=\(identifier)")
         #endif
         window.delegate = nil
         window.contentView = nil

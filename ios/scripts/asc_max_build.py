@@ -19,7 +19,7 @@ Auth comes from the environment (the same vars the upload workflow already sets)
   ASC_API_KEY_P8_BASE64 (the base64-encoded .p8 contents).
 
 Usage:
-  asc_max_build.py --bundle-id dev.cmux.app.beta
+  asc_max_build.py --bundle-id dev.mosaic.app.beta
 
 On success: prints a single integer to stdout and exits 0.
 On any error (missing creds, network, JWT, API shape, no matching app): prints a

@@ -257,13 +257,13 @@ jobs:
             exit 1
           fi
 
-          TMP_PROFILE="$RUNNER_TEMP/cmux-beta.mobileprovision"
-          TMP_PLIST="$RUNNER_TEMP/cmux-beta-profile.plist"
+          TMP_PROFILE="$RUNNER_TEMP/mosaic-beta.mobileprovision"
+          TMP_PLIST="$RUNNER_TEMP/mosaic-beta-profile.plist"
           printf '%s' "$IOS_BETA_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$TMP_PROFILE"
           security cms -D -i "$TMP_PROFILE" > "$TMP_PLIST"
 
           APP_ID="$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" "$TMP_PLIST")"
-          if [ "$APP_ID" != "7WLXT3NR37.dev.cmux.app.beta" ]; then
+          if [ "$APP_ID" != "7WLXT3NR37.dev.mosaic.app.beta" ]; then
             echo "Beta provisioning profile targets unexpected app ID: $APP_ID" >&2
             exit 1
           fi
@@ -292,7 +292,7 @@ jobs:
           INPUT_BUILD_NUMBER: ${{ github.event.inputs.build_number }}
           # The script writes the CFBundleVersion that actually shipped here (the
           # monotonic guard may bump it), so the summary reports the real value.
-          CMUX_BUILD_NUMBER_OUT_FILE: ${{ runner.temp }}/cmux-final-build-number.txt
+          MOSAIC_BUILD_NUMBER_OUT_FILE: ${{ runner.temp }}/mosaic-final-build-number.txt
           # The previous beta's commit (the last successful run's head_sha): base
           # of the per-build "What to Test" commit range. Empty on the very first
           # run / a missing history, where the generator falls back gracefully.
@@ -310,8 +310,8 @@ jobs:
             ARGS+=(--build-number "$INPUT_BUILD_NUMBER")
           fi
           ./ios/scripts/upload-testflight.sh "${ARGS[@]}"
-          if [ -f "$CMUX_BUILD_NUMBER_OUT_FILE" ]; then
-            FINAL_BN="$(cat "$CMUX_BUILD_NUMBER_OUT_FILE")"
+          if [ -f "$MOSAIC_BUILD_NUMBER_OUT_FILE" ]; then
+            FINAL_BN="$(cat "$MOSAIC_BUILD_NUMBER_OUT_FILE")"
           else
             FINAL_BN="${INPUT_BUILD_NUMBER:-unknown}"
           fi
@@ -326,7 +326,7 @@ jobs:
           {
             echo "### iOS TestFlight upload"
             echo
-            echo "- lane: \`beta\` (bundle id \`dev.cmux.app.beta\`)"
+            echo "- lane: \`beta\` (bundle id \`dev.mosaic.app.beta\`)"
             echo "- signing: manual (CI-imported iOS distribution cert + beta profile)"
             echo "- build number (CFBundleVersion): \`${BUILD_NUMBER}\`"
           } >> "$GITHUB_STEP_SUMMARY"

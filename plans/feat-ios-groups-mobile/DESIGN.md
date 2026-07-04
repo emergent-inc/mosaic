@@ -59,8 +59,8 @@ there are no groups, to avoid breaking contiguity.
 
 ## Localize
 New strings via L10n.string/String(localized:) keys in
-`ios/cmux/Resources/Localizable.xcstrings` (en + ja).
+`ios/mosaic/Resources/Localizable.xcstrings` (en + ja).
 
 ## Verify
 Build-only on iOS simulator with tagged derivedDataPath. No xcodebuild test
-locally. No stray cmux DEV launch.
+locally. No stray mosaic DEV launch.

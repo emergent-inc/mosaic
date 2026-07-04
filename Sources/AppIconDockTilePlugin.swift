@@ -1,8 +1,8 @@
 import AppKit
 import CoreServices
 
-private let cmuxAppIconDidChangeNotification = Notification.Name("mosaic.com.emergent.appIconDidChange")
-private let cmuxAppIconModeKey = "appIconMode"
+private let mosaicAppIconDidChangeNotification = Notification.Name("mosaic.com.emergent.appIconDidChange")
+private let mosaicAppIconModeKey = "appIconMode"
 
 private enum DockTileAppIconMode: String {
     case automatic
@@ -25,10 +25,10 @@ private enum DockTileAppIconMode: String {
     }
 }
 
-final class CmuxDockTilePlugin: NSObject, NSDockTilePlugIn {
+final class MosaicDockTilePlugin: NSObject, NSDockTilePlugIn {
     // The plugin can stay alive while the app remains in the Dock, even after quit.
     // Keep the state minimal and derive everything from the enclosing app bundle.
-    private let pluginBundle = Bundle(for: CmuxDockTilePlugin.self)
+    private let pluginBundle = Bundle(for: MosaicDockTilePlugin.self)
     private var iconChangeObserver: NSObjectProtocol?
     private var appearanceObservation: NSKeyValueObservation?
 
@@ -59,7 +59,7 @@ final class CmuxDockTilePlugin: NSObject, NSDockTilePlugIn {
         updateDockTile(dockTile)
 
         iconChangeObserver = DistributedNotificationCenter.default().addObserver(
-            forName: cmuxAppIconDidChangeNotification,
+            forName: mosaicAppIconDidChangeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -105,7 +105,7 @@ final class CmuxDockTilePlugin: NSObject, NSDockTilePlugIn {
     private func updateDockTile(_ dockTile: NSDockTile) {
         Self.assertMainQueue()
 
-        let mode = DockTileAppIconMode(defaultsValue: appDefaults?.string(forKey: cmuxAppIconModeKey))
+        let mode = DockTileAppIconMode(defaultsValue: appDefaults?.string(forKey: mosaicAppIconModeKey))
         let isDarkAppearance = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         guard let appBundleURL else {
             dockTile.showDefaultAppIcon()
@@ -165,14 +165,14 @@ final class CmuxDockTilePlugin: NSObject, NSDockTilePlugIn {
 
 private extension NSDockTile {
     func showDefaultAppIcon() {
-        CmuxDockTilePlugin.assertMainQueue()
+        MosaicDockTilePlugin.assertMainQueue()
 
         contentView = nil
         display()
     }
 
     func showIcon(_ newIcon: NSImage) {
-        CmuxDockTilePlugin.assertMainQueue()
+        MosaicDockTilePlugin.assertMainQueue()
 
         let iconView = NSImageView(frame: CGRect(origin: .zero, size: size))
         iconView.wantsLayer = true

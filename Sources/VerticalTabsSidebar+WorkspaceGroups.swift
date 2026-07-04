@@ -1,8 +1,8 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
-import CmuxSettings
-import CmuxWorkspaces
+import MosaicSettings
+import MosaicWorkspaces
 
 extension VerticalTabsSidebar {
     @ViewBuilder
@@ -16,7 +16,7 @@ extension VerticalTabsSidebar {
         let settings = renderContext.tabItemSettings
         let isAnchorActive = tabManager.selectedTabId == group.anchorWorkspaceId
         let anchorCwd = renderContext.workspaceById[group.anchorWorkspaceId]?.currentDirectory
-        let resolvedConfig = cmuxConfigStore.resolveWorkspaceGroupConfig(forCwd: anchorCwd)
+        let resolvedConfig = mosaicConfigStore.resolveWorkspaceGroupConfig(forCwd: anchorCwd)
         let effectiveColor = group.customColor ?? resolvedConfig?.color
         let effectiveIcon = RenderableSystemSymbol.resolvedWorkspaceGroupIcon(
             explicit: group.iconSymbol,
@@ -64,7 +64,7 @@ extension VerticalTabsSidebar {
         )
         let onDragStart: () -> NSItemProvider = { [anchorId = group.anchorWorkspaceId] in
             #if DEBUG
-            cmuxDebugLog("sidebar.onDrag groupAnchor=\(anchorId.uuidString.prefix(5))")
+            mosaicDebugLog("sidebar.onDrag groupAnchor=\(anchorId.uuidString.prefix(5))")
             #endif
             dragState.beginDragging(tabId: anchorId)
             return SidebarTabDragPayload.provider(for: anchorId)
@@ -180,7 +180,7 @@ extension VerticalTabsSidebar {
                 tabManager.deleteWorkspaceGroup(groupId: groupId)
             },
             onEditConfig: {
-                SidebarWorkspaceGroupConfigOpener.openCmuxConfigInEditor()
+                SidebarWorkspaceGroupConfigOpener.openMosaicConfigInEditor()
             },
             onOpenDocs: {
                 SidebarWorkspaceGroupConfigOpener.openWorkspaceGroupsDocs()
@@ -195,6 +195,6 @@ extension VerticalTabsSidebar {
                 id: group.anchorWorkspaceId,
                 isEnabled: shouldCollectWorkspaceDropTargets
             )
-            .cmuxCursorOnHover(.openHand, enabled: dragState.draggedTabId != group.anchorWorkspaceId)
+            .mosaicCursorOnHover(.openHand, enabled: dragState.draggedTabId != group.anchorWorkspaceId)
     }
 }

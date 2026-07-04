@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import Foundation
 import UserNotifications
 
@@ -14,12 +14,12 @@ enum NotificationSoundSettings {
     static let customFileValue = "custom_file"
     static let customFilePathKey = "notificationSoundCustomFilePath"
     static let defaultCustomFilePath = ""
-    private static let stagedCustomSoundBaseName = "cmux-custom-notification-sound"
+    private static let stagedCustomSoundBaseName = "mosaic-custom-notification-sound"
     private static let customSoundPreparationQueue = DispatchQueue(
-        label: "com.cmuxterm.notification-sound-preparation",
+        label: "com.mosaicterm.notification-sound-preparation",
         qos: .utility
     )
-    private static let systemSoundBaseName = "cmux-system-notification-sound"
+    private static let systemSoundBaseName = "mosaic-system-notification-sound"
     private static let systemSoundDirectoryURL = URL(fileURLWithPath: "/System/Library/Sounds", isDirectory: true)
     private static let pendingCustomSoundPreparationLock = NSLock()
     private static var pendingCustomSoundPreparationPaths: Set<String> = []
@@ -27,7 +27,7 @@ enum NotificationSoundSettings {
     private static var activePlaybackSounds: [ObjectIdentifier: NSSound] = [:]
     private static let activePlaybackSoundDelegate = ActivePlaybackSoundDelegate()
     private static let dndAssertionQueue = DispatchQueue(
-        label: "com.cmuxterm.notification-dnd-assertion",
+        label: "com.mosaicterm.notification-dnd-assertion",
         qos: .utility
     )
     private static let notificationSoundSupportedExtensions: Set<String> = [
@@ -266,12 +266,12 @@ enum NotificationSoundSettings {
 
     /// Live Do Not Disturb assertion store written by the Focus daemon.
     ///
-    /// DEBUG builds honor `CMUX_DEBUG_DND_ASSERTIONS_PATH` so a tagged dev app
+    /// DEBUG builds honor `MOSAIC_DEBUG_DND_ASSERTIONS_PATH` so a tagged dev app
     /// can be driven end-to-end against fixture files instead of the real
     /// (TCC-protected) store.
     static let defaultAssertionsFileURL: URL = {
 #if DEBUG
-        if let override = ProcessInfo.processInfo.environment["CMUX_DEBUG_DND_ASSERTIONS_PATH"],
+        if let override = ProcessInfo.processInfo.environment["MOSAIC_DEBUG_DND_ASSERTIONS_PATH"],
            !override.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: false)
         }
@@ -334,7 +334,7 @@ enum NotificationSoundSettings {
             // store unreadable (no Full Disk Access)", which look identical
             // through the fail-open gate.
             let storeReadable = (try? Data(contentsOf: assertionsFileURL)) != nil
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "notification.sound.focusGate suppressed=\(suppressed ? 1 : 0) storeReadable=\(storeReadable ? 1 : 0)"
             )
 #endif
@@ -662,7 +662,7 @@ enum NotificationSoundSettings {
     }
 
     private static let customCommandQueue = DispatchQueue(
-        label: "com.cmuxterm.notification-custom-command",
+        label: "com.mosaicterm.notification-custom-command",
         qos: .utility
     )
 
@@ -675,9 +675,9 @@ enum NotificationSoundSettings {
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
             process.arguments = ["-c", command]
             var env = ProcessInfo.processInfo.environment
-            env["CMUX_NOTIFICATION_TITLE"] = title
-            env["CMUX_NOTIFICATION_SUBTITLE"] = subtitle
-            env["CMUX_NOTIFICATION_BODY"] = body
+            env["MOSAIC_NOTIFICATION_TITLE"] = title
+            env["MOSAIC_NOTIFICATION_SUBTITLE"] = subtitle
+            env["MOSAIC_NOTIFICATION_BODY"] = body
             process.environment = env
             process.standardOutput = FileHandle.nullDevice
             process.standardError = FileHandle.nullDevice

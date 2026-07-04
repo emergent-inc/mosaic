@@ -1,5 +1,5 @@
 import Foundation
-import CmuxSettings
+import MosaicSettings
 
 extension TabManager {
     struct WorkspaceCreationTabSnapshot {

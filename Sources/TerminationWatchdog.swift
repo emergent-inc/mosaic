@@ -8,9 +8,9 @@ import Foundation
 /// our control. One is `CFPasteboardResolveAllPromisedData`, which flushes
 /// promised (lazy) pasteboard data with a blocking mach round-trip to the
 /// pasteboard server. When a clipboard-history manager (Paste, Raycast, Maccy,
-/// Pastebot, …) is mid-read of cmux's promised clipboard data, that round-trip
+/// Pastebot, …) is mid-read of mosaic's promised clipboard data, that round-trip
 /// can wedge for ~30s on the main thread until the OS force-kills the app
-/// (https://github.com/emergent-inc/cmux/issues/6758). The same structural gap —
+/// (https://github.com/emergent-inc/mosaic/issues/6758). The same structural gap —
 /// quit having no global "return within N seconds no matter what" guard —
 /// produced #6415 (`PostHogAnalytics.flush()`) and #6381 (`ghostty` lock).
 ///
@@ -21,7 +21,7 @@ import Foundation
 /// turning a multi-second hang into a bounded quit. The firing path is
 /// deliberately unconditional and lock-free — it does no Foundation/filesystem
 /// work before exiting, because the termination it guards against may itself be
-/// wedged on exactly such a lock. cmux's critical session/state save runs
+/// wedged on exactly such a lock. mosaic's critical session/state save runs
 /// synchronously *before* the watchdog is armed, so the bytes that matter are
 /// already on disk if the deadline ever fires.
 ///
@@ -50,7 +50,7 @@ final class TerminationWatchdog: Sendable {
             Thread.sleep(forTimeInterval: deadline)
             fire()
         }
-        thread.name = "com.cmuxterm.termination-watchdog"
+        thread.name = "com.mosaicterm.termination-watchdog"
         thread.stackSize = 128 * 1024
         thread.start()
     }
@@ -59,7 +59,7 @@ final class TerminationWatchdog: Sendable {
     // delegate methods and must not depend on Swift concurrency while guarding a
     // wedged termination path. This is a one-shot 0 -> 1 latch; the deadline
     // callback itself remains lock-free.
-    nonisolated(unsafe) private var latch = CMUXTerminationWatchdogLatchMake()
+    nonisolated(unsafe) private var latch = MosaicTerminationWatchdogLatchMake()
     private let onFire: @Sendable () -> Void
     private let scheduleDeadline: DeadlineScheduler
 
@@ -84,7 +84,7 @@ final class TerminationWatchdog: Sendable {
     /// attempts, or several commit sites arming for one request — schedule the
     /// deadline only once, so `onFire` runs at most once.
     func arm(deadline: TimeInterval = TerminationWatchdog.defaultDeadline) {
-        guard CMUXTerminationWatchdogLatchClaim(&latch) else {
+        guard MosaicTerminationWatchdogLatchClaim(&latch) else {
             return
         }
 

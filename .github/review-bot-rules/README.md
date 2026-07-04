@@ -1,4 +1,4 @@
-# cmux Review Bot Rules
+# mosaic Review Bot Rules
 
 These rules are the shared source of truth for Greptile and CodeRabbit custom review behavior.
 

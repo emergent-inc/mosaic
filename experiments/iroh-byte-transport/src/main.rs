@@ -8,11 +8,11 @@ use iroh::{
 use n0_error::{Result, StdResultExt, anyerr};
 use serde_json::json;
 
-const ALPN: &[u8] = b"dev.cmux.mobile.terminal/0";
+const ALPN: &[u8] = b"dev.mosaic.mobile.terminal/0";
 const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Parser)]
-#[command(about = "Minimal Iroh byte-transport experiment for cmux mobile")]
+#[command(about = "Minimal Iroh byte-transport experiment for mosaic mobile")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

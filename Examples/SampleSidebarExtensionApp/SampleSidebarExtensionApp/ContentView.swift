@@ -13,16 +13,16 @@ struct ContentView: View {
             Image(systemName: "puzzlepiece.extension")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text(String(localized: "sampleSidebarApp.title", defaultValue: "CMUX Sample Sidebar Extension"))
+            Text(String(localized: "sampleSidebarApp.title", defaultValue: "MOSAIC Sample Sidebar Extension"))
                 .font(.title2.weight(.semibold))
             Text(String(
                 localized: "sampleSidebarApp.detail",
-                defaultValue: "Keep this app installed. In cmux, open Sidebar Extensions, enable CMUX Sample Sidebar Extension, choose it from the sidebar picker, and confirm Workspace Signals shows your real workspaces."
+                defaultValue: "Keep this app installed. In mosaic, open Sidebar Extensions, enable MOSAIC Sample Sidebar Extension, choose it from the sidebar picker, and confirm Workspace Signals shows your real workspaces."
             ))
             .foregroundStyle(.secondary)
             Text(String(
                 localized: "sampleSidebarApp.identifier",
-                defaultValue: "Extension ID: co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension"
+                defaultValue: "Extension ID: co.emergent.inc.MosaicExtKitSampleSidebarApp.Extension"
             ))
             .font(.system(.caption, design: .monospaced))
             .foregroundStyle(.secondary)

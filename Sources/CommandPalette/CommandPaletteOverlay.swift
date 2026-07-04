@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import Observation
 import SwiftUI
 
@@ -94,7 +94,7 @@ struct CommandPaletteCommandListRowsView: View {
                 if state.rows.isEmpty {
                     if state.shouldShowEmptyState {
                         Text(state.emptyStateText)
-                            .cmuxFont(size: 13, weight: .regular)
+                            .mosaicFont(size: 13, weight: .regular)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 12)
@@ -109,7 +109,7 @@ struct CommandPaletteCommandListRowsView: View {
                         let isSelected = index == state.selectedIndex
                         let isHovered = hoveredIndex == index
                         let rowBackground: Color = isSelected
-                            ? cmuxAccentColor().opacity(0.12)
+                            ? mosaicAccentColor().opacity(0.12)
                             : (isHovered ? Color.primary.opacity(0.08) : .clear)
 
                         TrackedButton("commandpaletteoverlay_button_115", action: {

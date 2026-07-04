@@ -2,7 +2,7 @@
 //
 // Mirrors `web/services/vms/auth.ts` (`verifyRequest` + `resolveTeam`): native
 // clients send `Authorization: Bearer <access token>`, and the team scope comes
-// from `X-Cmux-Team-Id` / `?teamId=` with a membership check, defaulting to the
+// from `X-Mosaic-Team-Id` / `?teamId=` with a membership check, defaulting to the
 // caller's selected team and then to the solo-account user id. The web app
 // verifies through the Stack Next.js SDK; that SDK is just a wrapper over
 // Stack's REST API, so here we call the same two endpoints directly
@@ -98,13 +98,13 @@ export function resolveTeamId(
   return { ok: true, teamId: user.selectedTeamId ?? soleTeam ?? user.id };
 }
 
-/** Requested team from `X-Cmux-Team-Id` (or legacy billing header) or the
+/** Requested team from `X-Mosaic-Team-Id` (or legacy billing header) or the
  * `teamId`-family query params, copied from
  * `web/services/vms/routeHelpers.ts#requestedVmTeamIdFromRequest`. */
 export function requestedTeamIdFromRequest(request: Request): string | null {
   const fromHeader =
-    normalized(request.headers.get("x-cmux-team-id")) ??
-    normalized(request.headers.get("x-cmux-billing-team-id"));
+    normalized(request.headers.get("x-mosaic-team-id")) ??
+    normalized(request.headers.get("x-mosaic-billing-team-id"));
   if (fromHeader) return fromHeader;
   let url: URL;
   try {

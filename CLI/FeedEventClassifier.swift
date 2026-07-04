@@ -3,10 +3,10 @@ import Foundation
 /// Classifies a raw agent hook event into our wire `hook_event_name` plus an
 /// `isActionable` flag.
 ///
-/// This is the single source of truth behind both the running `cmux` CLI
-/// (`cmux hooks feed …`) and the `FeedEventClassificationTests` regression
-/// suite — the file is compiled into the `cmux-cli` target and the
-/// `cmuxTests` target so the pure decision can be unit-tested without
+/// This is the single source of truth behind both the running `mosaic` CLI
+/// (`mosaic hooks feed …`) and the `FeedEventClassificationTests` regression
+/// suite — the file is compiled into the `mosaic-cli` target and the
+/// `mosaicTests` target so the pure decision can be unit-tested without
 /// launching the app or running the CLI as a subprocess.
 ///
 /// The mapping is driven by an explicit, typed registry
@@ -16,7 +16,7 @@ import Foundation
 /// tool-*starting* lifecycle event can never be mistaken for an approval
 /// request — and unknown / future event names default to non-actionable
 /// telemetry that never notifies. Conflating a tool-start with an approval
-/// is the bug behind https://github.com/emergent-inc/cmux/issues/4985.
+/// is the bug behind https://github.com/emergent-inc/mosaic/issues/4985.
 struct FeedEventClassifier {
     /// Classifies a raw agent hook event into our wire `hook_event_name`
     /// plus an `isActionable` flag that drives whether the Feed bridge
@@ -186,7 +186,7 @@ struct FeedEventClassifier {
         "codex": [
             // Codex runs PermissionRequest hooks before its own approval
             // reviewer. Treat this as telemetry so "Approve for me" can still
-            // use Codex's auto-review path instead of blocking on cmux Feed.
+            // use Codex's auto-review path instead of blocking on mosaic Feed.
             "PermissionRequest": .toolStart,
             "permission_request": .toolStart,
             "PreToolUse": .toolStart,

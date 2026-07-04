@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Interactive Kitty Graphics Protocol gallery for cmux/Ghostty verification.
+# Interactive Kitty Graphics Protocol gallery for mosaic/Ghostty verification.
 # Downloads cat photos over HTTPS, converts them to PNG, then renders them.
 
-cache_dir="${TMPDIR:-/tmp}/cmux-kitty-image-demo"
-curl_user_agent="cmux-kitty-image-demo/1.0 (https://github.com/emergent-inc/cmux)"
+cache_dir="${TMPDIR:-/tmp}/mosaic-kitty-image-demo"
+curl_user_agent="mosaic-kitty-image-demo/1.0 (https://github.com/emergent-inc/mosaic)"
 
 names=(
   "White Cat"
@@ -180,7 +180,7 @@ render_image() {
 
   clear_screen
   delete_images
-  printf 'cmux Kitty graphics protocol gallery\n'
+  printf 'mosaic Kitty graphics protocol gallery\n'
   printf 'TERM=%s TERM_PROGRAM=%s\n\n' "${TERM:-}" "${TERM_PROGRAM:-}"
   printf 'Image %d/%d: %s\n' "$((i + 1))" "${#names[@]}" "${names[$i]}"
   printf 'Downloaded from: %s\n' "${urls[$i]}"
@@ -194,7 +194,7 @@ render_image() {
 render_all() {
   clear_screen
   delete_images
-  printf 'cmux Kitty graphics protocol gallery\n'
+  printf 'mosaic Kitty graphics protocol gallery\n'
   printf 'TERM=%s TERM_PROGRAM=%s\n\n' "${TERM:-}" "${TERM_PROGRAM:-}"
   printf 'Expected: three downloaded cat photos rendered below.\n\n'
 
@@ -226,7 +226,7 @@ fi
 
 if ! supports_kitty_graphics; then
   printf 'kitty-image-demo: this terminal does not advertise Kitty graphics support.\n' >&2
-  printf 'Run inside cmux/Ghostty, WezTerm, or kitty.\n' >&2
+  printf 'Run inside mosaic/Ghostty, WezTerm, or kitty.\n' >&2
   exit 1
 fi
 
@@ -234,7 +234,7 @@ enter_alternate_screen
 trap 'delete_images; leave_alternate_screen' EXIT
 
 clear_screen
-printf 'cmux Kitty graphics protocol gallery\n'
+printf 'mosaic Kitty graphics protocol gallery\n'
 printf 'Downloading cat photos into %s\n\n' "$cache_dir"
 download_images
 render_all

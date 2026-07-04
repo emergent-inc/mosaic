@@ -1,15 +1,15 @@
 import AppKit
 import Bonsplit
 import Carbon
-import CmuxSettings
-import CmuxSettingsUI
+import MosaicSettings
+import MosaicSettingsUI
 import SwiftUI
 
 /// Stores customizable keyboard shortcuts (definitions + persistence).
 enum KeyboardShortcutSettings {
-    static let didChangeNotification = Notification.Name("cmux.keyboardShortcutSettingsDidChange")
+    static let didChangeNotification = Notification.Name("mosaic.keyboardShortcutSettingsDidChange")
     static let actionUserInfoKey = "action"
-    static let settingsFileDisplayPath = "~/.config/cmux/cmux.json"
+    static let settingsFileDisplayPath = "~/.config/mosaic/mosaic.json"
     static var settingsFileStore: KeyboardShortcutSettingsFileStore = .shared {
         didSet { notifySettingsFileDidChange() }
     }
@@ -196,7 +196,7 @@ enum KeyboardShortcutSettings {
             case .newWindow: return String(localized: "shortcut.newWindow.label", defaultValue: "New Window")
             case .closeWindow: return String(localized: "shortcut.closeWindow.label", defaultValue: "Close Window")
             case .toggleFullScreen: return String(localized: "command.toggleFullScreen.title", defaultValue: "Toggle Full Screen")
-            case .quit: return String(localized: "menu.quitCmux", defaultValue: "Quit mosaic")
+            case .quit: return String(localized: "menu.quitMosaic", defaultValue: "Quit mosaic")
             case .toggleSidebar: return String(localized: "shortcut.toggleLeftSidebar.label", defaultValue: "Toggle Left Sidebar")
             case .newTab: return String(localized: "shortcut.newWorkspace.label", defaultValue: "New Workspace")
             case .newBrowserWorkspace: return String(localized: "shortcut.newBrowserWorkspace.label", defaultValue: "New Browser Workspace")
@@ -346,7 +346,7 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "n", command: true, shift: false, option: false, control: false)
             case .newBrowserWorkspace:
                 // Option+Cmd+N: sits next to New Workspace (Cmd+N) and New Window
-                // (Cmd+Shift+N) without colliding with any cmux default or an
+                // (Cmd+Shift+N) without colliding with any mosaic default or an
                 // AppKit-reserved keystroke.
                 return StoredShortcut(key: "n", command: true, shift: false, option: true, control: false)
             case .openFolder:
@@ -489,7 +489,7 @@ enum KeyboardShortcutSettings {
             case .clearScreenKeepScrollback:
                 // Cmd+Shift+K: the less-destructive sibling of Ghostty's Cmd+K
                 // (clear_screen), which also wipes scrollback. Shift+K is unbound in
-                // both Ghostty defaults and cmux, and sits next to the full-clear
+                // both Ghostty defaults and mosaic, and sits next to the full-clear
                 // chord. Rebindable in Settings → Keyboard Shortcuts.
                 return StoredShortcut(key: "k", command: true, shift: true, option: false, control: false)
             case .selectWorkspaceByNumber:
@@ -549,9 +549,9 @@ enum KeyboardShortcutSettings {
             case .toggleBrowserFocusMode:
                 // Option+Cmd+Return: "enter" focus mode mnemonic. Option+Cmd is a
                 // modifier tier web pages rarely bind, so it stays out of the page's
-                // way while focus mode is off and cmux owns the shortcut, and it
+                // way while focus mode is off and mosaic owns the shortcut, and it
                 // avoids the Ctrl+Cmd+Return global hotkey some screen recorders use.
-                // Exit stays double-Escape; rebind in Settings or cmux.json.
+                // Exit stays double-Escape; rebind in Settings or mosaic.json.
                 return StoredShortcut(key: "\r", command: true, shift: false, option: true, control: false)
             case .toggleReactGrab:
                 return StoredShortcut(key: "g", command: true, shift: true, option: false, control: false)
@@ -560,7 +560,7 @@ enum KeyboardShortcutSettings {
                 // "Look Up & data detectors" — the OS swallows it before it reaches the
                 // app's key monitor — and the rest of the Cmd-based "D" family is taken
                 // by split actions (Cmd+D, Cmd+Shift+D, Cmd+Opt+D, Cmd+Shift+Opt+D).
-                // Adding Shift yields a chord that reaches cmux while keeping the "D for
+                // Adding Shift yields a chord that reaches mosaic while keeping the "D for
                 // Diff" mnemonic. Rebindable in Settings → Keyboard Shortcuts.
                 return StoredShortcut(key: "d", command: true, shift: true, option: false, control: true)
             case .diffViewerScrollDown:
@@ -680,7 +680,7 @@ enum KeyboardShortcutSettings {
         }
 
         func normalizedSettingsFileShortcut(_ shortcut: StoredShortcut) -> StoredShortcut? {
-            // cmux.json can load while the global settings store is still initializing.
+            // mosaic.json can load while the global settings store is still initializing.
             // Keep this path free of conflict and hotkey checks that consult global shortcut state.
             if shortcut.isUnbound {
                 return .unbound
@@ -1251,7 +1251,7 @@ final class SystemWideHotkeyController {
         ) { [weak self] _ in
             self?.refreshRegistration()
         }
-        // The live Settings UI uses the CmuxSettingsUI package recorder, which
+        // The live Settings UI uses the MosaicSettingsUI package recorder, which
         // signals arm/disarm through its own notification (it cannot post the
         // app-target `KeyboardShortcutRecorderActivity` one). Without this,
         // recording a system-wide hotkey in Settings would not unregister the
@@ -1286,7 +1286,7 @@ final class SystemWideHotkeyController {
 
     private func refreshRegistration() {
         // Stand down while either recorder is armed (legacy app-target recorder
-        // or the CmuxSettingsUI package recorder) so a system-wide hotkey being
+        // or the MosaicSettingsUI package recorder) so a system-wide hotkey being
         // rebound in Settings is captured rather than fired.
         let isShortcutRecordingActive = KeyboardShortcutRecorderActivity.isAnyRecorderActive
             || RecorderHostButton.isActivelyRecording
@@ -1336,7 +1336,7 @@ final class SystemWideHotkeyController {
 
         guard status == noErr, let hotKeyRef else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "globalHotkey.register failed action=\(action.rawValue) shortcut=\(normalizedShortcut.displayString) " +
                 "keyCode=\(registration.keyCode) modifiers=\(registration.modifiers) status=\(status)"
             )
@@ -1349,7 +1349,7 @@ final class SystemWideHotkeyController {
         registeredHotKeyRegistrations[action] = registration
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "globalHotkey.register success action=\(action.rawValue) shortcut=\(normalizedShortcut.displayString) " +
             "keyCode=\(registration.keyCode) modifiers=\(registration.modifiers)"
         )
@@ -1401,7 +1401,7 @@ final class SystemWideHotkeyController {
 
 #if DEBUG
         if status != noErr {
-            cmuxDebugLog("globalHotkey.handlerInstall failed status=\(status)")
+            mosaicDebugLog("globalHotkey.handlerInstall failed status=\(status)")
         }
 #endif
     }
@@ -1450,7 +1450,7 @@ final class SystemWideHotkeyController {
 
 #if DEBUG
         let shortcut = registeredShortcuts[action]?.displayString ?? "unknown"
-        cmuxDebugLog("globalHotkey.fire action=\(action.rawValue) shortcut=\(shortcut) active=\(NSApp.isActive ? 1 : 0)")
+        mosaicDebugLog("globalHotkey.fire action=\(action.rawValue) shortcut=\(shortcut) active=\(NSApp.isActive ? 1 : 0)")
 #endif
 
         Task { @MainActor [weak self] in
@@ -2557,8 +2557,8 @@ extension StoredShortcut {
 }
 
 enum KeyboardShortcutRecorderActivity {
-    static let didChangeNotification = Notification.Name("cmux.keyboardShortcutRecorderActivityDidChange")
-    static let stopAllNotification = Notification.Name("cmux.keyboardShortcutRecorderActivityStopAll")
+    static let didChangeNotification = Notification.Name("mosaic.keyboardShortcutRecorderActivityDidChange")
+    static let stopAllNotification = Notification.Name("mosaic.keyboardShortcutRecorderActivityStopAll")
     private static var activeRecorderCount = 0
 
     static var isAnyRecorderActive: Bool {

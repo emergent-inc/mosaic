@@ -1,10 +1,10 @@
-// Replay engine for cmux dev environment profiles (P3 of turnkey dev builds).
+// Replay engine for mosaic dev environment profiles (P3 of turnkey dev builds).
 //
 // A profile is a JSON file under scripts/dev-profiles/<name>.json: an ordered
 // list of debug-CLI steps that provision a realistic test environment against a
-// TAGGED dev cmux instance. Every step is replayed through
-// `scripts/cmux-debug-cli.sh`, which refuses without `CMUX_TAG` and targets
-// `/tmp/cmux-debug-<slug>.sock` (never the user's stable app).
+// TAGGED dev mosaic instance. Every step is replayed through
+// `scripts/mosaic-debug-cli.sh`, which refuses without `MOSAIC_TAG` and targets
+// `/tmp/mosaic-debug-<slug>.sock` (never the user's stable app).
 //
 // Profile format (one file per profile, JSON):
 //
@@ -18,13 +18,13 @@
 //     ]
 //   }
 //
-// - `args` is the exact `cmux` argument vector for that step (no leading `cmux`).
+// - `args` is the exact `mosaic` argument vector for that step (no leading `mosaic`).
 // - `${name}` placeholders are substituted from earlier captures and the small
 //   built-in variable set (currently `${cwd}` = the directory dev-setup ran in,
 //   overridable via the `cwd` context value).
 // - `capture` maps a local variable name -> a dotted JSON path read from that
 //   step's stdout (the step must pass `--json`). Later steps reference it as
-//   `${name}`. Captured values are cmux refs/ids, never secrets.
+//   `${name}`. Captured values are mosaic refs/ids, never secrets.
 //
 // The construction half (`resolveSteps`) is a pure function of (profile, context)
 // with no I/O, so it is unit-testable without a live socket
@@ -128,7 +128,7 @@ export function validateProfile(profile, label = "profile") {
 }
 
 /**
- * Resolve a profile into the concrete `cmux` argument vectors that would run,
+ * Resolve a profile into the concrete `mosaic` argument vectors that would run,
  * given a set of starting context variables (e.g. `${cwd}`).
  *
  * This is the pure, I/O-free half of the engine. It substitutes every
@@ -203,17 +203,17 @@ export function loadProfile(dir, name) {
 }
 
 /**
- * Executes resolved profile steps against a tagged dev cmux socket.
+ * Executes resolved profile steps against a tagged dev mosaic socket.
  *
- * Each step shells out to `scripts/cmux-debug-cli.sh` with `CMUX_TAG` set, so
+ * Each step shells out to `scripts/mosaic-debug-cli.sh` with `MOSAIC_TAG` set, so
  * the safety contract (refuse without a tag, target the tagged socket only) is
  * enforced by the helper, not re-implemented here.
  */
 export class ProfileReplayer {
   /**
    * @param {object} opts
-   * @param {string} opts.tag The `CMUX_TAG` value (tagged dev build).
-   * @param {string} opts.cliPath Absolute path to `scripts/cmux-debug-cli.sh`.
+   * @param {string} opts.tag The `MOSAIC_TAG` value (tagged dev build).
+   * @param {string} opts.cliPath Absolute path to `scripts/mosaic-debug-cli.sh`.
    * @param {Record<string, string>} [opts.context] Starting variables.
    * @param {(msg: string) => void} [opts.log] Progress logger (stderr).
    */
@@ -233,17 +233,17 @@ export class ProfileReplayer {
    */
   runStep(step) {
     const display = step.argv.join(" ");
-    this.log(`  cmux ${display}`);
+    this.log(`  mosaic ${display}`);
     const res = spawnSync(this.cliPath, step.argv, {
       encoding: "utf8",
-      env: { ...process.env, CMUX_TAG: this.tag, CMUX_QUIET: "1" },
+      env: { ...process.env, MOSAIC_TAG: this.tag, MOSAIC_QUIET: "1" },
     });
     if (res.error) {
       throw new Error(`failed to spawn debug CLI: ${res.error.message}`);
     }
     if (res.status !== 0) {
       const detail = (res.stderr || res.stdout || "").trim();
-      throw new Error(`step failed (exit ${res.status}): cmux ${display}\n${detail}`);
+      throw new Error(`step failed (exit ${res.status}): mosaic ${display}\n${detail}`);
     }
     const stdout = res.stdout || "";
     if (step.capture) {
@@ -252,14 +252,14 @@ export class ProfileReplayer {
         parsed = JSON.parse(stdout);
       } catch {
         throw new Error(
-          `step declared captures but stdout was not JSON: cmux ${display}`,
+          `step declared captures but stdout was not JSON: mosaic ${display}`,
         );
       }
       for (const [name, jsonPath] of Object.entries(step.capture)) {
         const value = readJSONPath(parsed, jsonPath);
         if (value === undefined || value === null) {
           throw new Error(
-            `capture "${name}" path "${jsonPath}" not found in output of: cmux ${display}`,
+            `capture "${name}" path "${jsonPath}" not found in output of: mosaic ${display}`,
           );
         }
         this.vars[name] = String(value);

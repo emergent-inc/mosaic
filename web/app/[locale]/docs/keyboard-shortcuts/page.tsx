@@ -48,7 +48,7 @@ export default function KeyboardShortcutsPage() {
         })}
       </p>
       <Callout type="info">{t("chordsCallout")}</Callout>
-      <CodeBlock title="cmux.json" lang="json">{shortcutChordExample}</CodeBlock>
+      <CodeBlock title="mosaic.json" lang="json">{shortcutChordExample}</CodeBlock>
       <ul>
         <li>{t("chordsRuleSingle")}</li>
         <li>{t("chordsRuleArray")}</li>

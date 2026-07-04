@@ -6,7 +6,7 @@
  */
 export function installWebviewStyles(id: string, styles: string): void {
   const style = document.createElement("style");
-  style.dataset.cmuxWebviewStyle = id;
+  style.dataset.mosaicWebviewStyle = id;
   style.textContent = styles;
   document.head.append(style);
 }

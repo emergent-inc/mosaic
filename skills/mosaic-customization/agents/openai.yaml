@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Customization"
+  short_description: "Customize mosaic actions, UI, layouts, and presets."
+  default_prompt: "Use $mosaic-customization to pick an examples-library preset, wire it into mosaic.json, and validate the mosaic config."

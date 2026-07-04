@@ -1,9 +1,9 @@
 import AppKit
-import CmuxRemoteSession
+import MosaicRemoteSession
 import Bonsplit
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
-import CmuxWorkspaces
+import MosaicWorkspaces
 
 /// The surface-domain resume (`resume.set` / `.get` / `.clear`) and reporting
 /// (`report_tty` / `report_pwd` / `report_shell_state` / `ports_kick`) witnesses,

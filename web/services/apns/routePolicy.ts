@@ -38,7 +38,7 @@ export type PushPayload = {
   readonly macDeviceId: string | null;
   /**
    * Stable Mac-side notification id. Sent to APNs as `apns-collapse-id` and as
-   * `cmux.notificationId` so cross-device dismiss-sync can target the exact
+   * `mosaic.notificationId` so cross-device dismiss-sync can target the exact
    * delivered banner. An opaque id, never terminal content.
    */
   readonly notificationId: string | null;
@@ -62,8 +62,8 @@ export type JsonObjectResult =
   | { readonly ok: true; readonly value: Record<string, unknown> }
   | { readonly ok: false; readonly error: "invalid_json" | "request_too_large" };
 
-const DEV_TAGGED_BUNDLE_ID = /^dev\.cmux\.ios\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-const PROD_BUNDLE_IDS = new Set(["mosaic.com.emergent.app", "dev.cmux.app.beta"]);
+const DEV_TAGGED_BUNDLE_ID = /^dev\.mosaic\.ios\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const PROD_BUNDLE_IDS = new Set(["mosaic.com.emergent.app", "dev.mosaic.app.beta"]);
 
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";

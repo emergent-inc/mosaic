@@ -36,7 +36,7 @@ struct BrowserDownloadsToolbarButton: View {
                 // the state instead of a persistent accent tint: a spinner while
                 // a download is in flight, and a bounce each time one lands.
                 // (A repeating `.bounce` would need macOS 15; plain SF Symbol so
-                // the discrete `.bounce` applies — CmuxSystemSymbolImage is
+                // the discrete `.bounce` applies — MosaicSystemSymbolImage is
                 // NSImage-backed and ignores `.symbolEffect`.)
                 Group {
                     if isDownloading {

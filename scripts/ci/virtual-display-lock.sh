@@ -6,19 +6,19 @@ if [ $# -gt 0 ]; then
   shift
 fi
 
-LOCK_DIR="${CMUX_VDISPLAY_LOCK_DIR:-/tmp/cmux-ci-virtual-display.lock}"
-LOCK_TIMEOUT_SECONDS="${CMUX_VDISPLAY_LOCK_TIMEOUT_SECONDS:-600}"
-LOCK_STALE_SECONDS="${CMUX_VDISPLAY_LOCK_STALE_SECONDS:-1800}"
-LOCK_OWNERLESS_STALE_SECONDS="${CMUX_VDISPLAY_LOCK_OWNERLESS_STALE_SECONDS:-$LOCK_TIMEOUT_SECONDS}"
-LOCK_POLL_SECONDS="${CMUX_VDISPLAY_LOCK_POLL_SECONDS:-2}"
+LOCK_DIR="${MOSAIC_VDISPLAY_LOCK_DIR:-/tmp/mosaic-ci-virtual-display.lock}"
+LOCK_TIMEOUT_SECONDS="${MOSAIC_VDISPLAY_LOCK_TIMEOUT_SECONDS:-600}"
+LOCK_STALE_SECONDS="${MOSAIC_VDISPLAY_LOCK_STALE_SECONDS:-1800}"
+LOCK_OWNERLESS_STALE_SECONDS="${MOSAIC_VDISPLAY_LOCK_OWNERLESS_STALE_SECONDS:-$LOCK_TIMEOUT_SECONDS}"
+LOCK_POLL_SECONDS="${MOSAIC_VDISPLAY_LOCK_POLL_SECONDS:-2}"
 
 usage() {
   cat >&2 <<'EOF'
 usage: virtual-display-lock.sh acquire|set-owner <pid>|reap-strays|release
 
 Coordinates host-global CGVirtualDisplay use between concurrent self-hosted
-macOS jobs. acquire prints CMUX_VDISPLAY_LOCK_DIR and
-CMUX_VDISPLAY_LOCK_TOKEN shell assignments on stdout.
+macOS jobs. acquire prints MOSAIC_VDISPLAY_LOCK_DIR and
+MOSAIC_VDISPLAY_LOCK_TOKEN shell assignments on stdout.
 EOF
 }
 
@@ -28,7 +28,7 @@ now_seconds() {
 
 validate_lock_dir() {
   case "$LOCK_DIR" in
-    /tmp/cmux-*.lock)
+    /tmp/mosaic-*.lock)
       return 0
       ;;
   esac
@@ -148,8 +148,8 @@ acquire() {
   while true; do
     if mkdir "$LOCK_DIR" 2>/dev/null; then
       write_metadata "$token"
-      printf 'CMUX_VDISPLAY_LOCK_DIR=%q\n' "$LOCK_DIR"
-      printf 'CMUX_VDISPLAY_LOCK_TOKEN=%q\n' "$token"
+      printf 'MOSAIC_VDISPLAY_LOCK_DIR=%q\n' "$LOCK_DIR"
+      printf 'MOSAIC_VDISPLAY_LOCK_TOKEN=%q\n' "$token"
       exit 0
     fi
 
@@ -173,9 +173,9 @@ acquire() {
 
 require_token_match() {
   validate_lock_dir
-  local token="${CMUX_VDISPLAY_LOCK_TOKEN:-}"
+  local token="${MOSAIC_VDISPLAY_LOCK_TOKEN:-}"
   if [ -z "$token" ]; then
-    echo "CMUX_VDISPLAY_LOCK_TOKEN is required for $COMMAND" >&2
+    echo "MOSAIC_VDISPLAY_LOCK_TOKEN is required for $COMMAND" >&2
     exit 1
   fi
   if [ ! -d "$LOCK_DIR" ]; then

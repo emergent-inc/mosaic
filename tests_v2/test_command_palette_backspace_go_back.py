@@ -13,10 +13,10 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _wait_until(predicate, timeout_s=4.0, interval_s=0.05, message="timeout"):
@@ -25,7 +25,7 @@ def _wait_until(predicate, timeout_s=4.0, interval_s=0.05, message="timeout"):
         if predicate():
             return
         time.sleep(interval_s)
-    raise cmuxError(message)
+    raise mosaicError(message)
 
 
 def _palette_visible(client, window_id):
@@ -72,7 +72,7 @@ def _open_rename_input(client, window_id):
 
 
 def main():
-    with cmux(SOCKET_PATH) as client:
+    with mosaic(SOCKET_PATH) as client:
         client.activate_app()
         time.sleep(0.2)
         window_id = client.current_window()
@@ -97,7 +97,7 @@ def main():
                 and selection_location in (-1, 0)
                 and selection_length == text_length
             ):
-                raise cmuxError(
+                raise mosaicError(
                     "rename input was not select-all on open: "
                     f"text_length={text_length} selection=({selection_location}, {selection_length})"
                 )
@@ -116,13 +116,13 @@ def main():
                     break
                 time.sleep(0.05)
             if not first_backspace_cleared:
-                raise cmuxError(
+                raise mosaicError(
                     "first backspace did not clear rename input: "
                     f"selection={last_selection} results={_palette_results(client, window_id)}"
                 )
             after_first = _palette_results(client, window_id)
             if str(after_first.get("mode") or "") != "rename_input":
-                raise cmuxError(f"palette exited rename mode too early after first backspace: {after_first}")
+                raise mosaicError(f"palette exited rename mode too early after first backspace: {after_first}")
 
             client._call(
                 "debug.command_palette.rename_input.delete_backward",
@@ -135,7 +135,7 @@ def main():
             )
 
             if not _palette_visible(client, window_id):
-                raise cmuxError("palette closed unexpectedly instead of navigating back to command list")
+                raise mosaicError("palette closed unexpectedly instead of navigating back to command list")
 
         finally:
             try:

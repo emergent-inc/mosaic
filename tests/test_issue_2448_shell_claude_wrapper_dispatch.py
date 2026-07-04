@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Regression for issue #2448:
-shell integrations should dispatch `claude` through cmux's wrapper even when
+shell integrations should dispatch `claude` through mosaic's wrapper even when
 GHOSTTY_BIN_DIR is unset and PATH later prefers another binary.
 """
 
@@ -35,7 +35,7 @@ def prepare_bundle(tmp: Path) -> tuple[Path, Path]:
     shell_dir.mkdir(parents=True, exist_ok=True)
     bin_dir.mkdir(parents=True, exist_ok=True)
 
-    for name in (".zshenv", ".zprofile", ".zshrc", "cmux-zsh-integration.zsh", "cmux-bash-integration.bash"):
+    for name in (".zshenv", ".zprofile", ".zshrc", "mosaic-zsh-integration.zsh", "mosaic-bash-integration.bash"):
         shutil.copy2(SOURCE_SHELL_DIR / name, shell_dir / name)
     (shell_dir / "fish").mkdir(parents=True, exist_ok=True)
     shutil.copy2(SOURCE_SHELL_DIR / "fish" / "config.fish", shell_dir / "fish" / "config.fish")
@@ -55,17 +55,17 @@ def run_zsh(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, 
     env = dict(os.environ)
     env["HOME"] = str(home)
     env["ZDOTDIR"] = str(shell_dir)
-    env["CMUX_ZSH_ZDOTDIR"] = str(orig)
-    env["CMUX_SHELL_INTEGRATION"] = "1"
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION"] = "0"
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_ZSH_ZDOTDIR"] = str(orig)
+    env["MOSAIC_SHELL_INTEGRATION"] = "1"
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION"] = "0"
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
     result = subprocess.run(
-        ["zsh", "-d", "-i", "-c", 'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude zsh-case'],
+        ["zsh", "-d", "-i", "-c", 'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude zsh-case'],
         env=env,
         capture_output=True,
         text=True,
@@ -78,9 +78,9 @@ def run_zsh(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, 
 
 def run_zsh_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -88,8 +88,8 @@ def run_zsh_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple
         [
             "zsh",
             "-fic",
-            f'alias claude="echo alias"; source "{shell_dir / "cmux-zsh-integration.zsh"}"; '
-            'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude zsh-alias-case',
+            f'alias claude="echo alias"; source "{shell_dir / "mosaic-zsh-integration.zsh"}"; '
+            'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude zsh-alias-case',
         ],
         env=env,
         capture_output=True,
@@ -103,9 +103,9 @@ def run_zsh_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple
 
 def run_zsh_with_late_user_function(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -113,9 +113,9 @@ def run_zsh_with_late_user_function(shell_dir: Path, real_bin: Path, log_path: P
         [
             "zsh",
             "-fic",
-            f'source "{shell_dir / "cmux-zsh-integration.zsh"}"; '
-            'claude() { "$CMUX_TEST_REAL_BIN/user-claude-function" "$@"; }; '
-            '_cmux_fix_path; PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude zsh-late-function-case',
+            f'source "{shell_dir / "mosaic-zsh-integration.zsh"}"; '
+            'claude() { "$MOSAIC_TEST_REAL_BIN/user-claude-function" "$@"; }; '
+            '_mosaic_fix_path; PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude zsh-late-function-case',
         ],
         env=env,
         capture_output=True,
@@ -129,9 +129,9 @@ def run_zsh_with_late_user_function(shell_dir: Path, real_bin: Path, log_path: P
 
 def run_bash(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -141,7 +141,7 @@ def run_bash(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str,
             "--noprofile",
             "--norc",
             "-c",
-            f'source "{shell_dir / "cmux-bash-integration.bash"}"; PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude bash-case',
+            f'source "{shell_dir / "mosaic-bash-integration.bash"}"; PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude bash-case',
         ],
         env=env,
         capture_output=True,
@@ -155,9 +155,9 @@ def run_bash(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str,
 
 def run_bash_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -167,9 +167,9 @@ def run_bash_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tupl
             "--noprofile",
             "--norc",
             "-ic",
-            f'alias claude="$CMUX_TEST_REAL_BIN/user-claude"\n'
-            f'source "{shell_dir / "cmux-bash-integration.bash"}"\n'
-            'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude bash-alias-case',
+            f'alias claude="$MOSAIC_TEST_REAL_BIN/user-claude"\n'
+            f'source "{shell_dir / "mosaic-bash-integration.bash"}"\n'
+            'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude bash-alias-case',
         ],
         env=env,
         capture_output=True,
@@ -183,9 +183,9 @@ def run_bash_with_alias(shell_dir: Path, real_bin: Path, log_path: Path) -> tupl
 
 def run_bash_with_function(shell_dir: Path, real_bin: Path, log_path: Path) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -195,9 +195,9 @@ def run_bash_with_function(shell_dir: Path, real_bin: Path, log_path: Path) -> t
             "--noprofile",
             "--norc",
             "-ic",
-            f'claude() {{ "$CMUX_TEST_REAL_BIN/user-claude-function" "$@"; }}; '
-            f'source "{shell_dir / "cmux-bash-integration.bash"}"; '
-            'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude bash-function-case',
+            f'claude() {{ "$MOSAIC_TEST_REAL_BIN/user-claude-function" "$@"; }}; '
+            f'source "{shell_dir / "mosaic-bash-integration.bash"}"; '
+            'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude bash-function-case',
         ],
         env=env,
         capture_output=True,
@@ -217,11 +217,11 @@ def run_zsh_with_stale_original_wrapper(
     log_path: Path,
 ) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
-    env["CMUX_TEST_OLD_WRAPPER"] = str(old_wrapper)
-    env["CMUX_BUNDLED_CLI_PATH"] = str(current_cli)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_TEST_OLD_WRAPPER"] = str(old_wrapper)
+    env["MOSAIC_BUNDLED_CLI_PATH"] = str(current_cli)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -229,9 +229,9 @@ def run_zsh_with_stale_original_wrapper(
         [
             "zsh",
             "-fic",
-            f'source "{shell_dir / "cmux-zsh-integration.zsh"}"; '
-            'rm -f "$CMUX_TEST_OLD_WRAPPER"; '
-            'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude zsh-stale-wrapper-case',
+            f'source "{shell_dir / "mosaic-zsh-integration.zsh"}"; '
+            'rm -f "$MOSAIC_TEST_OLD_WRAPPER"; '
+            'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude zsh-stale-wrapper-case',
         ],
         env=env,
         capture_output=True,
@@ -251,11 +251,11 @@ def run_bash_with_stale_original_wrapper(
     log_path: Path,
 ) -> tuple[int, str, list[str]]:
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
-    env["CMUX_TEST_OLD_WRAPPER"] = str(old_wrapper)
-    env["CMUX_BUNDLED_CLI_PATH"] = str(current_cli)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_TEST_OLD_WRAPPER"] = str(old_wrapper)
+    env["MOSAIC_BUNDLED_CLI_PATH"] = str(current_cli)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -265,9 +265,9 @@ def run_bash_with_stale_original_wrapper(
             "--noprofile",
             "--norc",
             "-c",
-            f'source "{shell_dir / "cmux-bash-integration.bash"}"; '
-            'rm -f "$CMUX_TEST_OLD_WRAPPER"; '
-            'PATH="$CMUX_TEST_REAL_BIN:$PATH"; claude bash-stale-wrapper-case',
+            f'source "{shell_dir / "mosaic-bash-integration.bash"}"; '
+            'rm -f "$MOSAIC_TEST_OLD_WRAPPER"; '
+            'PATH="$MOSAIC_TEST_REAL_BIN:$PATH"; claude bash-stale-wrapper-case',
         ],
         env=env,
         capture_output=True,
@@ -291,11 +291,11 @@ def run_fish_with_stale_original_wrapper(
         return 0, "fish not installed; skipped", ["skip:fish-not-installed"]
 
     env = dict(os.environ)
-    env["CMUX_SHELL_INTEGRATION_DIR"] = str(shell_dir)
-    env["CMUX_TEST_LOG"] = str(log_path)
-    env["CMUX_TEST_REAL_BIN"] = str(real_bin)
-    env["CMUX_TEST_OLD_WRAPPER"] = str(old_wrapper)
-    env["CMUX_BUNDLED_CLI_PATH"] = str(current_cli)
+    env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(shell_dir)
+    env["MOSAIC_TEST_LOG"] = str(log_path)
+    env["MOSAIC_TEST_REAL_BIN"] = str(real_bin)
+    env["MOSAIC_TEST_OLD_WRAPPER"] = str(old_wrapper)
+    env["MOSAIC_BUNDLED_CLI_PATH"] = str(current_cli)
     env["PATH"] = f"{real_bin}:/usr/bin:/bin"
     env.pop("GHOSTTY_BIN_DIR", None)
 
@@ -305,8 +305,8 @@ def run_fish_with_stale_original_wrapper(
             "--no-config",
             "-c",
             f'source "{shell_dir / "fish" / "config.fish"}"; '
-            'rm -f "$CMUX_TEST_OLD_WRAPPER"; '
-            'set -gx PATH "$CMUX_TEST_REAL_BIN" $PATH; claude fish-stale-wrapper-case',
+            'rm -f "$MOSAIC_TEST_OLD_WRAPPER"; '
+            'set -gx PATH "$MOSAIC_TEST_REAL_BIN" $PATH; claude fish-stale-wrapper-case',
         ],
         env=env,
         capture_output=True,
@@ -321,7 +321,7 @@ def run_fish_with_stale_original_wrapper(
 def main() -> int:
     failures: list[str] = []
 
-    with tempfile.TemporaryDirectory(prefix="cmux-issue-2448-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-issue-2448-") as td:
         tmp = Path(td)
         shell_dir, bundle_bin = prepare_bundle(tmp)
         real_bin = tmp / "real-bin"
@@ -330,45 +330,45 @@ def main() -> int:
         current_bin.mkdir(parents=True, exist_ok=True)
 
         write_executable(
-            bundle_bin / "cmux-claude-wrapper",
+            bundle_bin / "mosaic-claude-wrapper",
             """#!/bin/sh
 set -eu
-printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'wrapper:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         write_executable(
             real_bin / "claude",
             """#!/bin/sh
 set -eu
-printf 'real:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'real:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         write_executable(
             real_bin / "user-claude",
             """#!/bin/sh
 set -eu
-printf 'user-alias:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'user-alias:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         write_executable(
             real_bin / "user-claude-function",
             """#!/bin/sh
 set -eu
-printf 'user-function:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'user-function:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         write_executable(
-            current_bin / "cmux",
+            current_bin / "mosaic",
             """#!/bin/sh
 set -eu
-printf 'cmux-cli:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'mosaic-cli:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         write_executable(
-            current_bin / "cmux-claude-wrapper",
+            current_bin / "mosaic-claude-wrapper",
             """#!/bin/sh
 set -eu
-printf 'current-wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'current-wrapper:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
 
@@ -415,18 +415,18 @@ printf 'current-wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
             failures.append(f"bash function case should preserve user function, saw {lines!r}")
 
         write_executable(
-            bundle_bin / "cmux-claude-wrapper",
+            bundle_bin / "mosaic-claude-wrapper",
             """#!/bin/sh
 set -eu
-printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'wrapper:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         zsh_stale_wrapper_log = tmp / "zsh-stale-wrapper.log"
         rc, output, lines = run_zsh_with_stale_original_wrapper(
             shell_dir,
             real_bin,
-            bundle_bin / "cmux-claude-wrapper",
-            current_bin / "cmux",
+            bundle_bin / "mosaic-claude-wrapper",
+            current_bin / "mosaic",
             zsh_stale_wrapper_log,
         )
         if rc != 0:
@@ -435,18 +435,18 @@ printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
             failures.append(f"zsh stale wrapper case expected current wrapper dispatch, saw {lines!r}")
 
         write_executable(
-            bundle_bin / "cmux-claude-wrapper",
+            bundle_bin / "mosaic-claude-wrapper",
             """#!/bin/sh
 set -eu
-printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'wrapper:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         bash_stale_wrapper_log = tmp / "bash-stale-wrapper.log"
         rc, output, lines = run_bash_with_stale_original_wrapper(
             shell_dir,
             real_bin,
-            bundle_bin / "cmux-claude-wrapper",
-            current_bin / "cmux",
+            bundle_bin / "mosaic-claude-wrapper",
+            current_bin / "mosaic",
             bash_stale_wrapper_log,
         )
         if rc != 0:
@@ -455,18 +455,18 @@ printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
             failures.append(f"bash stale wrapper case expected current wrapper dispatch, saw {lines!r}")
 
         write_executable(
-            bundle_bin / "cmux-claude-wrapper",
+            bundle_bin / "mosaic-claude-wrapper",
             """#!/bin/sh
 set -eu
-printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
+printf 'wrapper:%s\n' "$*" >> "$MOSAIC_TEST_LOG"
 """,
         )
         fish_stale_wrapper_log = tmp / "fish-stale-wrapper.log"
         rc, output, lines = run_fish_with_stale_original_wrapper(
             shell_dir,
             real_bin,
-            bundle_bin / "cmux-claude-wrapper",
-            current_bin / "cmux",
+            bundle_bin / "mosaic-claude-wrapper",
+            current_bin / "mosaic",
             fish_stale_wrapper_log,
         )
         if lines == ["skip:fish-not-installed"]:
@@ -477,12 +477,12 @@ printf 'wrapper:%s\n' "$*" >> "$CMUX_TEST_LOG"
             failures.append(f"fish stale wrapper case expected current wrapper dispatch, saw {lines!r}")
 
     if failures:
-        print("FAIL: shell integration did not keep claude on the cmux wrapper")
+        print("FAIL: shell integration did not keep claude on the mosaic wrapper")
         for failure in failures:
             print(f"- {failure}")
         return 1
 
-    print("PASS: zsh, bash, and fish integrations dispatch claude through the cmux wrapper")
+    print("PASS: zsh, bash, and fish integrations dispatch claude through the mosaic wrapper")
     return 0
 
 

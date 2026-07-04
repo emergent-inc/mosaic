@@ -205,25 +205,25 @@ private func resolvedBundleIdentifier(appURL: URL, requestedBundleIdentifier: St
 }
 
 private let directLaunchEnvironmentKeysToRemove = [
-    "CMUX_SOCKET",
-    "CMUX_SOCKET_PATH",
-    "CMUX_SOCKET_MODE",
-    "CMUX_TAB_ID",
-    "CMUX_PANEL_ID",
-    "CMUX_SURFACE_ID",
-    "CMUX_WORKSPACE_ID",
-    "CMUXD_UNIX_PATH",
-    "CMUX_TAG",
-    "CMUX_PORT",
-    "CMUX_PORT_END",
-    "CMUX_PORT_RANGE",
-    "CMUX_DEBUG_LOG",
-    "CMUX_BUNDLE_ID",
-    "CMUX_BUNDLED_CLI_PATH",
-    "CMUX_DISABLE_SESSION_RESTORE",
-    "CMUX_SHELL_INTEGRATION",
-    "CMUX_SHELL_INTEGRATION_DIR",
-    "CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION",
+    "MOSAIC_SOCKET",
+    "MOSAIC_SOCKET_PATH",
+    "MOSAIC_SOCKET_MODE",
+    "MOSAIC_TAB_ID",
+    "MOSAIC_PANEL_ID",
+    "MOSAIC_SURFACE_ID",
+    "MOSAIC_WORKSPACE_ID",
+    "MOSAICD_UNIX_PATH",
+    "MOSAIC_TAG",
+    "MOSAIC_PORT",
+    "MOSAIC_PORT_END",
+    "MOSAIC_PORT_RANGE",
+    "MOSAIC_DEBUG_LOG",
+    "MOSAIC_BUNDLE_ID",
+    "MOSAIC_BUNDLED_CLI_PATH",
+    "MOSAIC_DISABLE_SESSION_RESTORE",
+    "MOSAIC_SHELL_INTEGRATION",
+    "MOSAIC_SHELL_INTEGRATION_DIR",
+    "MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION",
     "GHOSTTY_BIN_DIR",
     "GHOSTTY_RESOURCES_DIR",
     "GHOSTTY_SHELL_FEATURES",
@@ -243,7 +243,7 @@ private func directLaunchEnvironment(appURL: URL, bundleIdentifier: String) -> [
        let launchEnvironment = bundle.infoDictionary?["LSEnvironment"] as? [String: String] {
         environment.merge(launchEnvironment) { _, newValue in newValue }
     }
-    environment["CMUX_BUNDLE_ID"] = environment["CMUX_BUNDLE_ID"] ?? bundleIdentifier
+    environment["MOSAIC_BUNDLE_ID"] = environment["MOSAIC_BUNDLE_ID"] ?? bundleIdentifier
     return environment
 }
 
@@ -263,7 +263,7 @@ private func directLaunchLogURL(bundleIdentifier: String) -> URL {
         .map { character in character.isLetter || character.isNumber ? character : "-" }
         .reduce(into: "") { $0.append($1) }
     return URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("cmux-window-visibility-\(safeIdentifier).log")
+        .appendingPathComponent("mosaic-window-visibility-\(safeIdentifier).log")
 }
 
 private func launchApplicationProcess(appURL: URL, bundleIdentifier: String) -> NSRunningApplication? {

@@ -1,6 +1,6 @@
 import Bonsplit
 import Foundation
-import CmuxWorkspaces
+import MosaicWorkspaces
 
 extension Workspace {
     func customSidebarSessionSnapshot(for panel: any Panel) -> SessionCustomSidebarPanelSnapshot? {
@@ -75,7 +75,7 @@ extension Workspace {
         targetIndex: Int? = nil
     ) -> CustomSidebarPanel? {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let fileURL = CmuxExtensionSidebarSelection.customSidebarFileURL(forName: name) else {
+        guard let fileURL = MosaicExtensionSidebarSelection.customSidebarFileURL(forName: name) else {
             return nil
         }
         let shouldFocusNewTab = focus ?? (bonsplitController.focusedPaneId == paneId)
@@ -104,10 +104,10 @@ extension Workspace {
         if let targetIndex {
             _ = bonsplitController.reorderTab(newTabId, toIndex: targetIndex)
         }
-        publishCmuxSurfaceCreated(
+        publishMosaicSurfaceCreated(
             customPanel.id,
             paneId: paneId,
-            kind: Self.cmuxEventSurfaceKind(customPanel),
+            kind: Self.mosaicEventSurfaceKind(customPanel),
             origin: "custom_sidebar_tab",
             focused: shouldFocusNewTab
         )
@@ -133,7 +133,7 @@ extension Workspace {
         name rawName: String
     ) -> CustomSidebarPanel? {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let fileURL = CmuxExtensionSidebarSelection.customSidebarFileURL(forName: name) else {
+        guard let fileURL = MosaicExtensionSidebarSelection.customSidebarFileURL(forName: name) else {
             return nil
         }
 
@@ -172,12 +172,12 @@ extension Workspace {
             reason: "workspace.customSidebarSplitReparent"
         )
         focusPanel(customPanel.id, previousHostedView: previousHostedView)
-        publishCmuxSplitCreated(
+        publishMosaicSplitCreated(
             newPaneId,
             sourcePaneId: paneId,
             orientation: orientation,
             surfaceId: customPanel.id,
-            kind: Self.cmuxEventSurfaceKind(customPanel),
+            kind: Self.mosaicEventSurfaceKind(customPanel),
             origin: "custom_sidebar_split",
             focused: true
         )

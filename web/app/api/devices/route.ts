@@ -1,8 +1,8 @@
-// Device registry — register a Mac/host (and its running cmux app instance) and
+// Device registry — register a Mac/host (and its running mosaic app instance) and
 // list the team's registered devices so a phone can auto-pair on reload.
 //
 // Auth: Stack Bearer + X-Stack-Refresh-Token from the native client (same as
-// /api/device-tokens). Team scope: the caller picks a team via `X-Cmux-Team-Id`
+// /api/device-tokens). Team scope: the caller picks a team via `X-Mosaic-Team-Id`
 // (or `?teamId=`); the route rejects a team the caller is not a member of and
 // otherwise defaults to the caller's selected/billing team.
 //
@@ -47,7 +47,7 @@ type TeamResolution =
 
 /**
  * Resolve the team this request operates on and reject teams the caller is not a
- * member of. A requested team (`X-Cmux-Team-Id` / `?teamId=`) must appear in the
+ * member of. A requested team (`X-Mosaic-Team-Id` / `?teamId=`) must appear in the
  * caller's verified team list; with no request team we default to the caller's
  * selected team, then the billing team (which is the user id for a solo account
  * with no team), so single-team callers need no header.
@@ -120,7 +120,7 @@ function routesArray(value: unknown): unknown[] {
 
 
 /**
- * Register (or refresh) a device and its running cmux app instance. Idempotent
+ * Register (or refresh) a device and its running mosaic app instance. Idempotent
  * per `(deviceId)` for the machine row and per `(deviceId, tag)` for the
  * instance row, so a relaunch updates routes in place rather than duplicating.
  */
@@ -142,7 +142,7 @@ export async function POST(request: Request): Promise<Response> {
   const displayName = trimmedString(body.value.displayName) || null;
   const rawLabels = recordOrEmpty(body.value.labels);
   // `manual` is a server-controlled trust marker: it gates loopback/attachability
-  // validation AND is what `cmux remotes` uses to scope list/remove. Strip any
+  // validation AND is what `mosaic remotes` uses to scope list/remove. Strip any
   // client-supplied `manual` from the labels so a caller cannot set
   // `labels.manual: true` while omitting the top-level `manual` flag to bypass
   // route validation yet still have the row treated as a manual remote.
@@ -151,8 +151,8 @@ export async function POST(request: Request): Promise<Response> {
   const tag = trimmedString(body.value.tag) || "default";
   const routes = routesArray(body.value.routes);
   const instanceLabels = recordOrEmpty(body.value.instanceLabels);
-  // `manual: true` marks a user-initiated remote added through the cmux CLI
-  // (`cmux remotes add`) rather than a Mac self-registering its own live
+  // `manual: true` marks a user-initiated remote added through the mosaic CLI
+  // (`mosaic remotes add`) rather than a Mac self-registering its own live
   // routes. The Mac self-registration legitimately advertises a `debug_loopback`
   // route in DEBUG builds (for iOS Simulator dev pairing), so loopback
   // rejection must be scoped to the manual path: a phone can never dial a
@@ -182,7 +182,7 @@ export async function POST(request: Request): Promise<Response> {
   if (manual && !manualRoutesAreValid(routes)) {
     return jsonResponse({ error: "non_attachable_route_rejected" }, 400);
   }
-  // Persist the manual marker on the device so `cmux remotes` can scope list and
+  // Persist the manual marker on the device so `mosaic remotes` can scope list and
   // remove to user-added remotes only, and never touch a self-registered Mac's
   // registry row (deleting that would break the phone's reconnect). Stored in
   // `labels` so it survives in GET without a schema change.
@@ -197,7 +197,7 @@ export async function POST(request: Request): Promise<Response> {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${team.teamId}, 7))`);
 
     // Device identity is per team: a row keyed by (teamId, deviceUuid). The
-    // same cmux device UUID registering under a different team is a separate,
+    // same mosaic device UUID registering under a different team is a separate,
     // legitimate row (a Mac in two teams), so there is no cross-team conflict to
     // guard against. Team B creating its own row cannot read or mutate team A's.
     const [existingDevice] = await tx
@@ -369,7 +369,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const devicesPayload = deviceRows.map((device) => ({
-    // The phone matches its stored `macDeviceID` (the cmux device UUID) against
+    // The phone matches its stored `macDeviceID` (the mosaic device UUID) against
     // this, so expose `deviceUuid`, not the internal surrogate row id.
     deviceId: device.deviceUuid,
     platform: device.platform,
@@ -430,6 +430,6 @@ export async function DELETE(request: Request): Promise<Response> {
   // Report whether a row was actually removed. The delete is intentionally a
   // no-op (not an error) when the device does not exist or belongs to another
   // member, but the CLI needs `deleted` to avoid printing success when nothing
-  // was removed (e.g. `cmux remotes remove <not-owned-uuid>`).
+  // was removed (e.g. `mosaic remotes remove <not-owned-uuid>`).
   return jsonResponse({ ok: true, deleted: deletedRows.length });
 }

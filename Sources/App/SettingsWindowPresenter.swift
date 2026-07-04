@@ -1,16 +1,16 @@
 import AppKit
-import CmuxTestSupport
+import MosaicTestSupport
 import os
 
 @MainActor
 struct SettingsWindowPresenter {
     static let windowID = "settings"
-    static let windowIdentifier = "cmux.settings"
+    static let windowIdentifier = "mosaic.settings"
     static let minimumSize = NSSize(width: 820, height: 540)
     private static let visibleAreaInset: CGFloat = 18
     private static let sharedPresenter = SettingsWindowPresenter()
     /// Release-safe diagnostics so intermittent "Settings won't open" reports
-    /// (https://github.com/emergent-inc/cmux/issues/5770) become attributable
+    /// (https://github.com/emergent-inc/mosaic/issues/5770) become attributable
     /// from `log show --predicate 'subsystem == "mosaic.com.emergent.app" && category == "Settings"'`.
     private nonisolated static let log = Logger(subsystem: "mosaic.com.emergent.app", category: "Settings")
     /// Number of times to re-request the SwiftUI window when an open request
@@ -108,7 +108,7 @@ struct SettingsWindowPresenter {
         window.isRestorable = false
         window.minSize = Self.minimumSize
         window.contentMinSize = Self.minimumSize
-        window.adoptCmuxPeerWindowLevel()
+        window.adoptMosaicPeerWindowLevel()
         clampToVisibleAreaIfNeeded(window)
         if isNewSettingsWindow {
             observeClose(of: window)
@@ -136,9 +136,9 @@ struct SettingsWindowPresenter {
         openWindowOverride: (@MainActor () -> Void)? = nil
     ) {
 #if DEBUG
-        cmuxDebugLog("settings.window.show path=swiftuiWindow")
+        mosaicDebugLog("settings.window.show path=swiftuiWindow")
         _ = UITestCaptureSink().mutateJSONObjectIfConfigured(
-            envKey: "CMUX_UI_TEST_SETTINGS_OPEN_CAPTURE_PATH"
+            envKey: "MOSAIC_UI_TEST_SETTINGS_OPEN_CAPTURE_PATH"
         ) { payload in
             payload["opened"] = true
             payload["target"] = navigationTarget?.rawValue ?? ""
@@ -343,7 +343,7 @@ struct SettingsWindowPresenter {
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
-        window.adoptCmuxPeerWindowLevel()
+        window.adoptMosaicPeerWindowLevel()
         clampToVisibleAreaIfNeeded(window)
         // Surface the preferred main window first so Settings opens layered
         // above it — the standard "Settings in front of its app" presentation
@@ -351,7 +351,7 @@ struct SettingsWindowPresenter {
         // both windows front *as peers*, never via `addChildWindow`: a child
         // window is pinned above its parent forever and can never recede when
         // the user clicks the main window (the bug in
-        // https://github.com/emergent-inc/cmux/issues/5081). One-time front
+        // https://github.com/emergent-inc/mosaic/issues/5081). One-time front
         // ordering gives the same initial layering while leaving normal
         // click-to-raise window ordering fully intact afterwards.
         if let parentWindow = state.parentWindowProvider?(), parentWindow !== window {

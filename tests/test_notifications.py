@@ -6,7 +6,7 @@ Usage:
     python3 test_notifications.py
 
 Requirements:
-    - cmux must be running with the socket controller enabled
+    - mosaic must be running with the socket controller enabled
 """
 
 import os
@@ -16,7 +16,7 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 class TestResult:
@@ -34,7 +34,7 @@ class TestResult:
         self.message = msg
 
 
-def wait_for_notifications(client: cmux, expected: int, timeout: float = 2.0) -> list[dict]:
+def wait_for_notifications(client: mosaic, expected: int, timeout: float = 2.0) -> list[dict]:
     start = time.time()
     while time.time() - start < timeout:
         items = client.list_notifications()
@@ -43,7 +43,7 @@ def wait_for_notifications(client: cmux, expected: int, timeout: float = 2.0) ->
         time.sleep(0.05)
     return client.list_notifications()
 
-def wait_for_flash_count(client: cmux, surface: str, minimum: int = 1, timeout: float = 2.0) -> int:
+def wait_for_flash_count(client: mosaic, surface: str, minimum: int = 1, timeout: float = 2.0) -> int:
     """Poll flash_count until it reaches `minimum` or timeout. Returns final count."""
     start = time.time()
     last = 0
@@ -59,7 +59,7 @@ def wait_for_flash_count(client: cmux, surface: str, minimum: int = 1, timeout: 
 
 
 def wait_for_notification_read(
-    client: cmux, surface_id: str, timeout: float = 4.0
+    client: mosaic, surface_id: str, timeout: float = 4.0
 ) -> Optional[dict]:
     """Poll list_notifications until the notification for `surface_id` is read.
 
@@ -77,7 +77,7 @@ def wait_for_notification_read(
     return target
 
 
-def ensure_two_surfaces(client: cmux) -> list[tuple[int, str, bool]]:
+def ensure_two_surfaces(client: mosaic) -> list[tuple[int, str, bool]]:
     surfaces = client.list_surfaces()
     if len(surfaces) < 2:
         client.new_split("right")
@@ -86,7 +86,7 @@ def ensure_two_surfaces(client: cmux) -> list[tuple[int, str, bool]]:
     return surfaces
 
 
-def focused_surface_index(client: cmux) -> int:
+def focused_surface_index(client: mosaic) -> int:
     surfaces = client.list_surfaces()
     focused = next((s for s in surfaces if s[2]), None)
     if focused is None:
@@ -94,7 +94,7 @@ def focused_surface_index(client: cmux) -> int:
     return focused[0]
 
 
-def send_osc(client: cmux, sequence: str, surface: Optional[int] = None) -> None:
+def send_osc(client: mosaic, sequence: str, surface: Optional[int] = None) -> None:
     """Send an OSC sequence by printing it in the shell."""
     command = f"printf '{sequence}'\\n"
     if surface is None:
@@ -103,7 +103,7 @@ def send_osc(client: cmux, sequence: str, surface: Optional[int] = None) -> None
         client.send_surface(surface, command)
 
 
-def test_clear_prior_notifications(client: cmux) -> TestResult:
+def test_clear_prior_notifications(client: mosaic) -> TestResult:
     result = TestResult("Clear Prior Panel Notifications")
     try:
         client.clear_notifications()
@@ -123,7 +123,7 @@ def test_clear_prior_notifications(client: cmux) -> TestResult:
     return result
 
 
-def test_suppress_when_focused(client: cmux) -> TestResult:
+def test_suppress_when_focused(client: mosaic) -> TestResult:
     result = TestResult("Suppress When App+Panel Focused")
     try:
         client.clear_notifications()
@@ -139,7 +139,7 @@ def test_suppress_when_focused(client: cmux) -> TestResult:
     return result
 
 
-def test_not_suppressed_when_inactive(client: cmux) -> TestResult:
+def test_not_suppressed_when_inactive(client: mosaic) -> TestResult:
     result = TestResult("Allow When App Inactive")
     try:
         client.clear_notifications()
@@ -157,7 +157,7 @@ def test_not_suppressed_when_inactive(client: cmux) -> TestResult:
     return result
 
 
-def test_kitty_notification_simple(client: cmux) -> TestResult:
+def test_kitty_notification_simple(client: mosaic) -> TestResult:
     result = TestResult("Kitty OSC 99 Simple")
     try:
         client.clear_notifications()
@@ -179,7 +179,7 @@ def test_kitty_notification_simple(client: cmux) -> TestResult:
     return result
 
 
-def test_kitty_notification_chunked(client: cmux) -> TestResult:
+def test_kitty_notification_chunked(client: mosaic) -> TestResult:
     result = TestResult("Kitty OSC 99 Chunked Title/Body")
     try:
         client.clear_notifications()
@@ -209,7 +209,7 @@ def test_kitty_notification_chunked(client: cmux) -> TestResult:
     return result
 
 
-def test_rxvt_notification_osc777(client: cmux) -> TestResult:
+def test_rxvt_notification_osc777(client: mosaic) -> TestResult:
     result = TestResult("RXVT OSC 777 Notification")
     try:
         client.clear_notifications()
@@ -234,7 +234,7 @@ def test_rxvt_notification_osc777(client: cmux) -> TestResult:
     return result
 
 
-def test_mark_read_on_focus_change(client: cmux) -> TestResult:
+def test_mark_read_on_focus_change(client: mosaic) -> TestResult:
     result = TestResult("Mark Read On Panel Focus")
     try:
         client.clear_notifications()
@@ -269,7 +269,7 @@ def test_mark_read_on_focus_change(client: cmux) -> TestResult:
     return result
 
 
-def test_mark_read_on_app_active(client: cmux) -> TestResult:
+def test_mark_read_on_app_active(client: mosaic) -> TestResult:
     result = TestResult("Mark Read On App Active")
     try:
         client.clear_notifications()
@@ -302,7 +302,7 @@ def test_mark_read_on_app_active(client: cmux) -> TestResult:
     return result
 
 
-def test_mark_read_on_tab_switch(client: cmux) -> TestResult:
+def test_mark_read_on_tab_switch(client: mosaic) -> TestResult:
     result = TestResult("Mark Read On Tab Switch")
     try:
         client.clear_notifications()
@@ -331,7 +331,7 @@ def test_mark_read_on_tab_switch(client: cmux) -> TestResult:
     return result
 
 
-def test_flash_on_tab_switch(client: cmux) -> TestResult:
+def test_flash_on_tab_switch(client: mosaic) -> TestResult:
     result = TestResult("Flash On Tab Switch")
     try:
         client.clear_notifications()
@@ -365,7 +365,7 @@ def test_flash_on_tab_switch(client: cmux) -> TestResult:
     return result
 
 
-def test_focus_on_notification_click(client: cmux) -> TestResult:
+def test_focus_on_notification_click(client: mosaic) -> TestResult:
     result = TestResult("Focus On Notification Click")
     try:
         client.clear_notifications()
@@ -403,7 +403,7 @@ def test_focus_on_notification_click(client: cmux) -> TestResult:
     return result
 
 
-def test_restore_focus_on_tab_switch(client: cmux) -> TestResult:
+def test_restore_focus_on_tab_switch(client: mosaic) -> TestResult:
     result = TestResult("Restore Focus On Tab Switch")
     try:
         client.clear_notifications()
@@ -439,7 +439,7 @@ def test_restore_focus_on_tab_switch(client: cmux) -> TestResult:
     return result
 
 
-def test_clear_on_tab_close(client: cmux) -> TestResult:
+def test_clear_on_tab_close(client: mosaic) -> TestResult:
     result = TestResult("Clear On Tab Close")
     try:
         client.clear_notifications()
@@ -470,7 +470,7 @@ def test_clear_on_tab_close(client: cmux) -> TestResult:
 
 def run_tests() -> int:
     results = []
-    with cmux() as client:
+    with mosaic() as client:
         results.append(test_clear_prior_notifications(client))
         results.append(test_suppress_when_focused(client))
         results.append(test_not_suppressed_when_inactive(client))

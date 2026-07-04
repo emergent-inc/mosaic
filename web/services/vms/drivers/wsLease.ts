@@ -26,7 +26,7 @@ export function makeWebSocketLease(
   singleUse: boolean,
   ttlSeconds: number,
 ) {
-  const token = `cmux-${provider}-${label}-${randomBytes(32).toString("hex")}`;
+  const token = `mosaic-${provider}-${label}-${randomBytes(32).toString("hex")}`;
   const sessionId = randomBytes(16).toString("hex");
   const expiresAtUnix = Math.floor(Date.now() / 1000) + ttlSeconds;
   return {

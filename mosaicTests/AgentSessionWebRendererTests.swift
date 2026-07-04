@@ -1,0 +1,35 @@
+import Foundation
+import Testing
+
+#if canImport(Mosaic_DEV)
+    @testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+    @testable import Mosaic
+#endif
+
+@Suite(.serialized)
+struct AgentSessionWebRendererTests {
+    @Test
+    func testTrustedShellURLAcceptsOnlyMatchingFileURL() {
+        let resources = URL(fileURLWithPath: "/tmp/mosaic DEV test.app/Contents/Resources", isDirectory: true)
+        let expected = AgentSessionWebRendererCoordinator.shellURL(
+            rendererKind: .react,
+            resourceDirectoryURL: resources
+        )
+        let equivalent = resources
+            .appendingPathComponent("markdown-viewer", isDirectory: true)
+            .appendingPathComponent("webviews-app", isDirectory: true)
+            .appendingPathComponent("..", isDirectory: true)
+            .appendingPathComponent("webviews-app", isDirectory: true)
+            .appendingPathComponent("agent-session.html", isDirectory: false)
+        let otherBundledFile = resources
+            .appendingPathComponent("markdown-viewer", isDirectory: true)
+            .appendingPathComponent("webviews-app", isDirectory: true)
+            .appendingPathComponent("diff-viewer.html", isDirectory: false)
+
+        expectTrue(AgentSessionWebRendererCoordinator.isTrustedShellURL(expected, expected: expected))
+        expectTrue(AgentSessionWebRendererCoordinator.isTrustedShellURL(equivalent, expected: expected))
+        expectFalse(AgentSessionWebRendererCoordinator.isTrustedShellURL(otherBundledFile, expected: expected))
+        expectFalse(AgentSessionWebRendererCoordinator.isTrustedShellURL(URL(string: "https://example.com"), expected: expected))
+    }
+}

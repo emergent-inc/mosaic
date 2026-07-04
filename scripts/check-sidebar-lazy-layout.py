@@ -264,7 +264,7 @@ EXCLUDED_DIR_NAMES = frozenset({
 
 def repo_owned_swift_files(repo_root):
     """Yield every repo-owned Swift source path under ``Sources/`` and
-    ``Packages/`` (where cmux migrates app code), pruning build/VCS/vendored
+    ``Packages/`` (where mosaic migrates app code), pruning build/VCS/vendored
     directories. Scanning both keeps the custom-Layout discovery from being
     bypassed by defining the force-measuring layout in a package. (#6870 review)
     """

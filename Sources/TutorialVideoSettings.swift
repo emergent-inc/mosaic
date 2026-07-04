@@ -1,7 +1,7 @@
 import Foundation
 
 enum TutorialVideoSettings {
-    static let seenKey = "cmuxTutorialVideoSeen.v1"
+    static let seenKey = "mosaicTutorialVideoSeen.v1"
 
     static func hasSeenTutorial(defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: seenKey)
@@ -13,7 +13,7 @@ enum TutorialVideoSettings {
 }
 
 enum TutorialVideoFirstRunPresentation {
-    static let uiTestAutoShowEnvironmentKey = "CMUX_UI_TEST_TUTORIAL_VIDEO_AUTO_SHOW"
+    static let uiTestAutoShowEnvironmentKey = "MOSAIC_UI_TEST_TUTORIAL_VIDEO_AUTO_SHOW"
 
     static func isRunningUnderXCTest(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
         if environment["XCTestConfigurationFilePath"] != nil { return true }
@@ -22,7 +22,7 @@ enum TutorialVideoFirstRunPresentation {
         if environment["XCInjectBundle"] != nil { return true }
         if environment["XCInjectBundleInto"] != nil { return true }
         if environment["DYLD_INSERT_LIBRARIES"]?.contains("libXCTest") == true { return true }
-        if environment.keys.contains(where: { $0.hasPrefix("CMUX_UI_TEST_") }) { return true }
+        if environment.keys.contains(where: { $0.hasPrefix("MOSAIC_UI_TEST_") }) { return true }
         return false
     }
 

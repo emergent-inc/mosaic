@@ -4,7 +4,7 @@ import { verifyNativeAuthToken } from "../../../../../services/auth/nativeSessio
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const refreshToken = request.headers.get("x-cmux-refresh-token")?.trim()
+  const refreshToken = request.headers.get("x-mosaic-refresh-token")?.trim()
     ?? (await refreshTokenFromBody(request));
   if (!refreshToken || !verifyNativeAuthToken(refreshToken)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

@@ -99,7 +99,7 @@ public enum BonsplitTabItemHitRegionRegistry {
 
 enum BonsplitTabItemHitTesting {
     // Hit-test rect is intentionally larger than visual chrome. Do not bump
-    // visible tab padding/width to fix drag affordance; see cmux #4290 / #4433.
+    // visible tab padding/width to fix drag affordance; see mosaic #4290 / #4433.
     static let horizontalSlop: CGFloat = 10
     static let verticalSlop: CGFloat = 6
 

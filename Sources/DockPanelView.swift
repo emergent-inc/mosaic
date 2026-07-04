@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
-import CmuxAppKitSupportUI
-import CmuxTerminal
+import MosaicAppKitSupportUI
+import MosaicTerminal
 import SwiftUI
 
 /// Right-sidebar Dock. Renders the global Dock `BonsplitController` tree
@@ -273,7 +273,7 @@ final class DockKeyboardFocusView: NSView {
     func ownsKeyboardFocus(_ responder: NSResponder) -> Bool {
         if responder === self { return true }
         if let window, ownsDockBrowserFocus?(responder, window) == true { return true }
-        guard let ghosttyView = cmuxOwningGhosttyView(for: responder),
+        guard let ghosttyView = mosaicOwningGhosttyView(for: responder),
               let surfaceId = ghosttyView.terminalSurface?.id else {
             return false
         }

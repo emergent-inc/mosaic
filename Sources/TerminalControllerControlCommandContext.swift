@@ -1,4 +1,4 @@
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
 
 /// `TerminalController` conforms to ``ControlCommandContext`` as the interim

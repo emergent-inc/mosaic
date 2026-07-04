@@ -57,7 +57,7 @@ final class BrowserHiddenWebViewDiscardManager {
 
     /// Sleep/wake state used to keep a hidden-webview discard from running in
     /// the fragile window right after system wake
-    /// (https://github.com/emergent-inc/cmux/issues/5261).
+    /// (https://github.com/emergent-inc/mosaic/issues/5261).
     private(set) var isSystemSleeping = false
     private(set) var lastSystemWakeAt: Date?
 
@@ -112,7 +112,7 @@ final class BrowserHiddenWebViewDiscardManager {
         // Restart the countdown from the latest wake: WebKit pages reconnect and
         // re-navigate right after wake, and replacing/releasing a WKWebView in
         // that window crashed in WebPageProxy::updateActivityState
-        // (https://github.com/emergent-inc/cmux/issues/5261).
+        // (https://github.com/emergent-inc/mosaic/issues/5261).
         let effectiveHiddenAt = lastSystemWakeAt.map { max(hiddenAt, $0) } ?? hiddenAt
         let elapsed = now.timeIntervalSince(effectiveHiddenAt)
         let hiddenDelay = BrowserHiddenWebViewDiscardPolicy.hiddenDelay(defaults: policyDefaults)
@@ -203,7 +203,7 @@ final class BrowserHiddenWebViewDiscardManager {
         cancel()
 #if DEBUG
         if hadScheduledDiscard {
-            cmuxDebugLog("browser.discard.sleep canceledArmedTimer=1")
+            mosaicDebugLog("browser.discard.sleep canceledArmedTimer=1")
         }
 #endif
     }
@@ -213,7 +213,7 @@ final class BrowserHiddenWebViewDiscardManager {
         lastSystemWakeAt = now
         scheduleIfNeeded(reason: "system_did_wake", now: now)
 #if DEBUG
-        cmuxDebugLog("browser.discard.wake rearmed=\(hasScheduledDiscard ? 1 : 0)")
+        mosaicDebugLog("browser.discard.wake rearmed=\(hasScheduledDiscard ? 1 : 0)")
 #endif
     }
 

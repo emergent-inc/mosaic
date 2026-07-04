@@ -1,6 +1,6 @@
 import AppKit
 
-/// Samples cmux's live agent registry (the self-reported agent PIDs on every
+/// Samples mosaic's live agent registry (the self-reported agent PIDs on every
 /// open workspace) at most every couple of seconds. `@MainActor`-isolated: it is
 /// sampled from the renderer's TimelineView body, the tap gesture, and the debug
 /// socket (via `v2MainSync`), all on the main actor, so the cache has enforced

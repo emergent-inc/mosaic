@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import CoreGraphics
 
 enum MosaicChromePalette {
@@ -123,7 +123,7 @@ enum SidebarWorkspaceScrollLayout {
         // Flooring to a whole point keeps `content + insets <= viewportHeight`
         // regardless of the display's backing scale, so the phantom scrollbar
         // stays hidden when content fits
-        // (https://github.com/emergent-inc/cmux/issues/3241).
+        // (https://github.com/emergent-inc/mosaic/issues/3241).
         return max(0, (viewportHeight - insets.total).rounded(.down))
     }
 }

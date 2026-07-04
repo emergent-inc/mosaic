@@ -15,10 +15,10 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _wait_for(pred, timeout_s: float, step_s: float = 0.05) -> None:
@@ -27,11 +27,11 @@ def _wait_for(pred, timeout_s: float, step_s: float = 0.05) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         c.activate_app()
         time.sleep(0.25)
 
@@ -41,16 +41,16 @@ def main() -> int:
 
         surfaces = c.list_surfaces()
         if not surfaces:
-            raise cmuxError("Expected at least 1 surface after new_workspace")
+            raise mosaicError("Expected at least 1 surface after new_workspace")
         panel_id = next((sid for _i, sid, focused in surfaces if focused), surfaces[0][1])
 
         _wait_for(lambda: c.is_terminal_focused(panel_id), timeout_s=3.0)
 
         # Type into the shell prompt without pressing Enter.
-        text = "cmux"
+        text = "mosaic"
 
         # Capture the static prompt line (empty input) once. The typed-text check
-        # below strips this prefix so a "cmux" already present in the prompt/path
+        # below strips this prefix so a "mosaic" already present in the prompt/path
         # cannot satisfy the check before anything is typed. Trailing
         # zsh-autosuggestion glyphs render AFTER the cursor, so the typed prefix
         # still appears at the start of the post-prompt remainder.
@@ -109,10 +109,10 @@ def main() -> int:
 
             try:
                 _wait_for(_typed_visible, timeout_s=6.0)
-            except cmuxError:
+            except mosaicError:
                 snap = state["snap"] or {}
                 if state["changed"] < min_pixels:
-                    raise cmuxError(
+                    raise mosaicError(
                         "Expected visible pixel changes after typing a character.\n"
                         f"char={ch!r} index={i} changed_pixels={state['changed']} "
                         f"min_pixels={min_pixels}\n"
@@ -122,7 +122,7 @@ def main() -> int:
                 # weaker than the visual assertion, but helps triage whether the issue is
                 # rendering vs tick/IO.)
                 tail = state["buf"][-600:].replace("\r", "\\r")
-                raise cmuxError(
+                raise mosaicError(
                     "Terminal text did not update after typing.\n"
                     f"expected_prefix={expected_prefix!r}\n"
                     f"last_tail:\n{tail}"

@@ -12,12 +12,12 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
-	<key>CMUXDevTag</key>
-	<string>$(CMUX_DEV_TAG)</string>
-	<key>CMUXGitSHA</key>
-	<string>$(CMUX_GIT_SHA)</string>
-	<key>CMUXPresenceBaseURL</key>
-	<string>$(CMUX_PRESENCE_BASE_URL)</string>
+	<key>MosaicDevTag</key>
+	<string>$(MOSAIC_DEV_TAG)</string>
+	<key>MosaicGitSHA</key>
+	<string>$(MOSAIC_GIT_SHA)</string>
+	<key>MosaicPresenceBaseURL</key>
+	<string>$(MOSAIC_PRESENCE_BASE_URL)</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -30,22 +30,22 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>dev.cmux.ios.attach</string>
+			<string>dev.mosaic.ios.attach</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<!-- Channel-specific pairing scheme (CMUX_IOS_URL_SCHEME in
+				<!-- Channel-specific pairing scheme (MOSAIC_IOS_URL_SCHEME in
 				     Config/Shared.xcconfig + Config/Release.xcconfig): dev builds
-				     register cmux-ios-dev, Release (beta/prod) registers cmux-ios,
+				     register mosaic-ios-dev, Release (beta/prod) registers mosaic-ios,
 				     so a beta/prod QR scanned with the Camera app can never open a
 				     dev build. Keep the values in sync with CmxPairingURLScheme. -->
-				<string>$(CMUX_IOS_URL_SCHEME)</string>
+				<string>$(MOSAIC_IOS_URL_SCHEME)</string>
 			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>dev.cmux.ios.stack-auth</string>
+			<string>dev.mosaic.ios.stack-auth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>stack-auth-mobile-oauth-url</string>

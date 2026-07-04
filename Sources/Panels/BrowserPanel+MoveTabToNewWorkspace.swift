@@ -1,7 +1,7 @@
 import Foundation
 
 extension BrowserPanel {
-    func configureMoveTabToNewWorkspaceContextMenu(for webView: CmuxWebView) {
+    func configureMoveTabToNewWorkspaceContextMenu(for webView: MosaicWebView) {
         webView.contextMenuCanMoveTabToNewWorkspace = { [weak self] in
             guard let self else { return false }
             return AppDelegate.shared?.canMoveSurfaceToNewWorkspace(panelId: self.id) ?? false

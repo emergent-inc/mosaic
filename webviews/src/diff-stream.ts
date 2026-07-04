@@ -200,7 +200,7 @@ export async function streamPatch(options: StreamPatchOptions): Promise<void> {
       currentPatchPrefix = commitMetadataLabel(metadata, patchMetadataIndex, options.label);
       patchMetadataIndex += 1;
     }
-    const cacheKey = `cmux-diff-file-${model.fileIndex}`;
+    const cacheKey = `mosaic-diff-file-${model.fileIndex}`;
     await enqueueFileDiff(options.processFile(fileText, { cacheKey, isGitDiff: true }), currentPatchPrefix);
   }
 
@@ -443,7 +443,7 @@ async function appendParsedPatchText(
   options: StreamPatchOptions,
   enqueueFileDiff: (fileDiff: any, patchPrefix: string | undefined) => Promise<void>,
 ): Promise<void> {
-  const patches = options.parsePatchFiles(patchText, "cmux-diff");
+  const patches = options.parsePatchFiles(patchText, "mosaic-diff");
   const hasMultiplePatches = patches.length > 1;
   for (const [patchIndex, patch] of patches.entries()) {
     const patchPrefix = hasMultiplePatches ? commitMetadataLabel(patch.patchMetadata, patchIndex, options.label) : undefined;

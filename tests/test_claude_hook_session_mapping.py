@@ -24,28 +24,28 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-def resolve_cmux_cli() -> str:
-    explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
+def resolve_mosaic_cli() -> str:
+    explicit = os.environ.get("MOSAIC_CLI_BIN") or os.environ.get("MOSAIC_CLI")
     if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
         return explicit
 
     candidates: list[str] = []
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
-    candidates.extend(glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux"))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/mosaic")))
+    candidates.extend(glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic"))
 
     candidates = [p for p in candidates if os.path.exists(p) and os.access(p, os.X_OK)]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
         return candidates[0]
 
-    in_path = shutil.which("cmux")
+    in_path = shutil.which("mosaic")
     if in_path:
         return in_path
 
-    raise RuntimeError("Unable to find cmux CLI binary. Set CMUX_CLI_BIN.")
+    raise RuntimeError("Unable to find mosaic CLI binary. Set MOSAIC_CLI_BIN.")
 
 
 def run_claude_hook(
@@ -65,13 +65,13 @@ def run_claude_hook(
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            f"cmux claude-hook {subcommand} failed:\n"
+            f"mosaic claude-hook {subcommand} failed:\n"
             f"exit={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
         )
     return proc.stdout.strip()
 
 
-def wait_for_notification_count(client: cmux, minimum: int, timeout: float = 4.0) -> list[dict]:
+def wait_for_notification_count(client: mosaic, minimum: int, timeout: float = 4.0) -> list[dict]:
     start = time.time()
     items: list[dict] = []
     while time.time() - start < timeout:
@@ -96,11 +96,11 @@ def fail(message: str) -> int:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         return fail(str(exc))
 
-    state_path = Path(tempfile.gettempdir()) / f"cmux_claude_hook_state_{os.getpid()}.json"
+    state_path = Path(tempfile.gettempdir()) / f"mosaic_claude_hook_state_{os.getpid()}.json"
     lock_path = Path(str(state_path) + ".lock")
     try:
         if state_path.exists():
@@ -110,13 +110,13 @@ def main() -> int:
     except OSError:
         pass
 
-    project_dir = Path(tempfile.gettempdir()) / f"cmux_claude_map_project_{os.getpid()}"
+    project_dir = Path(tempfile.gettempdir()) / f"mosaic_claude_map_project_{os.getpid()}"
     project_dir.mkdir(parents=True, exist_ok=True)
     session_id = f"sess-{uuid.uuid4().hex}"
     last_message = "Please approve deploy migration"
 
     try:
-        with cmux() as client:
+        with mosaic() as client:
             client.set_app_focus(False)
             client.clear_notifications()
 
@@ -134,15 +134,15 @@ def main() -> int:
             if other_surface is None:
                 return fail("Expected a second surface for ambient TTY routing regression")
             client.focus_surface(surface_id)
-            fake_runner_tty = f"cmux-test-runner-{os.getpid()}"
+            fake_runner_tty = f"mosaic-test-runner-{os.getpid()}"
             client.report_tty(fake_runner_tty, tab=workspace_id, panel=other_surface[1])
 
             hook_env = os.environ.copy()
-            hook_env["CMUX_SOCKET_PATH"] = client.socket_path
-            hook_env["CMUX_WORKSPACE_ID"] = workspace_id
-            hook_env["CMUX_SURFACE_ID"] = surface_id
+            hook_env["MOSAIC_SOCKET_PATH"] = client.socket_path
+            hook_env["MOSAIC_WORKSPACE_ID"] = workspace_id
+            hook_env["MOSAIC_SURFACE_ID"] = surface_id
             hook_env["TTY"] = f"/dev/{fake_runner_tty}"
-            hook_env["CMUX_CLAUDE_HOOK_STATE_PATH"] = str(state_path)
+            hook_env["MOSAIC_CLAUDE_HOOK_STATE_PATH"] = str(state_path)
 
             run_claude_hook(
                 cli_path,
@@ -238,7 +238,7 @@ def main() -> int:
             print("PASS: Claude hook session mapping + stop summary notification")
             return 0
 
-    except (cmuxError, RuntimeError) as exc:
+    except (mosaicError, RuntimeError) as exc:
         return fail(str(exc))
     finally:
         try:

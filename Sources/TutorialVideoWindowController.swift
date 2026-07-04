@@ -51,7 +51,7 @@ final class TutorialVideoPresentationCenter {
 }
 
 extension Notification.Name {
-    static let tutorialVideoPresentationRequested = Notification.Name("cmux.tutorialVideo.presentationRequested")
+    static let tutorialVideoPresentationRequested = Notification.Name("mosaic.tutorialVideo.presentationRequested")
 }
 
 enum TutorialVideoPresentationKind {
@@ -141,17 +141,17 @@ struct TutorialVideoView: View {
         .safeHelp(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TutorialVideoCloseButton")
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
     }
 }
 
 private struct TutorialVideoMissingResourceView: View {
     var body: some View {
         VStack(spacing: 12) {
-            CmuxSystemSymbolImage(systemName: "exclamationmark.triangle", pointSize: 28, weight: .medium)
+            MosaicSystemSymbolImage(systemName: "exclamationmark.triangle", pointSize: 28, weight: .medium)
                 .foregroundStyle(Color(nsColor: .secondaryLabelColor))
             Text(String(localized: "tutorial.video.missing", defaultValue: "The tutorial video is missing from this app build."))
-                .cmuxFont(size: 13)
+                .mosaicFont(size: 13)
                 .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .multilineTextAlignment(.center)
         }

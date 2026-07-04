@@ -34,34 +34,34 @@ const clerkEnv = (
 export const env = createEnv({
   server: {
     RESEND_API_KEY: z.string().min(1),
-    CMUX_FEEDBACK_FROM_EMAIL: z.string().email(),
-    CMUX_FEEDBACK_RATE_LIMIT_ID: z.string().min(1),
+    MOSAIC_FEEDBACK_FROM_EMAIL: z.string().email(),
+    MOSAIC_FEEDBACK_RATE_LIMIT_ID: z.string().min(1),
     STACK_SECRET_SERVER_KEY: z.string().min(1).optional(),
     CLERK_SECRET_KEY: z.string().min(1),
-    CMUX_NATIVE_AUTH_SECRET: z.string().min(32).optional(),
+    MOSAIC_NATIVE_AUTH_SECRET: z.string().min(32).optional(),
     // APNs push (iOS notifications). Optional: the app boots without them; the
     // push route returns a clear "not configured" error until they are set.
-    // CMUX_APNS_KEY_P8 holds the .p8 PEM (literal "\n" escapes are normalized
+    // MOSAIC_APNS_KEY_P8 holds the .p8 PEM (literal "\n" escapes are normalized
     // by the sender).
-    CMUX_APNS_KEY_P8: z.string().min(1).optional(),
-    CMUX_APNS_KEY_ID: z.string().min(1).optional(),
-    CMUX_APNS_TEAM_ID: z.string().min(1).optional(),
-    CMUX_PUSH_RATE_LIMIT_ID: z.string().min(1).optional(),
-    // cmux Founder's Edition welcome email (Stripe webhook -> Resend). Optional:
+    MOSAIC_APNS_KEY_P8: z.string().min(1).optional(),
+    MOSAIC_APNS_KEY_ID: z.string().min(1).optional(),
+    MOSAIC_APNS_TEAM_ID: z.string().min(1).optional(),
+    MOSAIC_PUSH_RATE_LIMIT_ID: z.string().min(1).optional(),
+    // mosaic Founder's Edition welcome email (Stripe webhook -> Resend). Optional:
     // the /api/stripe/founders-welcome route returns "not configured" until the
-    // webhook signing secret is set. CMUX_FOUNDERS_FROM_EMAIL overrides the
+    // webhook signing secret is set. MOSAIC_FOUNDERS_FROM_EMAIL overrides the
     // sender (defaults to austin@emergent.inc) so the verified Resend domain can
     // change without a code edit.
     STRIPE_FOUNDERS_WEBHOOK_SECRET: z.string().min(1).optional(),
-    CMUX_FOUNDERS_FROM_EMAIL: z.string().email().optional(),
+    MOSAIC_FOUNDERS_FROM_EMAIL: z.string().email().optional(),
     // Slack Incoming Webhook for the #website-waitlist channel. Optional: the
     // /api/waitlist route silently skips the Slack ping when it is unset.
     SLACK_WAITLIST_WEBHOOK_URL: z.string().url().optional(),
     // Slack-compatible webhook for high-signal app bug/error notifications.
     // Optional: /api/bug-alerts accepts and records the event but skips fan-out.
-    CMUX_BUG_ALERTS_WEBHOOK_URL: z.string().url().optional(),
+    MOSAIC_BUG_ALERTS_WEBHOOK_URL: z.string().url().optional(),
     // Optional shared secret required by /api/bug-alerts when configured.
-    CMUX_BUG_ALERTS_SHARED_SECRET: z.string().min(1).optional(),
+    MOSAIC_BUG_ALERTS_SHARED_SECRET: z.string().min(1).optional(),
     // Public R2 base used by Mosaic download/update proxy routes. Example:
     // https://pub-xxxxxxxx.r2.dev
     MOSAIC_R2_PUBLIC_BASE_URL: z.string().url().optional(),
@@ -76,22 +76,22 @@ export const env = createEnv({
   },
   runtimeEnv: {
     RESEND_API_KEY: trimEnv(process.env.RESEND_API_KEY),
-    CMUX_FEEDBACK_FROM_EMAIL: trimEnv(process.env.CMUX_FEEDBACK_FROM_EMAIL),
-    CMUX_FEEDBACK_RATE_LIMIT_ID: trimEnv(process.env.CMUX_FEEDBACK_RATE_LIMIT_ID),
-    CMUX_APNS_KEY_P8: trimEnv(process.env.CMUX_APNS_KEY_P8),
-    CMUX_APNS_KEY_ID: trimEnv(process.env.CMUX_APNS_KEY_ID),
-    CMUX_APNS_TEAM_ID: trimEnv(process.env.CMUX_APNS_TEAM_ID),
-    CMUX_PUSH_RATE_LIMIT_ID: trimEnv(process.env.CMUX_PUSH_RATE_LIMIT_ID),
+    MOSAIC_FEEDBACK_FROM_EMAIL: trimEnv(process.env.MOSAIC_FEEDBACK_FROM_EMAIL),
+    MOSAIC_FEEDBACK_RATE_LIMIT_ID: trimEnv(process.env.MOSAIC_FEEDBACK_RATE_LIMIT_ID),
+    MOSAIC_APNS_KEY_P8: trimEnv(process.env.MOSAIC_APNS_KEY_P8),
+    MOSAIC_APNS_KEY_ID: trimEnv(process.env.MOSAIC_APNS_KEY_ID),
+    MOSAIC_APNS_TEAM_ID: trimEnv(process.env.MOSAIC_APNS_TEAM_ID),
+    MOSAIC_PUSH_RATE_LIMIT_ID: trimEnv(process.env.MOSAIC_PUSH_RATE_LIMIT_ID),
     CLERK_SECRET_KEY: clerkEnv(
       process.env.CLERK_SECRET_KEY,
       "sk_test_preview_clerk_secret_key"
     ),
-    CMUX_NATIVE_AUTH_SECRET: trimEnv(process.env.CMUX_NATIVE_AUTH_SECRET),
+    MOSAIC_NATIVE_AUTH_SECRET: trimEnv(process.env.MOSAIC_NATIVE_AUTH_SECRET),
     STRIPE_FOUNDERS_WEBHOOK_SECRET: trimEnv(process.env.STRIPE_FOUNDERS_WEBHOOK_SECRET),
-    CMUX_FOUNDERS_FROM_EMAIL: trimEnv(process.env.CMUX_FOUNDERS_FROM_EMAIL),
+    MOSAIC_FOUNDERS_FROM_EMAIL: trimEnv(process.env.MOSAIC_FOUNDERS_FROM_EMAIL),
     SLACK_WAITLIST_WEBHOOK_URL: trimEnv(process.env.SLACK_WAITLIST_WEBHOOK_URL),
-    CMUX_BUG_ALERTS_WEBHOOK_URL: trimEnv(process.env.CMUX_BUG_ALERTS_WEBHOOK_URL),
-    CMUX_BUG_ALERTS_SHARED_SECRET: trimEnv(process.env.CMUX_BUG_ALERTS_SHARED_SECRET),
+    MOSAIC_BUG_ALERTS_WEBHOOK_URL: trimEnv(process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL),
+    MOSAIC_BUG_ALERTS_SHARED_SECRET: trimEnv(process.env.MOSAIC_BUG_ALERTS_SHARED_SECRET),
     MOSAIC_R2_PUBLIC_BASE_URL: trimEnv(process.env.MOSAIC_R2_PUBLIC_BASE_URL),
     NEXT_PUBLIC_STACK_PROJECT_ID: stackEnv(
       process.env.NEXT_PUBLIC_STACK_PROJECT_ID,

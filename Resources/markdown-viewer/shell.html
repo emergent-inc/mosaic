@@ -50,18 +50,18 @@ body {
   padding: 0; /* hljs class already pads */
   overflow: auto;
 }
-.cmux-code-block {
+.mosaic-code-block {
   position: relative;
   margin: 0 0 16px 0;
 }
-.cmux-code-block pre {
+.mosaic-code-block pre {
   margin: 0;
 }
-.cmux-code-block .markdown-body pre,
-.markdown-body .cmux-code-block pre {
+.mosaic-code-block .markdown-body pre,
+.markdown-body .mosaic-code-block pre {
   margin: 0;
 }
-.cmux-code-copy-button {
+.mosaic-code-copy-button {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -78,17 +78,17 @@ body {
   box-shadow: none;
   transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
 }
-.cmux-code-block:hover .cmux-code-copy-button,
-.cmux-code-copy-button:focus-visible {
+.mosaic-code-block:hover .mosaic-code-copy-button,
+.mosaic-code-copy-button:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
-.cmux-code-copy-button:hover,
-.cmux-code-copy-button:focus-visible {
+.mosaic-code-copy-button:hover,
+.mosaic-code-copy-button:focus-visible {
   color: var(--fgColor-default);
   background: var(--bgColor-muted);
 }
-.cmux-remote-image-placeholder {
+.mosaic-remote-image-placeholder {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -102,18 +102,18 @@ body {
   color: var(--fgColor-muted);
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
-.cmux-remote-image-placeholder strong {
+.mosaic-remote-image-placeholder strong {
   color: var(--fgColor-default);
   font-weight: 600;
 }
-.cmux-remote-image-url {
+.mosaic-remote-image-url {
   flex-basis: 100%;
   min-width: 0;
   overflow-wrap: anywhere;
   font: 12px/1.4 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   color: var(--fgColor-muted);
 }
-.cmux-remote-image-placeholder button {
+.mosaic-remote-image-placeholder button {
   padding: 3px 7px;
   border: 1px solid var(--borderColor-default);
   border-radius: 6px;
@@ -122,56 +122,56 @@ body {
   font: inherit;
   cursor: pointer;
 }
-.cmux-remote-image-placeholder button:hover,
-.cmux-remote-image-placeholder button:focus-visible {
+.mosaic-remote-image-placeholder button:hover,
+.mosaic-remote-image-placeholder button:focus-visible {
   background: var(--bgColor-neutral-muted);
 }
 /* Mermaid + Vega-Lite blocks. Both libs render into these containers
-   lazily; the .cmux-source <pre> holds the raw block source for the
+   lazily; the .mosaic-source <pre> holds the raw block source for the
    library to read, hidden from view. */
-.cmux-mermaid, .cmux-vega {
+.mosaic-mermaid, .mosaic-vega {
   display: block;
   margin: 0.6em 0 0.9em 0;
   overflow-x: auto;
   text-align: center;
 }
-.cmux-mermaid svg {
+.mosaic-mermaid svg {
   max-width: 100%;
   height: auto;
 }
-.cmux-mermaid svg[data-cmux-mermaid-scaled="1"] {
+.mosaic-mermaid svg[data-mosaic-mermaid-scaled="1"] {
   display: block;
   margin-inline: auto;
   max-width: none;
 }
-.cmux-vega canvas, .cmux-vega svg {
+.mosaic-vega canvas, .mosaic-vega svg {
   max-width: 100%;
   height: auto;
 }
-.cmux-mermaid .cmux-source, .cmux-vega .cmux-source { display: none; }
-.markdown-body code[data-cmux-file] {
+.mosaic-mermaid .mosaic-source, .mosaic-vega .mosaic-source { display: none; }
+.markdown-body code[data-mosaic-file] {
   cursor: default;
   border-bottom: 1px dotted var(--fgColor-muted);
 }
-.markdown-body code[data-cmux-file][data-cmux-file-exists="1"] {
+.markdown-body code[data-mosaic-file][data-mosaic-file-exists="1"] {
   cursor: pointer;
   color: var(--fgColor-accent);
   border-bottom-color: var(--fgColor-accent);
 }
-.markdown-body a[data-cmux-file-exists="1"]::after,
-.markdown-body code[data-cmux-file][data-cmux-file-exists="1"]::after {
+.markdown-body a[data-mosaic-file-exists="1"]::after,
+.markdown-body code[data-mosaic-file][data-mosaic-file-exists="1"]::after {
   content: " ↗";
   font-size: 0.82em;
   opacity: 0.65;
 }
-.cmux-frontmatter {
+.mosaic-frontmatter {
   margin: 0 0 16px 0;
   border: 1px solid var(--borderColor-default);
   border-radius: 6px;
   background: var(--bgColor-muted);
   color: var(--fgColor-muted);
 }
-.cmux-frontmatter summary {
+.mosaic-frontmatter summary {
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -181,10 +181,10 @@ body {
   font-weight: 600;
   user-select: none;
 }
-.cmux-frontmatter summary::-webkit-details-marker {
+.mosaic-frontmatter summary::-webkit-details-marker {
   display: none;
 }
-.cmux-frontmatter summary::before {
+.mosaic-frontmatter summary::before {
   content: "▸";
   display: inline-flex;
   align-items: center;
@@ -196,25 +196,25 @@ body {
   opacity: 0.82;
   transform: translateY(0.5px);
 }
-.cmux-frontmatter[open] summary {
+.mosaic-frontmatter[open] summary {
   border-bottom: 1px solid var(--borderColor-default);
 }
-.cmux-frontmatter[open] summary::before {
+.mosaic-frontmatter[open] summary::before {
   content: "▾";
 }
-.cmux-frontmatter pre {
+.mosaic-frontmatter pre {
   margin: 0;
   padding: 0;
   background: transparent;
   border-radius: 0;
 }
-.cmux-frontmatter pre code.hljs {
+.mosaic-frontmatter pre code.hljs {
   padding: 10px 12px;
   background: transparent;
   font-size: 12.5px;
   line-height: 1.45;
 }
-.cmux-render-error {
+.mosaic-render-error {
   color: #f85149;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 12.5px;
@@ -268,9 +268,9 @@ html { scroll-behavior: smooth; }
   if (!window.marked || !window.hljs) {
     showBootError('marked/highlight libraries did not load');
   }
-  var cmuxStrings = {{localizedStringsJSON}};
-  function cmuxString(key, fallback, replacements) {
-    var value = String((cmuxStrings && cmuxStrings[key]) || fallback || key);
+  var mosaicStrings = {{localizedStringsJSON}};
+  function mosaicString(key, fallback, replacements) {
+    var value = String((mosaicStrings && mosaicStrings[key]) || fallback || key);
     Object.keys(replacements || {}).forEach(function(name) {
       value = value.split('{' + name + '}').join(String(replacements[name]));
     });
@@ -347,7 +347,7 @@ html { scroll-behavior: smooth; }
     } catch (e) {
       highlighted = escapeHtml(raw);
     }
-    return '<details class="cmux-frontmatter">'
+    return '<details class="mosaic-frontmatter">'
       + '<summary><span>Show frontmatter</span></summary>'
       + '<pre><code class="hljs language-yaml">' + highlighted + '</code></pre>'
       + '</details>';
@@ -543,7 +543,7 @@ html { scroll-behavior: smooth; }
     return true;
   }
 
-  function cmuxLocalImageURL(value) {
+  function mosaicLocalImageURL(value) {
     var raw = String(value || '').trim();
     if (!isRelativeLocalImagePath(raw)) {
       return null;
@@ -552,7 +552,7 @@ html { scroll-behavior: smooth; }
     try {
       var parsed = new URL(raw, document.baseURI || window.location.href);
       if ((parsed.protocol || '').toLowerCase() !== 'file:') { return null; }
-      return 'cmux-local-image://image?url=' + encodeURIComponent(parsed.href);
+      return 'mosaic-local-image://image?url=' + encodeURIComponent(parsed.href);
     } catch (e) {
       return null;
     }
@@ -561,45 +561,45 @@ html { scroll-behavior: smooth; }
   function rewriteLocalImageSources() {
     contentEl.querySelectorAll('img[src]').forEach(function(img) {
       var raw = img.getAttribute('src') || '';
-      var rewritten = cmuxLocalImageURL(raw);
+      var rewritten = mosaicLocalImageURL(raw);
       if (!rewritten) { return; }
-      img.setAttribute('data-cmux-original-src', raw);
+      img.setAttribute('data-mosaic-original-src', raw);
       img.setAttribute('src', rewritten);
     });
   }
 
   var remoteImageAllowedURLs = Object.create(null);
 
-  function cmuxRemoteImageURL(value) {
+  function mosaicRemoteImageURL(value) {
     var info = remoteImageInfo(value);
     if (!info || !info.https) { return null; }
-    return 'cmux-remote-image://image?url=' + encodeURIComponent(info.href);
+    return 'mosaic-remote-image://image?url=' + encodeURIComponent(info.href);
   }
 
   function removeRemoteImagePlaceholder(img) {
-    var id = img && img.getAttribute('data-cmux-remote-placeholder-id');
+    var id = img && img.getAttribute('data-mosaic-remote-placeholder-id');
     if (!id) { return; }
-    var placeholder = contentEl.querySelector('[data-cmux-remote-placeholder-for="' + id + '"]');
+    var placeholder = contentEl.querySelector('[data-mosaic-remote-placeholder-for="' + id + '"]');
     if (placeholder) { placeholder.remove(); }
   }
 
   function remoteImagePlaceholderForImage(img) {
-    var id = img && img.getAttribute('data-cmux-remote-placeholder-id');
+    var id = img && img.getAttribute('data-mosaic-remote-placeholder-id');
     if (!id) { return null; }
-    return contentEl.querySelector('[data-cmux-remote-placeholder-for="' + id + '"]');
+    return contentEl.querySelector('[data-mosaic-remote-placeholder-for="' + id + '"]');
   }
 
   function setRemoteImageLoadingState(img, loading) {
     var placeholder = remoteImagePlaceholderForImage(img);
     if (!placeholder) { return; }
-    var buttons = placeholder.querySelectorAll('button[data-cmux-remote-action="load"]');
+    var buttons = placeholder.querySelectorAll('button[data-mosaic-remote-action="load"]');
     Array.prototype.slice.call(buttons).forEach(function(button) {
       if (loading) {
-        button.textContent = cmuxString('remoteImageLoading', 'Loading');
+        button.textContent = mosaicString('remoteImageLoading', 'Loading');
         button.disabled = true;
         button.setAttribute('data-loading', '1');
       } else {
-        button.textContent = cmuxString('remoteImageLoadImage', 'Load this image');
+        button.textContent = mosaicString('remoteImageLoadImage', 'Load this image');
         button.disabled = false;
         button.removeAttribute('data-loading');
       }
@@ -607,16 +607,16 @@ html { scroll-behavior: smooth; }
   }
 
   function loadRemoteImage(img) {
-    var raw = unescapeDataAttribute(img.getAttribute('data-cmux-remote-src'));
-    var rewritten = cmuxRemoteImageURL(raw);
+    var raw = unescapeDataAttribute(img.getAttribute('data-mosaic-remote-src'));
+    var rewritten = mosaicRemoteImageURL(raw);
     if (!rewritten) { return false; }
-    if (img.getAttribute('data-cmux-remote-loading') === '1') { return true; }
-    img.setAttribute('data-cmux-remote-loading', '1');
+    if (img.getAttribute('data-mosaic-remote-loading') === '1') { return true; }
+    img.setAttribute('data-mosaic-remote-loading', '1');
     setRemoteImageLoadingState(img, true);
     function cleanup() {
       img.removeEventListener('load', onLoad);
       img.removeEventListener('error', onError);
-      img.removeAttribute('data-cmux-remote-loading');
+      img.removeAttribute('data-mosaic-remote-loading');
     }
     function onLoad() {
       cleanup();
@@ -640,8 +640,8 @@ html { scroll-behavior: smooth; }
 
   function loadApprovedRemoteImage(href) {
     remoteImageAllowedURLs[href] = true;
-    contentEl.querySelectorAll('img[data-cmux-remote-src]').forEach(function(img) {
-      var raw = unescapeDataAttribute(img.getAttribute('data-cmux-remote-src'));
+    contentEl.querySelectorAll('img[data-mosaic-remote-src]').forEach(function(img) {
+      var raw = unescapeDataAttribute(img.getAttribute('data-mosaic-remote-src'));
       var info = remoteImageInfo(raw);
       if (info && remoteImageCanOfferLoad(info) && info.href === href) {
         loadRemoteImage(img);
@@ -652,15 +652,15 @@ html { scroll-behavior: smooth; }
 
   function appendRemoteImageText(placeholder, key, fallback, replacements) {
     var detail = document.createElement('span');
-    detail.textContent = cmuxString(key, fallback, replacements || {});
+    detail.textContent = mosaicString(key, fallback, replacements || {});
     placeholder.appendChild(detail);
     return detail;
   }
 
   function appendRemoteImageURL(placeholder, href) {
     var url = document.createElement('span');
-    url.className = 'cmux-remote-image-url';
-    url.textContent = cmuxString(
+    url.className = 'mosaic-remote-image-url';
+    url.textContent = mosaicString(
       'remoteImageURL',
       'Image URL: {url}',
       { url: href }
@@ -688,15 +688,15 @@ html { scroll-behavior: smooth; }
 
   function temporarilySetButtonLabel(button, label, restoreLabel) {
     if (!button) { return; }
-    if (button._cmuxResetLabelTimer) {
-      window.clearTimeout(button._cmuxResetLabelTimer);
+    if (button._mosaicResetLabelTimer) {
+      window.clearTimeout(button._mosaicResetLabelTimer);
     }
     button.textContent = label;
     button.setAttribute('data-copied', '1');
-    button._cmuxResetLabelTimer = window.setTimeout(function() {
+    button._mosaicResetLabelTimer = window.setTimeout(function() {
       button.textContent = restoreLabel;
       button.removeAttribute('data-copied');
-      button._cmuxResetLabelTimer = null;
+      button._mosaicResetLabelTimer = null;
     }, 1200);
   }
 
@@ -704,7 +704,7 @@ html { scroll-behavior: smooth; }
     copyTextToClipboard(href).then(function() {
       temporarilySetButtonLabel(
         button,
-        cmuxString('remoteImageCopied', 'Copied'),
+        mosaicString('remoteImageCopied', 'Copied'),
         restoreLabel
       );
     }).catch(function() {});
@@ -720,37 +720,37 @@ html { scroll-behavior: smooth; }
   }
 
   function ensureRemoteImagePlaceholder(img) {
-    if (!img || img.getAttribute('data-cmux-remote-processed') === '1') { return; }
-    var raw = unescapeDataAttribute(img.getAttribute('data-cmux-remote-src'));
+    if (!img || img.getAttribute('data-mosaic-remote-processed') === '1') { return; }
+    var raw = unescapeDataAttribute(img.getAttribute('data-mosaic-remote-src'));
     var info = remoteImageInfo(raw);
     if (!info) { return; }
 
-    img.setAttribute('data-cmux-remote-processed', '1');
+    img.setAttribute('data-mosaic-remote-processed', '1');
     img.hidden = true;
     var canOfferLoad = remoteImageCanOfferLoad(info);
 
     var placeholderId = 'remote-image-' + Math.floor(Math.random() * 1e9).toString(36) + '-' + Date.now().toString(36);
-    img.setAttribute('data-cmux-remote-placeholder-id', placeholderId);
+    img.setAttribute('data-mosaic-remote-placeholder-id', placeholderId);
 
     var placeholder = document.createElement('span');
-    placeholder.className = 'cmux-remote-image-placeholder';
-    placeholder.setAttribute('data-cmux-remote-placeholder-for', placeholderId);
+    placeholder.className = 'mosaic-remote-image-placeholder';
+    placeholder.setAttribute('data-mosaic-remote-placeholder-for', placeholderId);
     placeholder.setAttribute('role', 'group');
 
     var title = document.createElement('strong');
-    title.textContent = cmuxString('remoteImageBlocked', 'Remote image blocked');
+    title.textContent = mosaicString('remoteImageBlocked', 'Remote image blocked');
     placeholder.appendChild(title);
 
     if (canOfferLoad) {
       appendRemoteImageText(
         placeholder,
         'remoteImageConsentMessage',
-        'cmux will not contact this image URL until you load this image.'
+        'mosaic will not contact this image URL until you load this image.'
       );
       appendRemoteImageURL(placeholder, info.href);
       var loadButton = appendRemoteImageButton(
         placeholder,
-        cmuxString(
+        mosaicString(
           'remoteImageLoadImage',
           'Load this image'
         ),
@@ -758,7 +758,7 @@ html { scroll-behavior: smooth; }
           loadApprovedRemoteImage(info.href);
         }
       );
-      loadButton.setAttribute('data-cmux-remote-action', 'load');
+      loadButton.setAttribute('data-mosaic-remote-action', 'load');
     } else if (!info.https) {
       appendRemoteImageText(
         placeholder,
@@ -774,7 +774,7 @@ html { scroll-behavior: smooth; }
       );
       appendRemoteImageURL(placeholder, info.href);
     }
-    var copyURLLabel = cmuxString('remoteImageCopyURL', 'Copy image URL');
+    var copyURLLabel = mosaicString('remoteImageCopyURL', 'Copy image URL');
     appendRemoteImageButton(
       placeholder,
       copyURLLabel,
@@ -784,7 +784,7 @@ html { scroll-behavior: smooth; }
     );
     appendRemoteImageButton(
       placeholder,
-      cmuxString('remoteImageOpenURL', 'Open image URL'),
+      mosaicString('remoteImageOpenURL', 'Open image URL'),
       function() {
         openRemoteImageURL(info.href);
       }
@@ -797,7 +797,7 @@ html { scroll-behavior: smooth; }
   }
 
   function rewriteRemoteImageSources() {
-    contentEl.querySelectorAll('img[data-cmux-remote-src]').forEach(ensureRemoteImagePlaceholder);
+    contentEl.querySelectorAll('img[data-mosaic-remote-src]').forEach(ensureRemoteImagePlaceholder);
   }
 
   function isSafeURLAttribute(name, value) {
@@ -891,7 +891,7 @@ html { scroll-behavior: smooth; }
 
       Array.prototype.slice.call(el.attributes || []).forEach(function(attr) {
         var name = String(attr.name || '').toLowerCase();
-        if (name.indexOf('data-cmux-') === 0) {
+        if (name.indexOf('data-mosaic-') === 0) {
           el.removeAttribute(attr.name);
           return;
         }
@@ -911,10 +911,10 @@ html { scroll-behavior: smooth; }
         if (tag === 'img' && name === 'src') {
           var remoteInfo = remoteImageInfo(attr.value);
           if (remoteInfo) {
-            el.setAttribute('data-cmux-remote-src', escapeDataAttribute(remoteInfo.href));
-            el.setAttribute('data-cmux-remote-host', escapeDataAttribute(remoteInfo.host));
+            el.setAttribute('data-mosaic-remote-src', escapeDataAttribute(remoteInfo.href));
+            el.setAttribute('data-mosaic-remote-host', escapeDataAttribute(remoteInfo.host));
             if (!remoteInfo.https) {
-              el.setAttribute('data-cmux-remote-blocked-reason', 'https-only');
+              el.setAttribute('data-mosaic-remote-blocked-reason', 'https-only');
             }
             el.removeAttribute(attr.name);
             return;
@@ -970,15 +970,15 @@ html { scroll-behavior: smooth; }
 
         // Mermaid: ```mermaid ... ``` -> div the lib will swap with SVG.
         if (langName === 'mermaid') {
-          return '<div class="cmux-mermaid"><pre class="cmux-source">'
+          return '<div class="mosaic-mermaid"><pre class="mosaic-source">'
             + escapeHtml(raw)
             + '</pre></div>\n';
         }
         // Vega / Vega-Lite: ```vega-lite ... ``` (also vega, vegalite).
         if (langName === 'vega' || langName === 'vega-lite' || langName === 'vegalite') {
           var vegaMode = (langName === 'vega') ? 'vega' : 'vega-lite';
-          return '<div class="cmux-vega" data-vega-mode="' + vegaMode + '">'
-            + '<pre class="cmux-source">' + escapeHtml(raw) + '</pre></div>\n';
+          return '<div class="mosaic-vega" data-vega-mode="' + vegaMode + '">'
+            + '<pre class="mosaic-source">' + escapeHtml(raw) + '</pre></div>\n';
         }
 
         var highlighted;
@@ -1011,14 +1011,14 @@ html { scroll-behavior: smooth; }
     if (libState[name] !== 'pending') {
       libState[name] = 'pending';
       try {
-        window.webkit.messageHandlers.cmuxLib.postMessage({ lib: name });
+        window.webkit.messageHandlers.mosaicLib.postMessage({ lib: name });
       } catch (e) {
         libState[name] = undefined;
         renderLibError(name, 'bridge unavailable');
       }
     }
   }
-  window.__cmuxLibLoaded = function(name) {
+  window.__mosaicLibLoaded = function(name) {
     libState[name] = 'ready';
     var q = libQueue[name] || [];
     libQueue[name] = [];
@@ -1026,10 +1026,10 @@ html { scroll-behavior: smooth; }
   };
 
   function renderLibError(libName, msg) {
-    var sel = libName === 'mermaid' ? '.cmux-mermaid' : '.cmux-vega';
+    var sel = libName === 'mermaid' ? '.mosaic-mermaid' : '.mosaic-vega';
     contentEl.querySelectorAll(sel + ':not([data-rendered])').forEach(function(el) {
       el.setAttribute('data-rendered', '1');
-      el.innerHTML = '<div class="cmux-render-error">' + libName + ': ' + escapeHtml(msg) + '</div>';
+      el.innerHTML = '<div class="mosaic-render-error">' + libName + ': ' + escapeHtml(msg) + '</div>';
     });
   }
 
@@ -1123,7 +1123,7 @@ html { scroll-behavior: smooth; }
   }
 
   var mermaidInitialized = false;
-  var cmuxMarkdownZoom = 1;
+  var mosaicMarkdownZoom = 1;
   var mermaidResizeObserver = null;
   var mermaidObservedWidth = 0;
 
@@ -1156,24 +1156,24 @@ html { scroll-behavior: smooth; }
   }
 
   function mermaidRememberOriginalSizing(svg) {
-    if (svg.hasAttribute('data-cmux-mermaid-original-max-width')) { return; }
-    svg.setAttribute('data-cmux-mermaid-original-max-width', svg.style.maxWidth || '');
-    svg.setAttribute('data-cmux-mermaid-original-width', svg.style.width || '');
-    svg.setAttribute('data-cmux-mermaid-original-height', svg.style.height || '');
+    if (svg.hasAttribute('data-mosaic-mermaid-original-max-width')) { return; }
+    svg.setAttribute('data-mosaic-mermaid-original-max-width', svg.style.maxWidth || '');
+    svg.setAttribute('data-mosaic-mermaid-original-width', svg.style.width || '');
+    svg.setAttribute('data-mosaic-mermaid-original-height', svg.style.height || '');
   }
 
   function mermaidRestoreOriginalSizing(svg) {
     mermaidRememberOriginalSizing(svg);
-    svg.removeAttribute('data-cmux-mermaid-scaled');
-    svg.style.maxWidth = svg.getAttribute('data-cmux-mermaid-original-max-width') || '';
-    svg.style.width = svg.getAttribute('data-cmux-mermaid-original-width') || '';
-    svg.style.height = svg.getAttribute('data-cmux-mermaid-original-height') || '';
+    svg.removeAttribute('data-mosaic-mermaid-scaled');
+    svg.style.maxWidth = svg.getAttribute('data-mosaic-mermaid-original-max-width') || '';
+    svg.style.width = svg.getAttribute('data-mosaic-mermaid-original-width') || '';
+    svg.style.height = svg.getAttribute('data-mosaic-mermaid-original-height') || '';
   }
 
   function mermaidIntrinsicSize(svg) {
     mermaidRememberOriginalSizing(svg);
-    var cachedWidth = Number(svg.getAttribute('data-cmux-mermaid-natural-width'));
-    var cachedHeight = Number(svg.getAttribute('data-cmux-mermaid-natural-height'));
+    var cachedWidth = Number(svg.getAttribute('data-mosaic-mermaid-natural-width'));
+    var cachedHeight = Number(svg.getAttribute('data-mosaic-mermaid-natural-height'));
     if (
       Number.isFinite(cachedWidth) &&
       cachedWidth > 0 &&
@@ -1184,9 +1184,9 @@ html { scroll-behavior: smooth; }
     }
 
     var viewBox = mermaidViewBoxSize(svg);
-    var width = mermaidNumericLength(svg.getAttribute('data-cmux-mermaid-original-max-width'));
+    var width = mermaidNumericLength(svg.getAttribute('data-mosaic-mermaid-original-max-width'));
     if (!Number.isFinite(width) || width <= 0) {
-      width = mermaidNumericLength(svg.getAttribute('data-cmux-mermaid-original-width'));
+      width = mermaidNumericLength(svg.getAttribute('data-mosaic-mermaid-original-width'));
     }
     if (!Number.isFinite(width) || width <= 0) {
       width = mermaidNumericLength(svg.getAttribute('width'));
@@ -1195,7 +1195,7 @@ html { scroll-behavior: smooth; }
       width = viewBox.width;
     }
 
-    var height = mermaidNumericLength(svg.getAttribute('data-cmux-mermaid-original-height'));
+    var height = mermaidNumericLength(svg.getAttribute('data-mosaic-mermaid-original-height'));
     if (!Number.isFinite(height) || height <= 0) {
       height = mermaidNumericLength(svg.getAttribute('height'));
     }
@@ -1210,13 +1210,13 @@ html { scroll-behavior: smooth; }
       return null;
     }
 
-    svg.setAttribute('data-cmux-mermaid-natural-width', String(width));
-    svg.setAttribute('data-cmux-mermaid-natural-height', String(height));
+    svg.setAttribute('data-mosaic-mermaid-natural-width', String(width));
+    svg.setAttribute('data-mosaic-mermaid-natural-height', String(height));
     return { width: width, height: height };
   }
 
   function mermaidCurrentBaseSize(svg, natural) {
-    var container = svg.closest ? svg.closest('.cmux-mermaid') : svg.parentElement;
+    var container = svg.closest ? svg.closest('.mosaic-mermaid') : svg.parentElement;
     var rect = container && container.getBoundingClientRect ? container.getBoundingClientRect() : null;
     var containerWidth = rect ? rect.width : NaN;
     if (!Number.isFinite(containerWidth) || containerWidth <= 0) {
@@ -1244,7 +1244,7 @@ html { scroll-behavior: smooth; }
     mermaidResizeObserver = new ResizeObserver(function(entries) {
       var width = mermaidContentWidth(entries && entries[0]);
       if (width <= 0) { return; }
-      if (Math.abs(cmuxMarkdownZoom - 1) <= 0.0001) {
+      if (Math.abs(mosaicMarkdownZoom - 1) <= 0.0001) {
         mermaidObservedWidth = width;
         return;
       }
@@ -1259,31 +1259,31 @@ html { scroll-behavior: smooth; }
     if (!svg) { return; }
     var natural = mermaidIntrinsicSize(svg);
     if (!natural) { return; }
-    if (Math.abs(cmuxMarkdownZoom - 1) <= 0.0001) {
+    if (Math.abs(mosaicMarkdownZoom - 1) <= 0.0001) {
       mermaidRestoreOriginalSizing(svg);
-      svg.setAttribute('data-cmux-mermaid-zoom', '1');
+      svg.setAttribute('data-mosaic-mermaid-zoom', '1');
       return;
     }
     var base = mermaidCurrentBaseSize(svg, natural);
     // WKWebView pageZoom scales markdown text metrics here, but Mermaid SVG bounds stay fixed.
-    var width = Math.max(1, base.width * cmuxMarkdownZoom);
-    var height = Math.max(1, base.height * cmuxMarkdownZoom);
+    var width = Math.max(1, base.width * mosaicMarkdownZoom);
+    var height = Math.max(1, base.height * mosaicMarkdownZoom);
     svg.style.maxWidth = '';
-    svg.setAttribute('data-cmux-mermaid-scaled', '1');
+    svg.setAttribute('data-mosaic-mermaid-scaled', '1');
     svg.style.width = width + 'px';
     svg.style.height = height + 'px';
-    svg.setAttribute('data-cmux-mermaid-zoom', String(cmuxMarkdownZoom));
+    svg.setAttribute('data-mosaic-mermaid-zoom', String(mosaicMarkdownZoom));
   }
 
   function applyMermaidZoom(root) {
     ensureMermaidResizeObserver();
     var scope = root || contentEl;
     if (!scope || !scope.querySelectorAll) { return; }
-    Array.prototype.forEach.call(scope.querySelectorAll('.cmux-mermaid svg'), applyMermaidZoomToSVG);
+    Array.prototype.forEach.call(scope.querySelectorAll('.mosaic-mermaid svg'), applyMermaidZoomToSVG);
   }
 
-  window.__cmuxSetMarkdownZoom = function(zoom) {
-    cmuxMarkdownZoom = normalizedMarkdownZoom(zoom);
+  window.__mosaicSetMarkdownZoom = function(zoom) {
+    mosaicMarkdownZoom = normalizedMarkdownZoom(zoom);
     mermaidObservedWidth = mermaidContentWidth(null);
     applyMermaidZoom(contentEl);
   };
@@ -1302,23 +1302,23 @@ html { scroll-behavior: smooth; }
       }
     } catch (e) { /* ignore reinit failure */ }
 
-    var blocks = contentEl.querySelectorAll('.cmux-mermaid:not([data-rendered])');
+    var blocks = contentEl.querySelectorAll('.mosaic-mermaid:not([data-rendered])');
     Array.prototype.forEach.call(blocks, function(el, i) {
       el.setAttribute('data-rendered', '1');
-      var srcEl = el.querySelector('.cmux-source');
+      var srcEl = el.querySelector('.mosaic-source');
       var src = srcEl ? srcEl.textContent : el.textContent;
-      var id = 'cmux-mermaid-' + Date.now() + '-' + i + '-' + Math.floor(Math.random() * 1e6);
+      var id = 'mosaic-mermaid-' + Date.now() + '-' + i + '-' + Math.floor(Math.random() * 1e6);
       try {
         mermaid.render(id, src).then(function(res) {
           el.innerHTML = res.svg;
           applyMermaidZoom(el);
           if (res.bindFunctions) { try { res.bindFunctions(el); } catch (e) {} }
         }).catch(function(err) {
-          el.innerHTML = '<div class="cmux-render-error">Mermaid: '
+          el.innerHTML = '<div class="mosaic-render-error">Mermaid: '
             + escapeHtml(String((err && err.message) || err)) + '</div>';
         });
       } catch (err) {
-        el.innerHTML = '<div class="cmux-render-error">Mermaid: '
+        el.innerHTML = '<div class="mosaic-render-error">Mermaid: '
           + escapeHtml(String((err && err.message) || err)) + '</div>';
       }
     });
@@ -1402,10 +1402,10 @@ html { scroll-behavior: smooth; }
   function renderVegaBlocks() {
     if (typeof vegaEmbed === 'undefined') { renderLibError('vega-lite', 'library missing'); return; }
     var isDark = darkMql.matches;
-    var blocks = contentEl.querySelectorAll('.cmux-vega:not([data-rendered])');
+    var blocks = contentEl.querySelectorAll('.mosaic-vega:not([data-rendered])');
     Array.prototype.forEach.call(blocks, function(el) {
       el.setAttribute('data-rendered', '1');
-      var srcEl = el.querySelector('.cmux-source');
+      var srcEl = el.querySelector('.mosaic-source');
       var raw = srcEl ? srcEl.textContent : el.textContent;
       var mode = el.getAttribute('data-vega-mode') === 'vega' ? 'vega' : 'vega-lite';
       try {
@@ -1418,21 +1418,21 @@ html { scroll-behavior: smooth; }
         var opts = { mode: mode, actions: false, renderer: 'svg' };
         if (isDark) { opts.theme = 'dark'; }
         vegaEmbed(el, spec, opts).catch(function(err) {
-          el.innerHTML = '<div class="cmux-render-error">Vega: '
+          el.innerHTML = '<div class="mosaic-render-error">Vega: '
             + escapeHtml(String((err && err.message) || err)) + '</div>';
         });
       } catch (e) {
-        el.innerHTML = '<div class="cmux-render-error">Vega spec: '
+        el.innerHTML = '<div class="mosaic-render-error">Vega spec: '
           + escapeHtml(String((e && e.message) || e)) + '</div>';
       }
     });
   }
 
   function postProcessSpecialBlocks() {
-    if (contentEl.querySelector('.cmux-mermaid:not([data-rendered])')) {
+    if (contentEl.querySelector('.mosaic-mermaid:not([data-rendered])')) {
       loadLib('mermaid', renderMermaidBlocks);
     }
-    if (contentEl.querySelector('.cmux-vega:not([data-rendered])')) {
+    if (contentEl.querySelector('.mosaic-vega:not([data-rendered])')) {
       loadLib('vega-lite', renderVegaBlocks);
     }
     addCodeCopyButtons();
@@ -1442,17 +1442,17 @@ html { scroll-behavior: smooth; }
   function addCodeCopyButtons() {
     contentEl.querySelectorAll('pre > code.hljs').forEach(function(code) {
       var pre = code.parentElement;
-      if (!pre || pre.closest('.cmux-source') || pre.closest('.cmux-frontmatter')) { return; }
-      if (pre.parentElement && pre.parentElement.classList.contains('cmux-code-block')) { return; }
+      if (!pre || pre.closest('.mosaic-source') || pre.closest('.mosaic-frontmatter')) { return; }
+      if (pre.parentElement && pre.parentElement.classList.contains('mosaic-code-block')) { return; }
 
       var wrapper = document.createElement('div');
-      wrapper.className = 'cmux-code-block';
+      wrapper.className = 'mosaic-code-block';
       pre.parentNode.insertBefore(wrapper, pre);
       wrapper.appendChild(pre);
 
       var button = document.createElement('button');
       button.type = 'button';
-      button.className = 'cmux-code-copy-button';
+      button.className = 'mosaic-code-copy-button';
       button.textContent = 'Copy';
       button.setAttribute('aria-label', 'Copy code');
       button.addEventListener('click', function(ev) {
@@ -1477,15 +1477,15 @@ html { scroll-behavior: smooth; }
   // Local markdown file links and inline-code spans.
   // Resolution is lazy: hover/focus asks Swift whether the path exists
   // relative to the current markdown file (and PWD fallback). Click
-  // opens a new cmux markdown tab when it resolves.
+  // opens a new mosaic markdown tab when it resolves.
   var mdFileResolveCache = {}; // raw path -> { exists, path }
   var mdFileResolvePending = {}; // requestId -> { rawPath, elements }
   var mdFileRequestSeq = 0;
 
   function markdownCandidateForElement(el) {
     if (!el) { return null; }
-    if (el.matches && el.matches('code[data-cmux-file]')) {
-      return unescapeDataAttribute(el.getAttribute('data-cmux-file'));
+    if (el.matches && el.matches('code[data-mosaic-file]')) {
+      return unescapeDataAttribute(el.getAttribute('data-mosaic-file'));
     }
     if (el.matches && el.matches('a[href]')) {
       var href = el.getAttribute('href') || '';
@@ -1498,11 +1498,11 @@ html { scroll-behavior: smooth; }
     mdFileResolveCache[rawPath] = result;
     (elements || []).forEach(function(el) {
       if (!el) { return; }
-      el.setAttribute('data-cmux-file-checked', '1');
+      el.setAttribute('data-mosaic-file-checked', '1');
       if (result && result.exists) {
-        el.setAttribute('data-cmux-file-exists', '1');
+        el.setAttribute('data-mosaic-file-exists', '1');
       } else {
-        el.removeAttribute('data-cmux-file-exists');
+        el.removeAttribute('data-mosaic-file-exists');
       }
     });
   }
@@ -1519,7 +1519,7 @@ html { scroll-behavior: smooth; }
     var requestId = 'mdfile-' + (++mdFileRequestSeq);
     mdFileResolvePending[requestId] = { rawPath: rawPath, elements: [el], openAfterResolve: !!openAfterResolve };
     try {
-      window.webkit.messageHandlers.cmuxLib.postMessage({
+      window.webkit.messageHandlers.mosaicLib.postMessage({
         action: 'resolveMarkdownFile',
         requestId: requestId,
         path: rawPath
@@ -1528,7 +1528,7 @@ html { scroll-behavior: smooth; }
     return false;
   }
 
-  window.__cmuxMarkdownFileResolved = function(result) {
+  window.__mosaicMarkdownFileResolved = function(result) {
     var pending = result && mdFileResolvePending[result.requestId];
     if (!pending) { return; }
     delete mdFileResolvePending[result.requestId];
@@ -1540,22 +1540,22 @@ html { scroll-behavior: smooth; }
 
   function openMarkdownCandidate(rawPath) {
     try {
-      window.webkit.messageHandlers.cmuxLib.postMessage({ action: 'openMarkdownFile', path: rawPath });
+      window.webkit.messageHandlers.mosaicLib.postMessage({ action: 'openMarkdownFile', path: rawPath });
     } catch (e) { /* no bridge */ }
   }
 
   function markMarkdownFileLinks() {
-    contentEl.querySelectorAll('code:not([data-cmux-file])').forEach(function(code) {
-      if (code.closest && code.closest('pre, .cmux-source')) { return; }
+    contentEl.querySelectorAll('code:not([data-mosaic-file])').forEach(function(code) {
+      if (code.closest && code.closest('pre, .mosaic-source')) { return; }
       var raw = code.textContent || '';
       if (isMarkdownPathLike(raw)) {
-        code.setAttribute('data-cmux-file', escapeDataAttribute(raw));
+        code.setAttribute('data-mosaic-file', escapeDataAttribute(raw));
       }
     });
     contentEl.querySelectorAll('a[href]').forEach(function(a) {
       var href = a.getAttribute('href') || '';
       if (isMarkdownPathLike(href)) {
-        a.setAttribute('data-cmux-file-candidate', href);
+        a.setAttribute('data-mosaic-file-candidate', href);
         // Eagerly resolve visible markdown links so the user gets
         // immediate affordance; inline code spans remain lazy-on-hover.
         resolveMarkdownCandidate(a, false);
@@ -1564,21 +1564,21 @@ html { scroll-behavior: smooth; }
   }
 
   contentEl.addEventListener('mouseover', function(ev) {
-    var el = ev.target && ev.target.closest && ev.target.closest('code[data-cmux-file], a[href]');
+    var el = ev.target && ev.target.closest && ev.target.closest('code[data-mosaic-file], a[href]');
     if (el) { resolveMarkdownCandidate(el, false); }
   });
   contentEl.addEventListener('focusin', function(ev) {
-    var el = ev.target && ev.target.closest && ev.target.closest('code[data-cmux-file], a[href]');
+    var el = ev.target && ev.target.closest && ev.target.closest('code[data-mosaic-file], a[href]');
     if (el) { resolveMarkdownCandidate(el, false); }
   });
   contentEl.addEventListener('click', function(ev) {
-    if (ev.target && ev.target.closest && ev.target.closest('.cmux-remote-image-placeholder')) {
+    if (ev.target && ev.target.closest && ev.target.closest('.mosaic-remote-image-placeholder')) {
       if (ev.target.closest('button')) { return; }
       ev.preventDefault();
       ev.stopPropagation();
       return;
     }
-    var el = ev.target && ev.target.closest && ev.target.closest('code[data-cmux-file], a[href]');
+    var el = ev.target && ev.target.closest && ev.target.closest('code[data-mosaic-file], a[href]');
     var rawPath = markdownCandidateForElement(el);
     if (!rawPath) { return; }
     // For markdown-looking paths, always stop WebKit navigation first.
@@ -1592,7 +1592,7 @@ html { scroll-behavior: smooth; }
     openMarkdownCandidate(rawPath);
   }, true);
 
-  window.__cmuxRenderMarkdown = function(md) {
+  window.__mosaicRenderMarkdown = function(md) {
     try {
       headingSlugCounts = Object.create(null);
       var documentParts = extractFrontmatter(md || '');
@@ -1622,23 +1622,23 @@ html { scroll-behavior: smooth; }
     options = options || {};
     var restoreImageSources = options.restoreImageSources !== false;
     var clone = contentEl.cloneNode(true);
-    clone.querySelectorAll('.cmux-code-copy-button').forEach(function(el) {
+    clone.querySelectorAll('.mosaic-code-copy-button').forEach(function(el) {
       el.remove();
     });
-    clone.querySelectorAll('.cmux-remote-image-placeholder').forEach(function(el) {
+    clone.querySelectorAll('.mosaic-remote-image-placeholder').forEach(function(el) {
       el.remove();
     });
-    clone.querySelectorAll('img[data-cmux-original-src]').forEach(function(el) {
-      var originalSrc = el.getAttribute('data-cmux-original-src') || '';
+    clone.querySelectorAll('img[data-mosaic-original-src]').forEach(function(el) {
+      var originalSrc = el.getAttribute('data-mosaic-original-src') || '';
       if (restoreImageSources && originalSrc) {
         el.setAttribute('src', originalSrc);
       } else if (!restoreImageSources) {
         el.removeAttribute('src');
       }
-      el.removeAttribute('data-cmux-original-src');
+      el.removeAttribute('data-mosaic-original-src');
     });
-    clone.querySelectorAll('img[data-cmux-remote-src]').forEach(function(el) {
-      var remoteSrc = unescapeDataAttribute(el.getAttribute('data-cmux-remote-src'));
+    clone.querySelectorAll('img[data-mosaic-remote-src]').forEach(function(el) {
+      var remoteSrc = unescapeDataAttribute(el.getAttribute('data-mosaic-remote-src'));
       if (restoreImageSources && remoteSrc) {
         el.setAttribute('src', remoteSrc);
         el.hidden = false;
@@ -1652,13 +1652,13 @@ html { scroll-behavior: smooth; }
         el.removeAttribute('srcset');
       });
     }
-    clone.querySelectorAll('.cmux-mermaid svg[data-cmux-mermaid-original-max-width]').forEach(function(el) {
+    clone.querySelectorAll('.mosaic-mermaid svg[data-mosaic-mermaid-original-max-width]').forEach(function(el) {
       mermaidRestoreOriginalSizing(el);
     });
     clone.querySelectorAll('*').forEach(function(el) {
       Array.prototype.slice.call(el.attributes || []).forEach(function(attr) {
         var name = String(attr.name || '').toLowerCase();
-        if (name.indexOf('data-cmux-') === 0) {
+        if (name.indexOf('data-mosaic-') === 0) {
           el.removeAttribute(attr.name);
         }
       });
@@ -1669,13 +1669,13 @@ html { scroll-behavior: smooth; }
     return clone;
   }
 
-  window.__cmuxRenderedHTML = function() {
+  window.__mosaicRenderedHTML = function() {
     var clone = cleanRenderedContentClone({ restoreImageSources: true });
     if (!clone) { return ''; }
     return clone.innerHTML;
   };
 
-  window.__cmuxRenderedText = function() {
+  window.__mosaicRenderedText = function() {
     var clone = cleanRenderedContentClone({ restoreImageSources: false });
     if (!clone) { return ''; }
     var wrapper = document.createElement('div');
@@ -1697,7 +1697,7 @@ html { scroll-behavior: smooth; }
   };
 
   var darkMql = window.matchMedia('(prefers-color-scheme: dark)');
-  window.__cmuxApplyTheme = function() {
+  window.__mosaicApplyTheme = function() {
     var isDark = darkMql.matches;
     if (lightSheet && darkSheet) {
       lightSheet.disabled = !!isDark;
@@ -1708,11 +1708,11 @@ html { scroll-behavior: smooth; }
     mermaidInitialized = false;
   };
   if (darkMql.addEventListener) {
-    darkMql.addEventListener('change', window.__cmuxApplyTheme);
+    darkMql.addEventListener('change', window.__mosaicApplyTheme);
   } else if (darkMql.addListener) {
-    darkMql.addListener(window.__cmuxApplyTheme);
+    darkMql.addListener(window.__mosaicApplyTheme);
   }
-  window.__cmuxApplyTheme();
+  window.__mosaicApplyTheme();
 })();
 </script>
 </body>

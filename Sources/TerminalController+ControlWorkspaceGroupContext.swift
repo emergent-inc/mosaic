@@ -1,7 +1,7 @@
-import CmuxControlSocket
-import CmuxWorkspaces
+import MosaicControlSocket
+import MosaicWorkspaces
 import Foundation
-import CmuxSettings
+import MosaicSettings
 
 /// The workspace-group-domain witnesses for the stage-3c
 /// ``ControlCommandCoordinator``: the byte-faithful bodies of the former
@@ -263,7 +263,7 @@ extension TerminalController: ControlWorkspaceGroupContext {
             return .tabManagerUnavailable
         }
         // Placement resolution: explicit `placement` param wins, then the group's
-        // per-cwd `newWorkspacePlacement` from cmux.json, then the global default.
+        // per-cwd `newWorkspacePlacement` from mosaic.json, then the global default.
         let explicitPlacement = WorkspaceGroupNewPlacement(rawString: placementRaw)
         if let raw = placementRaw,
            !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -274,7 +274,7 @@ extension TerminalController: ControlWorkspaceGroupContext {
             return .notFound
         }
         let anchorCwd = tabManager.tabs.first(where: { $0.id == group.anchorWorkspaceId })?.currentDirectory
-        let configStore = AppDelegate.shared?.mainWindowContexts.values.first(where: { $0.tabManager === tabManager })?.cmuxConfigStore
+        let configStore = AppDelegate.shared?.mainWindowContexts.values.first(where: { $0.tabManager === tabManager })?.mosaicConfigStore
         let configured = configStore?.resolveWorkspaceGroupConfig(forCwd: anchorCwd)?.newWorkspacePlacement
         let placement = explicitPlacement
             ?? configured

@@ -6,10 +6,10 @@
 //   replay-cli.mjs --list
 //
 // `dev-setup.sh --profile <name>` calls this after the app is built/launched/
-// paired. Everything routes through `scripts/cmux-debug-cli.sh` (sibling
-// `../cmux-debug-cli.sh`), which targets the TAGGED socket only.
+// paired. Everything routes through `scripts/mosaic-debug-cli.sh` (sibling
+// `../mosaic-debug-cli.sh`), which targets the TAGGED socket only.
 //
-// --dry-run prints the resolved `cmux` argument vectors for each profile
+// --dry-run prints the resolved `mosaic` argument vectors for each profile
 // without touching a socket. It is the same construction path the unit test
 // exercises, so a green dry run proves the parsing + substitution plumbing.
 
@@ -23,7 +23,7 @@ import {
 } from "./replay.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const DEBUG_CLI = path.join(SCRIPT_DIR, "..", "cmux-debug-cli.sh");
+const DEBUG_CLI = path.join(SCRIPT_DIR, "..", "mosaic-debug-cli.sh");
 
 function parseArgs(argv) {
   const opts = { tag: "", profiles: [], cwd: process.cwd(), dryRun: false, list: false };
@@ -83,7 +83,7 @@ function main() {
     for (const { name, profile } of profiles) {
       process.stdout.write(`# profile: ${name}\n`);
       for (const { argv } of resolveSteps(profile, context)) {
-        process.stdout.write(`cmux ${argv.join(" ")}\n`);
+        process.stdout.write(`mosaic ${argv.join(" ")}\n`);
       }
     }
     return;

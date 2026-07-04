@@ -19,7 +19,7 @@ export const POST = makeNativeRefreshHandler({
 export function makeNativeRefreshHandler(dependencies: NativeRefreshHandlerDependencies) {
   return async function POST(request: Request) {
     const refreshToken = request.headers.get("x-mosaic-refresh-token")?.trim()
-      ?? request.headers.get("x-cmux-refresh-token")?.trim()
+      ?? request.headers.get("x-mosaic-refresh-token")?.trim()
       ?? (await refreshTokenFromBody(request));
     if (!refreshToken) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });

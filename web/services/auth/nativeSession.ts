@@ -70,7 +70,7 @@ export function refreshNativeSessionTokenPair(refreshToken: string): NativeSessi
 
 export function verifyNativeAuthToken(token: string): NativeSessionClaims | null {
   const parts = token.split(".");
-  if (parts.length !== 3 || parts[0] !== "cmuxv1") return null;
+  if (parts.length !== 3 || parts[0] !== "mosaicv1") return null;
   const [, payloadPart, signaturePart] = parts;
   const expectedSignature = signature(payloadPart);
   if (!constantTimeEqual(signaturePart, expectedSignature)) return null;
@@ -111,7 +111,7 @@ function claimsFor(
 
 function signClaims(claims: NativeSessionClaims): string {
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
-  return `cmuxv1.${payload}.${signature(payload)}`;
+  return `mosaicv1.${payload}.${signature(payload)}`;
 }
 
 function signature(payload: string): string {
@@ -119,7 +119,7 @@ function signature(payload: string): string {
 }
 
 function signingSecret(): string {
-  return env.CMUX_NATIVE_AUTH_SECRET ?? env.CLERK_SECRET_KEY;
+  return env.MOSAIC_NATIVE_AUTH_SECRET ?? env.CLERK_SECRET_KEY;
 }
 
 function constantTimeEqual(a: string, b: string): boolean {

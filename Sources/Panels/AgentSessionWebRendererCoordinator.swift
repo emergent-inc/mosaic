@@ -112,7 +112,7 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
         )
         trustedShellURL = Self.normalizedTrustedFileURL(indexURL)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "agentSession.web.load renderer=\(rendererKind.rawValue) " +
             "index=\(indexURL.path)"
         )
@@ -184,7 +184,7 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
 #if DEBUG
-        cmuxDebugLog("agentSession.web.didFinish renderer=\(rendererKind.rawValue)")
+        mosaicDebugLog("agentSession.web.didFinish renderer=\(rendererKind.rawValue)")
 #endif
         hasFinishedNavigation = true
         applyThemeToLoadedPage()
@@ -196,7 +196,7 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "agentSession.web.didFail renderer=\(rendererKind.rawValue) " +
             "error=\(error.localizedDescription)"
         )
@@ -205,7 +205,7 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "agentSession.web.didFailProvisional renderer=\(rendererKind.rawValue) " +
             "error=\(error.localizedDescription)"
         )
@@ -294,10 +294,10 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
               let json = String(data: data, encoding: .utf8) else {
             return
         }
-        webView.evaluateJavaScript("window.cmuxAgentBridge?.applyTheme(\(json));") { _, error in
+        webView.evaluateJavaScript("window.mosaicAgentBridge?.applyTheme(\(json));") { _, error in
 #if DEBUG
             if let error {
-                cmuxDebugLog("agentSession.web.theme.failed error=\(error.localizedDescription)")
+                mosaicDebugLog("agentSession.web.theme.failed error=\(error.localizedDescription)")
             }
 #else
             _ = error
@@ -584,7 +584,7 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
             let provider = try request.providerID()
             initialProviderID = provider
             onProviderIDChanged?(provider)
-            let configuredExecutablePaths = AgentExecutableResolver.cmuxConfiguredExecutablePaths()
+            let configuredExecutablePaths = AgentExecutableResolver.mosaicConfiguredExecutablePaths()
             let plan = try await Task.detached(priority: .userInitiated) {
                 let resolver = AgentExecutableResolver(configuredExecutablePaths: configuredExecutablePaths)
                 return try resolver.resolve(provider)
@@ -689,10 +689,10 @@ final class AgentSessionWebRendererCoordinator: NSObject, WKNavigationDelegate, 
               let json = String(data: data, encoding: .utf8) else {
             return
         }
-        webView.evaluateJavaScript("window.cmuxAgentBridge?.receive(\(json));") { _, error in
+        webView.evaluateJavaScript("window.mosaicAgentBridge?.receive(\(json));") { _, error in
 #if DEBUG
             if let error {
-                cmuxDebugLog("agentSession.bridge.event.failed error=\(error.localizedDescription)")
+                mosaicDebugLog("agentSession.bridge.event.failed error=\(error.localizedDescription)")
             }
 #else
             _ = error

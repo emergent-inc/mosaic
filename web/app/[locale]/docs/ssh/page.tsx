@@ -27,16 +27,16 @@ export default function SshPage() {
       <iframe
         className="my-6 rounded-lg w-full aspect-video"
         src="https://www.youtube.com/embed/RoR9pMOZWkk"
-        title="cmux SSH demo"
+        title="mosaic SSH demo"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
 
       <DocsHeading level={2} id="usage">{t("usage")}</DocsHeading>
-      <CodeBlock lang="bash">{`cmux ssh user@remote
-cmux ssh user@remote --name "dev server"
-cmux ssh user@remote -p 2222
-cmux ssh user@remote -i ~/.ssh/id_ed25519`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic ssh user@remote
+mosaic ssh user@remote --name "dev server"
+mosaic ssh user@remote -p 2222
+mosaic ssh user@remote -i ~/.ssh/id_ed25519`}</CodeBlock>
       <p>{t("usageDesc")}</p>
 
       <DocsHeading level={2} id="flags-title">{t("flagsTitle")}</DocsHeading>
@@ -68,7 +68,7 @@ mosaic://ssh?host=dev.example.com&host-key-policy=accept-new&no-focus=true`}</Co
       <CodeBlock lang="text">{`https://mosaic.inc/deeplink/prompt?text=Review%20this%20branch
 https://mosaic.inc/deeplink/rules?name=freestyle&text=Prefer%20commas,%20colons:%20and%20small%20PRs`}</CodeBlock>
       <p>{t("deepLinksIconDesc")}</p>
-      <CodeBlock lang="text">{`https://mosaic.inc/cmux-icon.svg
+      <CodeBlock lang="text">{`https://mosaic.inc/mosaic-icon.svg
 https://mosaic.inc/logo.png`}</CodeBlock>
       <p>{t("deepLinksButtonDesc")}</p>
       <CodeBlock lang="tsx">{`const params = new URLSearchParams({
@@ -112,8 +112,8 @@ const href = "https://mosaic.inc/deeplink/ssh?" + params.toString();`}</CodeBloc
       <DocsHeading level={2} id="agents-title">{t("agentsTitle")}</DocsHeading>
       <p>{t("agentsDesc")}</p>
       <CodeBlock lang="bash">{`# Inside an SSH session:
-cmux claude-teams
-cmux omo`}</CodeBlock>
+mosaic claude-teams
+mosaic omo`}</CodeBlock>
 
       <DocsHeading level={2} id="reconnect-title">{t("reconnectTitle")}</DocsHeading>
       <p>{t("reconnectDesc")}</p>

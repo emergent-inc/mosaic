@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 process.env.SKIP_ENV_VALIDATION = "1";
 process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_key";
 process.env.CLERK_SECRET_KEY = "sk_test_secret_key_that_is_long_enough_for_native_tokens";
-process.env.CMUX_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
+process.env.MOSAIC_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
 
 const {
   mintNativeSessionTokenPair,
@@ -16,10 +16,10 @@ const {
 // scheme as the production minter. Used to reproduce tokens that predate a
 // claim (e.g. a legacy token minted before `imageURL` existed).
 function signLegacyToken(claims: Record<string, unknown>): string {
-  const secret = process.env.CMUX_NATIVE_AUTH_SECRET!;
+  const secret = process.env.MOSAIC_NATIVE_AUTH_SECRET!;
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   const signature = createHmac("sha256", secret).update(payload).digest("base64url");
-  return `cmuxv1.${payload}.${signature}`;
+  return `mosaicv1.${payload}.${signature}`;
 }
 
 function baseLegacyClaims(kind: "access" | "refresh") {
@@ -38,7 +38,7 @@ function baseLegacyClaims(kind: "access" | "refresh") {
   };
 }
 
-describe("cmux native session tokens", () => {
+describe("mosaic native session tokens", () => {
   test("mints signed access and refresh tokens with normalized Clerk identity claims", () => {
     const tokens = mintNativeSessionTokenPair({
       userId: "user_123",
@@ -79,7 +79,7 @@ describe("cmux native session tokens", () => {
     payload.userId = "attacker";
     const tamperedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
-    expect(verifyNativeAuthToken(`cmuxv1.${tamperedPayload}.${parts[2]}`)).toBeNull();
+    expect(verifyNativeAuthToken(`mosaicv1.${tamperedPayload}.${parts[2]}`)).toBeNull();
     expect(verifyNativeAuthToken("not-a-token")).toBeNull();
 
     const expired = mintNativeSessionTokenPair(

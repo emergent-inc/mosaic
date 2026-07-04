@@ -1,5 +1,5 @@
 import Foundation
-import CmuxCore
+import MosaicCore
 
 extension BrowserPanel {
     static func restorableDisplayURL(

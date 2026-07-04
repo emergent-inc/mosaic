@@ -7,7 +7,7 @@ Report a failure when a diff:
 - Renames or relabels a shared feature on one surface without matching the other (for example the README says "Scriptable" while the homepage feature is "Programmable", or vice versa).
 - Changes a feature's factual claim on one surface so it contradicts the other (platform support, price/free, license, supported agents, networking model, what is built in vs optional).
 - Adds a headline feature to the homepage feature list that directly conflicts with how the README presents the product, or removes a feature from one surface in a way that leaves the two materially inconsistent, without updating the other or stating why.
-- Changes a homepage FAQ answer (`home.faq*` in `web/messages/en.json`) so it contradicts a claim in `README.md` (for example FAQ says cmux is free while the README implies otherwise, or the FAQ describes a capability the README denies).
+- Changes a homepage FAQ answer (`home.faq*` in `web/messages/en.json`) so it contradicts a claim in `README.md` (for example FAQ says mosaic is free while the README implies otherwise, or the FAQ describes a capability the README denies).
 
 Expected shape:
 

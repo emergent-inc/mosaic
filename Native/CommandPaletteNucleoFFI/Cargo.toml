@@ -1,5 +1,5 @@
 [package]
-name = "cmux-command-palette-nucleo-ffi"
+name = "mosaic-command-palette-nucleo-ffi"
 version = "0.1.0"
 edition = "2021"
 publish = false

@@ -1,9 +1,9 @@
 import Foundation
 
-/// Identifies a remote host whose tmux server cmux mirrors over SSH.
+/// Identifies a remote host whose tmux server mosaic mirrors over SSH.
 ///
 /// A host is addressed by its SSH `destination` — either a `~/.ssh/config`
-/// alias (e.g. `claude-box`) or an explicit `user@host`. cmux multiplexes
+/// alias (e.g. `claude-box`) or an explicit `user@host`. mosaic multiplexes
 /// every operation against the host (discovery commands, the `tmux -CC`
 /// control client, and one-shot mutations) over a single SSH ControlMaster
 /// socket derived from the destination, so authentication happens once.
@@ -71,7 +71,7 @@ struct RemoteTmuxHost: Sendable, Equatable, Identifiable {
 
     /// The SSH ControlMaster socket path shared by every operation against this host.
     ///
-    /// Namespaced under `~/.cmux/ssh/`. The filename combines the lossy
+    /// Namespaced under `~/.mosaic/ssh/`. The filename combines the lossy
     /// human-readable ``slug`` with the collision-resistant ``connectionHash`` of
     /// the exact connection identity (destination + port + identity file), so two
     /// distinct endpoints never collide on one socket (which would otherwise route
@@ -91,7 +91,7 @@ struct RemoteTmuxHost: Sendable, Equatable, Identifiable {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         // Fixed parts that can never be trimmed: directory, the `tmux-` prefix,
         // the `-<hash>.sock` tail, and the transient suffix OpenSSH binds first.
-        let prefix = "\(home)/.cmux/ssh/tmux-"
+        let prefix = "\(home)/.mosaic/ssh/tmux-"
         let suffix = "-\(connectionHash).sock"
         let fixedBytes = prefix.utf8.count + suffix.utf8.count + Self.opensshTransientSuffixLength
         let slugBudget = max(0, Self.maxUnixSocketPathLength - fixedBytes)
@@ -211,7 +211,7 @@ struct RemoteTmuxHost: Sendable, Equatable, Identifiable {
     /// ``controlPersistSeconds`` so the subsequent pipe-based discovery and
     /// `tmux -CC` control client multiplex over it with no further prompt.
     ///
-    /// Intended to be run by the `cmux ssh-tmux` CLI **inside the user's terminal**
+    /// Intended to be run by the `mosaic ssh-tmux` CLI **inside the user's terminal**
     /// (which supplies the tty); the local control client itself uses plain pipes
     /// and cannot prompt. It forces `BatchMode=no` so the interactive prompt always
     /// works even when the user's ssh_config sets `BatchMode yes`, but it does NOT
@@ -257,20 +257,20 @@ struct RemoteTmuxHost: Sendable, Equatable, Identifiable {
     /// tiny `/bin/sh` wrapper, then `exec` it with the original arguments so both
     /// one-shot probes and `tmux -CC` use the same path behavior.
     static func tmuxRemoteCommand(arguments: [String]) -> String {
-        (["/bin/sh", "-c", tmuxResolverShellScript, "cmux-remote-tmux"] + arguments)
+        (["/bin/sh", "-c", tmuxResolverShellScript, "mosaic-remote-tmux"] + arguments)
             .map(shellSingleQuoted)
             .joined(separator: " ")
     }
 
     // Keep this one physical line: the remote login shell parses it before /bin/sh -c runs.
     private static let tmuxResolverShellScript =
-        "cmux_tmux=\"\"; " +
-        "if command -v tmux >/dev/null 2>&1; then cmux_tmux=\"$(command -v tmux)\"; else " +
-        "for cmux_dir in \"$HOME/.local/bin\" \"$HOME/bin\" /opt/homebrew/bin /usr/local/bin /opt/local/bin /usr/pkg/bin /snap/bin /usr/bin /bin; do " +
-        "if [ -x \"$cmux_dir/tmux\" ]; then cmux_tmux=\"$cmux_dir/tmux\"; break; fi; done; " +
-        "if [ -z \"$cmux_tmux\" ] && [ -x /usr/libexec/path_helper ]; then eval \"$(/usr/libexec/path_helper -s 2>/dev/null)\"; " +
-        "if command -v tmux >/dev/null 2>&1; then cmux_tmux=\"$(command -v tmux)\"; fi; fi; fi; " +
-        "if [ -n \"$cmux_tmux\" ]; then exec \"$cmux_tmux\" \"$@\"; fi; exec tmux \"$@\""
+        "mosaic_tmux=\"\"; " +
+        "if command -v tmux >/dev/null 2>&1; then mosaic_tmux=\"$(command -v tmux)\"; else " +
+        "for mosaic_dir in \"$HOME/.local/bin\" \"$HOME/bin\" /opt/homebrew/bin /usr/local/bin /opt/local/bin /usr/pkg/bin /snap/bin /usr/bin /bin; do " +
+        "if [ -x \"$mosaic_dir/tmux\" ]; then mosaic_tmux=\"$mosaic_dir/tmux\"; break; fi; done; " +
+        "if [ -z \"$mosaic_tmux\" ] && [ -x /usr/libexec/path_helper ]; then eval \"$(/usr/libexec/path_helper -s 2>/dev/null)\"; " +
+        "if command -v tmux >/dev/null 2>&1; then mosaic_tmux=\"$(command -v tmux)\"; fi; fi; fi; " +
+        "if [ -n \"$mosaic_tmux\" ]; then exec \"$mosaic_tmux\" \"$@\"; fi; exec tmux \"$@\""
 
     /// Returns a non-empty tmux control-mode command argument, or `nil` when the
     /// value could break the line-oriented control stream. Shell quoting is not

@@ -6,7 +6,7 @@ Full end-to-end release built locally. Bumps version, updates changelog, tags, t
 
 ### 1. Determine the new version number
 
-- Get the current version from `cmux.xcodeproj/project.pbxproj` (look for `MARKETING_VERSION`)
+- Get the current version from `mosaic.xcodeproj/project.pbxproj` (look for `MARKETING_VERSION`)
 - Bump the minor version unless the user specifies otherwise (e.g., 0.54.0 → 0.55.0)
 
 ### 2. Gather changes and contributors since the last release
@@ -18,11 +18,11 @@ Full end-to-end release built locally. Bumps version, updates changelog, tags, t
 - If there are no user-facing changes, ask the user if they still want to release
 - **Collect contributors:** For each PR referenced in the commits, get the author:
   ```bash
-  gh pr view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
+  gh pr view <N> --repo emergent-inc/mosaic --json author --jq '.author.login'
   ```
 - Also check for linked issue reporters (the person who filed the bug):
   ```bash
-  gh issue view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
+  gh issue view <N> --repo emergent-inc/mosaic --json author --jq '.author.login'
   ```
 - Build a deduplicated list of all contributor `@handle`s for the release
 
@@ -40,7 +40,7 @@ Full end-to-end release built locally. Bumps version, updates changelog, tags, t
 
 ### 5. Commit, run the pre-tag guard, then tag and push
 
-- Stage: `CHANGELOG.md`, `cmux.xcodeproj/project.pbxproj`
+- Stage: `CHANGELOG.md`, `mosaic.xcodeproj/project.pbxproj`
 - Commit message: `Bump version to X.Y.Z`
 - Run: `./scripts/release-pretag-guard.sh`
 - If it fails, run `./scripts/bump-version.sh`, commit the build-number bump, and rerun the guard
@@ -55,12 +55,12 @@ Full end-to-end release built locally. Bumps version, updates changelog, tags, t
 
 This script handles: GhosttyKit build, xcodebuild, Sparkle key injection, codesigning, notarization (app + DMG), appcast generation, GitHub release upload, homebrew cask update, and cleanup.
 
-If the script fails, run `say "cmux release failed"`.
+If the script fails, run `say "mosaic release failed"`.
 
 ### 7. Verify homebrew cask
 
 - Run `bash tests/test_homebrew_sha.sh` to confirm the cask SHA matches the release DMG
-- Update the homebrew-cmux submodule pointer: `git add homebrew-cmux && git commit -m "Update homebrew-cmux submodule to latest" && git push origin main`
+- Update the homebrew-mosaic submodule pointer: `git add homebrew-mosaic && git commit -m "Update homebrew-mosaic submodule to latest" && git push origin main`
 
 ## Changelog Guidelines
 

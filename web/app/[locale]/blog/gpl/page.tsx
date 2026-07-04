@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     title: t("metaTitle"),
     description: t("metaDescription"),
     keywords: [
-      "cmux", "GPL", "AGPL", "open source", "license",
+      "mosaic", "GPL", "AGPL", "open source", "license",
       "terminal", "macOS", "copyleft",
     ],
     openGraph: {

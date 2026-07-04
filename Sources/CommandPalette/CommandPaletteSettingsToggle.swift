@@ -1,6 +1,6 @@
-import CmuxCommandPalette
+import MosaicCommandPalette
 import Foundation
-import CmuxSettings
+import MosaicSettings
 
 extension MenuBarOnlySettings {
     static let legacyCommandPaletteUsageKey = "commandPalette.commandUsage.v1"
@@ -198,17 +198,17 @@ enum CommandPaletteSettingsToggleCommands {
                 defaultsKey: PaneFirstClickFocusSettings.enabledKey
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "openSupportedFilesInCmux",
-                settingsKey: "app.openSupportedFilesInCmux",
+                commandId: commandIdPrefix + "openSupportedFilesInMosaic",
+                settingsKey: "app.openSupportedFilesInMosaic",
                 title: {
                     String(
-                        localized: "settings.app.openSupportedFilesInCmux",
+                        localized: "settings.app.openSupportedFilesInMosaic",
                         defaultValue: "Open Supported Files in mosaic"
                     )
                 },
                 sectionTitle: app,
                 keywords: [
-                    "app.openSupportedFilesInCmux",
+                    "app.openSupportedFilesInMosaic",
                     "cmd",
                     "click",
                     "file",
@@ -223,8 +223,8 @@ enum CommandPaletteSettingsToggleCommands {
                     "editor",
                     "external",
                 ],
-                defaultValue: AppCatalogSection().openSupportedFilesInCmux.defaultValue,
-                defaultsKey: AppCatalogSection().openSupportedFilesInCmux.userDefaultsKey,
+                defaultValue: AppCatalogSection().openSupportedFilesInMosaic.defaultValue,
+                defaultsKey: AppCatalogSection().openSupportedFilesInMosaic.userDefaultsKey,
                 didSet: { _, _, notificationCenter in
                     FileRouteSettingsStore(
                         defaults: .standard,
@@ -233,18 +233,18 @@ enum CommandPaletteSettingsToggleCommands {
                 }
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "openMarkdownInCmuxViewer",
-                settingsKey: "app.openMarkdownInCmuxViewer",
+                commandId: commandIdPrefix + "openMarkdownInMosaicViewer",
+                settingsKey: "app.openMarkdownInMosaicViewer",
                 title: {
                     String(
-                        localized: "settings.app.openMarkdownInCmuxViewer",
+                        localized: "settings.app.openMarkdownInMosaicViewer",
                         defaultValue: "Open Markdown in mosaic Viewer"
                     )
                 },
                 sectionTitle: app,
-                keywords: ["app.openMarkdownInCmuxViewer", "markdown", "md", "viewer", "preview", "file"],
-                defaultValue: AppCatalogSection().openMarkdownInCmuxViewer.defaultValue,
-                defaultsKey: AppCatalogSection().openMarkdownInCmuxViewer.userDefaultsKey,
+                keywords: ["app.openMarkdownInMosaicViewer", "markdown", "md", "viewer", "preview", "file"],
+                defaultValue: AppCatalogSection().openMarkdownInMosaicViewer.defaultValue,
+                defaultsKey: AppCatalogSection().openMarkdownInMosaicViewer.userDefaultsKey,
                 didSet: { _, _, notificationCenter in
                     FileRouteSettingsStore(
                         defaults: .standard,
@@ -637,8 +637,8 @@ enum CommandPaletteSettingsToggleCommands {
                 }
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "openSidebarPullRequestLinksInCmuxBrowser",
-                settingsKey: "sidebar.openPullRequestLinksInCmuxBrowser",
+                commandId: commandIdPrefix + "openSidebarPullRequestLinksInMosaicBrowser",
+                settingsKey: "sidebar.openPullRequestLinksInMosaicBrowser",
                 title: {
                     String(
                         localized: "settings.app.openSidebarPRLinks",
@@ -646,14 +646,14 @@ enum CommandPaletteSettingsToggleCommands {
                     )
                 },
                 sectionTitle: sidebar,
-                keywords: ["sidebar.openPullRequestLinksInCmuxBrowser", "sidebar", "pull", "request", "pr", "browser", "link"],
-                defaultValue: BrowserLinkOpenSettings.defaultOpenSidebarPullRequestLinksInCmuxBrowser,
-                defaultsKey: BrowserLinkOpenSettings.openSidebarPullRequestLinksInCmuxBrowserKey,
+                keywords: ["sidebar.openPullRequestLinksInMosaicBrowser", "sidebar", "pull", "request", "pr", "browser", "link"],
+                defaultValue: BrowserLinkOpenSettings.defaultOpenSidebarPullRequestLinksInMosaicBrowser,
+                defaultsKey: BrowserLinkOpenSettings.openSidebarPullRequestLinksInMosaicBrowserKey,
                 isAvailable: sidebarPullRequestLinksAvailable
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "openSidebarPortLinksInCmuxBrowser",
-                settingsKey: "sidebar.openPortLinksInCmuxBrowser",
+                commandId: commandIdPrefix + "openSidebarPortLinksInMosaicBrowser",
+                settingsKey: "sidebar.openPortLinksInMosaicBrowser",
                 title: {
                     String(
                         localized: "settings.app.openSidebarPortLinks",
@@ -661,9 +661,9 @@ enum CommandPaletteSettingsToggleCommands {
                     )
                 },
                 sectionTitle: sidebar,
-                keywords: ["sidebar.openPortLinksInCmuxBrowser", "sidebar", "port", "localhost", "browser", "link"],
-                defaultValue: BrowserLinkOpenSettings.defaultOpenSidebarPortLinksInCmuxBrowser,
-                defaultsKey: BrowserLinkOpenSettings.openSidebarPortLinksInCmuxBrowserKey,
+                keywords: ["sidebar.openPortLinksInMosaicBrowser", "sidebar", "port", "localhost", "browser", "link"],
+                defaultValue: BrowserLinkOpenSettings.defaultOpenSidebarPortLinksInMosaicBrowser,
+                defaultsKey: BrowserLinkOpenSettings.openSidebarPortLinksInMosaicBrowserKey,
                 isAvailable: sidebarPortLinksAvailable
             ),
             CommandPaletteSettingToggleDescriptor(
@@ -851,8 +851,8 @@ enum CommandPaletteSettingsToggleCommands {
                 defaultsKey: SettingCatalog().browser.askWhereToSaveDownloads.userDefaultsKey
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "openTerminalLinksInCmuxBrowser",
-                settingsKey: "browser.openTerminalLinksInCmuxBrowser",
+                commandId: commandIdPrefix + "openTerminalLinksInMosaicBrowser",
+                settingsKey: "browser.openTerminalLinksInMosaicBrowser",
                 title: {
                     String(
                         localized: "settings.browser.openTerminalLinks",
@@ -860,29 +860,29 @@ enum CommandPaletteSettingsToggleCommands {
                     )
                 },
                 sectionTitle: browser,
-                keywords: ["browser.openTerminalLinksInCmuxBrowser", "browser", "terminal", "links", "url", "click"],
-                defaultValue: BrowserLinkOpenSettings.defaultOpenTerminalLinksInCmuxBrowser,
-                defaultsKey: BrowserLinkOpenSettings.openTerminalLinksInCmuxBrowserKey
+                keywords: ["browser.openTerminalLinksInMosaicBrowser", "browser", "terminal", "links", "url", "click"],
+                defaultValue: BrowserLinkOpenSettings.defaultOpenTerminalLinksInMosaicBrowser,
+                defaultsKey: BrowserLinkOpenSettings.openTerminalLinksInMosaicBrowserKey
             ),
             CommandPaletteSettingToggleDescriptor(
-                commandId: commandIdPrefix + "interceptTerminalOpenCommandInCmuxBrowser",
-                settingsKey: "browser.interceptTerminalOpenCommandInCmuxBrowser",
+                commandId: commandIdPrefix + "interceptTerminalOpenCommandInMosaicBrowser",
+                settingsKey: "browser.interceptTerminalOpenCommandInMosaicBrowser",
                 title: {
                     String(localized: "settings.browser.interceptOpen", defaultValue: "Intercept open http(s) in Terminal")
                 },
                 sectionTitle: browser,
-                keywords: ["browser.interceptTerminalOpenCommandInCmuxBrowser", "browser", "terminal", "open", "http", "https", "intercept"],
+                keywords: ["browser.interceptTerminalOpenCommandInMosaicBrowser", "browser", "terminal", "open", "http", "https", "intercept"],
                 isOn: { defaults in
-                    if defaults.object(forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInCmuxBrowserKey) != nil {
-                        return defaults.bool(forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInCmuxBrowserKey)
+                    if defaults.object(forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInMosaicBrowserKey) != nil {
+                        return defaults.bool(forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInMosaicBrowserKey)
                     }
-                    if defaults.object(forKey: BrowserLinkOpenSettings.openTerminalLinksInCmuxBrowserKey) != nil {
-                        return defaults.bool(forKey: BrowserLinkOpenSettings.openTerminalLinksInCmuxBrowserKey)
+                    if defaults.object(forKey: BrowserLinkOpenSettings.openTerminalLinksInMosaicBrowserKey) != nil {
+                        return defaults.bool(forKey: BrowserLinkOpenSettings.openTerminalLinksInMosaicBrowserKey)
                     }
-                    return BrowserLinkOpenSettings.defaultInterceptTerminalOpenCommandInCmuxBrowser
+                    return BrowserLinkOpenSettings.defaultInterceptTerminalOpenCommandInMosaicBrowser
                 },
                 setOn: { newValue, defaults, _ in
-                    defaults.set(newValue, forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInCmuxBrowserKey)
+                    defaults.set(newValue, forKey: BrowserLinkOpenSettings.interceptTerminalOpenCommandInMosaicBrowserKey)
                 }
             ),
             CommandPaletteSettingToggleDescriptor(

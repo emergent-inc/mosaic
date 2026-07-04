@@ -61,16 +61,16 @@ select_zig_for_target() {
   local host_arch
   host_arch="$(detected_host_arch)"
 
-  if [[ -n "${CMUX_ZIG:-}" ]]; then
-    if [[ ! -x "$CMUX_ZIG" ]]; then
-      echo "error: CMUX_ZIG is not executable: $CMUX_ZIG" >&2
+  if [[ -n "${MOSAIC_ZIG:-}" ]]; then
+    if [[ ! -x "$MOSAIC_ZIG" ]]; then
+      echo "error: MOSAIC_ZIG is not executable: $MOSAIC_ZIG" >&2
       return 1
     fi
-    if ! zig_has_required_version "$CMUX_ZIG"; then
-      echo "error: CMUX_ZIG must be zig ${ZIG_REQUIRED}: $CMUX_ZIG" >&2
+    if ! zig_has_required_version "$MOSAIC_ZIG"; then
+      echo "error: MOSAIC_ZIG must be zig ${ZIG_REQUIRED}: $MOSAIC_ZIG" >&2
       return 1
     fi
-    echo "$CMUX_ZIG"
+    echo "$MOSAIC_ZIG"
     return 0
   fi
 
@@ -207,10 +207,10 @@ EOF
 # Allow CI to skip the Zig helper build where only a valid app bundle shape is
 # required. The stub is a Mach-O binary so architecture validation still checks
 # the bundle layout and slices instead of accepting a shell script placeholder.
-if [[ "${CMUX_SKIP_ZIG_BUILD:-}" == "1" ]]; then
-  echo "Skipping zig CLI helper build (CMUX_SKIP_ZIG_BUILD=1)"
+if [[ "${MOSAIC_SKIP_ZIG_BUILD:-}" == "1" ]]; then
+  echo "Skipping zig CLI helper build (MOSAIC_SKIP_ZIG_BUILD=1)"
   mkdir -p "$(dirname "$OUTPUT_PATH")"
-  STUB_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cmux-ghostty-helper-stub.XXXXXX")"
+  STUB_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/mosaic-ghostty-helper-stub.XXXXXX")"
   trap 'rm -rf "$STUB_TMP_DIR"' EXIT
   if [[ "$UNIVERSAL" == "true" ]]; then
     write_macho_stub "$STUB_TMP_DIR/ghostty-arm64" "arm64-apple-macos14" "$STUB_TMP_DIR"
@@ -255,7 +255,7 @@ build_helper() {
     build
     cli-helper
     -Dapp-runtime=none
-    -Dcrash-report-subdir=cmux/crash
+    -Dcrash-report-subdir=mosaic/crash
     -Demit-macos-app=false
     -Demit-xcframework=false
     -Doptimize=ReleaseFast
@@ -277,7 +277,7 @@ build_helper() {
   )
 }
 
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cmux-ghostty-helper.XXXXXX")"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/mosaic-ghostty-helper.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"

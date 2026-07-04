@@ -7,7 +7,7 @@ import * as schema from "../db/schema";
 async function main() {
   const config = cloudDbConfig();
   if (config.driver !== "aws-rds-iam") {
-    throw new Error("CMUX_DB_DRIVER=aws-rds-iam is required for this migration command");
+    throw new Error("MOSAIC_DB_DRIVER=aws-rds-iam is required for this migration command");
   }
 
   const pool = createAwsRdsIamPool(config);

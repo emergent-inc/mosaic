@@ -1,4 +1,4 @@
-// cmux device presence service — worker entry.
+// mosaic device presence service — worker entry.
 //
 // Routes (all JSON unless noted):
 //   GET  /healthz                         liveness, no auth
@@ -8,7 +8,7 @@
 //                                         snapshot first, then online/offline/seen
 //
 // Auth on every /v1 route: `Authorization: Bearer <Stack access token>` plus
-// optional `X-Cmux-Team-Id` / `?teamId=` team scoping, verified in auth.ts the
+// optional `X-Mosaic-Team-Id` / `?teamId=` team scoping, verified in auth.ts the
 // same way web/app/api verifies native callers. The worker resolves the team,
 // derives the per-team Durable Object from the VERIFIED team id, and forwards;
 // the DO never sees unauthenticated input.
@@ -64,7 +64,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/healthz") {
-      return json({ ok: true, service: "cmux-presence" });
+      return json({ ok: true, service: "mosaic-presence" });
     }
 
     if (url.pathname === "/v1/presence/heartbeat") {
@@ -89,7 +89,7 @@ export default {
       //   GET   read it back (the sign-in restore path on a fresh install)
       const team = await resolveTeamOr403(request, env);
       if (!team.ok) return team.response;
-      const rawClientScope = request.headers.get("x-cmux-client-scope");
+      const rawClientScope = request.headers.get("x-mosaic-client-scope");
       const trimmedClientScope = rawClientScope?.trim() ?? "";
       if (trimmedClientScope && normalizeClientScope(trimmedClientScope) === null) {
         return json({ error: "invalid_client_scope" }, 400);
