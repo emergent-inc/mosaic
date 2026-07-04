@@ -57,7 +57,7 @@ brew install --cask cmux`}</CodeBlock>
 
       <DocsHeading level={2} id="cli-setup">{t("cliSetup")}</DocsHeading>
       <p>{t("cliDesc")}</p>
-      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/Mosaic.app/Contents/Resources/bin/cmux" /usr/local/bin/cmux`}</CodeBlock>
       <p>{t("cliThen")}</p>
       <CodeBlock lang="bash">{`cmux list-workspaces
 cmux notify --title "Build Complete" --body "Your build finished"`}</CodeBlock>

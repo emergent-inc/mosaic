@@ -43,4 +43,4 @@ Python socket tests under `tests_v2/` connect to a running cmux instance socket.
 CMUX_SOCKET_PATH=/tmp/cmux-debug-<tag>.sock
 ```
 
-Never launch or target an untagged `cmux DEV.app` for these tests. It can conflict with the user's running debug instance.
+Never launch or target an untagged `Mosaic DEV.app` for these tests. It can conflict with the user's running debug instance.

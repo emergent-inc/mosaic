@@ -34,7 +34,7 @@ only when the task requires launching.
 
 ```text
 App path:
-  /absolute/path/to/cmux DEV <tag>.app
+  /absolute/path/to/Mosaic DEV <tag>.app
 ```
 
 Build chat links from that exact path. Prepend `file://` and URL-encode spaces as `%20`. Do not hardcode DerivedData paths and never use `/tmp/cmux-<tag>/...` app links in chat output.
@@ -66,4 +66,4 @@ Before launching a new tagged run, clean up older tags started in the same sessi
 - remove its `/tmp` socket if stale
 - remove derived data only when you are sure no active task needs it
 
-Do not open an untagged `cmux DEV.app` from DerivedData. It shares the default debug socket and bundle ID with other agents.
+Do not open an untagged `Mosaic DEV.app` from DerivedData. It shares the default debug socket and bundle ID with other agents.

@@ -6,7 +6,17 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
     private let hiddenField = NSTextField(string: "")
     private let stack = NSStackView()
     private let slotLabels: [NSTextField]
+    private let caret = NSView()
     private var model = CollaborationInviteCodeEntryModel()
+
+    /// Called whenever the entered code changes; receives the current completeness.
+    var onChange: ((Bool) -> Void)?
+
+    /// Called when the user presses Return while the entry has focus.
+    var onSubmit: (() -> Void)?
+
+    /// Called when the user presses Escape while the entry has focus.
+    var onCancel: (() -> Void)?
 
     var code: String {
         model.value
@@ -16,12 +26,25 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         model.isComplete
     }
 
+    private static let slotSize = NSSize(width: 52, height: 56)
+    private static let slotSpacing: CGFloat = 10
+
     init(accessibilityLabel: String) {
         self.slotLabels = (0..<CollaborationInviteCodeEntryModel.codeLength).map { _ in
             NSTextField(labelWithString: "")
         }
-        super.init(frame: NSRect(x: 0, y: 0, width: 228, height: 44))
+        let slotCount = CGFloat(CollaborationInviteCodeEntryModel.codeLength)
+        let width = Self.slotSize.width * slotCount + Self.slotSpacing * (slotCount - 1)
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.slotSize.height))
         setup(accessibilityLabel: accessibilityLabel)
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let slotCount = CGFloat(CollaborationInviteCodeEntryModel.codeLength)
+        return NSSize(
+            width: Self.slotSize.width * slotCount + Self.slotSpacing * (slotCount - 1),
+            height: Self.slotSize.height
+        )
     }
 
     @available(*, unavailable)
@@ -46,6 +69,34 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         window?.makeFirstResponder(hiddenField)
+        refreshAppearance()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshAppearance()
+    }
+
+    override func layout() {
+        super.layout()
+        positionCaret()
+    }
+
+    func control(
+        _ control: NSControl,
+        textView: NSTextView,
+        doCommandBy commandSelector: Selector
+    ) -> Bool {
+        switch commandSelector {
+        case #selector(NSResponder.insertNewline(_:)):
+            onSubmit?()
+            return true
+        case #selector(NSResponder.cancelOperation(_:)):
+            onCancel?()
+            return true
+        default:
+            return false
+        }
     }
 
     func controlTextDidChange(_ notification: Notification) {
@@ -57,6 +108,7 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
             }
         }
         updateSlots()
+        onChange?(model.isComplete)
     }
 
     private func setup(accessibilityLabel: String) {
@@ -66,29 +118,29 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
 
         stack.orientation = .horizontal
         stack.alignment = .centerY
-        stack.distribution = .fillEqually
-        stack.spacing = 8
+        stack.distribution = .gravityAreas
+        stack.spacing = Self.slotSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
         for label in slotLabels {
             label.alignment = .center
-            label.font = .monospacedSystemFont(ofSize: 18, weight: .semibold)
+            label.font = .monospacedSystemFont(ofSize: 22, weight: .semibold)
             label.textColor = .labelColor
             label.wantsLayer = true
-            label.layer?.cornerRadius = 9
+            label.layer?.cornerRadius = 12
             label.layer?.borderWidth = 1
-            label.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.45).cgColor
-            label.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.28).cgColor
             label.translatesAutoresizingMaskIntoConstraints = false
-            label.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             stack.addArrangedSubview(label)
             NSLayoutConstraint.activate([
-                label.widthAnchor.constraint(equalToConstant: 45),
-                label.heightAnchor.constraint(equalToConstant: 40),
+                label.widthAnchor.constraint(equalToConstant: Self.slotSize.width),
+                label.heightAnchor.constraint(equalToConstant: Self.slotSize.height),
             ])
         }
+
+        caret.wantsLayer = true
+        caret.layer?.cornerRadius = 1
+        addSubview(caret)
 
         hiddenField.delegate = self
         hiddenField.isBordered = false
@@ -100,10 +152,10 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         addSubview(hiddenField)
 
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor),
             hiddenField.leadingAnchor.constraint(equalTo: leadingAnchor),
             hiddenField.topAnchor.constraint(equalTo: topAnchor),
             hiddenField.widthAnchor.constraint(equalToConstant: 1),
@@ -113,9 +165,78 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         updateSlots()
     }
 
+    /// The slot that receives the next typed character, or `nil` when the code is complete.
+    private var activeSlotIndex: Int? {
+        model.isComplete ? nil : model.value.count
+    }
+
     private func updateSlots() {
         for (label, character) in zip(slotLabels, model.displayCharacters) {
             label.stringValue = character
         }
+        setAccessibilityValue(model.value)
+        refreshAppearance()
+        positionCaret()
+    }
+
+    private func refreshAppearance() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            applySlotStyles()
+            caret.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        }
+    }
+
+    private func applySlotStyles() {
+        for (index, label) in slotLabels.enumerated() {
+            guard let layer = label.layer else { continue }
+            let isFilled = index < model.value.count
+            if index == activeSlotIndex {
+                layer.borderWidth = 1.5
+                layer.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.85).cgColor
+                layer.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
+            } else if isFilled {
+                layer.borderWidth = 1
+                layer.borderColor = NSColor.separatorColor.cgColor
+                layer.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
+            } else {
+                layer.borderWidth = 1
+                layer.borderColor = NSColor.separatorColor.withAlphaComponent(0.5).cgColor
+                layer.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.15).cgColor
+            }
+        }
+    }
+
+    private func positionCaret() {
+        guard let activeSlotIndex else {
+            caret.isHidden = true
+            caret.layer?.removeAnimation(forKey: Self.caretBlinkAnimationKey)
+            return
+        }
+        let slot = slotLabels[activeSlotIndex]
+        let slotFrame = slot.convert(slot.bounds, to: self)
+        let caretHeight: CGFloat = 24
+        caret.frame = NSRect(
+            x: (slotFrame.midX - 1).rounded(),
+            y: (slotFrame.midY - caretHeight / 2).rounded(),
+            width: 2,
+            height: caretHeight
+        )
+        caret.isHidden = false
+        restartCaretBlink()
+    }
+
+    private static let caretBlinkAnimationKey = "cmux.inviteCode.caretBlink"
+
+    private func restartCaretBlink() {
+        guard let layer = caret.layer else { return }
+        guard layer.animation(forKey: Self.caretBlinkAnimationKey) == nil else { return }
+        let blink = CABasicAnimation(keyPath: "opacity")
+        blink.fromValue = 1.0
+        blink.toValue = 0.0
+        blink.duration = 0.55
+        blink.autoreverses = true
+        blink.repeatCount = .infinity
+        blink.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(blink, forKey: Self.caretBlinkAnimationKey)
     }
 }

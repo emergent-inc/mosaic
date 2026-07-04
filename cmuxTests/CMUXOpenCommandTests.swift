@@ -472,7 +472,7 @@ final class CMUXOpenCommandTests: XCTestCase {
         let homeURL = rootURL.appendingPathComponent("home", isDirectory: true)
         let targetCLIURL = homeURL
             .appendingPathComponent("Library/Developer/Xcode/DerivedData/cmux-\(tag)", isDirectory: true)
-            .appendingPathComponent("Build/Products/Debug/cmux DEV \(tag).app", isDirectory: true)
+            .appendingPathComponent("Build/Products/Debug/Mosaic DEV \(tag).app", isDirectory: true)
             .appendingPathComponent("Contents/Resources/bin/cmux", isDirectory: false)
         let targetResourcesURL = targetCLIURL
             .deletingLastPathComponent()

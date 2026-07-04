@@ -7,7 +7,7 @@
 // Project Identity
 // ==========================================
 PRODUCT_NAME = cmux
-PRODUCT_DISPLAY_NAME = cmux
+PRODUCT_DISPLAY_NAME = Mosaic
 PRODUCT_BUNDLE_IDENTIFIER = dev.cmux.ios
 // User-visible version (CFBundleShortVersionString). Semver X.Y.Z, bumped on
 // release with ios/scripts/bump-ios-version.sh. Keep this human-meaningful and
@@ -48,7 +48,7 @@ GENERATE_INFOPLIST_FILE = NO
 INFOPLIST_FILE = Config/Info.plist
 INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationLandscapeRight UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationPortrait
 INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeRight UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
-INFOPLIST_KEY_NSCameraUsageDescription = Scan cmux pairing QR codes from your Mac terminal.
+INFOPLIST_KEY_NSCameraUsageDescription = Scan Mosaic pairing QR codes from your Mac terminal.
 
 // ==========================================
 // Entitlements

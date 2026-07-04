@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Link } from "../../../../i18n/navigation";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — cmux",
+  title: "Privacy Policy — Mosaic",
   description: "Privacy policy for cmux",
   alternates: { canonical: "https://mosaic.inc/privacy-policy" },
 };

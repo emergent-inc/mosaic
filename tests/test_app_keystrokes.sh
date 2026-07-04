@@ -4,21 +4,21 @@
 
 set -e
 
-echo "=== cmux Keystroke Test ==="
+echo "=== Mosaic Keystroke Test ==="
 echo ""
 
-# Check if cmux is running
-if ! pgrep -x "cmux" > /dev/null; then
-    echo "Error: cmux is not running"
-    echo "Please start cmux first"
+# Check if Mosaic is running
+if ! pgrep -x "Mosaic" > /dev/null; then
+    echo "Error: Mosaic is not running"
+    echo "Please start Mosaic first"
     exit 1
 fi
 
-echo "cmux is running"
+echo "Mosaic is running"
 echo ""
 
 # Activate cmux
-osascript -e 'tell application "cmux" to activate'
+osascript -e 'tell application "Mosaic" to activate'
 sleep 0.5
 
 echo "Test 1: Testing Ctrl+C (SIGINT)"
@@ -56,7 +56,7 @@ echo "  If cat exited, Ctrl+D is working!"
 echo ""
 
 echo "=== Manual Verification Required ==="
-echo "Please check the cmux window to verify:"
+echo "Please check the Mosaic window to verify:"
 echo "  1. The 'sleep 30' command was interrupted by Ctrl+C"
 echo "  2. The 'cat' command exited after Ctrl+D"
 echo ""

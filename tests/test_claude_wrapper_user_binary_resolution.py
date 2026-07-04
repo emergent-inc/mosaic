@@ -41,7 +41,7 @@ def run_wrapper(argv: list[str], env: dict[str, str]) -> subprocess.CompletedPro
 def test_wrapper_skips_cmux_shims_and_bundled_claude(failures: list[str]) -> None:
     with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-resolution-") as td:
         root = Path(td)
-        bundle_bin = root / "cmux.app" / "Contents" / "Resources" / "bin"
+        bundle_bin = root / "Mosaic.app" / "Contents" / "Resources" / "bin"
         shim_bin = root / "shim-bin"
         real_bin = root / "real-bin"
         for directory in (bundle_bin, shim_bin, real_bin):

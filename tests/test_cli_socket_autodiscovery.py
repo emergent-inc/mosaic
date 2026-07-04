@@ -482,19 +482,19 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
         nightly_cli = bundled_cli_for_variant(
             cli_path,
             apps,
-            "cmux NIGHTLY",
+            "Mosaic NIGHTLY",
             "mosaic.com.emergent.app.nightly",
         )
         isolated_nightly_cli = bundled_cli_for_variant(
             cli_path,
             apps,
-            "cmux NIGHTLY issue3542",
+            "Mosaic NIGHTLY issue3542",
             "mosaic.com.emergent.app.nightly.issue3542",
         )
         dev_agent_cli = bundled_cli_for_variant(
             cli_path,
             apps,
-            "cmux DEV agent",
+            "Mosaic DEV agent",
             "mosaic.com.emergent.app.debug.agent",
         )
 
@@ -594,7 +594,7 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
             debug_cli = bundled_cli_for_variant(
                 cli_path,
                 apps,
-                "cmux DEV issue3542",
+                "Mosaic DEV issue3542",
                 "mosaic.com.emergent.app.debug",
             )
             proc = subprocess.run(

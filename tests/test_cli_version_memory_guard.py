@@ -64,7 +64,7 @@ def copy_runtime_frameworks(cli_path: str, fixture_contents: str) -> None:
 
 
 def build_fixture(root: str, cli_path: str) -> str:
-    app_path = os.path.join(root, "cmux.app")
+    app_path = os.path.join(root, "Mosaic.app")
     contents_path = os.path.join(app_path, "Contents")
     resources_path = os.path.join(contents_path, "Resources")
     bin_path = os.path.join(resources_path, "bin")

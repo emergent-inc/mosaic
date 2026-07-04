@@ -1,5 +1,5 @@
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
 import Testing
 
 @Suite struct RosettaNativeRelaunchTests {

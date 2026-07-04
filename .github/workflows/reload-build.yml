@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Dev build tag (becomes cmux DEV <tag> / dev.cmux.ios.<tag>)
+        description: Dev build tag (becomes Mosaic DEV <tag> / dev.cmux.ios.<tag>)
         required: true
         type: string
       ref:
@@ -137,7 +137,7 @@ jobs:
           set -euo pipefail
           slug="$(printf '%s' "$BUILD_TAG" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')"
           bundle_id="dev.cmux.ios.$slug"
-          display_name="cmux DEV $BUILD_TAG"
+          display_name="Mosaic DEV $BUILD_TAG"
 
           # Register the iOS platform if the runner only has macOS provisioned.
           ios_ready() { xcrun simctl runtime list 2>/dev/null | grep -qiE "iOS [0-9].*\(Ready\)"; }

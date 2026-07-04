@@ -82,20 +82,20 @@ def all_processes() -> list[tuple[int, str]]:
 
 def find_pid(label: str, processes: list[tuple[int, str]]) -> int | None:
     if label == "mac":
-        needle = f"cmux-{TAG}/Build/Products/Debug/cmux DEV {TAG}.app/Contents/MacOS/cmux DEV"
+        needle = f"cmux-{TAG}/Build/Products/Debug/Mosaic DEV {TAG}.app/Contents/MacOS/Mosaic DEV"
         for pid, command in processes:
             if needle in command:
                 return pid
     elif label == "iphone":
         candidates: list[int] = []
         for pid, command in processes:
-            if f"/Devices/{IPHONE_SIM_ID}/" in command and "cmux.app/cmux" in command:
+            if f"/Devices/{IPHONE_SIM_ID}/" in command and "Mosaic.app/cmux" in command:
                 candidates.append(pid)
         return max(candidates) if candidates else None
     elif label == "ipad":
         candidates: list[int] = []
         for pid, command in processes:
-            if f"/Devices/{IPAD_SIM_ID}/" in command and "cmux.app/cmux" in command:
+            if f"/Devices/{IPAD_SIM_ID}/" in command and "Mosaic.app/cmux" in command:
                 candidates.append(pid)
         return max(candidates) if candidates else None
     return None
