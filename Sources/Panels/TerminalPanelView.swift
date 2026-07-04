@@ -165,7 +165,7 @@ struct TerminalPanelView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
-        .background(isAgentRoomWireDropTargeted ? Color.accentColor.opacity(0.14) : Color.clear)
+        .background(isAgentRoomWireDropTargeted ? Color.blue.opacity(0.14) : Color.clear)
         // The pane drop target only covers the terminal content area, so wire drops
         // released over the header (including the link button itself — the natural
         // button-to-button gesture) must be accepted here; otherwise the drop
@@ -215,7 +215,7 @@ struct TerminalPanelView: View {
             .foregroundStyle(Color.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(Color.accentColor))
+            .background(Capsule().fill(Color.blue))
             .accessibilityIdentifier("TerminalAgentRoomConnectedPill")
         }
     }
@@ -376,14 +376,14 @@ struct TerminalPanelView: View {
             label: state.label,
             isDisabled: false,
             hoverCursor: .openHand,
-            hoverBackgroundColor: .accentColor,
-            hoverForegroundColor: .accentColor,
+            hoverBackgroundColor: .blue,
+            hoverForegroundColor: .blue,
             isHoverForced: isAgentRoomButtonHovered,
             action: {
                 CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
             }
         )
-        .foregroundColor(state.isConnected ? .accentColor : .secondary)
+        .foregroundColor(state.isConnected ? .blue : .secondary)
         .accessibilityIdentifier("TerminalAgentRoomButton")
         .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
         .overlay {
@@ -453,11 +453,6 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 }
 
             } else {
-                Text(CollaborationStrings.sessionNotJoinedDetail)
-                    .cmuxFont(size: 11)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 VStack(alignment: .leading, spacing: 6) {
                     TrackedButton("session_create", CollaborationStrings.createSession) {
                         onCreate()
@@ -472,7 +467,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
             }
         }
         .padding(14)
-        .frame(width: 260)
+        .frame(width: 220)
     }
 }
 
@@ -525,12 +520,14 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                         TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
                             onStopSharing()
                         }
+                        .fixedSize()
                     }
                     Spacer()
                     TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
                     .keyboardShortcut(.defaultAction)
+                    .fixedSize()
                 }
             } else if model.showsRecipientSelection {
                 VStack(alignment: .leading, spacing: 6) {
@@ -555,7 +552,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
             }
         }
         .padding(14)
-        .frame(width: 240)
+        .frame(width: 300)
     }
 
     private func binding(for participantID: String) -> Binding<Bool> {
