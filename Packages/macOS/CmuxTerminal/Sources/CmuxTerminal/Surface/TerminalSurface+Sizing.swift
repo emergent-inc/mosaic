@@ -368,6 +368,14 @@ extension TerminalSurface {
         return true
     }
 
+    /// Whether the surface grid is capped below the pane (mobile pairing or a
+    /// collaboration mirror lock), so the rendered grid is letterboxed at the
+    /// top-left with blank margin (and an edge border) toward the bottom-right.
+    /// Overlay geometry must anchor top-left (not centered) when this is true.
+    public var isViewportCellCapped: Bool {
+        effectiveViewportCellLimit != nil
+    }
+
     /// The effective grid cap in cells, combining the mobile-pairing viewport
     /// limit and the collaboration full-grid mirror lock. When both are set
     /// (not expected in practice) the smaller cap per dimension wins. Nil when
