@@ -96,4 +96,16 @@ struct CollaborationPeerIdentityTests {
         #expect(identity.displayName == "Dorsa")
         #expect(identity.imageURL == "https://img.example/dorsa.png")
     }
+
+    @Test
+    func authenticatedParticipantDefaultsToNilImageURL() {
+        let identity = CollaborationPeerIdentity.authenticatedParticipant(
+            peerID: "peer-live-session-1",
+            userID: "user_2abc",
+            displayName: "Dorsa",
+            colorPalette: ["#111111"]
+        )
+
+        #expect(identity.imageURL == nil)
+    }
 }

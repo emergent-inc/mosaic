@@ -26,6 +26,19 @@ test("parsePeer falls back to peerID for older clients without participant metad
   });
 });
 
+test("parsePeer drops absent, empty, whitespace, and non-string imageURL", () => {
+  for (const imageURL of [undefined, null, "", "   ", 42]) {
+    const parsed = parsePeer({
+      peerID: "p1",
+      displayName: "Peer",
+      color: "#123456",
+      imageURL,
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed).not.toHaveProperty("imageURL");
+  }
+});
+
 test("parseEnvelope rejects malformed or oversized frames", () => {
   expect(parseEnvelope("{")).toBeNull();
   expect(parseEnvelope(JSON.stringify({ nope: true }))).toBeNull();
