@@ -38102,6 +38102,28 @@
         }
       }
     },
+    "collaboration.inbox.alert.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.alert.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incoming session invite"
+          }
+        }
+      }
+    },
     "collaboration.inbox.join": {
       "extractionState": "manual",
       "localizations": {

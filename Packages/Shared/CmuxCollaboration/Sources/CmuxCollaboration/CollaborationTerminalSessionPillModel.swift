@@ -9,6 +9,10 @@ public struct CollaborationTerminalSessionPillModel: Equatable, Sendable {
     public let hasSession: Bool
     /// How many people besides the local user are in the session.
     public let otherParticipantCount: Int
+    /// Pending directory-share invites in the local user's inbox. Surfaced as a
+    /// badge on the pill regardless of whether a session exists, so an incoming
+    /// invite is visible without opening the popover.
+    public let incomingInviteCount: Int
 
     /// Creates a pill model.
     /// - Parameters:
@@ -16,12 +20,21 @@ public struct CollaborationTerminalSessionPillModel: Equatable, Sendable {
     ///     session exists.
     ///   - participantCount: Total participants including the local user
     ///     (the shape returned by the runtime's participant snapshots).
-    public init(workspaceSessionCode: String?, participantCount: Int) {
+    ///   - incomingInviteCount: Pending invites in the local user's inbox.
+    public init(
+        workspaceSessionCode: String?,
+        participantCount: Int,
+        incomingInviteCount: Int = 0
+    ) {
         self.hasSession = workspaceSessionCode != nil
         self.otherParticipantCount = hasSession ? max(participantCount - 1, 0) : 0
+        self.incomingInviteCount = max(incomingInviteCount, 0)
     }
 
     /// Whether the pill shows the participant count instead of the
     /// "Start session" label.
     public var showsParticipantCount: Bool { hasSession }
+
+    /// Whether the pill should render an incoming-invite badge.
+    public var showsIncomingBadge: Bool { incomingInviteCount > 0 }
 }
