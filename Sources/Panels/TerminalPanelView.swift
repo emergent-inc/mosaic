@@ -147,9 +147,9 @@ struct TerminalPanelView: View {
         let state = CollaborationRuntime.shared.state(for: panel)
         let agentRoomState = CollaborationRuntime.shared.agentRoomState(for: panel)
         return HStack(spacing: 8) {
-            agentRoomStatusView(state: agentRoomState)
             terminalAgentRoomButton
             Spacer(minLength: 8)
+            agentRoomStatusView(state: agentRoomState)
             terminalSessionPill(state: state)
             if state.workspaceSessionCode != nil || state.isMirrored {
                 terminalShareButton(state: state)
@@ -414,29 +414,49 @@ struct TerminalPanelView: View {
 
     private var terminalAgentRoomButton: some View {
         let state = CollaborationRuntime.shared.agentRoomState(for: panel)
-        return PanelHeaderIconButton(
-            systemName: state.isConnected ? "link.circle.fill" : "link.circle",
-            label: state.label,
-            isDisabled: false,
-            hoverCursor: .openHand,
-            hoverBackgroundColor: .blue,
-            hoverForegroundColor: .blue,
-            isHoverForced: isAgentRoomButtonHovered,
-            action: {
-                CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
-            }
-        )
-        .foregroundColor(state.isConnected ? .blue : .secondary)
-        .accessibilityIdentifier("TerminalAgentRoomButton")
-        .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
-        .overlay {
-            AgentRoomWireDragSourceRepresentable(
-                panel: panel,
-                onHoverChanged: { isAgentRoomButtonHovered = $0 }
-            ) {
-                CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
-            }
+        return AgentRoomWireHandle {
+            agentRoomWirePin(isHovered: isAgentRoomButtonHovered)
+                .accessibilityIdentifier("TerminalAgentRoomButton")
+                .accessibilityLabel(state.label)
+                // Wire origin + drag source ride on the pin so the grab handle and
+                // the wire's start point are exactly the dot, not the whole cell.
+                .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
+                .overlay {
+                    AgentRoomWireDragSourceRepresentable(
+                        panel: panel,
+                        onHoverChanged: { isAgentRoomButtonHovered = $0 }
+                    ) {
+                        CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
+                    }
+                }
         }
+        .help(state.label)
+    }
+
+    private func agentRoomWirePin(isHovered: Bool) -> some View {
+        VStack(spacing: 0) {
+            Circle()
+                .fill(AgentRoomWireMetrics.pinColor)
+                .frame(
+                    width: AgentRoomWireMetrics.dotSize,
+                    height: AgentRoomWireMetrics.dotSize
+                )
+                .scaleEffect(isHovered ? 1.08 : 1)
+            Rectangle()
+                .fill(AgentRoomWireMetrics.pinColor)
+                .frame(
+                    width: AgentRoomWireMetrics.stemWidth,
+                    height: AgentRoomWireMetrics.stemHeight
+                )
+                .offset(y: -AgentRoomWireMetrics.stemOverlap)
+        }
+        .frame(
+            width: AgentRoomWireMetrics.dotSize,
+            height: AgentRoomWireMetrics.pinHeight,
+            alignment: .top
+        )
+        .contentShape(Rectangle())
+        .animation(.easeOut(duration: 0.12), value: isHovered)
     }
 }
 
@@ -789,7 +809,7 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .openHand)
+        addCursorRect(bounds, cursor: .crosshair)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -892,12 +912,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
 
     private func pushClosedHandCursorIfNeeded() {
         guard !closedHandCursorPushed else { return }
-        NSCursor.closedHand.push()
+        NSCursor.crosshair.push()
         closedHandCursorPushed = true
     }
 
     private var activeCursor: NSCursor {
-        closedHandCursorPushed ? .closedHand : .openHand
+        .crosshair
     }
 
     private func popClosedHandCursorIfNeeded() {
@@ -983,6 +1003,34 @@ private final class AgentRoomWireAnchorView: NSView {
         Task { @MainActor in
             CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID, ownerID: ownerID)
         }
+    }
+}
+
+private enum AgentRoomWireMetrics {
+    static let dotSize: CGFloat = 12
+    static let stemWidth: CGFloat = 3
+    static let stemHeight: CGFloat = 14
+    /// How far the stem tucks up under the dot so the join looks continuous.
+    static let stemOverlap: CGFloat = 2
+    static var pinHeight: CGFloat { dotSize + stemHeight - stemOverlap }
+    static let pinColor = Color(red: 0.04, green: 0.52, blue: 1.0).opacity(0.60)
+}
+
+/// The agent-room wire affordance: a solid blue pin (dot + stem) like a text-
+/// selection handle. The dot sits on the header edge and the stem hangs into
+/// the terminal. The pin content (with drag source + anchor overlays) is
+/// supplied by the caller.
+private struct AgentRoomWireHandle<Pin: View>: View {
+    @ViewBuilder var pin: () -> Pin
+
+    /// Fixed layout footprint so surrounding header items never shift.
+    private let footprintHeight: CGFloat = 30
+
+    var body: some View {
+        pin()
+            .frame(width: AgentRoomWireMetrics.dotSize, height: footprintHeight, alignment: .top)
+            .padding(.bottom, -AgentRoomWireMetrics.stemHeight)
+            .zIndex(2)
     }
 }
 
