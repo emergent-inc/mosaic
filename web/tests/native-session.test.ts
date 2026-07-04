@@ -117,6 +117,33 @@ describe("cmux native session tokens", () => {
     });
   });
 
+  test("preserves team workspace claims across refreshes", () => {
+    const original = mintNativeSessionTokenPair({
+      userId: "user_123",
+      selectedTeamId: "org_selected",
+      teamIds: ["org_selected"],
+      teamWorkspaces: [{
+        id: "org_selected",
+        workspaceType: "team",
+        mosaicPlan: "team",
+        useType: "commercial",
+        billingStatus: "trial",
+        vmBillingPlanId: "team",
+      }],
+    });
+
+    const refreshed = refreshNativeSessionTokenPair(original.refreshToken);
+
+    expect(verifyNativeAuthToken(refreshed!.accessToken)?.teamWorkspaces).toEqual([{
+      id: "org_selected",
+      workspaceType: "team",
+      mosaicPlan: "team",
+      useType: "commercial",
+      billingStatus: "trial",
+      vmBillingPlanId: "team",
+    }]);
+  });
+
   test("normalizes a missing or null imageURL to null when minting", () => {
     const withoutImage = mintNativeSessionTokenPair({
       userId: "user_123",

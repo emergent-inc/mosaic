@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Locale } from "../../../i18n/routing";
 import { locales, routing } from "../../../i18n/routing";
 import { mintNativeSessionTokenPair } from "../../../services/auth/nativeSession";
+import {
+  MOSAIC_TEAM_WORKSPACE_DEFAULTS,
+  resolveMosaicWorkspaceMetadata,
+} from "../../../services/workspaces/mosaicWorkspace";
 
 const NATIVE_SCHEME = "mosaic://";
 const NATIVE_SCHEMES = new Set(["mosaic", "mosaic-nightly"]);
@@ -40,7 +44,11 @@ type ClerkUserLike = {
 };
 
 type ClerkOrganizationMembershipLike = {
-  organization?: { id?: string | null } | null;
+  organization?: {
+    id?: string | null;
+    privateMetadata?: unknown;
+    publicMetadata?: unknown;
+  } | null;
 };
 
 type AfterSignInHandlerDependencies = {
@@ -325,6 +333,9 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
       auth.orgId ?? undefined,
       ...memberships.map((membership) => membership.organization?.id ?? undefined),
     ]);
+    const teamWorkspaces = memberships
+      .map((membership) => teamWorkspaceForMembership(membership))
+      .filter((workspace): workspace is NonNullable<ReturnType<typeof teamWorkspaceForMembership>> => workspace !== null);
     const tokens = mintNativeSessionTokenPair({
       userId: auth.userId,
       displayName: displayNameFor(user),
@@ -332,6 +343,7 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
       imageURL: imageURLFor(user),
       selectedTeamId: auth.orgId ?? teamIds[0] ?? null,
       teamIds,
+      teamWorkspaces,
     });
 
     const nativeReturnTo = request.nextUrl.searchParams.get("native_app_return_to");
@@ -379,6 +391,36 @@ function primaryEmailFor(user: ClerkUserLike | null): string | null {
 function imageURLFor(user: ClerkUserLike | null): string | null {
   const imageUrl = user?.imageUrl?.trim();
   return imageUrl || null;
+}
+
+function teamWorkspaceForMembership(membership: ClerkOrganizationMembershipLike) {
+  const organization = membership.organization;
+  const id = organization?.id?.trim();
+  if (!id) return null;
+  const metadata = mergedMetadata(
+    organization?.privateMetadata,
+    organization?.publicMetadata,
+  );
+  const workspace = resolveMosaicWorkspaceMetadata(metadata, MOSAIC_TEAM_WORKSPACE_DEFAULTS);
+  return {
+    id,
+    workspaceType: workspace.workspaceType === "team" ? "team" as const : null,
+    mosaicPlan: workspace.plan,
+    useType: workspace.useType,
+    billingStatus: workspace.billingStatus,
+    vmBillingPlanId: workspace.vmBillingPlanId,
+  };
+}
+
+function mergedMetadata(primary: unknown, fallback: unknown): Record<string, unknown> {
+  return {
+    ...metadataRecord(fallback),
+    ...metadataRecord(primary),
+  };
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
 }
 
 function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {

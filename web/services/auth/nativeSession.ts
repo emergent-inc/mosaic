@@ -14,9 +14,19 @@ export type NativeSessionClaims = {
   imageURL: string | null;
   selectedTeamId: string | null;
   teamIds: readonly string[];
+  teamWorkspaces?: readonly NativeSessionTeamWorkspace[];
   exp: number;
   iat: number;
   nonce: string;
+};
+
+export type NativeSessionTeamWorkspace = {
+  id: string;
+  workspaceType: "team" | null;
+  mosaicPlan: "hobby" | "team" | null;
+  useType: "personal" | "commercial" | null;
+  billingStatus: "trial" | "active" | "past_due" | "exempt" | null;
+  vmBillingPlanId: string | null;
 };
 
 export type NativeSessionTokenPair = {
@@ -31,6 +41,7 @@ export type NativeSessionUserInput = {
   imageURL?: string | null;
   selectedTeamId?: string | null;
   teamIds?: readonly string[];
+  teamWorkspaces?: readonly NativeSessionTeamWorkspace[];
 };
 
 export function mintNativeSessionTokenPair(
@@ -53,6 +64,7 @@ export function refreshNativeSessionTokenPair(refreshToken: string): NativeSessi
     imageURL: claims.imageURL,
     selectedTeamId: claims.selectedTeamId,
     teamIds: claims.teamIds,
+    teamWorkspaces: claims.teamWorkspaces,
   });
 }
 
@@ -71,6 +83,7 @@ export function verifyNativeAuthToken(token: string): NativeSessionClaims | null
   }
   if (!isValidClaims(claims)) return null;
   claims.imageURL ??= null;
+  claims.teamWorkspaces ??= [];
   if (claims.exp <= Math.floor(Date.now() / 1000)) return null;
   return claims;
 }
@@ -89,6 +102,7 @@ function claimsFor(
     imageURL: user.imageURL ?? null,
     selectedTeamId: user.selectedTeamId ?? null,
     teamIds: uniqueStrings(user.teamIds ?? []),
+    teamWorkspaces: uniqueTeamWorkspaces(user.teamWorkspaces ?? []),
     exp: nowSeconds + ttlSeconds,
     iat: nowSeconds,
     nonce: randomBytes(16).toString("base64url"),
@@ -125,6 +139,9 @@ function isValidClaims(value: NativeSessionClaims): boolean {
     (value.selectedTeamId === null || typeof value.selectedTeamId === "string") &&
     Array.isArray(value.teamIds) &&
     value.teamIds.every((teamId) => typeof teamId === "string" && teamId.length > 0) &&
+    (value.teamWorkspaces === undefined ||
+      (Array.isArray(value.teamWorkspaces) &&
+        value.teamWorkspaces.every(isValidTeamWorkspace))) &&
     Number.isFinite(value.exp) &&
     Number.isFinite(value.iat) &&
     typeof value.nonce === "string"
@@ -133,4 +150,32 @@ function isValidClaims(value: NativeSessionClaims): boolean {
 
 function uniqueStrings(values: readonly string[]): readonly string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function uniqueTeamWorkspaces(values: readonly NativeSessionTeamWorkspace[]): readonly NativeSessionTeamWorkspace[] {
+  const byId = new Map<string, NativeSessionTeamWorkspace>();
+  for (const value of values) {
+    const id = value.id.trim();
+    if (!id) continue;
+    byId.set(id, { ...value, id });
+  }
+  return [...byId.values()];
+}
+
+function isValidTeamWorkspace(value: NativeSessionTeamWorkspace): boolean {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    (value.workspaceType === null || value.workspaceType === "team") &&
+    (value.mosaicPlan === null || value.mosaicPlan === "hobby" || value.mosaicPlan === "team") &&
+    (value.useType === null || value.useType === "personal" || value.useType === "commercial") &&
+    (value.billingStatus === null ||
+      value.billingStatus === "trial" ||
+      value.billingStatus === "active" ||
+      value.billingStatus === "past_due" ||
+      value.billingStatus === "exempt") &&
+    (value.vmBillingPlanId === null || typeof value.vmBillingPlanId === "string")
+  );
 }
