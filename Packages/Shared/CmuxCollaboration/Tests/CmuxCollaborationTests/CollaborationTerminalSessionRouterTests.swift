@@ -86,6 +86,22 @@ struct CollaborationTerminalSessionRouterTests {
         ) == action)
     }
 
+    @Test
+    func unsharedTerminalInWorkspaceSessionSharesInsteadOfStartingSession() {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: .notShared,
+            workspaceHasSession: true
+        ) == .shareInWorkspaceSession)
+    }
+
+    @Test
+    func unsharedTerminalWithoutWorkspaceSessionStartsSessionChooser() {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: .notShared,
+            workspaceHasSession: false
+        ) == .presentSessionChooser)
+    }
+
     @Test(arguments: [
         (role: CollaborationSurfaceSharingRole.notShared, action: nil),
         (role: CollaborationSurfaceSharingRole.hosted, action: CollaborationTerminalShareAction.presentParticipantPicker),

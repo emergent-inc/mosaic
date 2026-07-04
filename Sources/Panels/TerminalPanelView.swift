@@ -311,29 +311,33 @@ struct TerminalPanelView: View {
 
     private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalShareButtonLabel(state: state)
+        // The "Viewing" pill (mirrored terminal) uses a lower-saturation orange so it
+        // reads as a passive presence indicator rather than an active share control.
+        let tint = state.isMirrored
+            ? Color(hue: 0.085, saturation: 0.5, brightness: 0.95)
+            : Color.orange
         return TrackedButton("terminal_share", action: {
-            if state.isMirrored {
-                CollaborationRuntime.shared.setSharing(false, for: panel)
-            } else {
-                if !CollaborationRuntime.shared.state(for: panel).isHosted {
-                    CollaborationRuntime.shared.setSharing(true, for: panel)
-                }
-                isTerminalRecipientPopoverPresented = true
+            // "Viewing" is a read-only presence indicator in a shared session:
+            // pressing it must do nothing.
+            guard !state.isMirrored else { return }
+            if !CollaborationRuntime.shared.state(for: panel).isHosted {
+                CollaborationRuntime.shared.setSharing(true, for: panel)
             }
+            isTerminalRecipientPopoverPresented = true
         }) {
             Text(label)
                 .cmuxFont(size: 10, weight: .semibold)
                 .lineLimit(1)
-                .foregroundStyle(Color.orange)
+                .foregroundStyle(tint)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
                 .background {
                     Capsule()
-                        .fill(Color.orange.opacity(state.isHosted ? 0.14 : 0.08))
+                        .fill(tint.opacity(state.isHosted ? 0.14 : 0.08))
                 }
                 .overlay {
                     Capsule()
-                        .stroke(Color.orange.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
+                        .stroke(tint.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
                 }
         }
         .buttonStyle(.plain)
@@ -364,7 +368,7 @@ struct TerminalPanelView: View {
             return CollaborationStrings.viewingRemoteTerminal
         }
         guard state.isHosted else {
-            return CollaborationStrings.shareTerminal
+            return CollaborationStrings.share
         }
         return CollaborationStrings.sharingTerminal
     }
@@ -457,6 +461,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     TrackedButton("session_create", CollaborationStrings.createSession) {
                         onCreate()
                     }
+                    .buttonStyle(.mosaicAccent)
                     .keyboardShortcut(.defaultAction)
 
                     TrackedButton("session_join", CollaborationStrings.joinSession) {
@@ -526,6 +531,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                         onCopyInviteCode()
                     }
+                    .buttonStyle(.mosaicAccent)
                     .keyboardShortcut(.defaultAction)
                     .fixedSize()
                 }
@@ -537,7 +543,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                                 .cmuxFont(size: 11)
                                 .lineLimit(1)
                         }
-                        .toggleStyle(.checkbox)
+                        .toggleStyle(.mosaicAccentCheckbox)
                     }
                 }
 
