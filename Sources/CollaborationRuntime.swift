@@ -2676,6 +2676,7 @@ final class CollaborationRuntime {
                     properties: ["session_code_present": true]
                 )
                 trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode, workspaceID: terminal.workspaceId)
+                recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
                 share(terminal: terminal, via: connection, entrypoint: .startDialogCreate)
             }
             presentCreatedSessionDialog(code: response.sessionCode)
@@ -4623,6 +4624,18 @@ private final class CollaborationStartChooserPanel {
             self?.finish(.alertFirstButtonReturn)
         }
         createButton.bezelColor = .controlAccentColor
+        // The accent bezel is the yellow primary color; use black title text so it
+        // stays legible (the default prominent-button title is white).
+        let createButtonTitleStyle = NSMutableParagraphStyle()
+        createButtonTitleStyle.alignment = .center
+        createButton.attributedTitle = NSAttributedString(
+            string: CollaborationStrings.createSession,
+            attributes: [
+                .foregroundColor: NSColor.black,
+                .font: NSFont.systemFont(ofSize: 16, weight: .semibold),
+                .paragraphStyle: createButtonTitleStyle,
+            ]
+        )
         let joinButton = makeButton(title: CollaborationStrings.joinSession, keyEquivalent: "") { [weak self] in
             self?.finish(.alertSecondButtonReturn)
         }

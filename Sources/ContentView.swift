@@ -2,6 +2,7 @@ import AppKit
 import CMUXAuthCore
 import CmuxAuthRuntime
 import CmuxAppKitSupportUI
+import CmuxCollaboration
 import CmuxCommandPalette
 import CmuxCore
 import CmuxFeedback
@@ -13446,17 +13447,42 @@ struct SidebarParticipantAvatarStack: View, Equatable {
             lhs.fontScale == rhs.fontScale
     }
 
-    private var displayedParticipants: [CollaborationWorkspaceParticipantSnapshot] {
-        Array(participants.prefix(2))
+    /// Maximum number of overlapping circles to render on a row (avatars plus
+    /// any "+N" overflow bubble). Keeps the groupchat-style stack from
+    /// overflowing narrow sidebar rows.
+    private static let maxVisibleAvatars = 4
+
+    private var layout: CollaborationAvatarStackLayout {
+        CollaborationAvatarStackLayout(
+            participantCount: participants.count,
+            maxVisibleAvatars: Self.maxVisibleAvatars
+        )
     }
+
+    private var displayedParticipants: [CollaborationWorkspaceParticipantSnapshot] {
+        Array(participants.prefix(layout.visibleAvatarCount))
+    }
+
+    private var overflowCount: Int { layout.overflowCount }
+
+    /// Total rendered circles, including the overflow bubble when present.
+    private var slotCount: Int { layout.slotCount }
 
     private var avatarSize: CGFloat {
         max(16, 18 * fontScale)
     }
 
+    private var overlapFactor: CGFloat { 0.62 }
+
     private var stackWidth: CGFloat {
-        guard !displayedParticipants.isEmpty else { return 0 }
-        return avatarSize + CGFloat(displayedParticipants.count - 1) * avatarSize * 0.62
+        guard slotCount > 0 else { return 0 }
+        return avatarSize + CGFloat(slotCount - 1) * avatarSize * overlapFactor
+    }
+
+    private var avatarBorderColor: Color { Color(nsColor: .controlBackgroundColor) }
+    private var avatarBorderWidth: CGFloat { max(1.5, avatarSize * 0.1) }
+    private var avatarShadow: CollaborationParticipantAvatarImage.Shadow {
+        CollaborationParticipantAvatarImage.Shadow(color: .black.opacity(0.12), radius: 1, x: 0, y: 0.5)
     }
 
     var body: some View {
@@ -13468,21 +13494,39 @@ struct SidebarParticipantAvatarStack: View, Equatable {
                     fallbackFontSize: max(7, avatarSize * 0.38),
                     fallbackFontWeight: .bold,
                     fallbackUsesRoundedDesign: true,
-                    borderColor: Color(nsColor: .controlBackgroundColor),
-                    borderWidth: max(1.5, avatarSize * 0.1),
-                    shadow: CollaborationParticipantAvatarImage.Shadow(
-                        color: .black.opacity(0.12),
-                        radius: 1,
-                        x: 0,
-                        y: 0.5
-                    )
+                    borderColor: avatarBorderColor,
+                    borderWidth: avatarBorderWidth,
+                    shadow: avatarShadow
                 )
-                    .offset(x: CGFloat(index) * avatarSize * 0.62)
+                    .offset(x: CGFloat(index) * avatarSize * overlapFactor)
                     .zIndex(Double(index))
+            }
+            if overflowCount > 0 {
+                overflowBubble
+                    .offset(x: CGFloat(displayedParticipants.count) * avatarSize * overlapFactor)
+                    .zIndex(Double(displayedParticipants.count))
             }
         }
         .frame(width: stackWidth, height: avatarSize, alignment: .leading)
         .accessibilityHidden(true)
+    }
+
+    private var overflowBubble: some View {
+        ZStack {
+            Circle()
+                .fill(Color(nsColor: .tertiaryLabelColor))
+            Text(verbatim: "+\(overflowCount)")
+                .font(.system(size: max(7, avatarSize * 0.34), weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(width: avatarSize, height: avatarSize)
+        .clipShape(Circle())
+        .overlay {
+            Circle().stroke(avatarBorderColor, lineWidth: avatarBorderWidth)
+        }
+        .shadow(color: avatarShadow.color, radius: avatarShadow.radius, x: avatarShadow.x, y: avatarShadow.y)
     }
 }
 
@@ -13503,36 +13547,18 @@ struct CollaborationParticipantAvatarImage: View {
     var borderWidth: CGFloat = 0
     var shadow: Shadow? = nil
 
-    private var diceBearURL: URL? {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "api.dicebear.com"
-        components.path = "/10.x/initials/svg"
-        components.queryItems = [
-            URLQueryItem(name: "seed", value: participant.avatarSeed),
-            URLQueryItem(name: "chars", value: "2"),
-            URLQueryItem(name: "fontSize", value: "42"),
-        ]
-        return components.url
-    }
-
-    private var profileImageURL: URL? {
-        let trimmed = participant.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmed.isEmpty else { return nil }
-        guard let url = URL(string: trimmed) else { return nil }
-        let scheme = url.scheme?.lowercased()
-        guard scheme == "http" || scheme == "https" else { return nil }
-        return url
-    }
-
     var body: some View {
         Group {
-            if let profileImageURL {
-                remoteImage(url: profileImageURL, fallback: {
-                    generatedAvatar
+            switch participant.avatarContent {
+            case .remoteImage(let url):
+                // Prefer the user's real account profile picture (Google/Gmail,
+                // GitHub, etc.). Initials are only an absolute backup when the
+                // remote image is missing or fails to load.
+                remoteImage(url: url, fallback: {
+                    fallbackAvatar
                 })
-            } else {
-                generatedAvatar
+            case .initialsFallback:
+                fallbackAvatar
             }
         }
         .frame(width: size, height: size)
@@ -13544,13 +13570,6 @@ struct CollaborationParticipantAvatarImage: View {
             }
         }
         .shadow(color: shadow?.color ?? .clear, radius: shadow?.radius ?? 0, x: shadow?.x ?? 0, y: shadow?.y ?? 0)
-    }
-
-    @ViewBuilder
-    private var generatedAvatar: some View {
-        remoteImage(url: diceBearURL, fallback: {
-            fallbackAvatar
-        })
     }
 
     private func remoteImage<Fallback: View>(url: URL?, @ViewBuilder fallback: @escaping () -> Fallback) -> some View {
