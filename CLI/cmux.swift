@@ -23333,7 +23333,33 @@ struct CMUXCLI {
                     pid: claudePid
                 )
             }
-            print("OK")
+            // Invisible room recap: a (re)started or cleared Claude session has
+            // lost anything injected into its predecessor, but the persisted room
+            // ledger still has the shared history. Re-seed it here via SessionStart
+            // additionalContext; the app resets this member's delivery cursor so
+            // the next prompt-time consume starts fresh instead of re-delivering.
+            if !suppressVisibleMutations,
+               let recapPayload = try? client.sendV2(
+                   method: "agent.room.recap",
+                   params: ["surface_id": surfaceId]
+               ),
+               let recapText = (recapPayload["text"] as? String)?
+                   .trimmingCharacters(in: .whitespacesAndNewlines),
+               !recapText.isEmpty {
+                telemetry.breadcrumb("claude-hook.session-start.room-recap")
+                let recapHeader = String(
+                    localized: "cli.claudeHook.roomRecap.header",
+                    defaultValue: "Shared Claude room recap (recent activity from wired peer agents):"
+                )
+                print(jsonString([
+                    "hookSpecificOutput": [
+                        "hookEventName": "SessionStart",
+                        "additionalContext": "\(recapHeader)\n\(recapText)",
+                    ],
+                ]))
+            } else {
+                print("OK")
+            }
 
         case "stop", "idle":
             telemetry.breadcrumb("claude-hook.stop")
@@ -23381,6 +23407,17 @@ struct CMUXCLI {
                     print("OK")
                     return
                 }
+
+                // Shared-room delivery is intentionally NOT done here. A Stop-hook
+                // `decision:block` is rendered by Claude as visible "Stop hook"
+                // feedback and force-continues an idle agent, which produced a
+                // visible error banner, re-delivery of already-seen messages, and a
+                // ping-pong auto-continue loop between two wired agents. Delivery is
+                // handled invisibly and exactly-once by the peer's own
+                // `UserPromptSubmit` -> `room-context` hook (cursor-gated
+                // `agent.room.consume`). This hook must not consume here, or it
+                // would advance the cursor and swallow content before the peer's
+                // next prompt can inject it. The turn simply settles idle below.
 
                 // Update session with transcript summary and send completion notification.
                 let completion = summarizeClaudeHookStop(
@@ -23585,15 +23622,34 @@ struct CMUXCLI {
                     callerTerminalBinding: callerTTYBindingProvider,
                     client: client
                 )
+                selfHealClaudeRoomSessionMapping(
+                    sessionStore: sessionStore,
+                    mappedSession: mappedSession,
+                    parsedInput: parsedInput,
+                    workspaceId: workspaceId,
+                    surfaceId: surfaceId,
+                    telemetry: telemetry
+                )
                 let payload = try client.sendV2(
                     method: "agent.room.digest",
                     params: ["surface_id": surfaceId]
                 )
-                let digest = (payload["digest"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let contextPackText = (payload["context_pack_text"] as? String)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                // Standing room directives (persistent, not per-message chatter).
                 let activeInstructions = agentRoomActiveInstructions(from: payload)
-                let contextSections = [digest, contextPackText, activeInstructions]
+                // Drain anything shared with this surface since it last acted. This
+                // is the single, cursor-gated delivery channel for peer messages:
+                // `agent.room.consume` returns only unacknowledged content and then
+                // advances the acknowledgment cursor, so each peer message is
+                // injected here exactly once and never re-delivered. We deliberately
+                // do NOT re-inject the non-cursor-gated digest / context_pack text,
+                // which would re-surface already-seen messages on every prompt.
+                let consumePayload = try? client.sendV2(
+                    method: "agent.room.consume",
+                    params: ["surface_id": surfaceId]
+                )
+                let pendingText = (consumePayload?["text"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let contextSections = [pendingText, activeInstructions]
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 if !contextSections.isEmpty {
@@ -23634,6 +23690,14 @@ struct CMUXCLI {
                     workspaceId: workspaceId,
                     callerTerminalBinding: callerTTYBindingProvider,
                     client: client
+                )
+                selfHealClaudeRoomSessionMapping(
+                    sessionStore: sessionStore,
+                    mappedSession: mappedSession,
+                    parsedInput: parsedInput,
+                    workspaceId: workspaceId,
+                    surfaceId: surfaceId,
+                    telemetry: telemetry
                 )
                 if let text = claudeRoomPublishText(parsedInput: parsedInput, sessionRecord: mappedSession) {
                     _ = try? client.sendV2(
@@ -24906,6 +24970,32 @@ struct CMUXCLI {
         ]
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return relayPromptHeaderPrefixes.contains { trimmed.hasPrefix($0) }
+    }
+
+    /// Self-heals the session-to-surface mapping when a room hook fires for a
+    /// Claude session that has no store record (e.g. claude was relaunched from
+    /// a nested shell and its `SessionStart` hook never registered — the exact
+    /// failure that silently unplugged a wired agent from its room: no publish
+    /// routing, no transcript path for wire-time file backfill, no health).
+    /// The resolved surface here already reflects `CMUX_SURFACE_ID` / caller
+    /// TTY fallbacks, so writing it back makes every later hook deterministic.
+    private func selfHealClaudeRoomSessionMapping(
+        sessionStore: ClaudeHookSessionStore,
+        mappedSession: ClaudeHookSessionRecord?,
+        parsedInput: ClaudeHookParsedInput,
+        workspaceId: String,
+        surfaceId: String,
+        telemetry: CLISocketSentryTelemetry
+    ) {
+        guard mappedSession == nil, let sessionId = parsedInput.sessionId else { return }
+        telemetry.breadcrumb("claude-hook.room.session-selfheal")
+        try? sessionStore.upsert(
+            sessionId: sessionId,
+            workspaceId: workspaceId,
+            surfaceId: surfaceId,
+            cwd: parsedInput.cwd,
+            transcriptPath: parsedInput.transcriptPath
+        )
     }
 
     private func publishClaudeRoomUserPrompt(

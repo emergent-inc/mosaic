@@ -20,6 +20,10 @@ public struct ClaudeRoomEvent: Identifiable, Codable, Sendable, Equatable {
     public let targetSurfaceIDs: [String]
     /// Compact text intended for room history and optional injection.
     public let text: String
+    /// Optional dedup key tying this event to its origin (e.g. a transcript
+    /// turn). Two events with the same non-nil `sourceID` are the same logical
+    /// message, so wire-time backfill can be re-run without duplicating events.
+    public let sourceID: String?
     /// Event creation time.
     public let createdAt: Date
 
@@ -34,6 +38,7 @@ public struct ClaudeRoomEvent: Identifiable, Codable, Sendable, Equatable {
         targetMemberIDs: [String] = [],
         targetSurfaceIDs: [String] = [],
         text: String,
+        sourceID: String? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -45,6 +50,7 @@ public struct ClaudeRoomEvent: Identifiable, Codable, Sendable, Equatable {
         self.targetMemberIDs = targetMemberIDs
         self.targetSurfaceIDs = targetSurfaceIDs
         self.text = text
+        self.sourceID = sourceID
         self.createdAt = createdAt
     }
 }

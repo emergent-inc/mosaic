@@ -357,4 +357,221 @@ struct ClaudeRoomStoreTests {
         #expect(updated.deliveryPolicy == .semiLive)
         #expect(await store.room(id: "room-1")?.deliveryPolicy == .semiLive)
     }
+
+    @Test
+    func appendEventDeduplicatesBySourceID() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        let first = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromSurfaceID: "surface-a",
+            text: "the british are coming",
+            sourceID: "session-a:msg-1"
+        )
+        let duplicate = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromSurfaceID: "surface-a",
+            text: "the british are coming (replayed)",
+            sourceID: "session-a:msg-1"
+        )
+        #expect(first.event.sequence == 1)
+        #expect(duplicate.event == first.event)
+        #expect(await store.room(id: "room-1")?.events.count == 1)
+
+        // A different sourceID is a genuinely new event.
+        let second = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromSurfaceID: "surface-a",
+            text: "reinforcements incoming",
+            sourceID: "session-a:msg-2"
+        )
+        #expect(second.event.sequence == 2)
+        #expect(await store.room(id: "room-1")?.events.count == 2)
+    }
+
+    @Test
+    func wireTimeBackfillSyncsJoiningPeerOnceWithoutReinterruptingExisting() async throws {
+        // Simulates the store-level effect of backfillAgentRoomLedgerFromTranscripts:
+        // seed the ledger from the seeding peer's transcript, then advance the
+        // existing member's cursor while leaving the joining member behind.
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", deliveryPolicy: .semiLive)
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        // Existing peer A has already caught up to the current (empty) ledger.
+        _ = await store.acknowledge(roomID: "room-1", memberID: "member-a", sequence: 0)
+
+        // Peer B wires in; backfill promotes A's pre-wire transcript into the ledger.
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-a",
+            fromSurfaceID: "surface-a",
+            text: "the british are coming",
+            sourceID: "session-a:msg-1"
+        )
+        let room = try #require(await store.room(id: "room-1"))
+        // Existing member A's cursor advances past the backfill; B is left behind.
+        _ = await store.acknowledge(roomID: "room-1", memberID: "member-a", sequence: room.lastSequence)
+
+        // Joining peer B receives the prior conversation exactly once.
+        let joined = await store.consumePendingEvents(roomID: "room-1", memberID: "member-b", surfaceID: "surface-b")
+        #expect(joined.map(\.text) == ["the british are coming"])
+        #expect(await store.consumePendingEvents(roomID: "room-1", memberID: "member-b", surfaceID: "surface-b").isEmpty)
+
+        // Existing peer A is not re-interrupted with the backfilled history.
+        let existing = await store.consumePendingEvents(roomID: "room-1", memberID: "member-a", surfaceID: "surface-a")
+        #expect(existing.isEmpty)
+
+        // Re-wiring B (backfill re-runs) does not duplicate the ledger event.
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-a",
+            fromSurfaceID: "surface-a",
+            text: "the british are coming",
+            sourceID: "session-a:msg-1"
+        )
+        #expect(await store.room(id: "room-1")?.events.count == 1)
+    }
+
+    @Test
+    func consumeSelfHealsFromPeerTranscriptWhenLedgerBacklogEmpty() async throws {
+        // Models agentRoomConsumePendingForAutomation's self-heal: even when the
+        // wire-time backfill produced no ledger events (the peer's liveSession was
+        // not warm at connect), the peer's ingested transcript turns are promoted
+        // into the ledger at consume time and delivered to the recipient exactly
+        // once, with no re-spam on later idle/prompt hooks.
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", deliveryPolicy: .semiLive)
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+        // Peer A's pre-wire message exists only in the transcript index; the
+        // ledger is empty, so the old empty-backlog bail would deliver nothing.
+        _ = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "claude",
+            memberID: "member-a",
+            surfaceID: "surface-a",
+            role: .user,
+            text: "the british are coming",
+            sourceID: "session-a:msg-1"
+        )
+        #expect(await store.room(id: "room-1")?.events.isEmpty == true)
+
+        // The self-heal step: promote each peer transcript turn to the ledger,
+        // then drain for the recipient. Mirrors promoteTranscriptTurnsToLedger +
+        // consumePendingEvents in agentRoomConsumePendingForAutomation.
+        func promoteAndConsume() async -> [ClaudeRoomEvent] {
+            for turn in await store.transcriptTurns(roomID: "room-1", limit: 10) {
+                _ = await store.appendEvent(
+                    roomID: "room-1",
+                    kind: .message,
+                    fromMemberID: turn.memberID,
+                    fromSurfaceID: turn.surfaceID,
+                    text: turn.text,
+                    sourceID: turn.sourceID
+                )
+            }
+            return await store.consumePendingEvents(
+                roomID: "room-1",
+                memberID: "member-b",
+                surfaceID: "surface-b"
+            )
+        }
+
+        let delivered = await promoteAndConsume()
+        #expect(delivered.map(\.text) == ["the british are coming"])
+
+        // A later hook re-runs promote+consume: sourceID dedup holds the ledger at
+        // one event and the advanced cursor yields nothing new (no spam).
+        let again = await promoteAndConsume()
+        #expect(again.isEmpty)
+        #expect(await store.room(id: "room-1")?.events.count == 1)
+    }
+
+    @Test
+    func consumePendingEventsAdvancesCursorAndScopesToRecipient() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+
+        // A peer message, this recipient's own message, and a message targeted at a
+        // third surface. Only the peer message should reach surface-b.
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-a",
+            fromSurfaceID: "surface-a",
+            text: "the british are coming"
+        )
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-b",
+            fromSurfaceID: "surface-b",
+            text: "b's own message"
+        )
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-a",
+            fromSurfaceID: "surface-a",
+            targetSurfaceIDs: ["surface-c"],
+            text: "targeted at c only"
+        )
+
+        let firstPass = await store.consumePendingEvents(
+            roomID: "room-1",
+            memberID: "member-b",
+            surfaceID: "surface-b"
+        )
+        #expect(firstPass.map(\.text) == ["the british are coming"])
+
+        // Cursor advanced to lastSequence: nothing pending on a second drain.
+        let secondPass = await store.consumePendingEvents(
+            roomID: "room-1",
+            memberID: "member-b",
+            surfaceID: "surface-b"
+        )
+        #expect(secondPass.isEmpty)
+
+        // A newly shared peer message is delivered exactly once afterward.
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .message,
+            fromMemberID: "member-a",
+            fromSurfaceID: "surface-a",
+            text: "reinforcements incoming"
+        )
+        let thirdPass = await store.consumePendingEvents(
+            roomID: "room-1",
+            memberID: "member-b",
+            surfaceID: "surface-b"
+        )
+        #expect(thirdPass.map(\.text) == ["reinforcements incoming"])
+        #expect(await store.consumePendingEvents(roomID: "room-1", memberID: "member-b", surfaceID: "surface-b").isEmpty)
+    }
 }

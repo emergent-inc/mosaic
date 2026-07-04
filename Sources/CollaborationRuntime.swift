@@ -391,6 +391,9 @@ typealias CollaborationWorkspaceParticipantSnapshot = CollaborationParticipantAv
 struct AgentRoomHeaderState: Equatable {
     var isConnected = false
     var label = ""
+    /// True when any locally connected member of this room has no Claude hook
+    /// session record (context will not sync for that member).
+    var isDegraded = false
 }
 
 private final class AgentRoomWireAnchor {
@@ -704,11 +707,23 @@ final class CollaborationRuntime {
     private var snapshotFallbackTasks: [String: Task<Void, Never>] = [:]
     private var sessionStartedAtBySessionCode: [String: TimeInterval] = [:]
     private var isPresentingStartDialog = false
-    private let agentRoomStore = ClaudeRoomStore()
+    /// Rooms, members (cursors), events, and indexed transcript turns persist
+    /// under `~/.cmuxterm` so shared context survives an app relaunch. The
+    /// in-memory-only store previously erased every room ledger on restart,
+    /// which silently disconnected wired agents from their shared history.
+    private let agentRoomStore = ClaudeRoomStore(
+        persistenceURL: FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cmuxterm", isDirectory: true)
+            .appendingPathComponent("agent-rooms.json", isDirectory: false)
+    )
     private let agentRoomDigestBuilder = ClaudeRoomDigestBuilder()
     private var agentRoomIDsBySurfaceID: [UUID: String] = [:]
     private var agentRoomMemberIDsBySurfaceID: [UUID: String] = [:]
     private var agentRoomSnapshotsByID: [String: ClaudeRoomSnapshot] = [:]
+    /// Locally connected room surfaces with no Claude hook session record on
+    /// disk (dead link: hooks never registered, so the agent neither publishes
+    /// nor receives). Cached off the view path; the header pill only reads it.
+    private var agentRoomDegradedSurfaceIDs: Set<UUID> = []
     @ObservationIgnored private var agentRoomWireAnchorsBySurfaceID: [UUID: AgentRoomWireAnchor] = [:]
     @ObservationIgnored private let agentRoomWireOverlay = AgentRoomWireOverlayController()
     @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
@@ -718,6 +733,7 @@ final class CollaborationRuntime {
     private let agentRoomTranscriptHistoryLimit = 24
     private let agentRoomContextPackTranscriptLimit = 8
     private let agentRoomTranscriptTurnCharacterLimit = 1_200
+    private let agentRoomBackfillTurnsPerMember = 6
     @ObservationIgnored private var terminalSurfaceReadyObserver: NSObjectProtocol?
 
     private init() {
@@ -725,6 +741,27 @@ final class CollaborationRuntime {
         localAvatarSeed = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? displayName
         peerIdentity = CollaborationPeerIdentity.persistedParticipant(displayName: displayName)
         installTerminalSurfaceReadyObserver()
+        Task { @MainActor [weak self] in
+            await self?.restorePersistedAgentRooms()
+        }
+    }
+
+    /// Rehydrates the per-surface room membership maps and header pills from
+    /// rooms the store loaded off disk. Surface IDs are stable across app
+    /// relaunches (unlike workspace IDs), so persisted members rebind to their
+    /// panes and hooks resolve rooms again without the user re-wiring anything.
+    private func restorePersistedAgentRooms() async {
+        let rooms = await agentRoomStore.allRooms()
+        guard !rooms.isEmpty else { return }
+        for room in rooms {
+            cacheAgentRoom(room)
+            reconcileAgentRoomMembership(with: room)
+        }
+        // Hooks without an explicit surface fall back to latestAgentRoomID, so
+        // point it at the room that most recently saw activity.
+        latestAgentRoomID = rooms.max { lhs, rhs in
+            (lhs.events.last?.createdAt ?? .distantPast) < (rhs.events.last?.createdAt ?? .distantPast)
+        }?.id
     }
 
     /// A mirrored terminal's ghostty surface is created lazily on the first AppKit
@@ -1723,9 +1760,16 @@ final class CollaborationRuntime {
         // appears. Mirrors the workspaceParticipantSnapshotRevision pattern.
         _ = agentRoomHeaderRevision
         if let roomID = agentRoomIDsBySurfaceID[panel.id] {
+            // Degraded when ANY local member of this room has a dead hook link:
+            // a silently unplugged peer breaks context sync for everyone, so
+            // every pane in the room should surface it.
+            let isDegraded = agentRoomDegradedSurfaceIDs.contains { surfaceID in
+                agentRoomIDsBySurfaceID[surfaceID] == roomID
+            }
             return AgentRoomHeaderState(
                 isConnected: true,
-                label: String(format: CollaborationStrings.agentRoomConnectedFormat, roomID.prefix(6).description)
+                label: String(format: CollaborationStrings.agentRoomConnectedFormat, roomID.prefix(6).description),
+                isDegraded: isDegraded
             )
         }
         return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectClaudeRoom)
@@ -2008,17 +2052,62 @@ final class CollaborationRuntime {
     func agentRoomStatusPayload() async -> [String: Any] {
         let rooms = await agentRoomStore.allRooms()
         cacheAgentRooms(rooms)
+        for room in rooms {
+            refreshAgentRoomHookHealth(room: room)
+        }
         return agentRoomStatusPayloadSnapshot()
     }
 
     func agentRoomStatusPayloadSnapshot() -> [String: Any] {
         [
-            "rooms": agentRoomSnapshotsByID.values.sorted { $0.id < $1.id }.map(agentRoomPayload),
+            "rooms": agentRoomSnapshotsByID.values.sorted { $0.id < $1.id }.map(agentRoomStatusRoomPayload),
             "latest_room_id": latestAgentRoomID ?? NSNull(),
             "connected": activeConnection != nil,
             "relay_url": relayURLString,
             "session_code": sessionCode ?? NSNull(),
         ]
+    }
+
+    /// Room payload enriched with per-member link health: whether the member's
+    /// surface has a Claude hook session record on disk (and its transcript
+    /// path). A member without one is a dead link — its hooks never registered,
+    /// so it neither publishes to nor receives from the room. Exposed through
+    /// `cmux agent-room status` so a silently unplugged agent is diagnosable.
+    private func agentRoomStatusRoomPayload(_ room: ClaudeRoomSnapshot) -> [String: Any] {
+        var payload = agentRoomPayload(room)
+        payload["members"] = room.members.map { member -> [String: Any] in
+            var dict = (encodedJSONObject(member) as? [String: Any]) ?? [:]
+            let hook = Self.claudeHookSessionRef(surfaceID: member.surfaceID)
+            dict["hook_linked"] = hook != nil
+            dict["hook_session_id"] = hook?.sessionID ?? NSNull()
+            dict["hook_transcript_path"] = hook?.transcriptPath ?? NSNull()
+            return dict
+        }
+        return payload
+    }
+
+    /// Recomputes which locally connected surfaces of a room have no Claude
+    /// hook session record and caches the result for the header pill. Called
+    /// from membership changes and status/digest refreshes — never from a view
+    /// body (the pill reads only the cached set).
+    private func refreshAgentRoomHookHealth(room: ClaudeRoomSnapshot) {
+        var changed = false
+        for member in room.members {
+            guard let surfaceUUID = UUID(uuidString: member.surfaceID),
+                  agentRoomIDsBySurfaceID[surfaceUUID] == room.id else { continue }
+            let degraded = Self.claudeHookSessionRef(surfaceID: member.surfaceID) == nil
+            if degraded != agentRoomDegradedSurfaceIDs.contains(surfaceUUID) {
+                if degraded {
+                    agentRoomDegradedSurfaceIDs.insert(surfaceUUID)
+                } else {
+                    agentRoomDegradedSurfaceIDs.remove(surfaceUUID)
+                }
+                changed = true
+            }
+        }
+        if changed {
+            agentRoomHeaderRevision &+= 1
+        }
     }
 
     func createAgentRoomForAutomation(title: String?, deliveryPolicy: String?) async -> [String: Any] {
@@ -2051,11 +2140,10 @@ final class CollaborationRuntime {
         guard let surfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID) else {
             return ["connected": false, "error": "No terminal surface is available."]
         }
-        let liveAgentSession = TerminalController.shared.agentChatTranscriptService?
-            .liveSession(surfaceID: surfaceID.uuidString)
+        let hookSession = Self.claudeHookSessionRef(surfaceID: surfaceID.uuidString)
         let member = ClaudeRoomMember(
             surfaceID: surfaceID.uuidString,
-            agentSessionID: agentSessionID ?? liveAgentSession?.sessionID,
+            agentSessionID: agentSessionID ?? hookSession?.sessionID,
             peerID: peerIdentity.peerID,
             displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle
         )
@@ -2078,9 +2166,79 @@ final class CollaborationRuntime {
         latestAgentRoomID = roomID
         cacheAgentRoom(room)
         reconcileAgentRoomMembership(with: room)
-        await ingestAgentRoomTranscriptHistory(roomID: roomID, members: room.members)
-        try? await send(.agentRoomSnapshot(room))
-        return agentRoomPayload(room)
+        await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
+        let backfilledRoom = await backfillAgentRoomLedgerFromTranscripts(
+            roomID: roomID,
+            joiningSurfaceID: surfaceID.uuidString,
+            room: room
+        )
+        cacheAgentRoom(backfilledRoom)
+        try? await send(.agentRoomSnapshot(backfilledRoom))
+        return agentRoomPayload(backfilledRoom)
+    }
+
+    /// Promotes each member's recently ingested transcript turns into deduped
+    /// `.message` ledger events at wire time, so a freshly joined peer
+    /// deterministically syncs the prior conversation (including messages typed
+    /// before it was wired) on its next turn or prompt.
+    ///
+    /// The joining member's acknowledgment cursor is left untouched so its next
+    /// `agent.room.consume` / digest surfaces the backfilled backlog. Every
+    /// pre-existing member's cursor is advanced past the backfill so they are not
+    /// re-interrupted with history they already have.
+    private func backfillAgentRoomLedgerFromTranscripts(
+        roomID: String,
+        joiningSurfaceID: String,
+        room: ClaudeRoomSnapshot
+    ) async -> ClaudeRoomSnapshot {
+        await promoteTranscriptTurnsToLedger(roomID: roomID, members: room.members)
+        guard let updatedRoom = await agentRoomStore.room(id: roomID) else { return room }
+        // Existing peers already have this history; only the joining peer catches up.
+        for member in updatedRoom.members where member.surfaceID != joiningSurfaceID {
+            _ = await agentRoomStore.acknowledge(
+                roomID: roomID,
+                memberID: member.id,
+                sequence: updatedRoom.lastSequence
+            )
+        }
+        return await agentRoomStore.room(id: roomID) ?? updatedRoom
+    }
+
+    /// Promotes each member's recently ingested transcript turns into deduped
+    /// `.message` ledger events: a turn becomes a room event exactly once
+    /// (keyed by the transcript `sourceID`), and `consumePendingEvents`'
+    /// cursor then delivers it to each peer at most once. Turns are ingested
+    /// deterministically from transcript files at wire time
+    /// (`ingestAgentRoomTranscriptFiles`), so re-wiring never duplicates
+    /// events and never depends on live session bindings being warm.
+    private func promoteTranscriptTurnsToLedger(
+        roomID: String,
+        members: [ClaudeRoomMember]
+    ) async {
+        for member in members {
+            let turns = await agentRoomStore.transcriptTurns(
+                roomID: roomID,
+                surfaceID: member.surfaceID,
+                limit: agentRoomBackfillTurnsPerMember
+            )
+            for turn in turns {
+                let text = turn.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { continue }
+                // Stable dedup key: prefer the transcript's own source id, else a
+                // composed key from the room transcript index sequence so re-wiring
+                // or a re-ingest never duplicates the same turn.
+                let sourceID = turn.sourceID
+                    ?? "transcript:\(roomID):\(member.surfaceID):\(turn.sequence)"
+                _ = await agentRoomStore.appendEvent(
+                    roomID: roomID,
+                    kind: .message,
+                    fromMemberID: member.id,
+                    fromSurfaceID: member.surfaceID,
+                    text: text,
+                    sourceID: sourceID
+                )
+            }
+        }
     }
 
     func connectAgentRoomSurfaceForAutomationRequest(
@@ -2179,12 +2337,13 @@ final class CollaborationRuntime {
         )
         cacheAgentRoom(result.room)
         try? await send(.agentRoomEvent(result.event))
-        let dispatch = await dispatchAgentRoomEventIfNeeded(result.event)
+        // Delivery is invisible and pull-based: peers consume pending events via
+        // their own Claude hooks (Stop / UserPromptSubmit). Nothing is typed into
+        // any terminal here.
         return [
             "posted": true,
             "event": encodedJSONObject(result.event),
             "room": agentRoomPayload(result.room),
-            "dispatch": dispatch,
         ]
     }
 
@@ -2207,7 +2366,6 @@ final class CollaborationRuntime {
             Task { @MainActor in
                 await agentRoomStore.apply(snapshot: room)
                 try? await send(.agentRoomEvent(event))
-                _ = await dispatchAgentRoomEventIfNeeded(event)
             }
             return [
                 "posted": true,
@@ -2279,7 +2437,6 @@ final class CollaborationRuntime {
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
             return ["digest": "", "error": "Claude room not found."]
         }
-        await ingestAgentRoomTranscriptHistory(roomID: roomID, members: room.members)
         let contextPackText = await peerAgentRoomContextText(
             roomID: roomID,
             room: room,
@@ -2357,31 +2514,177 @@ final class CollaborationRuntime {
         return ["requested": true]
     }
 
-    private func ingestAgentRoomTranscriptHistory(roomID: String, members: [ClaudeRoomMember]) async {
-        guard let service = TerminalController.shared.agentChatTranscriptService else { return }
-        for member in members {
-            guard let record = service.liveSession(surfaceID: member.surfaceID),
-                  let page = await service.history(
-                    sessionID: record.sessionID,
-                    beforeSeq: nil,
-                    limit: agentRoomTranscriptHistoryLimit
-                  ) else {
-                continue
+    /// Drains anything shared with the given surface since it last consumed, and
+    /// returns it as ready-to-inject prompt text (empty when nothing pending).
+    ///
+    /// This is the invisible pull-based delivery path: a peer's own Claude hook
+    /// (Stop or UserPromptSubmit) calls `agent.room.consume`, which advances the
+    /// acknowledgment cursor so each message reaches a peer at most once. Nothing
+    /// is typed into any terminal. Delivery is gated on the room being in the
+    /// broadcast (`semiLive`) policy that wiring sets, and only broadcastable
+    /// kinds (plain messages plus targeted handoff/question/blocker) are folded in;
+    /// ledger-only kinds (summaries, status, etc.) are consumed but never injected.
+    func agentRoomConsumePendingForAutomation(surfaceID rawSurfaceID: String?) async -> [String: Any] {
+        let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
+        let roomID: String?
+        if rawSurfaceID != nil {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
+            return ["text": ""]
+        }
+        let recipientSurfaceID = surfaceUUID?.uuidString
+        let memberID = surfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        let policy = room.deliveryPolicy
+        guard policy == .semiLive else {
+            // Not a wired/broadcast room: still advance the cursor so a later switch
+            // to broadcast does not replay old backlog, but inject nothing.
+            _ = await agentRoomStore.consumePendingEvents(
+                roomID: roomID,
+                memberID: memberID,
+                surfaceID: recipientSurfaceID
+            )
+            return ["text": ""]
+        }
+        // Consume drains only pushed ledger events. Live content is pushed by
+        // each agent's own hooks (UserPromptSubmit posts the prompt, Stop posts
+        // the reply summary) and pre-wire history enters via the wire-time file
+        // backfill, so there is deliberately no transcript scraping here: it runs
+        // on every prompt and must stay cheap and deterministic.
+        let pending = await agentRoomStore.consumePendingEvents(
+            roomID: roomID,
+            memberID: memberID,
+            surfaceID: recipientSurfaceID
+        )
+        let prompts = pending.compactMap { event in
+            agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy)
+        }
+        return ["text": prompts.joined(separator: "\n\n")]
+    }
+
+    /// Builds a full room recap for a surface whose Claude session just
+    /// (re)started, and advances that member's acknowledgment cursor to the
+    /// room's latest sequence.
+    ///
+    /// This is the restart-amnesia fix: a resumed/cleared Claude session has
+    /// lost whatever was injected into its predecessor, but the persisted
+    /// ledger still knows the room history. The `SessionStart` hook injects
+    /// this recap invisibly via `additionalContext`; resetting the cursor here
+    /// keeps the next `agent.room.consume` from re-delivering the same events
+    /// as increments.
+    ///
+    /// Transcript files are re-ingested and promoted first so the recap is
+    /// self-sufficient even when a member's push hooks never fired (the exact
+    /// silent failure that motivated the deterministic file path).
+    func agentRoomRecapForAutomation(surfaceID rawSurfaceID: String?) async -> [String: Any] {
+        let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
+        let roomID: String?
+        if rawSurfaceID != nil {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
+        } else {
+            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        }
+        guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
+            return ["text": ""]
+        }
+        let recipientSurfaceID = surfaceUUID?.uuidString
+        await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
+        await promoteTranscriptTurnsToLedger(roomID: roomID, members: room.members)
+        guard let refreshed = await agentRoomStore.room(id: roomID) else {
+            return ["text": ""]
+        }
+        // Peer content only: the restarting agent's own turns either survived
+        // its own --resume or were intentionally cleared.
+        let recapRoom: ClaudeRoomSnapshot
+        if let recipientSurfaceID {
+            var filtered = refreshed
+            filtered.events = refreshed.events.filter { event in
+                event.fromSurfaceID != recipientSurfaceID &&
+                    (event.targetSurfaceIDs.isEmpty || event.targetSurfaceIDs.contains(recipientSurfaceID))
             }
-            for message in page.messages {
-                guard let text = agentRoomTranscriptText(from: message) else { continue }
+            recapRoom = filtered
+        } else {
+            recapRoom = refreshed
+        }
+        let recap = agentRoomDigestBuilder.digest(for: recapRoom)
+        // The recap covers everything up to lastSequence; consuming acknowledges
+        // exactly that range so prompt-time delivery starts fresh from here.
+        let memberID = surfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        _ = await agentRoomStore.consumePendingEvents(
+            roomID: roomID,
+            memberID: memberID,
+            surfaceID: recipientSurfaceID
+        )
+        if let synced = await agentRoomStore.room(id: roomID) {
+            cacheAgentRoom(synced)
+        }
+        return ["text": recap, "room_id": roomID]
+    }
+
+    /// Reads each member's Claude transcript JSONL file straight off disk (path
+    /// recorded by the hook session store) and ingests the recent turns into
+    /// the room's transcript index, deduped by `sourceID`.
+    ///
+    /// Deterministic by design: this replaced the live-session/tailer scrape
+    /// (`resolveLiveSession` + `history`) whose warm-up races at wire time
+    /// silently dropped pre-wire messages from the shared room.
+    private func ingestAgentRoomTranscriptFiles(roomID: String, members: [ClaudeRoomMember]) async {
+        for member in members {
+            guard let ref = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
+                  let transcriptPath = ref.transcriptPath else { continue }
+            let turns = ClaudeTranscriptFileParser.parseTurns(
+                fileURL: URL(fileURLWithPath: transcriptPath),
+                limit: agentRoomTranscriptHistoryLimit
+            )
+            for turn in turns {
                 _ = await agentRoomStore.appendTranscriptTurn(
                     roomID: roomID,
-                    agentKind: record.agentKind.sourceName,
+                    agentKind: "claude",
                     memberID: member.id,
                     surfaceID: member.surfaceID,
-                    role: agentRoomTranscriptRole(from: message.role),
-                    text: truncatedAgentRoomTranscriptText(text),
-                    sourceSequence: message.seq,
-                    sourceID: "\(record.sessionID):\(message.id)",
-                    createdAt: message.timestamp
+                    role: turn.role,
+                    text: truncatedAgentRoomTranscriptText(turn.text),
+                    sourceID: "\(ref.sessionID):\(turn.id)",
+                    createdAt: turn.timestamp ?? Date()
                 )
             }
+        }
+    }
+
+    struct ClaudeHookSessionRef {
+        let sessionID: String
+        let transcriptPath: String?
+        let updatedAt: TimeInterval
+    }
+
+    /// Resolves a surface's newest Claude hook session record straight from the
+    /// on-disk hook store (`~/.cmuxterm/claude-hook-sessions.json`, written by
+    /// `cmux hooks claude ...`). Prefers records that carry a transcript path,
+    /// newest `updatedAt` first.
+    static func claudeHookSessionRef(surfaceID: String) -> ClaudeHookSessionRef? {
+        let file = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cmuxterm", isDirectory: true)
+            .appendingPathComponent("claude-hook-sessions.json", isDirectory: false)
+        guard let data = try? Data(contentsOf: file),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        let sessions = (root["sessions"] as? [String: Any]) ?? root
+        let candidates = sessions.compactMap { sessionID, value -> ClaudeHookSessionRef? in
+            guard let entry = value as? [String: Any],
+                  (entry["surfaceId"] as? String) == surfaceID else {
+                return nil
+            }
+            return ClaudeHookSessionRef(
+                sessionID: sessionID,
+                transcriptPath: (entry["transcriptPath"] as? String)?.nilIfEmpty,
+                updatedAt: (entry["updatedAt"] as? TimeInterval) ?? 0
+            )
+        }
+        return candidates.max { lhs, rhs in
+            (lhs.transcriptPath != nil ? 1 : 0, lhs.updatedAt) < (rhs.transcriptPath != nil ? 1 : 0, rhs.updatedAt)
         }
     }
 
@@ -2402,28 +2705,6 @@ final class CollaborationRuntime {
             maxTranscriptTurns: agentRoomContextPackTranscriptLimit
         )
         return pack?.promptText.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-
-    private func agentRoomTranscriptText(from message: ChatMessage) -> String? {
-        switch message.kind {
-        case .prose(let prose):
-            return prose.text.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        case .thought(let thought):
-            return thought.text.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        case .toolUse, .terminal, .fileEdit, .permissionRequest, .question, .status, .attachment, .unsupported:
-            return nil
-        }
-    }
-
-    private func agentRoomTranscriptRole(from role: ChatRole) -> AgentRoomTranscriptRole {
-        switch role {
-        case .user:
-            return .user
-        case .agent:
-            return .assistant
-        case .system:
-            return .system
-        }
     }
 
     private func truncatedAgentRoomTranscriptText(_ text: String) -> String {
@@ -4414,6 +4695,7 @@ final class CollaborationRuntime {
         agentRoomIDsBySurfaceID = reconciled.roomIDsBySurfaceID
         agentRoomMemberIDsBySurfaceID = reconciled.memberIDsBySurfaceID
         agentRoomHeaderRevision &+= 1
+        refreshAgentRoomHookHealth(room: room)
     }
 
     private func cacheAgentRooms(_ rooms: [ClaudeRoomSnapshot]) {
@@ -4431,85 +4713,6 @@ final class CollaborationRuntime {
             "members": room.members.map(encodedJSONObject),
             "events": room.events.map(encodedJSONObject),
         ]
-    }
-
-    private func dispatchAgentRoomEventIfNeeded(_ event: ClaudeRoomEvent) async -> [String: Any] {
-        let room = await agentRoomStore.room(id: event.roomID)
-        let deliveryPolicy = room?.deliveryPolicy ?? .manual
-        guard agentRoomActiveDispatchPromptBuilder.shouldBroadcast(event, policy: deliveryPolicy) else {
-            return ["attempted": false]
-        }
-        // Explicit targets win (targeted handoff/question/blocker). Otherwise, in
-        // a live room, broadcast to every member except the sender so a message
-        // typed into one agent reaches the others without any manual command.
-        let explicitTargets = Array(Set(event.targetSurfaceIDs))
-        let recipientSurfaceIDs: [String]
-        if !explicitTargets.isEmpty {
-            recipientSurfaceIDs = explicitTargets.sorted()
-        } else {
-            recipientSurfaceIDs = (room?.members ?? [])
-                .map(\.surfaceID)
-                .filter { $0 != event.fromSurfaceID }
-                .sorted()
-        }
-        var sent: [[String: Any]] = []
-        var failed: [[String: Any]] = []
-        for rawSurfaceID in recipientSurfaceIDs {
-            guard let surfaceID = UUID(uuidString: rawSurfaceID) else {
-                failed.append(["surface_id": rawSurfaceID, "reason": "invalid_surface_id"])
-                continue
-            }
-            guard let panel = terminalPanel(surfaceID: surfaceID) else {
-                failed.append(["surface_id": rawSurfaceID, "reason": "surface_not_found"])
-                continue
-            }
-            guard let prompt = await activeAgentRoomDispatchPrompt(
-                for: event,
-                targetSurfaceID: rawSurfaceID,
-                policy: deliveryPolicy
-            ) else {
-                failed.append(["surface_id": rawSurfaceID, "reason": "prompt_unavailable"])
-                continue
-            }
-            switch panel.sendInputResult(prompt + "\r") {
-            case .sent:
-                panel.surface.forceRefresh(reason: "collaboration.agentRoomDispatch")
-                sent.append(["surface_id": rawSurfaceID, "queued": false])
-            case .queued:
-                sent.append(["surface_id": rawSurfaceID, "queued": true])
-            case .inputQueueFull:
-                failed.append(["surface_id": rawSurfaceID, "reason": "input_queue_full"])
-            case .surfaceUnavailable:
-                failed.append(["surface_id": rawSurfaceID, "reason": "surface_unavailable"])
-            case .processExited:
-                failed.append(["surface_id": rawSurfaceID, "reason": "process_exited"])
-            }
-        }
-        return [
-            "attempted": true,
-            "sent": sent,
-            "failed": failed,
-        ]
-    }
-
-    private func activeAgentRoomDispatchPrompt(
-        for event: ClaudeRoomEvent,
-        targetSurfaceID: String,
-        policy: ClaudeRoomDeliveryPolicy
-    ) async -> String? {
-        guard let prompt = agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy),
-              let room = await agentRoomStore.room(id: event.roomID) else {
-            return agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy)
-        }
-        await ingestAgentRoomTranscriptHistory(roomID: event.roomID, members: room.members)
-        let contextText = await peerAgentRoomContextText(
-            roomID: event.roomID,
-            room: room,
-            recipientSurfaceID: targetSurfaceID,
-            maxEvents: 0
-        )
-        guard !contextText.isEmpty else { return prompt }
-        return prompt + "\n\n" + contextText
     }
 
     private func encodedJSONObject<T: Encodable>(_ value: T) -> Any {

@@ -70,6 +70,19 @@ public enum ControlCommandExecutionPolicy: Sendable, Equatable {
         // routes it to the main-actor processV2Command switch, which lacks the
         // case, and the control socket returns method_not_found.
         "mobile.terminal.set_font",
+        // `agent.room.consume` drains the invisible pull-delivery backlog for a
+        // wired peer: it awaits the ClaudeRoomStore actor, re-ingests transcript
+        // history, and advances the acknowledgment cursor, so it must run async
+        // on the socket worker via the handler in socketWorkerV2Response. The
+        // sibling agent.room.* verbs are served by the main-actor processCommand
+        // switch, which has no consume case -- without this entry the policy
+        // routes consume there and the control socket returns method_not_found
+        // (all 12 hook calls in the field failed exactly this way).
+        "agent.room.consume",
+        // `agent.room.recap` (SessionStart room recap + cursor reset) awaits the
+        // ClaudeRoomStore actor and reads transcript files, so it runs async on
+        // the socket worker for the same reason as agent.room.consume.
+        "agent.room.recap",
         "system.top",
         "system.memory",
         // `workspace.env` is a read that resolves a workspace and copies its

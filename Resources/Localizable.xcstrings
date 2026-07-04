@@ -37948,6 +37948,160 @@
         }
       }
     },
+    "collaboration.action.shareWithTeammate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share with teammate"
+          }
+        }
+      }
+    },
+    "collaboration.directory.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share with a teammate"
+          }
+        }
+      }
+    },
+    "collaboration.directory.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick a teammate from your organization. They'll get this session in their incoming sessions."
+          }
+        }
+      }
+    },
+    "collaboration.directory.noSession": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a session before sharing it with a teammate."
+          }
+        }
+      }
+    },
+    "collaboration.directory.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No other teammates are available in your organization yet."
+          }
+        }
+      }
+    },
+    "collaboration.directory.share": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        }
+      }
+    },
+    "collaboration.directory.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "collaboration.directory.ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incoming sessions"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No incoming sessions"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick a session shared with you to join."
+          }
+        }
+      }
+    },
+    "collaboration.inbox.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incoming sessions (%lld)"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.join": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join"
+          }
+        }
+      }
+    },
+    "collaboration.inbox.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared by %1$@ in %2$@"
+          }
+        }
+      }
+    },
     "collaboration.terminal.error.noWorkspace": {
       "extractionState": "manual",
       "localizations": {
@@ -38263,6 +38417,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign into Mosaic"
+          }
+        }
+      }
+    },
+    "cli.claudeHook.roomRecap.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared Claude room recap (recent activity from wired peer agents):"
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.degradedHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.connectedHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wired agents share context through this room."
           }
         }
       }

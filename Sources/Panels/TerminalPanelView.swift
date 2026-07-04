@@ -207,7 +207,11 @@ struct TerminalPanelView: View {
     private func agentRoomStatusView(state: AgentRoomHeaderState) -> some View {
         if state.isConnected {
             HStack(spacing: 4) {
-                CmuxSystemSymbolImage(systemName: "link", pointSize: 9, weight: .semibold)
+                CmuxSystemSymbolImage(
+                    systemName: state.isDegraded ? "exclamationmark.triangle.fill" : "link",
+                    pointSize: 9,
+                    weight: .semibold
+                )
                 Text(state.label)
                     .cmuxFont(size: 10, weight: .semibold)
                     .lineLimit(1)
@@ -215,7 +219,18 @@ struct TerminalPanelView: View {
             .foregroundStyle(Color.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(Color.blue))
+            .background(Capsule().fill(state.isDegraded ? Color.orange : Color.blue))
+            .help(
+                state.isDegraded
+                    ? String(
+                        localized: "collaboration.agentRoom.degradedHelp",
+                        defaultValue: "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
+                    )
+                    : String(
+                        localized: "collaboration.agentRoom.connectedHelp",
+                        defaultValue: "Wired agents share context through this room."
+                    )
+            )
             .accessibilityIdentifier("TerminalAgentRoomConnectedPill")
         }
     }
