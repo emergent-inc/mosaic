@@ -518,7 +518,7 @@ private final class AgentRoomWireOverlayView: NSView {
 private struct CollaborationTerminalOwnerAvatarRenderer {
     private let pixelSize = 48
 
-    func pngData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
+    func fallbackPNGData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
         renderPNG { size in
             let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
             let circle = NSBezierPath(ovalIn: circleRect)
@@ -817,14 +817,6 @@ final class CollaborationRuntime {
         )
     }
 
-    private static func normalizedProfileImageURL(from rawValue: String?) -> URL? {
-        let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
-        let scheme = url.scheme?.lowercased()
-        guard scheme == "http" || scheme == "https" else { return nil }
-        return url
-    }
-
     private func syncTerminalTabPresentation(
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
@@ -836,14 +828,17 @@ final class CollaborationRuntime {
             return
         }
         let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
-        let iconImageData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
+        let fallbackIconData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.fallbackPNGData(for: $0) }
         workspace.setCollaborationTerminalTabPresentation(
             panelId: panel.id,
             title: title,
-            iconImageData: iconImageData
+            iconImageData: fallbackIconData
         )
-        guard let ownerSnapshot,
-              let profileImageURL = Self.normalizedProfileImageURL(from: ownerSnapshot.imageURL) else {
+        guard let ownerSnapshot else {
+            terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
+            return
+        }
+        guard case .remoteImage(let profileImageURL) = ownerSnapshot.avatarContent else {
             terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
             return
         }
