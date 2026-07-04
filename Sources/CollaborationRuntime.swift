@@ -1025,27 +1025,15 @@ final class CollaborationRuntime {
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
     ) {
-        #if DEBUG
-        cmuxDebugLog("[avatardbg] sync enter terminal=\(terminalID) owner=\(ownerSnapshot?.displayName ?? "nil") imageURL=\(ownerSnapshot?.imageURL ?? "nil")")
-        #endif
         guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
-            #if DEBUG
-            cmuxDebugLog("[avatardbg] sync bail: no panel terminal=\(terminalID)")
-            #endif
             return
         }
         guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
-            #if DEBUG
-            cmuxDebugLog("[avatardbg] sync bail: no workspace panel=\(panel.id) terminal=\(terminalID)")
-            #endif
             return
         }
         let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
         let avatarPlan = CollaborationTerminalOwnerAvatarPlan(ownerSnapshot: ownerSnapshot, title: title)
         let iconImageData = avatarPlan.fallbackSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
-        #if DEBUG
-        cmuxDebugLog("[avatardbg] sync set-fallback panel=\(panel.id) titleNil=\(avatarPlan.title == nil) fallbackBytes=\(iconImageData?.count ?? -1) profileURL=\(avatarPlan.profileImageURL?.absoluteString ?? "nil")")
-        #endif
         workspace.setCollaborationTerminalTabPresentation(
             panelId: panel.id,
             title: avatarPlan.title,
@@ -1059,42 +1047,18 @@ final class CollaborationRuntime {
         terminalOwnerAvatarRequestKeysByID[terminalID] = requestKey
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else {
-                #if DEBUG
-                cmuxDebugLog("[avatardbg] async bail: fetch nil terminal=\(terminalID) url=\(profileImageURL.absoluteString)")
-                #endif
-                return
-            }
-            guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else {
-                #if DEBUG
-                cmuxDebugLog("[avatardbg] async bail: decode nil terminal=\(terminalID) bytes=\(imageData.count)")
-                #endif
-                return
-            }
+            guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else { return }
+            guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else { return }
             guard CollaborationTerminalOwnerAvatarPlan.shouldApplyProfileImage(
                 requestKey: requestKey,
                 currentRequestKey: terminalOwnerAvatarRequestKeysByID[terminalID]
-            ) else {
-                #if DEBUG
-                cmuxDebugLog("[avatardbg] async bail: stale key terminal=\(terminalID) want=\(requestKey) cur=\(terminalOwnerAvatarRequestKeysByID[terminalID] ?? "nil")")
-                #endif
-                return
-            }
+            ) else { return }
             guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
-                #if DEBUG
-                cmuxDebugLog("[avatardbg] async bail: no panel terminal=\(terminalID)")
-                #endif
                 return
             }
             guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
-                #if DEBUG
-                cmuxDebugLog("[avatardbg] async bail: no workspace terminal=\(terminalID)")
-                #endif
                 return
             }
-            #if DEBUG
-            cmuxDebugLog("[avatardbg] async APPLY photo terminal=\(terminalID) panel=\(panel.id) bytes=\(profileIconData.count)")
-            #endif
             workspace.setCollaborationTerminalTabPresentation(
                 panelId: panel.id,
                 title: avatarPlan.title,
