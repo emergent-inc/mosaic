@@ -82,4 +82,47 @@ struct CollaborationParticipantAvatarSnapshotTests {
         #expect(snapshot.initials == "?")
         #expect(snapshot.avatarSeed == "remote-peer")
     }
+
+    @Test
+    func localParticipantHasNilImageURLWhenIdentityHasNone() {
+        // A signed-out or pre-imageURL identity yields no profile image, so the
+        // avatar view falls back to initials rather than showing a broken image.
+        let identity = CollaborationPeerIdentity(
+            peerID: "local-peer",
+            displayName: "Dorsa Rohani",
+            color: "#7A5CFF"
+        )
+
+        let snapshot = CollaborationParticipantAvatarSnapshot.local(
+            identity: identity,
+            avatarSeed: "dorsa_rohani"
+        )
+
+        #expect(snapshot.imageURL == nil)
+    }
+
+    @Test
+    func remoteParticipantDefaultsToNilImageURL() {
+        let snapshot = CollaborationParticipantAvatarSnapshot.remote(
+            peerID: "remote-peer",
+            displayName: "Grace Hopper",
+            colorHex: "#34C759"
+        )
+
+        #expect(snapshot.imageURL == nil)
+    }
+
+    @Test
+    func explicitInitializerPreservesImageURL() {
+        let snapshot = CollaborationParticipantAvatarSnapshot(
+            peerID: "p",
+            displayName: "Dorsa",
+            initials: "D",
+            avatarSeed: "dorsa",
+            colorHex: "#7A5CFF",
+            imageURL: "https://img.example/dorsa.png"
+        )
+
+        #expect(snapshot.imageURL == "https://img.example/dorsa.png")
+    }
 }

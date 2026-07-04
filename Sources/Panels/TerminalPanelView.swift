@@ -222,6 +222,9 @@ struct TerminalPanelView: View {
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalSessionPillLabel(state: state)
+        let peerCount = state.workspaceSessionCode == nil
+            ? 0
+            : max(CollaborationRuntime.shared.participantSnapshots(for: panel).count - 1, 0)
         let hoverColor = Color.orange
         let foregroundColor = isTerminalSessionPillHovered
             ? hoverColor
@@ -246,9 +249,9 @@ struct TerminalPanelView: View {
             }
         }) {
             HStack(spacing: 5) {
-                CmuxSystemSymbolImage(systemName: state.workspaceSessionCode == nil ? "person.2" : "link", pointSize: 10, weight: .semibold)
+                CmuxSystemSymbolImage(systemName: "person.2", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
-                Text(label)
+                Text(state.workspaceSessionCode == nil ? label : String.localizedStringWithFormat("%d", peerCount))
                     .cmuxFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
@@ -620,7 +623,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     private var isHovering = false
     private var mouseDownEvent: NSEvent?
     private var dragSessionActive = false
+    private var dragSessionRanInCurrentPress = false
     private var closedHandCursorPushed = false
+    /// Movement below this distance keeps a press behaving as a click; without
+    /// it, 1pt of jitter silently turns the click into a wire drag that drops
+    /// on its own surface and connects nothing.
+    private static let dragStartThreshold: CGFloat = 4
 
     override var mouseDownCanMoveWindow: Bool { false }
 
@@ -676,16 +684,24 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     override func mouseDown(with event: NSEvent) {
         mouseDownEvent = event
         dragSessionActive = false
+        dragSessionRanInCurrentPress = false
         pushClosedHandCursorIfNeeded()
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard !dragSessionActive,
+              !dragSessionRanInCurrentPress,
               let panel,
               let mouseDownEvent else {
             return
         }
+        let start = mouseDownEvent.locationInWindow
+        let current = event.locationInWindow
+        guard hypot(current.x - start.x, current.y - start.y) >= Self.dragStartThreshold else {
+            return
+        }
         dragSessionActive = true
+        dragSessionRanInCurrentPress = true
         // Compute the wire's start point fresh from this view (it exactly overlays
         // the link button) instead of trusting the layout-time anchor cache, which
         // can hold a stale screen point after the window moves.
@@ -718,7 +734,10 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
                 popClosedHandCursorIfNeeded()
             }
         }
-        guard !dragSessionActive else { return }
+        // A mouseUp delivered around the end of a drag session must not count
+        // as a click: the click toggles the room connection, so it would
+        // disconnect the surface the wire drop just connected.
+        guard !dragSessionActive, !dragSessionRanInCurrentPress else { return }
         onClick?()
     }
 
@@ -734,7 +753,18 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        let sourcePanel = panel
         endDragSession()
+        // Portal layering can keep the SwiftUI header (and its link button)
+        // from ever receiving the drop, so a button-to-button wire drag ends
+        // with no operation and silently connects nothing. Recover by
+        // connecting to the link button under the release point.
+        if operation.isEmpty, let sourcePanel {
+            CollaborationRuntime.shared.connectAgentRoomWireToLinkButton(
+                near: screenPoint,
+                sourceSurfaceID: sourcePanel.id
+            )
+        }
     }
 
     private func dragImage() -> NSImage {

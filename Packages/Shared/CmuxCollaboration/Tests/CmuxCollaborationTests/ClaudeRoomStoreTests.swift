@@ -26,6 +26,81 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
+    func connectingTwoSurfacesKeepsBothMembers() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        let room = await store.connect(
+            member: ClaudeRoomMember(id: "m-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+
+        #expect(Set(room.members.map(\.surfaceID)) == ["surface-a", "surface-b"])
+    }
+
+    @Test
+    func disconnectingOneSurfaceLeavesTheOther() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+
+        let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
+
+        #expect(room.members.map(\.surfaceID) == ["surface-b"])
+    }
+
+    @Test
+    func reconnectingSameSurfaceDoesNotDuplicateMember() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer", displayName: "A"),
+            to: "room-1"
+        )
+        let room = await store.connect(
+            member: ClaudeRoomMember(id: "m-a2", surfaceID: "surface-a", peerID: "peer", displayName: "A renamed"),
+            to: "room-1"
+        )
+
+        #expect(room.members.count == 1)
+        #expect(room.members.first?.displayName == "A renamed")
+    }
+
+    @Test
+    func movingSurfaceBetweenRoomsLeavesOldRoomEmpty() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.createRoom(id: "room-2")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+
+        // Runtime drops the old membership before joining the new room.
+        _ = await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-2"
+        )
+
+        let roomOne = try #require(await store.room(id: "room-1"))
+        let roomTwo = try #require(await store.room(id: "room-2"))
+        #expect(roomOne.members.isEmpty)
+        #expect(roomTwo.members.map(\.surfaceID) == ["surface-a"])
+    }
+
+    @Test
     func digestUsesCursorAndLimitsEvents() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
