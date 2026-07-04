@@ -539,7 +539,7 @@ private final class AgentRoomWireOverlayView: NSView {
 private struct CollaborationTerminalOwnerAvatarRenderer {
     private let pixelSize = 48
 
-    func fallbackPNGData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
+    func pngData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
         renderPNG { size in
             let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
             let circle = NSBezierPath(ovalIn: circleRect)
@@ -868,6 +868,14 @@ final class CollaborationRuntime {
         )
     }
 
+    private static func normalizedProfileImageURL(from rawValue: String?) -> URL? {
+        let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
+        let scheme = url.scheme?.lowercased()
+        guard scheme == "http" || scheme == "https" else { return nil }
+        return url
+    }
+
     private func syncTerminalTabPresentation(
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
@@ -879,17 +887,14 @@ final class CollaborationRuntime {
             return
         }
         let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
-        let fallbackIconData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.fallbackPNGData(for: $0) }
+        let iconImageData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
         workspace.setCollaborationTerminalTabPresentation(
             panelId: panel.id,
             title: title,
-            iconImageData: fallbackIconData
+            iconImageData: iconImageData
         )
-        guard let ownerSnapshot else {
-            terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
-            return
-        }
-        guard case .remoteImage(let profileImageURL) = ownerSnapshot.avatarContent else {
+        guard let ownerSnapshot,
+              let profileImageURL = Self.normalizedProfileImageURL(from: ownerSnapshot.imageURL) else {
             terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
             return
         }
@@ -1144,7 +1149,10 @@ final class CollaborationRuntime {
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.signInRequiredTitle
         let signInButton = alert.addButton(withTitle: CollaborationStrings.signIn)
-        styleAccentAlertButtonTitleBlack(signInButton)
+        applyCollaborationAccentAlertButtonTitleStyle(
+            signInButton,
+            font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .bold)
+        )
         alert.addButton(withTitle: CollaborationStrings.cancel)
         guard alert.runModal() == .alertFirstButtonReturn else {
             return false
@@ -2590,7 +2598,7 @@ final class CollaborationRuntime {
         alert.messageText = CollaborationStrings.joinSession
         alert.informativeText = CollaborationStrings.joinMessage
         let joinButton = alert.addButton(withTitle: CollaborationStrings.joinSession)
-        styleAccentAlertButtonTitleBlack(joinButton)
+        applyCollaborationAccentAlertButtonTitleStyle(joinButton)
         alert.addButton(withTitle: CollaborationStrings.cancel)
         let joinButton = alert.buttons[0]
 
@@ -2611,24 +2619,6 @@ final class CollaborationRuntime {
 
     private func configureCollaborationAlertChrome(_ alert: NSAlert) {
         alert.icon = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
-    }
-
-    /// Forces an alert button's title to render in bold black. The default alert button
-    /// takes the yellow accent color as its background, and the system-drawn white
-    /// title is illegible on yellow — matching the black-on-yellow `.mosaicAccent`
-    /// SwiftUI buttons keeps the two surfaces consistent.
-    private func styleAccentAlertButtonTitleBlack(_ button: NSButton) {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let pointSize = button.font?.pointSize ?? NSFont.systemFontSize
-        button.attributedTitle = NSAttributedString(
-            string: button.title,
-            attributes: [
-                .foregroundColor: NSColor.black,
-                .paragraphStyle: paragraph,
-                .font: NSFont.systemFont(ofSize: pointSize, weight: .bold),
-            ]
-        )
     }
 
     private func runCollaborationStartChooser() -> NSApplication.ModalResponse {
@@ -2796,28 +2786,8 @@ final class CollaborationRuntime {
 
     private func presentCreatedSessionDialog(code: String) {
         let normalizedCode = Self.normalizedSessionCode(from: code)
-        let alert = NSAlert()
-        configureCollaborationAlertChrome(alert)
-        alert.messageText = CollaborationStrings.sessionCreatedTitle
-        alert.informativeText = CollaborationStrings.sessionCreatedMessage(code: normalizedCode)
-        let copyButton = alert.addButton(withTitle: CollaborationStrings.copyCode)
-        styleAccentAlertButtonTitleBlack(copyButton)
-        alert.addButton(withTitle: CollaborationStrings.done)
-
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 360, height: 48)
-
-        let codeField = NSTextField(string: normalizedCode)
-        codeField.isEditable = false
-        codeField.isSelectable = true
-        codeField.alignment = .center
-        codeField.font = NSFont.monospacedSystemFont(ofSize: 18, weight: .semibold)
-        stack.addArrangedSubview(codeField)
-        alert.accessoryView = stack
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let panel = CollaborationSessionCreatedPanel(code: normalizedCode)
+        guard panel.run() == .alertFirstButtonReturn else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(normalizedCode, forType: .string)
         #if DEBUG
@@ -4709,6 +4679,196 @@ enum CollaborationStrings {
         String(localized: "collaboration.error.relayRejected", defaultValue: "The relay rejected the request.")
     }
 }
+
+/// Styles native AppKit alert buttons that use Mosaic's yellow accent background.
+/// `NSAlert` default buttons do not reliably honor only `attributedTitle`, so set
+/// the control tint as well as the attributed fallback.
+@MainActor
+func applyCollaborationAccentAlertButtonTitleStyle(_ button: NSButton, font: NSFont? = nil) {
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.alignment = .center
+    let resolvedFont = font ?? button.font ?? NSFont.systemFont(
+        ofSize: NSFont.systemFontSize,
+        weight: .semibold
+    )
+
+    button.contentTintColor = .black
+    button.attributedTitle = NSAttributedString(
+        string: button.title,
+        attributes: [
+            .foregroundColor: NSColor.black,
+            .paragraphStyle: paragraph,
+            .font: resolvedFont,
+        ]
+    )
+}
+
+private struct CollaborationSessionCreatedDialogView: View {
+    let code: String
+    let onCopy: () -> Void
+    let onDone: () -> Void
+
+    private var appIcon: NSImage {
+        NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.98))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.primary.opacity(0.28), lineWidth: 1)
+                }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 64, height: 64)
+                    .accessibilityHidden(true)
+
+                Text(CollaborationStrings.sessionCreatedTitle)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.top, 12)
+
+                Text(CollaborationStrings.sessionCreatedMessage(code: code))
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+
+                HStack {
+                    Spacer()
+                    Text(code)
+                        .font(.system(size: 24, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
+                        }
+                    Spacer()
+                }
+                .padding(.top, 14)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 16) {
+                    TrackedButton("session_created_done", action: {
+                        onDone()
+                    }) {
+                        Text(CollaborationStrings.done)
+                            .frame(width: 86)
+                    }
+                    .buttonStyle(.mosaicSecondary)
+                    .keyboardShortcut(.cancelAction)
+
+                    TrackedButton("session_created_copy_code", action: {
+                        onCopy()
+                    }) {
+                        Text(CollaborationStrings.copyCode)
+                            .frame(width: 86)
+                    }
+                    .buttonStyle(CollaborationSessionCreatedCopyButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 28)
+        }
+        .frame(width: 420, height: 286)
+    }
+}
+
+private struct CollaborationSessionCreatedCopyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.black)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color(nsColor: NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor))
+            )
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+}
+
+@MainActor
+private final class CollaborationSessionCreatedPanel {
+    private let window: NSPanel
+    private var response: NSApplication.ModalResponse = .alertSecondButtonReturn
+
+    init(code: String) {
+        let size = NSSize(width: 420, height: 286)
+        window = NSPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .modalPanel
+        window.isMovableByWindowBackground = true
+
+        let dialog = CollaborationSessionCreatedDialogView(
+            code: code,
+            onCopy: { [weak self] in
+                self?.finish(.alertFirstButtonReturn)
+            },
+            onDone: { [weak self] in
+                self?.finish(.alertSecondButtonReturn)
+            }
+        )
+        let hostingView = NSHostingView(rootView: dialog)
+        hostingView.frame = NSRect(origin: .zero, size: size)
+        hostingView.autoresizingMask = [.width, .height]
+        window.contentView = hostingView
+    }
+
+    func run() -> NSApplication.ModalResponse {
+        guard let parent = NSApp.keyWindow ?? NSApp.mainWindow else {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.runModal(for: window)
+            window.orderOut(nil)
+            return response
+        }
+
+        parent.beginSheet(window)
+        NSApp.runModal(for: window)
+        parent.endSheet(window)
+        window.orderOut(nil)
+        return response
+    }
+
+    private func finish(_ response: NSApplication.ModalResponse) {
+        self.response = response
+        NSApp.stopModal()
+    }
+}
+
+#if DEBUG
+#Preview("Session Created Dialog") {
+    CollaborationSessionCreatedDialogView(
+        code: "TZLS",
+        onCopy: {},
+        onDone: {}
+    )
+    .padding(24)
+    .background(Color.black)
+}
+#endif
 
 @MainActor
 private final class CollaborationStartChooserPanel {
