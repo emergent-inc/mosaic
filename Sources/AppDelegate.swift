@@ -1826,6 +1826,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             PostHogAnalytics.shared.trackActive(reason: "didBecomeActive")
         }
 
+        // Refresh the collaboration inbox on focus so directory invites surface
+        // immediately when you switch to the app, rather than waiting for the poll.
+        Task { @MainActor in
+            await CollaborationRuntime.shared.refreshIncomingSharedSessions()
+        }
+
         guard let notificationStore else { return }
         notificationStore.handleApplicationDidBecomeActive()
         guard let tabManager else { return }

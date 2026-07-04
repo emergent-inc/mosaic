@@ -1324,39 +1324,70 @@ final class CollaborationRuntime {
     func presentIncomingSessionsInbox() {
         Task { @MainActor in
             await refreshIncomingSharedSessions()
-            let invites = incomingSharedSessions
-            guard !invites.isEmpty else {
-                let info = NSAlert()
-                info.messageText = CollaborationStrings.incomingSessionsTitle
-                info.informativeText = CollaborationStrings.incomingSessionsEmpty
-                info.addButton(withTitle: CollaborationStrings.okButton)
-                info.runModal()
-                return
-            }
-            let alert = NSAlert()
-            alert.messageText = CollaborationStrings.incomingSessionsTitle
-            alert.informativeText = CollaborationStrings.incomingSessionsPrompt
-            let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-            for invite in invites {
-                let owner = invite.ownerName ?? invite.ownerUserId
-                let org = invite.orgName ?? ""
-                popup.addItem(
-                    withTitle: CollaborationStrings.incomingSessionSubtitle(ownerName: owner, orgName: org)
-                )
-                popup.lastItem?.representedObject = invite.session
-            }
-            alert.accessoryView = popup
-            alert.addButton(withTitle: CollaborationStrings.incomingSessionJoin)
-            alert.addButton(withTitle: CollaborationStrings.cancelButton)
-            guard alert.runModal() == .alertFirstButtonReturn,
-                  let sessionToken = popup.selectedItem?.representedObject as? String,
-                  let invite = invites.first(where: { $0.session == sessionToken }) else { return }
-            let joined = await acceptIncomingSharedSession(invite)
-            if !joined {
-                NSSound.beep()
-            }
+            await presentIncomingSessionsInboxDialog()
         }
     }
+
+    /// Renders the incoming-sessions picker for whatever is currently in
+    /// `incomingSharedSessions` (callers refresh first). Extracted so the
+    /// DEBUG preview can reuse the exact recipient-facing dialog.
+    @MainActor
+    private func presentIncomingSessionsInboxDialog() async {
+        let invites = incomingSharedSessions
+        guard !invites.isEmpty else {
+            let info = NSAlert()
+            info.messageText = CollaborationStrings.incomingSessionsTitle
+            info.informativeText = CollaborationStrings.incomingSessionsEmpty
+            info.addButton(withTitle: CollaborationStrings.okButton)
+            info.runModal()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = CollaborationStrings.incomingSessionsTitle
+        alert.informativeText = CollaborationStrings.incomingSessionsPrompt
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        for invite in invites {
+            let owner = invite.ownerName ?? invite.ownerUserId
+            let org = invite.orgName ?? ""
+            popup.addItem(
+                withTitle: CollaborationStrings.incomingSessionSubtitle(ownerName: owner, orgName: org)
+            )
+            popup.lastItem?.representedObject = invite.session
+        }
+        alert.accessoryView = popup
+        alert.addButton(withTitle: CollaborationStrings.incomingSessionJoin)
+        alert.addButton(withTitle: CollaborationStrings.cancelButton)
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let sessionToken = popup.selectedItem?.representedObject as? String,
+              let invite = invites.first(where: { $0.session == sessionToken }) else { return }
+        let joined = await acceptIncomingSharedSession(invite)
+        if !joined {
+            NSSound.beep()
+        }
+    }
+
+    #if DEBUG
+    /// Injects a sample incoming invite and opens the inbox so the recipient
+    /// experience can be previewed without signing in as a second teammate.
+    /// The fake invite can't actually be joined (bogus descriptor); it exists
+    /// only to show the "Incoming sessions" badge and picker dialog.
+    func debugPreviewIncomingSession() {
+        Task { @MainActor in
+            let sample = CollaborationIncomingSession(
+                session: "debug-preview-\(UUID().uuidString)",
+                ownerUserId: "debug-owner",
+                ownerName: "Alex Rivera",
+                ownerImageURL: nil,
+                orgId: resolvedCollaborationOrgID ?? "debug-org",
+                orgName: "Acme Inc",
+                relayURL: nil,
+                createdAt: ISO8601DateFormatter().string(from: Date())
+            )
+            incomingSharedSessions = [sample]
+            await presentIncomingSessionsInboxDialog()
+        }
+    }
+    #endif
 
     @discardableResult
     private func refreshPeerIdentityFromAuth() -> Bool {
@@ -3229,7 +3260,7 @@ final class CollaborationRuntime {
             )
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
             share(panel: panel, entrypoint: .startDialogCreate)
-            presentCreatedSessionDialog(code: response.sessionCode)
+            presentPostCreateSharing(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
@@ -3283,7 +3314,7 @@ final class CollaborationRuntime {
                 recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
                 share(terminal: terminal, via: connection, entrypoint: .startDialogCreate)
             }
-            presentCreatedSessionDialog(code: response.sessionCode)
+            presentPostCreateSharing(code: response.sessionCode)
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
@@ -3305,6 +3336,19 @@ final class CollaborationRuntime {
                 operation: "createSessionAndShareTerminal",
                 error: error
             )
+        }
+    }
+
+    /// After a session is created, route the owner to the right first-class
+    /// sharing surface. Directory-sharing plans (team/enterprise) open the org
+    /// teammate picker so the owner invites people directly; hobby plans get the
+    /// shareable code dialog. Keeping this in one place means every create
+    /// entrypoint (pill popover, command palette, etc.) behaves the same.
+    private func presentPostCreateSharing(code: String) {
+        if collaborationEntitlements.directorySharing {
+            presentTeammateDirectorySharePicker()
+        } else {
+            presentCreatedSessionDialog(code: code)
         }
     }
 
@@ -3568,7 +3612,7 @@ final class CollaborationRuntime {
         incomingSharedSessionsPollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 await self?.refreshIncomingSharedSessions()
-                try? await Task.sleep(for: .seconds(20))
+                try? await Task.sleep(for: .seconds(5))
             }
         }
     }
@@ -5284,6 +5328,12 @@ enum CollaborationStrings {
             String(localized: "collaboration.session.code.label", defaultValue: "Session %@"),
             code
         )
+    }
+
+    /// Headline for an active session on directory-sharing plans, where the
+    /// invite code is intentionally not the primary sharing mechanism.
+    static var directorySessionActive: String {
+        String(localized: "collaboration.session.directory.active", defaultValue: "Session active")
     }
 
     static func sessionPillLabel(code: String, peerSummary: String) -> String {
