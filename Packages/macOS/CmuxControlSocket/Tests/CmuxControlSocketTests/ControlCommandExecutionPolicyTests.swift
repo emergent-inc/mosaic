@@ -25,6 +25,7 @@ struct ControlCommandExecutionPolicyTests {
             "sidebar.custom.open",
             "debug.sidebar.simulate_drag", "mobile.attach_ticket.create",
             "mobile.terminal.set_font",
+            "agent.room.consume",
             // JavaScript-evaluating browser methods block on page JS and must
             // not hold the main actor (see socketWorkerMethods rationale).
             "browser.eval", "browser.wait", "browser.snapshot", "browser.click",
@@ -41,6 +42,26 @@ struct ControlCommandExecutionPolicyTests {
         ] {
             #expect(ControlCommandExecutionPolicy(forMethod: method).runsOnSocketWorker, "\(method)")
         }
+    }
+
+    @Test func agentRoomConsumeRunsOnTheSocketWorker() {
+        // Regression: agent.room.consume awaits the ClaudeRoomStore actor, so it
+        // must run async on the worker lane where socketWorkerV2Response handles
+        // it. Its sibling verbs are served by the main-actor processCommand
+        // switch, which has no consume case -- classifying consume as .mainActor
+        // routed it there and every hook call returned method_not_found, silently
+        // breaking invisible pull-delivery between wired agents.
+        let policy = ControlCommandExecutionPolicy(forMethod: "agent.room.consume")
+        #expect(policy == .socketWorker(mainThreadCallable: false))
+        #expect(policy.runsOnSocketWorker)
+        // agent.room.recap (SessionStart recap + cursor reset) awaits the same
+        // actor and reads transcript files, so it shares the worker lane.
+        #expect(ControlCommandExecutionPolicy(forMethod: "agent.room.recap") == .socketWorker(mainThreadCallable: false))
+        // The other agent.room.* verbs intentionally stay on the main actor
+        // (processCommand serves them); guard the asymmetry so a future edit
+        // does not silently move consume off the worker lane again.
+        #expect(ControlCommandExecutionPolicy(forMethod: "agent.room.digest") == .mainActor)
+        #expect(ControlCommandExecutionPolicy(forMethod: "agent.room.post") == .mainActor)
     }
 
     @Test func everythingElseRunsOnTheMainActor() {
