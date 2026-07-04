@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Locale } from "../../../i18n/routing";
 import { locales, routing } from "../../../i18n/routing";
+import { nativeIdentityClaimsFor, type ClerkUserIdentityLike } from "../../../services/auth/clerkIdentity";
 import { mintNativeSessionTokenPair } from "../../../services/auth/nativeSession";
 
 const NATIVE_SCHEME = "mosaic://";
@@ -29,23 +30,13 @@ type ClerkAuthLike = {
   orgId?: string | null;
 };
 
-type ClerkUserLike = {
-  id: string;
-  fullName?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  imageUrl?: string | null;
-  primaryEmailAddress?: { emailAddress?: string | null } | null;
-  emailAddresses?: readonly { emailAddress?: string | null }[];
-};
-
 type ClerkOrganizationMembershipLike = {
   organization?: { id?: string | null } | null;
 };
 
 type AfterSignInHandlerDependencies = {
   getAuth: () => Promise<ClerkAuthLike>;
-  getUser: (userId: string) => Promise<ClerkUserLike | null>;
+  getUser: (userId: string) => Promise<ClerkUserIdentityLike | null>;
   listMemberships?: (userId: string) => Promise<readonly ClerkOrganizationMembershipLike[]>;
   getCookieStore: () => Promise<CookieStore>;
 };
@@ -308,11 +299,12 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
       auth.orgId ?? undefined,
       ...memberships.map((membership) => membership.organization?.id ?? undefined),
     ]);
+    const identity = nativeIdentityClaimsFor(user);
     const tokens = mintNativeSessionTokenPair({
       userId: auth.userId,
-      displayName: displayNameFor(user),
-      primaryEmail: primaryEmailFor(user),
-      imageURL: imageURLFor(user),
+      displayName: identity.displayName,
+      primaryEmail: identity.primaryEmail,
+      imageURL: identity.imageURL,
       selectedTeamId: auth.orgId ?? teamIds[0] ?? null,
       teamIds,
     });
@@ -341,27 +333,6 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
 
     return NextResponse.redirect(new URL("/", request.url));
   };
-}
-
-function displayNameFor(user: ClerkUserLike | null): string | null {
-  if (!user) return null;
-  if (user.fullName?.trim()) return user.fullName.trim();
-  const joined = [user.firstName, user.lastName]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ");
-  return joined || null;
-}
-
-function primaryEmailFor(user: ClerkUserLike | null): string | null {
-  return user?.primaryEmailAddress?.emailAddress
-    ?? user?.emailAddresses?.find((email) => email.emailAddress)?.emailAddress
-    ?? null;
-}
-
-function imageURLFor(user: ClerkUserLike | null): string | null {
-  const imageUrl = user?.imageUrl?.trim();
-  return imageUrl || null;
 }
 
 function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {

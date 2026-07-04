@@ -921,14 +921,6 @@ final class CollaborationRuntime {
         )
     }
 
-    private static func normalizedProfileImageURL(from rawValue: String?) -> URL? {
-        let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
-        let scheme = url.scheme?.lowercased()
-        guard scheme == "http" || scheme == "https" else { return nil }
-        return url
-    }
-
     private func syncTerminalTabPresentation(
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
@@ -940,24 +932,27 @@ final class CollaborationRuntime {
             return
         }
         let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
-        let iconImageData = ownerSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
+        let avatarPlan = CollaborationTerminalOwnerAvatarPlan(ownerSnapshot: ownerSnapshot, title: title)
+        let iconImageData = avatarPlan.fallbackSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
         workspace.setCollaborationTerminalTabPresentation(
             panelId: panel.id,
-            title: title,
+            title: avatarPlan.title,
             iconImageData: iconImageData
         )
-        guard let ownerSnapshot,
-              let profileImageURL = Self.normalizedProfileImageURL(from: ownerSnapshot.imageURL) else {
+        guard let profileImageURL = avatarPlan.profileImageURL,
+              let requestKey = avatarPlan.requestKey else {
             terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
             return
         }
-        let requestKey = "\(ownerSnapshot.peerID)|\(profileImageURL.absoluteString)"
         terminalOwnerAvatarRequestKeysByID[terminalID] = requestKey
         Task { @MainActor [weak self] in
             guard let self else { return }
             guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else { return }
             guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else { return }
-            guard terminalOwnerAvatarRequestKeysByID[terminalID] == requestKey else { return }
+            guard CollaborationTerminalOwnerAvatarPlan.shouldApplyProfileImage(
+                requestKey: requestKey,
+                currentRequestKey: terminalOwnerAvatarRequestKeysByID[terminalID]
+            ) else { return }
             guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
                 return
             }
@@ -966,7 +961,7 @@ final class CollaborationRuntime {
             }
             workspace.setCollaborationTerminalTabPresentation(
                 panelId: panel.id,
-                title: title,
+                title: avatarPlan.title,
                 iconImageData: profileIconData
             )
         }

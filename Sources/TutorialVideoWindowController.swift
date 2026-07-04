@@ -7,16 +7,16 @@ import SwiftUI
 final class TutorialVideoPresentationCenter {
     static let shared = TutorialVideoPresentationCenter()
 
-    private var pendingUntargetedPresentation = false
-    private var pendingTargetWindowIDs: Set<ObjectIdentifier> = []
+    private var pendingUntargetedPresentation: TutorialVideoPresentationKind?
+    private var pendingTargetWindowIDs: [ObjectIdentifier: TutorialVideoPresentationKind] = [:]
 
     private init() {}
 
-    func requestPresentation(in window: NSWindow? = nil) {
+    func requestPresentation(in window: NSWindow? = nil, kind: TutorialVideoPresentationKind = .manual) {
         if let window {
-            pendingTargetWindowIDs.insert(ObjectIdentifier(window))
+            pendingTargetWindowIDs[ObjectIdentifier(window)] = kind
         } else {
-            pendingUntargetedPresentation = true
+            pendingUntargetedPresentation = kind
         }
         NotificationCenter.default.post(name: .tutorialVideoPresentationRequested, object: window)
     }
@@ -26,27 +26,27 @@ final class TutorialVideoPresentationCenter {
         requestedWindow: NSWindow? = nil,
         keyWindow: NSWindow? = NSApp.keyWindow,
         mainWindow: NSWindow? = NSApp.mainWindow
-    ) -> Bool {
-        guard let window else { return false }
+    ) -> TutorialVideoPresentationKind? {
+        guard let window else { return nil }
         if let requestedWindow, requestedWindow !== window {
-            return false
+            return nil
         }
 
         let windowID = ObjectIdentifier(window)
-        if pendingTargetWindowIDs.remove(windowID) != nil {
-            return true
+        if let kind = pendingTargetWindowIDs.removeValue(forKey: windowID) {
+            return kind
         }
 
-        guard requestedWindow == nil, pendingUntargetedPresentation else {
-            return false
+        guard requestedWindow == nil, let kind = pendingUntargetedPresentation else {
+            return nil
         }
         let shouldHandleUntargetedRequest =
             window === keyWindow
             || (keyWindow == nil && window === mainWindow)
             || (keyWindow == nil && mainWindow == nil)
-        guard shouldHandleUntargetedRequest else { return false }
-        pendingUntargetedPresentation = false
-        return true
+        guard shouldHandleUntargetedRequest else { return nil }
+        pendingUntargetedPresentation = nil
+        return kind
     }
 }
 
@@ -54,10 +54,15 @@ extension Notification.Name {
     static let tutorialVideoPresentationRequested = Notification.Name("cmux.tutorialVideo.presentationRequested")
 }
 
+enum TutorialVideoPresentationKind {
+    case manual
+    case automaticFirstRun
+}
+
 enum TutorialVideoStyle {
     static let cornerRadius: CGFloat = 16
     static let fallbackVideoSize = CGSize(width: 960, height: 620)
-    static let popupPreferredScale: CGFloat = 0.74
+    static let popupPreferredScale: CGFloat = 0.62
 }
 
 enum TutorialVideoResource {
@@ -120,13 +125,19 @@ struct TutorialVideoView: View {
     private var closeButton: some View {
         let label = String(localized: "tutorial.video.close", defaultValue: "Close tutorial video")
         return Button(action: onClose) {
-            Text(verbatim: "x")
-                .font(.system(size: 18, weight: .regular))
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .contentShape(Rectangle())
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.86))
+                .frame(width: 28, height: 28)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.86))
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 8, x: 0, y: 2)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .padding(10)
         .safeHelp(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TutorialVideoCloseButton")
