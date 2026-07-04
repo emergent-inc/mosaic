@@ -25,7 +25,7 @@ export default function BestTerminalForMacPage() {
       <CompareTable
         headers={[t("thTerminal"), t("thBuiltFor"), t("thRenderer"), t("thPlatform")]}
         rows={[
-          ["cmux", t("cmuxBuiltFor"), t("rGpuLib"), t("pMac")],
+          ["Mosaic", t("cmuxBuiltFor"), t("rGpuLib"), t("pMac")],
           ["Ghostty", t("ghosttyBuiltFor"), t("rGpu"), t("pMacLinux")],
           ["iTerm2", t("iterm2BuiltFor"), t("rGpuCpu"), t("pMac")],
           ["Warp", t("warpBuiltFor"), t("rGpu"), t("pMacLinuxWin")],
@@ -37,7 +37,7 @@ export default function BestTerminalForMacPage() {
         ]}
       />
 
-      <h2>cmux</h2>
+      <h2>Mosaic</h2>
       <p>{t("cmuxBody")}</p>
 
       <h2>{t("ghosttyTitle")}</h2>

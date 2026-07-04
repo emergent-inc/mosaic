@@ -294,7 +294,7 @@ def capture_attachment_fallback_screenshot():
 
 def assert_attached_ui(ticket):
     blockers = [
-        "Open in “cmux DEV",
+        "Open in “Mosaic DEV",
         "Sign in with Apple",
         "Sign in with Google",
         "Email address",

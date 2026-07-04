@@ -28,6 +28,6 @@ Reclaim disk space taken by tagged dev artifacts produced by `./scripts/reload.s
 
 ## Notes
 
-- Safety rules always on: skip running `cmux DEV <tag>` apps, skip the tag in `/tmp/cmux-last-cli-path` (most recent reload).
+- Safety rules always on: skip running `Mosaic DEV <tag>` apps, skip the tag in `/tmp/cmux-last-cli-path` (most recent reload).
 - Worktrees existing under HQ are NOT a protection. Use `--keep` for explicit protection.
 - The script never touches `GhosttyKit.xcframework` symlinks, the GhosttyKit cache, or anything outside per-tag artifacts.

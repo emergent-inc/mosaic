@@ -386,7 +386,7 @@ reviewable slices. Each runtime slice ends in a tagged build + dogfood handoff
 
 - Build/compile via tagged `-derivedDataPath /tmp/cmux-<tag>` (never untagged).
 - Tests run on AWS M4 Pro or GitHub Actions, never locally (test host launches a
-  `cmux DEV` app).
+  `Mosaic DEV` app).
 - Each runtime slice: tagged reload + dogfood handoff with prior-bad vs expected
   behavior, merge only on explicit dogfood approval.
 

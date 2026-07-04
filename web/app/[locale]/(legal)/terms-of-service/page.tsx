@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — cmux",
+  title: "Terms of Service — Mosaic",
   description: "Terms of service for cmux",
   alternates: { canonical: "https://mosaic.inc/terms-of-service" },
 };

@@ -8,13 +8,13 @@ STABILITY_WAIT=15
 echo "=== Smoke Test ==="
 
 # --- Find the built app ---
-APP=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Build/Products/Debug/cmux DEV.app" -print -quit 2>/dev/null || true)
+APP=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Build/Products/Debug/Mosaic DEV.app" -print -quit 2>/dev/null || true)
 if [ -z "$APP" ]; then
   echo "ERROR: Built app not found in DerivedData"
   exit 1
 fi
 echo "App: $APP"
-BINARY="$APP/Contents/MacOS/cmux DEV"
+BINARY="$APP/Contents/MacOS/Mosaic DEV"
 if [ ! -x "$BINARY" ]; then
   echo "ERROR: App binary not found or not executable: $BINARY"
   exit 1
@@ -22,7 +22,7 @@ fi
 
 # --- Clean up stale socket and any existing instances ---
 rm -f "$SOCKET_PATH"
-pkill -x "cmux DEV" 2>/dev/null || true
+pkill -x "Mosaic DEV" 2>/dev/null || true
 sleep 1
 
 # --- Launch the app directly (not via `open`, which can silently fail on CI) ---
@@ -71,7 +71,7 @@ if [ "$SOCKET_READY" != "true" ]; then
   echo "--- debug log ---"
   tail -30 /tmp/cmux-debug.log 2>/dev/null || true
   ls -la /tmp/cmux-debug* 2>/dev/null || true
-  pgrep -la "cmux" || echo "No cmux processes found"
+  pgrep -la "Mosaic" || echo "No Mosaic processes found"
   exit 1
 fi
 

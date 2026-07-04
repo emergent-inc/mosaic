@@ -3,10 +3,10 @@ import Darwin
 import Foundation
 import Testing
 
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
-#elseif canImport(cmux)
-@testable import cmux
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
 #endif
 
 @Suite(.serialized) struct CMUXCLIErrorOutputRegressionTests {
@@ -1162,7 +1162,7 @@ import Testing
     ) throws -> String {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("cmux-cli-socket-\(UUID().uuidString)", isDirectory: true)
-        let appURL = root.appendingPathComponent("cmux DEV \(tagSlug).app", isDirectory: true)
+        let appURL = root.appendingPathComponent("Mosaic DEV \(tagSlug).app", isDirectory: true)
         let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
         let binURL: URL
         if nestedIdentifierlessApp {
@@ -1189,7 +1189,7 @@ import Testing
 
         let info: [String: Any] = [
             "CFBundleIdentifier": bundleIdentifier ?? "mosaic.com.emergent.app.debug.\(tagSlug.replacingOccurrences(of: "-", with: "."))",
-            "CFBundleName": bundleName ?? "cmux DEV \(tagSlug)",
+            "CFBundleName": bundleName ?? "Mosaic DEV \(tagSlug)",
             "CFBundlePackageType": "APPL"
         ]
         let infoData = try PropertyListSerialization.data(
