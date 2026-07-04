@@ -1227,6 +1227,22 @@ class TerminalController {
                 )
                 return .ok(payload)
             }
+        case "agent.room.consume":
+            let surfaceID = request.params["surface_id"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.agentRoomConsumePendingForAutomation(
+                    surfaceID: surfaceID
+                )
+                return .ok(payload)
+            }
+        case "agent.room.recap":
+            let surfaceID = request.params["surface_id"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.agentRoomRecapForAutomation(
+                    surfaceID: surfaceID
+                )
+                return .ok(payload)
+            }
         case "system.top":
             return v2Result(id: request.id, v2SystemTop(params: request.params))
         case "system.memory":
@@ -2188,6 +2204,8 @@ class TerminalController {
             "agent.room.disconnect_surface",
             "agent.room.post",
             "agent.room.digest",
+            "agent.room.consume",
+            "agent.room.recap",
             "system.identify",
             "system.tree",
             "sidebar.custom.open",
