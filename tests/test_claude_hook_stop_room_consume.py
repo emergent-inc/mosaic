@@ -151,6 +151,8 @@ class RoomHookSocketServer:
             result = {"text": self.recap_text}
         elif method == "agent.room.post":
             result = {"posted": True}
+        elif method == "agent.room.reset":
+            result = {"reset": True}
 
         return json.dumps({"id": request.get("id"), "ok": True, "result": result})
 
@@ -168,6 +170,23 @@ def run_claude_hook(cli_path, socket_path, subcommand, payload, env):
     if proc.returncode != 0:
         raise RuntimeError(
             f"cmux claude-hook {subcommand} failed:\n"
+            f"exit={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
+        )
+    return proc.stdout
+
+
+def run_cmux(cli_path, socket_path, args, env):
+    proc = subprocess.run(
+        [cli_path, "--socket", socket_path, *args],
+        text=True,
+        capture_output=True,
+        env=env,
+        timeout=8,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"cmux {' '.join(args)} failed:\n"
             f"exit={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
         )
     return proc.stdout
@@ -328,6 +347,14 @@ def main() -> int:
         )
         if "the british are coming" in stdout or "more work" in stdout:
             return fail(f"room-context with no pending text must not re-inject: stdout={stdout!r}")
+
+        # Case 8: the debug reset command clears stale persisted room state via
+        # the app instead of requiring users to manually edit ~/.cmuxterm files.
+        reset_start = len(server.commands)
+        run_cmux(cli_path, server.socket_path, ["agent-room", "reset", "--room-id", "old-room"], env)
+        resets = commands_with(server.commands[reset_start:], "agent.room.reset")
+        if not resets or "old-room" not in resets[0]:
+            return fail(f"agent-room reset must call agent.room.reset with the room id: {resets!r}")
 
     print("PASS: push publish, invisible delivery, session-start recap, stop stays out")
     return 0

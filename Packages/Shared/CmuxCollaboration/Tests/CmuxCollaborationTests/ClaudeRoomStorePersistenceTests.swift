@@ -108,4 +108,43 @@ struct ClaudeRoomStorePersistenceTests {
         let room = await store.room(id: "room-1")
         #expect(room != nil)
     }
+
+    @Test
+    func removingRoomDeletesItsPersistedEventsAndTranscriptTurns() async throws {
+        let url = temporaryStoreURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let store = ClaudeRoomStore(persistenceURL: url)
+        _ = await store.createRoom(id: "room-1", deliveryPolicy: .semiLive)
+        _ = await store.appendEvent(roomID: "room-1", kind: .message, text: "old message")
+        _ = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "claude",
+            surfaceID: "surface-a",
+            role: .user,
+            text: "old transcript"
+        )
+
+        let removed = try #require(await store.removeRoom(id: "room-1"))
+        #expect(removed.id == "room-1")
+
+        let reloaded = ClaudeRoomStore(persistenceURL: url)
+        #expect(await reloaded.room(id: "room-1") == nil)
+        #expect(await reloaded.transcriptTurns(roomID: "room-1").isEmpty)
+    }
+
+    @Test
+    func clearAllRoomsDeletesEveryPersistedRoom() async throws {
+        let url = temporaryStoreURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let store = ClaudeRoomStore(persistenceURL: url)
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.createRoom(id: "room-2")
+
+        await store.clearAllRooms()
+
+        let reloaded = ClaudeRoomStore(persistenceURL: url)
+        #expect(await reloaded.allRooms().isEmpty)
+    }
 }
