@@ -435,7 +435,13 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                             .cmuxFont(size: 11, weight: .semibold)
                         ForEach(participants) { participant in
                             HStack(spacing: 7) {
-                                CollaborationParticipantAvatarView(participant: participant)
+                                CollaborationParticipantAvatarImage(
+                                    participant: participant,
+                                    size: 18,
+                                    fallbackFontSize: 9,
+                                    fallbackFontWeight: .bold,
+                                    fallbackUsesRoundedDesign: false
+                                )
                                 Text(participant.displayName)
                                     .cmuxFont(size: 11)
                                     .lineLimit(1)
@@ -477,42 +483,6 @@ private struct TerminalCollaborationSessionPopoverContent: View {
         }
         .padding(14)
         .frame(width: 260)
-    }
-}
-
-private struct CollaborationParticipantAvatarView: View {
-    let participant: CollaborationWorkspaceParticipantSnapshot
-
-    var body: some View {
-        Group {
-            if let url = participant.imageURL.flatMap(URL.init(string:)) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case let .success(image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        fallback
-                    }
-                }
-            } else {
-                fallback
-            }
-        }
-        .frame(width: 18, height: 18)
-        .clipShape(Circle())
-    }
-
-    private var fallback: some View {
-        Text(participant.initials)
-            .cmuxFont(size: 9, weight: .bold)
-            .foregroundStyle(Color.white)
-            .frame(width: 18, height: 18)
-            .background {
-                Circle()
-                    .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
-            }
     }
 }
 

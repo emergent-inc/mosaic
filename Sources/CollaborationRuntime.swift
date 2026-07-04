@@ -519,6 +519,50 @@ private struct CollaborationTerminalOwnerAvatarRenderer {
     private let pixelSize = 48
 
     func pngData(for participant: CollaborationParticipantAvatarSnapshot) -> Data? {
+        renderPNG { size in
+            let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
+            let circle = NSBezierPath(ovalIn: circleRect)
+            (NSColor(hex: participant.colorHex) ?? .controlAccentColor).setFill()
+            circle.fill()
+
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: CGFloat(pixelSize) * 0.38, weight: .bold),
+                .foregroundColor: NSColor.white,
+                .paragraphStyle: paragraph,
+            ]
+            let initials = NSString(string: participant.initials)
+            let textSize = initials.size(withAttributes: attributes)
+            let textRect = NSRect(
+                x: 0,
+                y: (size.height - textSize.height) / 2 - 1,
+                width: size.width,
+                height: textSize.height
+            )
+            initials.draw(in: textRect, withAttributes: attributes)
+        }
+    }
+
+    func profilePNGData(from imageData: Data) -> Data? {
+        guard let image = NSImage(data: imageData) else { return nil }
+        return renderPNG { size in
+            let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
+            let clipPath = NSBezierPath(ovalIn: circleRect)
+            clipPath.addClip()
+            NSGraphicsContext.current?.imageInterpolation = .high
+            image.draw(
+                in: circleRect,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: nil
+            )
+        }
+    }
+
+    private func renderPNG(_ draw: (NSSize) -> Void) -> Data? {
         guard let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,
             pixelsWide: pixelSize,
@@ -542,30 +586,42 @@ private struct CollaborationTerminalOwnerAvatarRenderer {
 
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: size).fill()
-
-        let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
-        let circle = NSBezierPath(ovalIn: circleRect)
-        (NSColor(hex: participant.colorHex) ?? .controlAccentColor).setFill()
-        circle.fill()
-
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: CGFloat(pixelSize) * 0.38, weight: .bold),
-            .foregroundColor: NSColor.white,
-            .paragraphStyle: paragraph,
-        ]
-        let initials = NSString(string: participant.initials)
-        let textSize = initials.size(withAttributes: attributes)
-        let textRect = NSRect(
-            x: 0,
-            y: (size.height - textSize.height) / 2 - 1,
-            width: size.width,
-            height: textSize.height
-        )
-        initials.draw(in: textRect, withAttributes: attributes)
+        draw(size)
 
         return bitmap.representation(using: .png, properties: [:])
+    }
+}
+
+private actor CollaborationTerminalOwnerProfileImageCache {
+    private static let maximumImageBytes = 4 * 1024 * 1024
+
+    private var cachedDataByURL: [String: Data] = [:]
+    private var failedURLs: Set<String> = []
+
+    func imageData(for url: URL) async -> Data? {
+        let key = url.absoluteString
+        if let cached = cachedDataByURL[key] {
+            return cached
+        }
+        if failedURLs.contains(key) {
+            return nil
+        }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard
+                data.count <= Self.maximumImageBytes,
+                let httpResponse = response as? HTTPURLResponse,
+                (200..<300).contains(httpResponse.statusCode)
+            else {
+                failedURLs.insert(key)
+                return nil
+            }
+            cachedDataByURL[key] = data
+            return data
+        } catch {
+            failedURLs.insert(key)
+            return nil
+        }
     }
 }
 
@@ -593,6 +649,7 @@ final class CollaborationRuntime {
     private var peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
     private let terminalOwnerAvatarRenderer = CollaborationTerminalOwnerAvatarRenderer()
+    private let terminalOwnerProfileImageCache = CollaborationTerminalOwnerProfileImageCache()
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
@@ -610,6 +667,7 @@ final class CollaborationRuntime {
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalOwnerParticipantIDsByID: [String: String] = [:]
+    private var terminalOwnerAvatarRequestKeysByID: [String: String] = [:]
     private var mirroredTerminalRenderGridPatchSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
@@ -758,6 +816,14 @@ final class CollaborationRuntime {
         )
     }
 
+    private static func normalizedProfileImageURL(from rawValue: String?) -> URL? {
+        let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
+        let scheme = url.scheme?.lowercased()
+        guard scheme == "http" || scheme == "https" else { return nil }
+        return url
+    }
+
     private func syncTerminalTabPresentation(
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
@@ -775,6 +841,30 @@ final class CollaborationRuntime {
             title: title,
             iconImageData: iconImageData
         )
+        guard let ownerSnapshot,
+              let profileImageURL = Self.normalizedProfileImageURL(from: ownerSnapshot.imageURL) else {
+            terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
+            return
+        }
+        let requestKey = "\(ownerSnapshot.peerID)|\(profileImageURL.absoluteString)"
+        terminalOwnerAvatarRequestKeysByID[terminalID] = requestKey
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else { return }
+            guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else { return }
+            guard terminalOwnerAvatarRequestKeysByID[terminalID] == requestKey else { return }
+            guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
+                return
+            }
+            guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
+                return
+            }
+            workspace.setCollaborationTerminalTabPresentation(
+                panelId: panel.id,
+                title: title,
+                iconImageData: profileIconData
+            )
+        }
     }
 
     private func restoreAllTerminalTabPresentations() {
@@ -1021,17 +1111,39 @@ final class CollaborationRuntime {
         return false
     }
 
-    private func refreshPeerIdentityFromAuth() {
-        guard let user = AppDelegate.shared?.auth?.coordinator.currentUser else { return }
+    func refreshPeerIdentityFromCurrentAuth() {
+        _ = refreshPeerIdentityFromAuth()
+    }
+
+    @discardableResult
+    private func refreshPeerIdentityFromAuth() -> Bool {
+        guard let user = AppDelegate.shared?.auth?.coordinator.currentUser else { return false }
         let displayName = user.displayName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? user.primaryEmail?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? peerIdentity.displayName
-        peerIdentity = CollaborationPeerIdentity.authenticatedParticipant(
+        let nextIdentity = CollaborationPeerIdentity.authenticatedParticipant(
             peerID: peerIdentity.peerID,
             userID: user.id,
             displayName: displayName,
             imageURL: user.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
+        guard nextIdentity != peerIdentity else { return false }
+        peerIdentity = nextIdentity
+        workspaceParticipantSnapshotRevision &+= 1
+        resyncLocalOwnedTerminalTabPresentations()
+        return true
+    }
+
+    private func resyncLocalOwnedTerminalTabPresentations() {
+        let snapshot = localParticipantSnapshot()
+        for terminalID in hostedTerminalsByID.keys {
+            terminalOwnerParticipantIDsByID[terminalID] = peerIdentity.participantID
+            if var state = terminalStatesByID[terminalID] {
+                state.ownerSnapshot = snapshot
+                terminalStatesByID[terminalID] = state
+            }
+            syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: snapshot)
+        }
     }
 
     func recipientSnapshots(for terminal: TerminalPanel) -> [CollaborationTerminalRecipientSnapshot] {
@@ -1457,6 +1569,7 @@ final class CollaborationRuntime {
         mirroredTerminalIDsBySurfaceID = mirroredTerminalIDsBySurfaceID.filter { $0.value != terminalID }
         terminalSessionRouter.remove(terminalID: terminalID)
         terminalOwnerParticipantIDsByID.removeValue(forKey: terminalID)
+        terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
         for surfaceID in hostedSurfaceIDs + mirroredSurfaceIDs {
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
             terminalSelectionLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
