@@ -42,20 +42,20 @@ for arg in "$@"; do
 done
 ci_app_host_root="${RUNNER_TEMP:-${derived_data_path}}"
 kill_stale_app_host() {
-  # Kill app-host executables (matched by their .../Build/Products/.../cmux DEV
+  # Kill app-host executables (matched by their .../Build/Products/.../Mosaic DEV
   # path) under the CI work root only. This catches a stale host orphaned by a
   # previous run under a different DerivedData path, without touching an
   # unrelated dev build outside the runner work area. If we cannot identify the
   # root, do nothing rather than risk an unrelated process.
   [ -n "$ci_app_host_root" ] && \
-    pkill -f "${ci_app_host_root%/}/.*Build/Products/.*cmux DEV" 2>/dev/null || true
+    pkill -f "${ci_app_host_root%/}/.*Build/Products/.*Mosaic DEV" 2>/dev/null || true
 }
 
 attempt=1
 while [ "$attempt" -le "$max_attempts" ]; do
   log_path="${log_stem}-attempt-${attempt}.log"
   : >"$log_path"
-  # Self-hosted macOS runners reuse the GUI session. A stale "cmux DEV" app-host
+  # Self-hosted macOS runners reuse the GUI session. A stale "Mosaic DEV" app-host
   # left running by a prior job (or another job sharing the machine) contends for
   # the single foreground session and testmanagerd, a top cause of the "Failed to
   # establish communication with the test runner" flake. Start each attempt from

@@ -23,15 +23,15 @@ make_app() {
 </dict>
 </plist>
 EOF
-  : > "$path/Contents/MacOS/cmux"
+  : > "$path/Contents/MacOS/Mosaic"
 }
 
-stable_app="$TMP_DIR/cmux.app"
-nightly_app="$TMP_DIR/cmux NIGHTLY.app"
-dev_app="$TMP_DIR/cmux DEV dog.app"
-make_app "$stable_app" "mosaic.com.emergent.app" "cmux"
-make_app "$nightly_app" "mosaic.com.emergent.app.nightly" "cmux NIGHTLY"
-make_app "$dev_app" "mosaic.com.emergent.app.debug.dog" "cmux DEV dog"
+stable_app="$TMP_DIR/Mosaic.app"
+nightly_app="$TMP_DIR/Mosaic NIGHTLY.app"
+dev_app="$TMP_DIR/Mosaic DEV dog.app"
+make_app "$stable_app" "mosaic.com.emergent.app" "Mosaic"
+make_app "$nightly_app" "mosaic.com.emergent.app.nightly" "Mosaic NIGHTLY"
+make_app "$dev_app" "mosaic.com.emergent.app.debug.dog" "Mosaic DEV dog"
 
 plist_buddy="$TMP_DIR/plistbuddy"
 cat > "$plist_buddy" <<'EOF'
@@ -101,13 +101,13 @@ export CMUX_PROFILE_SYSTEM_PROFILER="$system_profiler_bin"
 
 ps_file="$TMP_DIR/ps.txt"
 cat > "$ps_file" <<EOF
-101 $stable_app/Contents/MacOS/cmux
-202 $nightly_app/Contents/MacOS/cmux
-303 $dev_app/Contents/MacOS/cmux
+101 $stable_app/Contents/MacOS/Mosaic
+202 $nightly_app/Contents/MacOS/Mosaic
+303 $dev_app/Contents/MacOS/Mosaic
 EOF
 
 dry_run="$("$SCRIPT" --dry-run --test-ps-file "$ps_file" --channel dev --tag dog --duration 7 --out "$TMP_DIR/out")"
-if [[ "$dry_run" != *"Target: pid=303 channel=dev bundle=mosaic.com.emergent.app.debug.dog name=cmux DEV dog"* ]]; then
+if [[ "$dry_run" != *"Target: pid=303 channel=dev bundle=mosaic.com.emergent.app.debug.dog name=Mosaic DEV dog"* ]]; then
   echo "FAIL: dev tag selector did not choose the tagged dev process" >&2
   echo "$dry_run" >&2
   exit 1
@@ -223,15 +223,15 @@ if [ ! -f "$timeout_out/system-info.txt" ] ||
   exit 1
 fi
 if ! grep -Fq "System:" "$timeout_out/summary.md" ||
-   ! grep -Fq "App: ~/cmux DEV dog.app" "$timeout_out/summary.md" ||
+   ! grep -Fq "App: ~/Mosaic DEV dog.app" "$timeout_out/summary.md" ||
    ! grep -Fq "Keyboard/input source: U.S." "$timeout_out/summary.md" ||
    ! grep -Fq "More details: system-info.txt" "$timeout_out/summary.md"; then
   echo "FAIL: summary did not preview system info" >&2
   cat "$timeout_out/summary.md" >&2
   exit 1
 fi
-if grep -Fq "$TMP_DIR/cmux DEV dog.app" "$timeout_out/summary.md" ||
-   grep -Fq "$TMP_DIR/cmux DEV dog.app" "$timeout_out/system-info.txt"; then
+if grep -Fq "$TMP_DIR/Mosaic DEV dog.app" "$timeout_out/summary.md" ||
+   grep -Fq "$TMP_DIR/Mosaic DEV dog.app" "$timeout_out/system-info.txt"; then
   echo "FAIL: system info leaked an unredacted home path" >&2
   cat "$timeout_out/summary.md" >&2
   cat "$timeout_out/system-info.txt" >&2
@@ -323,10 +323,10 @@ if ! grep -Fq "all profiling templates failed" /tmp/cmux-profile-all-failed.log 
   exit 1
 fi
 
-submit_output="$("$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "cmux DEV dog" --target-pid 303 --channel dev --bundle-id mosaic.com.emergent.app.debug.dog --reply-to "user@example.com")"
+submit_output="$("$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "Mosaic DEV dog" --target-pid 303 --channel dev --bundle-id mosaic.com.emergent.app.debug.dog --reply-to "user@example.com")"
 if [[ "$submit_output" != *"Recipient: contact@emergent.inc"* ]] ||
    [[ "$submit_output" != *"Reply-to: user@example.com"* ]] ||
-   [[ "$submit_output" != *"Subject: cmux profiling capture: cmux DEV dog"* ]]; then
+   [[ "$submit_output" != *"Subject: cmux profiling capture: Mosaic DEV dog"* ]]; then
   echo "FAIL: submit helper dry run did not describe the founders draft" >&2
   echo "$submit_output" >&2
   exit 1
@@ -335,7 +335,7 @@ fi
 archive_path="$(printf '%s\n' "$submit_output" | sed -n 's/^Archive: //p')"
 mkdir -p "$(dirname "$archive_path")"
 printf 'keep me' > "$archive_path"
-"$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "cmux DEV dog" >/dev/null
+"$ROOT_DIR/Resources/bin/submit-cmux-profile" --dry-run --profile "$timeout_out" --target-name "Mosaic DEV dog" >/dev/null
 if [ "$(cat "$archive_path")" != "keep me" ]; then
   echo "FAIL: submit helper dry run modified an existing archive" >&2
   exit 1
@@ -421,7 +421,7 @@ fi
 
 CMUX_PROFILE_OSASCRIPT="$cancel_bin" CMUX_PROFILE_OPEN="$open_bin" CMUX_PROFILE_DITTO="$ditto_bin" "$ROOT_DIR/Resources/bin/submit-cmux-profile" \
   --profile "$timeout_out" \
-  --target-name "cmux DEV dog" \
+  --target-name "Mosaic DEV dog" \
   --target-pid 303 \
   --channel dev \
   --bundle-id mosaic.com.emergent.app.debug.dog
@@ -438,7 +438,7 @@ EOF
 chmod +x "$sleep_osascript"
 CMUX_PROFILE_OSASCRIPT="$sleep_osascript" CMUX_PROFILE_DITTO="$ditto_bin" "$ROOT_DIR/Resources/bin/submit-cmux-profile" \
   --profile "$timeout_out" \
-  --target-name "cmux DEV dog" \
+  --target-name "Mosaic DEV dog" \
   --target-pid 303 \
   --channel dev \
   --bundle-id mosaic.com.emergent.app.debug.dog \
@@ -476,7 +476,7 @@ fi
 
 if CMUX_PROFILE_OSASCRIPT="$cancel_bin" CMUX_PROFILE_OPEN="$open_bin" CMUX_PROFILE_DITTO="$ditto_bin" "$ROOT_DIR/Resources/bin/submit-cmux-profile" \
   --profile "$timeout_out" \
-  --target-name "cmux DEV dog" \
+  --target-name "Mosaic DEV dog" \
   --target-pid 303 \
   --channel dev \
   --bundle-id mosaic.com.emergent.app.debug.dog \
@@ -511,7 +511,7 @@ printf '%s' "profile note" > "$note_file"
 
 HOME="$TMP_DIR" CMUX_PROFILE_FEEDBACK_EMAIL=wrong@example.com CMUX_PROFILE_LOCALE=ja_JP CMUX_PROFILE_OSASCRIPT="$capture_osascript" CMUX_PROFILE_DITTO="$ditto_bin" "$ROOT_DIR/Resources/bin/submit-cmux-profile" \
   --profile "$timeout_out" \
-  --target-name "cmux DEV dog" \
+  --target-name "Mosaic DEV dog" \
   --target-pid 303 \
   --channel dev \
   --bundle-id mosaic.com.emergent.app.debug.dog \

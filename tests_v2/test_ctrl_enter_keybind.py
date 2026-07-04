@@ -29,24 +29,24 @@ def infer_app_name_for_osascript(socket_path: str) -> str:
     Infer the app display name from the socket path.
 
     Examples:
-      - /tmp/cmux-debug.sock          -> "cmux DEV"
-      - /tmp/cmux-debug-foo.sock      -> "cmux DEV foo"
-      - ~/Library/Application Support/cmux/cmux.sock -> "cmux"
-      - /tmp/cmux-foo.sock            -> "cmux foo"
+      - /tmp/cmux-debug.sock          -> "Mosaic DEV"
+      - /tmp/cmux-debug-foo.sock      -> "Mosaic DEV foo"
+      - ~/Library/Application Support/cmux/cmux.sock -> "Mosaic"
+      - /tmp/cmux-foo.sock            -> "Mosaic foo"
     """
     base = Path(socket_path).name
     if base.startswith("cmux-debug") and base.endswith(".sock"):
         suffix = base[len("cmux-debug") : -len(".sock")]
         if suffix.startswith("-") and suffix[1:]:
-            return f"cmux DEV {suffix[1:]}"
-        return "cmux DEV"
+            return f"Mosaic DEV {suffix[1:]}"
+        return "Mosaic DEV"
     if base.startswith("cmux") and base.endswith(".sock"):
         suffix = base[len("cmux") : -len(".sock")]
         if suffix.startswith("-") and suffix[1:]:
-            return f"cmux {suffix[1:]}"
-        return "cmux"
+            return f"Mosaic {suffix[1:]}"
+        return "Mosaic"
     # Fallback: tests usually run against Debug builds.
-    return "cmux DEV"
+    return "Mosaic DEV"
 
 
 def run_osascript(script: str) -> None:
