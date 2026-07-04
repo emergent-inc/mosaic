@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Locale } from "../../../i18n/routing";
 import { locales, routing } from "../../../i18n/routing";
+import { nativeIdentityClaimsFor, type ClerkUserIdentityLike } from "../../../services/auth/clerkIdentity";
 import { mintNativeSessionTokenPair } from "../../../services/auth/nativeSession";
 import {
   MOSAIC_TEAM_WORKSPACE_DEFAULTS,
@@ -33,16 +34,6 @@ type ClerkAuthLike = {
   orgId?: string | null;
 };
 
-type ClerkUserLike = {
-  id: string;
-  fullName?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  imageUrl?: string | null;
-  primaryEmailAddress?: { emailAddress?: string | null } | null;
-  emailAddresses?: readonly { emailAddress?: string | null }[];
-};
-
 type ClerkOrganizationMembershipLike = {
   organization?: {
     id?: string | null;
@@ -53,7 +44,7 @@ type ClerkOrganizationMembershipLike = {
 
 type AfterSignInHandlerDependencies = {
   getAuth: () => Promise<ClerkAuthLike>;
-  getUser: (userId: string) => Promise<ClerkUserLike | null>;
+  getUser: (userId: string) => Promise<ClerkUserIdentityLike | null>;
   listMemberships?: (userId: string) => Promise<readonly ClerkOrganizationMembershipLike[]>;
   getCookieStore: () => Promise<CookieStore>;
 };
@@ -193,21 +184,19 @@ function nativeReturnResponse(
   <title>${escapedTitle}</title>
   <style>
     :root {
-      color-scheme: light;
-      --background: #fafafa;
-      --foreground: #171717;
-      --muted: #737373;
-      --border: #e5e5e5;
-      --card: #ffffff;
+      color-scheme: dark;
+      --background: #0a0a0a;
+      --foreground: #ffffff;
+      --muted: #a3a3a3;
+      --border: rgba(255, 255, 255, 0.1);
+      --card: #0f0f0f;
     }
     * {
       box-sizing: border-box;
     }
     body {
       align-items: center;
-      background:
-        radial-gradient(circle at top, rgba(23, 23, 23, 0.07), transparent 34rem),
-        var(--background);
+      background: var(--background);
       color: var(--foreground);
       display: flex;
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -219,27 +208,12 @@ function nativeReturnResponse(
     main {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08);
+      border-radius: 24px;
+      box-shadow: none;
       max-width: 440px;
       padding: 40px;
       text-align: center;
       width: 100%;
-    }
-    .mark {
-      align-items: center;
-      background: #171717;
-      border-radius: 14px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-      color: #fff;
-      display: inline-flex;
-      font-size: 20px;
-      font-weight: 650;
-      height: 48px;
-      justify-content: center;
-      letter-spacing: -0.04em;
-      margin-bottom: 24px;
-      width: 48px;
     }
     h1 {
       font-size: 28px;
@@ -255,9 +229,10 @@ function nativeReturnResponse(
     }
     a {
       background: #171717;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
-      color: #fff;
+      box-shadow: none;
+      color: var(--foreground);
       display: inline-block;
       font-size: 14px;
       font-weight: 600;
@@ -266,11 +241,11 @@ function nativeReturnResponse(
       transition: background 120ms ease, transform 120ms ease;
     }
     a:hover {
-      background: #262626;
+      background: #1f1f1f;
       transform: translateY(-1px);
     }
     a:focus-visible {
-      outline: 2px solid rgba(23, 23, 23, 0.35);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
       outline-offset: 3px;
     }
     @media (max-width: 480px) {
@@ -286,7 +261,6 @@ function nativeReturnResponse(
 </head>
 <body>
   <main>
-    <div class="mark" aria-hidden="true">M</div>
     <h1>${escapedTitle}</h1>
 ${bodyHTML}    <a href="${escapedHref}">${escapedButton}</a>
   </main>
@@ -336,11 +310,12 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
     const teamWorkspaces = memberships
       .map((membership) => teamWorkspaceForMembership(membership))
       .filter((workspace): workspace is NonNullable<ReturnType<typeof teamWorkspaceForMembership>> => workspace !== null);
+    const identity = nativeIdentityClaimsFor(user);
     const tokens = mintNativeSessionTokenPair({
       userId: auth.userId,
-      displayName: displayNameFor(user),
-      primaryEmail: primaryEmailFor(user),
-      imageURL: imageURLFor(user),
+      displayName: identity.displayName,
+      primaryEmail: identity.primaryEmail,
+      imageURL: identity.imageURL,
       selectedTeamId: auth.orgId ?? teamIds[0] ?? null,
       teamIds,
       teamWorkspaces,
@@ -370,27 +345,6 @@ export function makeAfterSignInHandler(dependencies: AfterSignInHandlerDependenc
 
     return NextResponse.redirect(new URL("/", request.url));
   };
-}
-
-function displayNameFor(user: ClerkUserLike | null): string | null {
-  if (!user) return null;
-  if (user.fullName?.trim()) return user.fullName.trim();
-  const joined = [user.firstName, user.lastName]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ");
-  return joined || null;
-}
-
-function primaryEmailFor(user: ClerkUserLike | null): string | null {
-  return user?.primaryEmailAddress?.emailAddress
-    ?? user?.emailAddresses?.find((email) => email.emailAddress)?.emailAddress
-    ?? null;
-}
-
-function imageURLFor(user: ClerkUserLike | null): string | null {
-  const imageUrl = user?.imageUrl?.trim();
-  return imageUrl || null;
 }
 
 function teamWorkspaceForMembership(membership: ClerkOrganizationMembershipLike) {

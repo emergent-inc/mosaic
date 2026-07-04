@@ -151,7 +151,7 @@ async function main(): Promise<void> {
   if (!created.sessionCode) {
     fail(`session create returned incomplete invite: ${JSON.stringify(created)}`);
   }
-  if (!/^[2-9A-HJ-NP-Z]{8}$/.test(created.sessionCode)) {
+  if (!/^[A-Z0-9]{8}$/.test(created.sessionCode)) {
     fail(`session create returned unexpected code shape: ${created.sessionCode}`);
   }
 

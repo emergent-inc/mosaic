@@ -16,7 +16,15 @@ enabled = true
 name = "COLLABORATION_SESSIONS"
 class_name = "CollaborationSessionObject"
 
+[[durable_objects.bindings]]
+name = "COLLABORATION_SESSION_INDEX"
+class_name = "CollaborationSessionIndexObject"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["CollaborationSessionObject"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["CollaborationSessionIndexObject"]
 

@@ -24,41 +24,57 @@ struct TutorialVideoSettingsTests {
         }
     }
 
-    @Test func automaticPresentationShowsForFirstNonTestLaunchAndClaimsFlag() throws {
+    @Test func automaticPresentationShowsForFirstNonTestLaunchWhenSignedOutWithoutClaimingFlag() throws {
         try withIsolatedTutorialDefaults { defaults in
             #expect(TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: false,
+                isAuthenticated: false,
+                isRestoringSession: false,
                 environment: [:],
                 defaults: defaults
             ))
 
-            #expect(TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-                isRunningUnderXCTest: false,
-                environment: [:],
-                defaults: defaults
-            ))
-            #expect(TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
+            #expect(!TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
         }
     }
 
-    @Test func automaticPresentationDoesNotRepeatAfterClaimingFlag() throws {
+    @Test func automaticPresentationDoesNotRepeatAfterSeenFlagIsMarked() throws {
         try withIsolatedTutorialDefaults { defaults in
-            #expect(TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-                isRunningUnderXCTest: false,
-                environment: [:],
-                defaults: defaults
-            ))
+            TutorialVideoSettings.markSeen(defaults: defaults)
 
             #expect(!TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: false,
+                isAuthenticated: false,
+                isRestoringSession: false,
                 environment: [:],
                 defaults: defaults
             ))
-            #expect(!TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
+        }
+    }
+
+    @Test func automaticPresentationSkipsSignedInUsers() throws {
+        try withIsolatedTutorialDefaults { defaults in
+            #expect(!TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: false,
+                isAuthenticated: true,
+                isRestoringSession: false,
                 environment: [:],
                 defaults: defaults
             ))
+            #expect(!TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
+        }
+    }
+
+    @Test func automaticPresentationWaitsForSessionRestoreToSettle() throws {
+        try withIsolatedTutorialDefaults { defaults in
+            #expect(!TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
+                isRunningUnderXCTest: false,
+                isAuthenticated: false,
+                isRestoringSession: true,
+                environment: [:],
+                defaults: defaults
+            ))
+            #expect(!TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
         }
     }
 
@@ -66,11 +82,8 @@ struct TutorialVideoSettingsTests {
         try withIsolatedTutorialDefaults { defaults in
             #expect(!TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: true,
-                environment: [:],
-                defaults: defaults
-            ))
-            #expect(!TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-                isRunningUnderXCTest: true,
+                isAuthenticated: false,
+                isRestoringSession: false,
                 environment: [:],
                 defaults: defaults
             ))
@@ -84,15 +97,12 @@ struct TutorialVideoSettingsTests {
 
             #expect(TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: true,
+                isAuthenticated: false,
+                isRestoringSession: false,
                 environment: environment,
                 defaults: defaults
             ))
-            #expect(TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-                isRunningUnderXCTest: true,
-                environment: environment,
-                defaults: defaults
-            ))
-            #expect(TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
+            #expect(!TutorialVideoSettings.hasSeenTutorial(defaults: defaults))
         }
     }
 
@@ -100,6 +110,8 @@ struct TutorialVideoSettingsTests {
         try withIsolatedTutorialDefaults { defaults in
             #expect(!TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
                 isRunningUnderXCTest: true,
+                isAuthenticated: false,
+                isRestoringSession: false,
                 environment: [TutorialVideoFirstRunPresentation.uiTestAutoShowEnvironmentKey: "true"],
                 defaults: defaults
             ))
