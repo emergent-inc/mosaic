@@ -297,6 +297,9 @@ struct TerminalPanelView: View {
                 isConnected: state.isWorkspaceSessionConnected,
                 peerSummary: state.peerSummary,
                 participants: CollaborationRuntime.shared.participantSnapshots(for: panel),
+                directorySharingEnabled: CollaborationRuntime.shared.collaborationEntitlements.directorySharing,
+                codesEnabled: CollaborationRuntime.shared.collaborationEntitlements.codesEnabled,
+                incomingSessionCount: CollaborationRuntime.shared.incomingSharedSessions.count,
                 onCreate: {
                     CollaborationRuntime.shared.createWorkspaceSession(for: panel)
                     isTerminalSessionPopoverPresented = false
@@ -307,6 +310,14 @@ struct TerminalPanelView: View {
                 },
                 onCopyInviteCode: {
                     CollaborationRuntime.shared.copyWorkspaceSessionInviteCode(for: panel)
+                    isTerminalSessionPopoverPresented = false
+                },
+                onShareWithTeammate: {
+                    CollaborationRuntime.shared.presentTeammateDirectorySharePicker()
+                    isTerminalSessionPopoverPresented = false
+                },
+                onOpenIncomingSessions: {
+                    CollaborationRuntime.shared.presentIncomingSessionsInbox()
                     isTerminalSessionPopoverPresented = false
                 },
                 onLeave: {
@@ -369,8 +380,13 @@ struct TerminalPanelView: View {
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
+                codesEnabled: CollaborationRuntime.shared.collaborationEntitlements.codesEnabled,
                 onCopyInviteCode: {
                     CollaborationRuntime.shared.copyTerminalSessionInviteCode(for: panel)
+                    isTerminalRecipientPopoverPresented = false
+                },
+                onShareWithTeammate: {
+                    CollaborationRuntime.shared.presentTeammateDirectorySharePicker()
                     isTerminalRecipientPopoverPresented = false
                 },
                 onSelectionChanged: { selectedIDs in
@@ -437,9 +453,14 @@ private struct TerminalCollaborationSessionPopoverContent: View {
     let isConnected: Bool
     let peerSummary: String
     let participants: [CollaborationWorkspaceParticipantSnapshot]
+    let directorySharingEnabled: Bool
+    let codesEnabled: Bool
+    let incomingSessionCount: Int
     let onCreate: () -> Void
     let onJoin: () -> Void
     let onCopyInviteCode: () -> Void
+    let onShareWithTeammate: () -> Void
+    let onOpenIncomingSessions: () -> Void
     let onLeave: () -> Void
 
     var body: some View {
@@ -453,6 +474,14 @@ private struct TerminalCollaborationSessionPopoverContent: View {
 
                 Text(CollaborationStrings.sessionPopoverTitle)
                     .cmuxFont(size: 12, weight: .semibold)
+            }
+
+            if incomingSessionCount > 0 {
+                TrackedButton("session_incoming_open", CollaborationStrings.incomingSessionsButton(count: incomingSessionCount)) {
+                    onOpenIncomingSessions()
+                }
+                .buttonStyle(.mosaicAccent)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let sessionCode {
@@ -487,6 +516,16 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     }
                 }
 
+                // Team/enterprise "no codes" sharing: pick a teammate from the
+                // org directory; they get an in-app incoming-session invite.
+                if directorySharingEnabled {
+                    TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
+                        onShareWithTeammate()
+                    }
+                    .buttonStyle(.mosaicAccent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 // Ends only *your* participation: stops sharing every terminal you host in
                 // this session and disconnects you. Other people's shared terminals are
                 // untouched. The pill reverts to "Start session" once this clears the binding.
@@ -504,8 +543,12 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     .buttonStyle(.mosaicAccent)
                     .keyboardShortcut(.defaultAction)
 
-                    TrackedButton("session_join", CollaborationStrings.joinSession) {
-                        onJoin()
+                    // Enterprise (org-locked) plans disable codes entirely, so
+                    // joining is only via the incoming-sessions inbox.
+                    if codesEnabled {
+                        TrackedButton("session_join", CollaborationStrings.joinSession) {
+                            onJoin()
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -518,19 +561,25 @@ private struct TerminalCollaborationSessionPopoverContent: View {
 
 private struct TerminalCollaborationRecipientPopoverContent: View {
     let recipients: [CollaborationTerminalRecipientSnapshot]
+    let codesEnabled: Bool
     let onCopyInviteCode: () -> Void
+    let onShareWithTeammate: () -> Void
     let onSelectionChanged: (Set<String>) -> Void
     let onStopSharing: () -> Void
     @State private var selectedParticipantIDs: Set<String>
 
     init(
         recipients: [CollaborationTerminalRecipientSnapshot],
+        codesEnabled: Bool,
         onCopyInviteCode: @escaping () -> Void,
+        onShareWithTeammate: @escaping () -> Void,
         onSelectionChanged: @escaping (Set<String>) -> Void,
         onStopSharing: @escaping () -> Void
     ) {
         self.recipients = recipients
+        self.codesEnabled = codesEnabled
         self.onCopyInviteCode = onCopyInviteCode
+        self.onShareWithTeammate = onShareWithTeammate
         self.onSelectionChanged = onSelectionChanged
         self.onStopSharing = onStopSharing
         _selectedParticipantIDs = State(initialValue: Set(
@@ -561,19 +610,28 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack {
+                    if codesEnabled {
+                        TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
+                            onCopyInviteCode()
+                        }
+                        .buttonStyle(.mosaicAccent)
+                        .keyboardShortcut(.defaultAction)
+                        .fixedSize()
+                    } else {
+                        TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
+                            onShareWithTeammate()
+                        }
+                        .buttonStyle(.mosaicAccent)
+                        .keyboardShortcut(.defaultAction)
+                        .fixedSize()
+                    }
+                    Spacer()
                     if model.showsStopSharingAction {
                         TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
                             onStopSharing()
                         }
                         .fixedSize()
                     }
-                    Spacer()
-                    TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
-                        onCopyInviteCode()
-                    }
-                    .buttonStyle(.mosaicAccent)
-                    .keyboardShortcut(.defaultAction)
-                    .fixedSize()
                 }
             } else if model.showsRecipientSelection {
                 VStack(alignment: .leading, spacing: 6) {
