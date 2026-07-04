@@ -23551,10 +23551,17 @@ struct CMUXCLI {
                 icon: "bolt.fill",
                 color: "#4C8DFF"
             )
+            if !resolvedSurface.isAuthoritative {
+                // Publishing to a non-authoritative (focused-pane fallback)
+                // surface is the likely cause of a message never reaching the
+                // wired room. Breadcrumb so mis-routing is diagnosable.
+                telemetry.breadcrumb("claude-hook.prompt-submit.room-nonauthoritative-surface")
+            }
             publishClaudeRoomUserPrompt(
                 client: client,
                 surfaceId: surfaceId,
-                parsedInput: parsedInput
+                parsedInput: parsedInput,
+                telemetry: telemetry
             )
             print("OK")
 
@@ -23583,8 +23590,10 @@ struct CMUXCLI {
                     params: ["surface_id": surfaceId]
                 )
                 let digest = (payload["digest"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let contextPackText = (payload["context_pack_text"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let activeInstructions = agentRoomActiveInstructions(from: payload)
-                let contextSections = [digest, activeInstructions]
+                let contextSections = [digest, contextPackText, activeInstructions]
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 if !contextSections.isEmpty {
@@ -24852,7 +24861,12 @@ struct CMUXCLI {
     ) -> String? {
         let transcriptPath = parsedInput.transcriptPath ?? sessionRecord?.transcriptPath
         let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
-        let userMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.object)
+        let rawUserMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.object)
+        // Drop the echoed user portion when this turn was triggered by a prompt
+        // the app relayed from a peer. Re-publishing it would just duplicate the
+        // original message in the shared ledger. The assistant reply is the
+        // peer's own new contribution, so keep that.
+        let userMessage = rawUserMessage.flatMap { isCmuxRoomRelayPrompt($0) ? nil : $0 }
         let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object)
             ?? transcript?.lastAssistantMessage
 
@@ -24876,13 +24890,36 @@ struct CMUXCLI {
         return body.isEmpty ? completion.subtitle : "\(completion.subtitle): \(body)"
     }
 
+    /// Recognizes a prompt that the app relayed into this terminal from a peer
+    /// agent room. Re-publishing such a prompt would echo it back into the room
+    /// and loop forever, so the publish hooks skip it.
+    ///
+    /// Mirror of `AgentRoomActiveDispatchPromptBuilder.relayPromptHeaderPrefixes`
+    /// in the `CmuxCollaboration` package (which the CLI target does not link).
+    /// Keep the two lists in sync.
+    private func isCmuxRoomRelayPrompt(_ text: String) -> Bool {
+        let relayPromptHeaderPrefixes = [
+            "Shared room message",
+            "Shared room handoff",
+            "Shared room question",
+            "Shared room blocker",
+        ]
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return relayPromptHeaderPrefixes.contains { trimmed.hasPrefix($0) }
+    }
+
     private func publishClaudeRoomUserPrompt(
         client: SocketClient,
         surfaceId: String,
-        parsedInput: ClaudeHookParsedInput
+        parsedInput: ClaudeHookParsedInput,
+        telemetry: CLISocketSentryTelemetry
     ) {
         guard let prompt = feedPromptText(from: parsedInput.object)?.trimmingCharacters(in: .whitespacesAndNewlines),
               !prompt.isEmpty else { return }
+        guard !isCmuxRoomRelayPrompt(prompt) else {
+            telemetry.breadcrumb("claude-hook.prompt-submit.relay-skip")
+            return
+        }
         let userLabel = String(localized: "cli.claudeHook.roomPublish.peerUser", defaultValue: "Shared user message")
         _ = try? client.sendV2(
             method: "agent.room.post",
