@@ -36,6 +36,23 @@ struct CollaborationTerminalSessionRouterTests {
     }
 
     @Test
+    func terminalIDsInSessionOnlyReturnsTerminalsForThatSession() {
+        var router = CollaborationTerminalSessionRouter()
+        router.record(terminalID: "BBBB:terminal:workspace-b:surface-b", sessionCode: "BBBB")
+        router.record(terminalID: "AAAA:terminal:workspace-a:surface-b", sessionCode: "AAAA")
+        router.record(terminalID: "AAAA:terminal:workspace-a:surface-a", sessionCode: "AAAA")
+
+        #expect(router.terminalIDs(inSession: "AAAA") == [
+            "AAAA:terminal:workspace-a:surface-a",
+            "AAAA:terminal:workspace-a:surface-b",
+        ])
+        #expect(router.terminalIDs(inSession: "BBBB") == [
+            "BBBB:terminal:workspace-b:surface-b",
+        ])
+        #expect(router.terminalIDs(inSession: "CCCC") == [])
+    }
+
+    @Test
     func removeAllClearsEverySessionRoute() {
         var router = CollaborationTerminalSessionRouter()
         router.record(terminalID: "AAAA:terminal:workspace-a:surface-a", sessionCode: "AAAA")
