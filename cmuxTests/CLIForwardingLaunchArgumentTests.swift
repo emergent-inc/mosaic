@@ -1,5 +1,5 @@
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
 import Foundation
 import XCTest
 
@@ -10,9 +10,9 @@ final class CLIForwardingLaunchArgumentTests: XCTestCase {
     }
 
     func testGuiLaunchArgumentsStayInApp() {
-        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux DEV", "DEV"]))
+        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["Mosaic DEV", "DEV"]))
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux STAGING", "STAGING"]))
-        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux NIGHTLY", "NIGHTLY"]))
+        XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["Mosaic NIGHTLY", "NIGHTLY"]))
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux", "-psn_0_12345"]))
         XCTAssertFalse(CLIForwardingLaunchRouter.shouldForwardToBundledCLI(arguments: ["cmux", "mosaic://workspace/foo"]))
     }
@@ -22,7 +22,7 @@ final class CLIForwardingLaunchArgumentTests: XCTestCase {
         let rootURL = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? fileManager.removeItem(at: rootURL) }
 
-        let appContentsURL = rootURL.appendingPathComponent("cmux DEV test.app/Contents", isDirectory: true)
+        let appContentsURL = rootURL.appendingPathComponent("Mosaic DEV test.app/Contents", isDirectory: true)
         let macOSURL = appContentsURL.appendingPathComponent("MacOS", isDirectory: true)
         let resourcesBinURL = appContentsURL.appendingPathComponent("Resources/bin", isDirectory: true)
         try fileManager.createDirectory(at: macOSURL, withIntermediateDirectories: true)
@@ -32,7 +32,7 @@ final class CLIForwardingLaunchArgumentTests: XCTestCase {
         XCTAssertTrue(fileManager.createFile(atPath: cliURL.path, contents: Data("#!/bin/sh\n".utf8)))
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: cliURL.path)
 
-        let executableURL = macOSURL.appendingPathComponent("cmux DEV")
+        let executableURL = macOSURL.appendingPathComponent("Mosaic DEV")
         let resolvedURL = CLIForwardingLaunchRouter.bundledCLIURL(
             bundle: Bundle(for: Self.self),
             fileManager: fileManager,

@@ -21,10 +21,10 @@ if [ -n "$APP_PATH" ]; then
 else
   case "$CONFIGURATION" in
     Debug)
-      APP_NAME="cmux DEV.app"
+      APP_NAME="Mosaic DEV.app"
       ;;
     Release)
-      APP_NAME="cmux.app"
+      APP_NAME="Mosaic.app"
       ;;
     *)
       echo "FAIL: unsupported configuration $CONFIGURATION" >&2

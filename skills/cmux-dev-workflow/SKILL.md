@@ -15,7 +15,7 @@ After making code changes, always run the reload script with a tag to build the 
 
 By default, `reload.sh` builds but does not launch the app. Pass `--launch` only when you need to open it automatically.
 
-Never run bare `xcodebuild` or open an untagged `cmux DEV.app`. Untagged builds share the default debug socket and bundle ID with other agents, causing conflicts and stealing focus.
+Never run bare `xcodebuild` or open an untagged `Mosaic DEV.app`. Untagged builds share the default debug socket and bundle ID with other agents, causing conflicts and stealing focus.
 
 For CLI or socket dogfood against a tagged Debug app, use the tag-bound helper and set `CMUX_TAG`:
 

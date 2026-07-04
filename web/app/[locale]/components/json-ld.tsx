@@ -64,8 +64,8 @@ export function articleSchema(opts: {
     headline: opts.headline,
     description: opts.description,
     datePublished: opts.datePublished,
-    author: { "@type": "Organization", name: opts.authorName ?? "cmux" },
-    publisher: { "@type": "Organization", name: "cmux", url: BASE },
+    author: { "@type": "Organization", name: opts.authorName ?? "Mosaic" },
+    publisher: { "@type": "Organization", name: "Mosaic", url: BASE },
     mainEntityOfPage: localizedUrl(opts.locale, opts.path),
   };
 }

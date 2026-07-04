@@ -3,12 +3,12 @@ set -euo pipefail
 
 tag="${CMUX_TAG:-swmob}"
 repo="${CMUX_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-app="${CMUX_SWAPP:-$HOME/Library/Developer/Xcode/DerivedData/cmux-${tag}/Build/Products/Debug/cmux DEV ${tag}.app}"
+app="${CMUX_SWAPP:-$HOME/Library/Developer/Xcode/DerivedData/cmux-${tag}/Build/Products/Debug/Mosaic DEV ${tag}.app}"
 port="${CMUX_PORT:-9300}"
 port_range="${CMUX_PORT_RANGE:-10}"
 port_end="${CMUX_PORT_END:-$((port + port_range - 1))}"
 dev_origin="${CMUX_DEV_ORIGIN:-http://localhost:${port}}"
-bin="$app/Contents/MacOS/cmux DEV"
+bin="$app/Contents/MacOS/Mosaic DEV"
 tag_bundle_id="$(printf '%s' "$tag" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/./g; s/^\.+//; s/\.+$//; s/\.+/./g')"
 if [[ -z "$tag_bundle_id" ]]; then
   tag_bundle_id="agent"

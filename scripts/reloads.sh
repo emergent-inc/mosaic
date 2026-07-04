@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="cmux STAGING"
+APP_NAME="Mosaic STAGING"
 BUNDLE_ID="mosaic.com.emergent.app.staging"
 BASE_APP_NAME="cmux"
 DERIVED_DATA=""
@@ -46,7 +46,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/reloads.sh [options]
 
-Release build with isolated "cmux STAGING" identity. Runs side-by-side with
+Release build with isolated "Mosaic STAGING" identity. Runs side-by-side with
 the production cmux app.
 
 Options:
@@ -133,7 +133,7 @@ if [[ -n "$TAG" ]]; then
     exit 1
   fi
   if [[ "$NAME_SET" -eq 0 ]]; then
-    APP_NAME="cmux STAGING ${TAG}"
+    APP_NAME="Mosaic STAGING ${TAG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
     BUNDLE_ID="mosaic.com.emergent.app.staging.${TAG_ID}"

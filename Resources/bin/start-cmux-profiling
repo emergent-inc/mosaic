@@ -388,8 +388,8 @@ write_system_info() {
       echo "- Version: $(plist_value "$app_path/Contents/Info.plist" CFBundleShortVersionString || true)"
       echo "- Build: $(plist_value "$app_path/Contents/Info.plist" CFBundleVersion || true)"
     fi
-    if [ -n "$app_path" ] && [ -f "$app_path/Contents/MacOS/cmux" ]; then
-      echo "- Executable: $(file -b "$app_path/Contents/MacOS/cmux" 2>/dev/null || printf 'unknown')"
+    if [ -n "$app_path" ] && [ -f "$app_path/Contents/MacOS/Mosaic" ]; then
+      echo "- Executable: $(file -b "$app_path/Contents/MacOS/Mosaic" 2>/dev/null || printf 'unknown')"
     fi
     echo
     echo "Privacy:"
@@ -448,9 +448,9 @@ discover_targets() {
   local pid args executable app_path plist bundle_id display_name channel
   while read -r pid args; do
     [[ "${pid:-}" =~ ^[0-9]+$ ]] || continue
-    [[ "${args:-}" =~ (/.*cmux[^/]*\.app/Contents/MacOS/cmux)([[:space:]]|$) ]] || continue
+    [[ "${args:-}" =~ (/.*[Mm]osaic[^/]*\.app/Contents/MacOS/Mosaic)([[:space:]]|$) ]] || continue
     executable="${BASH_REMATCH[1]}"
-    app_path="${executable%/Contents/MacOS/cmux}"
+    app_path="${executable%/Contents/MacOS/Mosaic}"
     plist="${app_path}/Contents/Info.plist"
     bundle_id="$(plist_value "$plist" "CFBundleIdentifier")"
     display_name="$(plist_value "$plist" "CFBundleDisplayName")"
@@ -499,12 +499,12 @@ tag_matches() {
       return 0
       ;;
   esac
-  [ "$display_name" = "cmux DEV ${path_tag}" ] && return 0
-  [ "$display_name" = "cmux NIGHTLY ${path_tag}" ] && return 0
-  [ "$display_name" = "cmux STAGING ${path_tag}" ] && return 0
-  [ "$app_base" = "cmux DEV ${path_tag}" ] && return 0
-  [ "$app_base" = "cmux NIGHTLY ${path_tag}" ] && return 0
-  [ "$app_base" = "cmux STAGING ${path_tag}" ] && return 0
+  [ "$display_name" = "Mosaic DEV ${path_tag}" ] && return 0
+  [ "$display_name" = "Mosaic NIGHTLY ${path_tag}" ] && return 0
+  [ "$display_name" = "Mosaic STAGING ${path_tag}" ] && return 0
+  [ "$app_base" = "Mosaic DEV ${path_tag}" ] && return 0
+  [ "$app_base" = "Mosaic NIGHTLY ${path_tag}" ] && return 0
+  [ "$app_base" = "Mosaic STAGING ${path_tag}" ] && return 0
   return 1
 }
 

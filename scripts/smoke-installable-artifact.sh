@@ -55,15 +55,15 @@ fi
 case "$CHANNEL" in
   stable)
     EXPECTED_BUNDLE_ID="mosaic.com.emergent.app"
-    EXPECTED_APP_NAME="cmux"
+    EXPECTED_APP_NAME="Mosaic"
     ;;
   nightly)
     EXPECTED_BUNDLE_ID="mosaic.com.emergent.app.nightly"
-    EXPECTED_APP_NAME="cmux NIGHTLY"
+    EXPECTED_APP_NAME="Mosaic NIGHTLY"
     ;;
   debug)
     EXPECTED_BUNDLE_ID_PREFIX="mosaic.com.emergent.app.debug."
-    EXPECTED_APP_NAME_PREFIX="cmux DEV "
+    EXPECTED_APP_NAME_PREFIX="Mosaic DEV "
     ;;
   *)
     echo "error: unknown channel '$CHANNEL'" >&2

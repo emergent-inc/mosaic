@@ -2,10 +2,10 @@ import Foundation
 import AppKit
 import Testing
 
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
-#elseif canImport(cmux)
-@testable import cmux
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
 #endif
 
 /// Regression tests for syncing a remote tmux `rename-session` back onto the
