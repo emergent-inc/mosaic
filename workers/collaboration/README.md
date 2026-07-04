@@ -66,6 +66,18 @@ Upgrades to WebSocket. Required query parameters:
 - `displayName`: peer display name.
 - `color`: presence color.
 
+### `GET /v1/collaboration/admin/sessions`
+
+Lists recently indexed session codes. Requires the `x-cmux-admin-token` header
+to match the `COLLABORATION_ADMIN_TOKEN` Worker secret. Each row includes the
+Durable Object ID derived from `COLLABORATION_SESSIONS.idFromName(sessionCode)`.
+
+### `GET /v1/collaboration/admin/sessions/:sessionCode`
+
+Describes one code. Requires the `x-cmux-admin-token` header. The response
+reports whether the code is indexed, whether the per-code Durable Object still
+has active metadata, and the Durable Object ID that maps to the code.
+
 ## Forwarded Frames
 
 The relay treats non-heartbeat frames as opaque JSON envelopes with a string `type` field. It forwards them to every other peer with `fromPeerID` and `receivedAt` added. Phase 1 clients currently use:

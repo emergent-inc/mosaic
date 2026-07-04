@@ -7,6 +7,12 @@ export interface SessionMetadataStorage {
   get<T>(key: string): Promise<T | undefined>;
   put<T>(key: string, value: T): Promise<void>;
   delete(key: string): Promise<boolean>;
+  transaction?<T>(closure: (txn: SessionMetadataTransaction) => Promise<T>): Promise<T>;
+}
+
+export interface SessionMetadataTransaction {
+  get<T>(key: string): Promise<T | undefined>;
+  put<T>(key: string, value: T): Promise<void>;
 }
 
 export interface SessionMetadataCreateResult {
@@ -27,15 +33,19 @@ export async function createSessionMetadataIfAbsent(
   storage: SessionMetadataStorage,
   sessionCode: string
 ): Promise<SessionMetadataCreateResult> {
-  const existing = await readSessionMetadata(storage);
-  if (existing) return { metadata: existing, created: false };
+  const claim = async (txn: SessionMetadataTransaction): Promise<SessionMetadataCreateResult> => {
+    const existing = await txn.get<SessionMetadata>(METADATA_KEY) ?? null;
+    if (existing) return { metadata: existing, created: false };
 
-  const metadata = {
-    sessionID: sessionCode,
-    sessionCode,
+    const metadata = {
+      sessionID: sessionCode,
+      sessionCode,
+    };
+    await txn.put(METADATA_KEY, metadata);
+    return { metadata, created: true };
   };
-  await storage.put(METADATA_KEY, metadata);
-  return { metadata, created: true };
+
+  return storage.transaction ? storage.transaction(claim) : claim(storage);
 }
 
 export async function readSessionMetadata(storage: SessionMetadataStorage): Promise<SessionMetadata | null> {
