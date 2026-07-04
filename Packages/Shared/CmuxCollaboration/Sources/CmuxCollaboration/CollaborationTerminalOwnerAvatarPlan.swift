@@ -11,6 +11,8 @@ public struct CollaborationTerminalOwnerAvatarPlan: Equatable, Sendable {
     public let title: String?
     /// The owner snapshot used to render the immediate initials fallback.
     public let fallbackSnapshot: CollaborationParticipantAvatarSnapshot?
+    /// The same avatar content decision used by sidebar participant avatars.
+    public let avatarContent: CollaborationAvatarContent?
     /// The normalized remote profile image URL to fetch, if one is usable.
     public let profileImageURL: URL?
     /// The key used to reject stale async profile-image replacements.
@@ -23,7 +25,13 @@ public struct CollaborationTerminalOwnerAvatarPlan: Equatable, Sendable {
     public init(ownerSnapshot: CollaborationParticipantAvatarSnapshot?, title: String?) {
         self.title = title
         self.fallbackSnapshot = ownerSnapshot
-        self.profileImageURL = ownerSnapshot?.resolvedProfileImageURL
+        self.avatarContent = ownerSnapshot?.avatarContent
+        switch avatarContent {
+        case .remoteImage(let url):
+            self.profileImageURL = url
+        case .initialsFallback, nil:
+            self.profileImageURL = nil
+        }
         if let ownerSnapshot, let profileImageURL {
             self.requestKey = Self.requestKey(peerID: ownerSnapshot.peerID, profileImageURL: profileImageURL)
         } else {

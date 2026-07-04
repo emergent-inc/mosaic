@@ -9068,7 +9068,9 @@ final class GhosttySurfaceScrollView: NSView {
     private var lastFocusRefreshAt: CFTimeInterval = 0
     private var lastRequestedPortalOcclusionVisible: Bool?
     private var activeDropZone: DropZone?
+    private var activeDropZoneStyle: PaneDropZoneOverlayStyle = .standard
     private var pendingDropZone: DropZone?
+    private var pendingDropZoneStyle: PaneDropZoneOverlayStyle = .standard
     private var dropZoneOverlayAnimationGeneration: UInt64 = 0
     private var pendingAutomaticFirstResponderApply = false
     private var pendingSuppressedFirstResponderFocusReapply = false
@@ -9173,7 +9175,9 @@ final class GhosttySurfaceScrollView: NSView {
         // Reset to a hidden baseline so each probe exercises an initial-show transition.
         dropZoneOverlayAnimationGeneration &+= 1
         activeDropZone = nil
+        activeDropZoneStyle = .standard
         pendingDropZone = nil
+        pendingDropZoneStyle = .standard
         dropZoneOverlayView.layer?.removeAllAnimations()
         dropZoneOverlayView.isHidden = true
         dropZoneOverlayView.alphaValue = 1
@@ -9315,11 +9319,7 @@ final class GhosttySurfaceScrollView: NSView {
         inactiveOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
         inactiveOverlayView.isHidden = true
         addSubview(inactiveOverlayView)
-        dropZoneOverlayView.wantsLayer = true
-        dropZoneOverlayView.layer?.backgroundColor = cmuxAccentNSColor().withAlphaComponent(0.25).cgColor
-        dropZoneOverlayView.layer?.borderColor = cmuxAccentNSColor().cgColor
-        dropZoneOverlayView.layer?.borderWidth = 2
-        dropZoneOverlayView.layer?.cornerRadius = 8
+        PaneDropZoneOverlayAnimator.applyStyle(to: dropZoneOverlayView)
         dropZoneOverlayView.isHidden = true
         notificationRingOverlayView.wantsLayer = true
         notificationRingOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
@@ -9757,7 +9757,9 @@ final class GhosttySurfaceScrollView: NSView {
 #endif
             // Reuse the normal show/update path so deferred overlays get the
             // same initial animation as direct drop-zone activation.
-            setDropZoneOverlay(zone: pending)
+            let pendingStyle = pendingDropZoneStyle
+            pendingDropZoneStyle = .standard
+            setDropZoneOverlay(zone: pending, style: pendingStyle)
         }
         _ = setFrameIfNeeded(notificationRingOverlayView, to: bounds)
         _ = setFrameIfNeeded(flashOverlayView, to: bounds)
@@ -10474,16 +10476,20 @@ final class GhosttySurfaceScrollView: NSView {
             abs(lhs.size.height - rhs.size.height) <= epsilon
     }
 
-    func setDropZoneOverlay(zone: DropZone?) {
+    func setDropZoneOverlay(
+        zone: DropZone?,
+        style: PaneDropZoneOverlayStyle = .standard
+    ) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
-                self?.setDropZoneOverlay(zone: zone)
+                self?.setDropZoneOverlay(zone: zone, style: style)
             }
             return
         }
 
         if let zone, (bounds.width <= 2 || bounds.height <= 2) {
             pendingDropZone = zone
+            pendingDropZoneStyle = style
 #if DEBUG
             logDropZoneOverlay(event: "deferZeroBounds", zone: zone, frame: nil)
 #endif
@@ -10491,8 +10497,11 @@ final class GhosttySurfaceScrollView: NSView {
         }
 
         let previousZone = activeDropZone
+        let previousStyle = activeDropZoneStyle
         activeDropZone = zone
+        activeDropZoneStyle = style
         pendingDropZone = nil
+        pendingDropZoneStyle = .standard
 
         if let zone {
 #if DEBUG
@@ -10501,13 +10510,15 @@ final class GhosttySurfaceScrollView: NSView {
             }
 #endif
             attachDropZoneOverlayIfNeeded()
+            PaneDropZoneOverlayAnimator.applyStyle(to: dropZoneOverlayView, style: style)
             let targetFrame = dropZoneOverlayFrame(for: zone, in: bounds.size)
             let previousFrame = dropZoneOverlayView.frame
             let isSameFrame = Self.rectApproximatelyEqual(previousFrame, targetFrame)
             let needsFrameUpdate = !isSameFrame
             let zoneChanged = previousZone != zone
+            let styleChanged = previousStyle != style
 
-            if !dropZoneOverlayView.isHidden && !needsFrameUpdate && !zoneChanged {
+            if !dropZoneOverlayView.isHidden && !needsFrameUpdate && !zoneChanged && !styleChanged {
                 return
             }
 

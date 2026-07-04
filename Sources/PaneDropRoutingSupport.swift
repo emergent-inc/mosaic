@@ -146,26 +146,65 @@ enum PaneDropRouting {
 
 typealias TerminalPaneDropRouting = PaneDropRouting
 
+enum PaneDropZoneOverlayStyle: Equatable {
+    case standard
+    case agentRoomWire
+
+    var color: NSColor {
+        switch self {
+        case .standard:
+            return NSColor(name: nil) { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                return isDark
+                    ? NSColor(white: 0.78, alpha: 1)
+                    : NSColor(white: 0.42, alpha: 1)
+            }
+        case .agentRoomWire:
+            return .systemBlue
+        }
+    }
+
+    var backgroundAlpha: CGFloat {
+        switch self {
+        case .standard:
+            return 0.16
+        case .agentRoomWire:
+            return 0.25
+        }
+    }
+
+    var borderAlpha: CGFloat {
+        switch self {
+        case .standard:
+            return 0.70
+        case .agentRoomWire:
+            return 1
+        }
+    }
+}
+
 @MainActor
 final class PaneDropZoneOverlayAnimator {
     private let overlayView: NSView
     private var displayedZone: DropZone?
+    private var displayedStyle: PaneDropZoneOverlayStyle = .standard
     private var animationGeneration: UInt64 = 0
 
     init(overlayView: NSView) {
         self.overlayView = overlayView
-        Self.applyStyle(to: overlayView)
+        Self.applyStyle(to: overlayView, style: .standard)
+        overlayView.isHidden = true
     }
 
     deinit {}
 
-    static func applyStyle(to view: NSView) {
+    static func applyStyle(to view: NSView, style: PaneDropZoneOverlayStyle = .standard) {
+        let color = style.color
         view.wantsLayer = true
-        view.layer?.backgroundColor = cmuxAccentNSColor().withAlphaComponent(0.25).cgColor
-        view.layer?.borderColor = cmuxAccentNSColor().cgColor
+        view.layer?.backgroundColor = color.withAlphaComponent(style.backgroundAlpha).cgColor
+        view.layer?.borderColor = color.withAlphaComponent(style.borderAlpha).cgColor
         view.layer?.borderWidth = 2
         view.layer?.cornerRadius = 8
-        view.isHidden = true
     }
 
     func hideImmediately() {
@@ -178,12 +217,15 @@ final class PaneDropZoneOverlayAnimator {
 
     func setZone(
         _ zone: DropZone?,
+        style: PaneDropZoneOverlayStyle = .standard,
         frameForZone: (DropZone) -> CGRect,
         ensureAttached: () -> Void,
         bringToFront: () -> Void
     ) {
         let previousZone = displayedZone
+        let previousStyle = displayedStyle
         displayedZone = zone
+        displayedStyle = style
 
         guard let zone else {
             guard !overlayView.isHidden else { return }
@@ -209,11 +251,13 @@ final class PaneDropZoneOverlayAnimator {
         }
 
         ensureAttached()
+        Self.applyStyle(to: overlayView, style: style)
         let targetFrame = frameForZone(zone)
         let needsFrameUpdate = !Self.rectApproximatelyEqual(overlayView.frame, targetFrame)
         let zoneChanged = previousZone != zone
+        let styleChanged = previousStyle != style
 
-        if !overlayView.isHidden && !needsFrameUpdate && !zoneChanged {
+        if !overlayView.isHidden && !needsFrameUpdate && !zoneChanged && !styleChanged {
             bringToFront()
             return
         }
