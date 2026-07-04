@@ -6105,6 +6105,17 @@
         }
       }
     },
+    "collaboration.terminal.sharing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing"
+          }
+        }
+      }
+    },
     "command.applyUpdateIfAvailable.subtitle": {
       "extractionState": "manual",
       "localizations": {
@@ -37976,7 +37987,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Share terminal with"
+            "value": "Sharing terminal with"
           }
         }
       }
@@ -38043,39 +38054,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stop session"
-          }
-        }
-      }
-    },
-    "collaboration.terminal.sharedTo.count": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shared to %d"
-          }
-        }
-      }
-    },
-    "collaboration.terminal.sharedTo.none": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shared to no one"
-          }
-        }
-      }
-    },
-    "collaboration.terminal.sharedTo.one": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shared to 1"
           }
         }
       }

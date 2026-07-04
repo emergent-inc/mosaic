@@ -600,7 +600,19 @@ extension TerminalSurface {
         // Flush remote-tmux output that arrived before the surface existed
         // after sizing, so the seed paints into the final grid instead of
         // wrapping at Ghostty's default grid.
-        flushPendingRemoteOutput(to: createdSurface)
+        //
+        // Only flush once the surface has a real (non-zero) size. A mirror pane
+        // is frequently created while its AppKit view still has 0x0 bounds
+        // (fresh split/tab before layout). In that state `set_size` above is
+        // skipped, the seed would land in Ghostty's default grid, and the
+        // force-draw below no-ops because the view has no drawable — so the
+        // seed is written but never presented, leaving a black pane until
+        // unrelated output (e.g. the owner pressing Enter) arrives. Keep the
+        // seed buffered so the first valid `updateSize` writes it into the
+        // correctly sized grid and force-presents it there.
+        if lastPixelWidth > 0, lastPixelHeight > 0 {
+            flushPendingRemoteOutput(to: createdSurface)
+        }
 
         // Some GhosttyKit builds can drop inherited font_size during post-create
         // config/scale reconciliation. Re-apply runtime points so all creation

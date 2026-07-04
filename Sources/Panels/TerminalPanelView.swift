@@ -222,13 +222,12 @@ struct TerminalPanelView: View {
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalSessionPillLabel(state: state)
-        let peerCount = state.workspaceSessionCode == nil
-            ? 0
-            : max(CollaborationRuntime.shared.participantSnapshots(for: panel).count - 1, 0)
+        let pillModel = CollaborationTerminalSessionPillModel(
+            workspaceSessionCode: state.workspaceSessionCode,
+            participantCount: CollaborationRuntime.shared.participantSnapshots(for: panel).count
+        )
         let hoverColor = Color.orange
-        let foregroundColor = isTerminalSessionPillHovered
-            ? hoverColor
-            : (state.workspaceSessionCode == nil ? Color.secondary : Color.accentColor)
+        let foregroundColor = Color.orange
         let backgroundColor = isTerminalSessionPillHovered
             ? hoverColor.opacity(0.14)
             : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.06 : 0.10)
@@ -251,7 +250,9 @@ struct TerminalPanelView: View {
             HStack(spacing: 5) {
                 CmuxSystemSymbolImage(systemName: "person.2", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
-                Text(state.workspaceSessionCode == nil ? label : String.localizedStringWithFormat("%d", peerCount))
+                Text(pillModel.showsParticipantCount
+                    ? String.localizedStringWithFormat("%d", pillModel.otherParticipantCount)
+                    : label)
                     .cmuxFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
@@ -323,22 +324,23 @@ struct TerminalPanelView: View {
             Text(label)
                 .cmuxFont(size: 10, weight: .semibold)
                 .lineLimit(1)
-                .foregroundStyle(state.isHosted ? Color.accentColor : Color.secondary)
+                .foregroundStyle(Color.orange)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
                 .background {
                     Capsule()
-                        .fill(Color.primary.opacity(state.isHosted ? 0.10 : 0.06))
+                        .fill(Color.orange.opacity(state.isHosted ? 0.14 : 0.08))
                 }
                 .overlay {
                     Capsule()
-                        .stroke(Color.primary.opacity(state.isHosted ? 0.16 : 0.10), lineWidth: 0.5)
+                        .stroke(Color.orange.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
                 }
         }
         .buttonStyle(.plain)
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TerminalCollaborationShareButton")
+        .cmuxCursorOnHover(.pointingHand)
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
@@ -364,10 +366,7 @@ struct TerminalPanelView: View {
         guard state.isHosted else {
             return CollaborationStrings.shareTerminal
         }
-        let selectedCount = CollaborationRuntime.shared.recipientSnapshots(for: panel)
-            .filter(\.isSelected)
-            .count
-        return CollaborationStrings.sharedToRecipientCount(selectedCount)
+        return CollaborationStrings.sharingTerminal
     }
 
     private var terminalAgentRoomButton: some View {
@@ -453,18 +452,6 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
-                        onCopyInviteCode()
-                    }
-                    TrackedButton("session_join_different", CollaborationStrings.joinDifferentSession) {
-                        onJoin()
-                    }
-                    TrackedButton("session_leave", CollaborationStrings.leaveSession) {
-                        onLeave()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text(CollaborationStrings.sessionNotJoinedDetail)
                     .cmuxFont(size: 11)
