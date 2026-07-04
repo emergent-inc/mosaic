@@ -206,28 +206,13 @@ final class CmuxMainWindow: NSWindow {
 extension CmuxMainWindow {
     private static let defaultContentSize = NSSize(width: 1_000, height: 700)
 
-    /// Returns an unpositioned content rect clamped to the visible display; callers own final placement.
+    /// Returns a launch content rect sized to the visible display when possible.
     static func defaultContentRect(styleMask: NSWindow.StyleMask) -> NSRect {
         let unpositionedContentRect = NSRect(origin: .zero, size: defaultContentSize)
         guard let visibleFrame = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame else {
             return unpositionedContentRect
         }
 
-        let frameRect = NSWindow.frameRect(forContentRect: unpositionedContentRect, styleMask: styleMask)
-        let clampedFrameRect = clampedFrame(frameRect, within: visibleFrame)
-        return NSWindow.contentRect(forFrameRect: clampedFrameRect, styleMask: styleMask)
-    }
-
-    private static func clampedFrame(_ frame: NSRect, within visibleFrame: NSRect) -> NSRect {
-        guard visibleFrame.width > 0, visibleFrame.height > 0 else { return frame }
-
-        let width = min(max(frame.width, defaultContentSize.width), visibleFrame.width)
-        let height = min(max(frame.height, defaultContentSize.height), visibleFrame.height)
-        return NSRect(
-            x: min(max(frame.minX, visibleFrame.minX), visibleFrame.maxX - width),
-            y: min(max(frame.minY, visibleFrame.minY), visibleFrame.maxY - height),
-            width: width,
-            height: height
-        )
+        return NSWindow.contentRect(forFrameRect: visibleFrame, styleMask: styleMask)
     }
 }

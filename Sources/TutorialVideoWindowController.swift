@@ -3,48 +3,58 @@ import AVKit
 import SwiftUI
 
 @MainActor
-final class TutorialVideoWindowController: ReleasingWindowController {
-    static let shared = TutorialVideoWindowController()
-    static let windowIdentifier = "cmux.tutorialVideo"
+final class TutorialVideoPresentationCenter {
+    static let shared = TutorialVideoPresentationCenter()
 
-    private override init() {
-        super.init()
-    }
+    private var pendingUntargetedPresentation = false
+    private var pendingTargetWindowIDs: Set<ObjectIdentifier> = []
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    private init() {}
 
-    func show() {
-        NSApp.activate(ignoringOtherApps: true)
-
-        let window = managedWindow()
-        if window.isMiniaturized {
-            window.deminiaturize(nil)
+    func requestPresentation(in window: NSWindow? = nil) {
+        if let window {
+            pendingTargetWindowIDs.insert(ObjectIdentifier(window))
+        } else {
+            pendingUntargetedPresentation = true
         }
-        if !window.isVisible {
-            window.center()
+        NotificationCenter.default.post(name: .tutorialVideoPresentationRequested, object: window)
+    }
+
+    func consumePendingPresentation(
+        for window: NSWindow?,
+        requestedWindow: NSWindow? = nil,
+        keyWindow: NSWindow? = NSApp.keyWindow,
+        mainWindow: NSWindow? = NSApp.mainWindow
+    ) -> Bool {
+        guard let window else { return false }
+        if let requestedWindow, requestedWindow !== window {
+            return false
         }
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-    }
 
-    override func makeWindow() -> NSWindow {
-        let appearanceMode = UserDefaults.standard.string(forKey: AppearanceSettings.appearanceModeKey)
-        let root = TutorialVideoView(videoURL: TutorialVideoResource.videoURL())
-            .cmuxAppearanceColorScheme(appearanceMode)
-        let hostingController = NSHostingController(rootView: root)
+        let windowID = ObjectIdentifier(window)
+        if pendingTargetWindowIDs.remove(windowID) != nil {
+            return true
+        }
 
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = String(localized: "tutorial.video.window.title", defaultValue: "Welcome to mosaic")
-        window.identifier = NSUserInterfaceItemIdentifier(Self.windowIdentifier)
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 960, height: 620))
-        window.contentMinSize = NSSize(width: 640, height: 420)
-        window.center()
-        return window
+        guard requestedWindow == nil, pendingUntargetedPresentation else {
+            return false
+        }
+        let shouldHandleUntargetedRequest =
+            window === keyWindow
+            || (keyWindow == nil && window === mainWindow)
+            || (keyWindow == nil && mainWindow == nil)
+        guard shouldHandleUntargetedRequest else { return false }
+        pendingUntargetedPresentation = false
+        return true
     }
+}
+
+extension Notification.Name {
+    static let tutorialVideoPresentationRequested = Notification.Name("cmux.tutorialVideo.presentationRequested")
+}
+
+enum TutorialVideoStyle {
+    static let cornerRadius: CGFloat = 16
 }
 
 enum TutorialVideoResource {
@@ -70,21 +80,43 @@ enum TutorialVideoResource {
     }
 }
 
-private struct TutorialVideoView: View {
+struct TutorialVideoView: View {
     let videoURL: URL?
+    let cornerRadius: CGFloat
+    let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .topLeading) {
             if let videoURL {
-                TutorialVideoPlayerView(url: videoURL)
+                TutorialVideoPlayerView(url: videoURL, cornerRadius: cornerRadius)
                     .accessibilityIdentifier("TutorialVideoPlayer")
             } else {
                 TutorialVideoMissingResourceView()
             }
+
+            closeButton
+                .padding(12)
         }
-        .frame(minWidth: 640, minHeight: 420)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(minWidth: 480, minHeight: 300)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityIdentifier("TutorialVideoWindowContent")
+    }
+
+    private var closeButton: some View {
+        let label = String(localized: "tutorial.video.close", defaultValue: "Close tutorial video")
+        return Button(action: onClose) {
+            Text(verbatim: "X")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .safeHelp(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("TutorialVideoCloseButton")
+        .cmuxCursorOnHover(.pointingHand)
     }
 }
 
@@ -106,16 +138,21 @@ private struct TutorialVideoMissingResourceView: View {
 
 private struct TutorialVideoPlayerView: NSViewRepresentable {
     let url: URL
+    let cornerRadius: CGFloat
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
+        let view = DraggableAVPlayerView()
         view.controlsStyle = .floating
         view.showsFullScreenToggleButton = true
         view.videoGravity = .resizeAspect
+        view.wantsLayer = true
+        view.layer?.cornerRadius = cornerRadius
+        view.layer?.masksToBounds = true
+        view.layer?.backgroundColor = NSColor.black.cgColor
         context.coordinator.configure(view, url: url)
         return view
     }
@@ -154,4 +191,8 @@ private struct TutorialVideoPlayerView: NSViewRepresentable {
             currentURL = nil
         }
     }
+}
+
+private final class DraggableAVPlayerView: AVPlayerView {
+    override var mouseDownCanMoveWindow: Bool { false }
 }

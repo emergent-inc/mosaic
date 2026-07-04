@@ -215,8 +215,7 @@ private struct DockTrustView: View {
             TrackedButton("dockpanelview_button_215", String(localized: "dock.trust.action", defaultValue: "Trust and Start")) {
                 onTrust()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            .buttonStyle(.mosaicAccent)
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

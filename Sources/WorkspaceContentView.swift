@@ -757,7 +757,7 @@ struct EmptyPanelView: View {
                 ShortcutHint(text: shortcut.displayString)
             }
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.mosaicAccent)
 
         if let key = shortcut.keyEquivalent {
             button.keyboardShortcut(key, modifiers: shortcut.eventModifiers)

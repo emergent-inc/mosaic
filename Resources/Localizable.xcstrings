@@ -35694,6 +35694,17 @@
         }
       }
     },
+    "tutorial.video.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close tutorial video"
+          }
+        }
+      }
+    },
     "tutorial.video.missing": {
       "extractionState": "manual",
       "localizations": {
@@ -37563,6 +37574,17 @@
         }
       }
     },
+    "collaboration.action.endSession": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End session"
+          }
+        }
+      }
+    },
     "collaboration.action.joinSession": {
       "extractionState": "manual",
       "localizations": {
@@ -38053,7 +38075,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop session"
+            "value": "Stop sharing"
           }
         }
       }
