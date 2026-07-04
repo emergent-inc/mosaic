@@ -19,7 +19,8 @@ struct CollaborationParticipantAvatarSnapshotTests {
         let identity = CollaborationPeerIdentity(
             peerID: "local-peer",
             displayName: "Dorsa Rohani",
-            color: "#7A5CFF"
+            color: "#7A5CFF",
+            imageURL: "https://img.example/dorsa.png"
         )
 
         let snapshot = CollaborationParticipantAvatarSnapshot.local(
@@ -33,7 +34,7 @@ struct CollaborationParticipantAvatarSnapshotTests {
         #expect(snapshot.initials == "DR")
         #expect(snapshot.avatarSeed == "dorsa_rohani")
         #expect(snapshot.colorHex == "#7A5CFF")
-        #expect(snapshot.imageURL == nil)
+        #expect(snapshot.imageURL == "https://img.example/dorsa.png")
     }
 
     @Test
