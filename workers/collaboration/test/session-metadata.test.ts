@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import {
   createSessionMetadata,
+  createSessionMetadataIfAbsent,
   deleteSessionMetadata,
   readSessionMetadata,
+  type SessionMetadataTransaction,
   type SessionMetadataStorage,
 } from "../src/session-metadata";
 
@@ -19,6 +21,18 @@ class FakeMetadataStorage implements SessionMetadataStorage {
 
   async delete(key: string): Promise<boolean> {
     return this.values.delete(key);
+  }
+}
+
+class TransactionalMetadataStorage extends FakeMetadataStorage {
+  transactionCount = 0;
+
+  async transaction<T>(closure: (txn: SessionMetadataTransaction) => Promise<T>): Promise<T> {
+    this.transactionCount += 1;
+    return closure({
+      get: this.get.bind(this),
+      put: this.put.bind(this),
+    });
   }
 }
 
@@ -39,6 +53,51 @@ test("creating an existing session reuses its metadata", async () => {
   const second = await createSessionMetadata(storage, "ABCDE");
 
   expect(second).toEqual(first);
+});
+
+test("metadata claim reports only the first create as new", async () => {
+  const storage = new FakeMetadataStorage();
+
+  const first = await createSessionMetadataIfAbsent(storage, "5ZNHGF9P");
+  const duplicate = await createSessionMetadataIfAbsent(storage, "5ZNHGF9P");
+
+  expect(first).toEqual({
+    metadata: {
+      sessionID: "5ZNHGF9P",
+      sessionCode: "5ZNHGF9P",
+    },
+    created: true,
+  });
+  expect(duplicate).toEqual({
+    metadata: first.metadata,
+    created: false,
+  });
+});
+
+test("metadata claim uses storage transaction when available", async () => {
+  const storage = new TransactionalMetadataStorage();
+
+  const first = await createSessionMetadataIfAbsent(storage, "1Z0OIF9P");
+  const duplicate = await createSessionMetadataIfAbsent(storage, "1Z0OIF9P");
+
+  expect(storage.transactionCount).toBe(2);
+  expect(first.created).toBe(true);
+  expect(duplicate.created).toBe(false);
+  expect(duplicate.metadata).toEqual(first.metadata);
+});
+
+test("metadata claim does not overwrite an existing session code", async () => {
+  const storage = new TransactionalMetadataStorage();
+
+  const first = await createSessionMetadataIfAbsent(storage, "FIRST001");
+  const duplicate = await createSessionMetadataIfAbsent(storage, "SECOND02");
+
+  expect(first.created).toBe(true);
+  expect(duplicate).toEqual({
+    metadata: first.metadata,
+    created: false,
+  });
+  expect(await readSessionMetadata(storage)).toEqual(first.metadata);
 });
 
 test("deleted session metadata frees the code for a later session", async () => {

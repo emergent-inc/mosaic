@@ -1,7 +1,7 @@
-/// Normalizes user-entered collaboration invite codes for four-slot entry controls.
+/// Normalizes user-entered collaboration invite codes for fixed-slot entry controls.
 public struct CollaborationInviteCodeEntryModel: Equatable, Sendable {
     /// The number of visible code slots.
-    public static let codeLength = 4
+    public static let codeLength = 8
 
     /// The normalized uppercase entry value.
     public var value: String
@@ -30,20 +30,20 @@ public struct CollaborationInviteCodeEntryModel: Equatable, Sendable {
         value = Self.normalizedValue(from: newValue)
     }
 
-    /// Returns uppercase invite-code letters, limited to the visible code length.
+    /// Returns uppercase invite-code characters, limited to the visible code length.
     /// - Parameter value: The raw value typed or pasted by a user.
-    /// - Returns: A four-character-or-shorter code containing only supported letters.
+    /// - Returns: An eight-character-or-shorter code containing only supported letters and digits.
     public static func normalizedValue(from value: String) -> String {
         value
             .uppercased()
             .unicodeScalars
-            .filter(Self.isSupportedCodeLetter)
+            .filter(Self.isSupportedCodeCharacter)
             .prefix(Self.codeLength)
             .map(String.init)
             .joined()
     }
 
-    private static func isSupportedCodeLetter(_ scalar: Unicode.Scalar) -> Bool {
-        (65...90).contains(scalar.value) && scalar != "I" && scalar != "O"
+    private static func isSupportedCodeCharacter(_ scalar: Unicode.Scalar) -> Bool {
+        (65...90).contains(scalar.value) || (48...57).contains(scalar.value)
     }
 }

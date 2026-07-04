@@ -1483,10 +1483,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         StartupBreadcrumbLog.append("appDelegate.didFinish.bootstrap.begin")
         scheduleInitialMainWindowBootstrap(debugSource: "didFinishLaunching")
-        presentTutorialVideoOnFirstLaunchIfNeeded(
-            isRunningUnderXCTest: isRunningUnderXCTest,
-            environment: env
-        )
         StartupBreadcrumbLog.append("appDelegate.didFinish.complete")
 #if DEBUG
         UpdateTestSupport(model: updateController.model, log: updateLog).applyIfNeeded()
@@ -1814,21 +1810,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         self.writeUITestDiagnosticsIfNeeded(stage: "afterMoveToTargetDisplay")
     }
 #endif
-
-    private func presentTutorialVideoOnFirstLaunchIfNeeded(
-        isRunningUnderXCTest: Bool,
-        environment: [String: String]
-    ) {
-        guard TutorialVideoFirstRunPresentation.claimAutomaticPresentationIfNeeded(
-            isRunningUnderXCTest: isRunningUnderXCTest,
-            environment: environment
-        ) else {
-            return
-        }
-        Task { @MainActor in
-            TutorialVideoPresentationCenter.shared.requestPresentation()
-        }
-    }
 
     func applicationWillBecomeActive(_ notification: Notification) { if !hasVisibleMainTerminalWindow() { _ = mainWindowVisibilityController.orderFrontApplicationWindowsBeforeActivation(windows: mainWindowsForVisibilityController(), reason: .applicationWillBecomeActive) } }
 
