@@ -4783,6 +4783,7 @@ private struct CollaborationSignInRequiredDialogView: View {
 private final class CollaborationSignInRequiredPanel {
     private let window: NSPanel
     private var response: NSApplication.ModalResponse = .alertSecondButtonReturn
+    private var actionBoxes: [ButtonActionBox] = []
 
     init() {
         let size = NSSize(width: 420, height: 230)
@@ -4799,18 +4800,67 @@ private final class CollaborationSignInRequiredPanel {
         window.level = .modalPanel
         window.isMovableByWindowBackground = true
 
-        let dialog = CollaborationSignInRequiredDialogView(
-            onSignIn: { [weak self] in
-                self?.finish(.alertFirstButtonReturn)
-            },
-            onCancel: { [weak self] in
-                self?.finish(.alertSecondButtonReturn)
-            }
-        )
-        let hostingView = NSHostingView(rootView: dialog)
-        hostingView.frame = NSRect(origin: .zero, size: size)
-        hostingView.autoresizingMask = [.width, .height]
-        window.contentView = hostingView
+        let contentView = NSView(frame: NSRect(origin: .zero, size: size))
+        contentView.wantsLayer = true
+        window.contentView = contentView
+
+        let background = NSHostingView(rootView: CollaborationDialogBackgroundShape())
+        background.frame = contentView.bounds
+        background.autoresizingMask = [.width, .height]
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+
+        let titleField = NSTextField(labelWithString: CollaborationStrings.signInRequiredTitle)
+        titleField.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleField.textColor = .labelColor
+        titleField.alignment = .center
+        stack.addArrangedSubview(titleField)
+
+        let buttonRow = NSStackView()
+        buttonRow.orientation = .horizontal
+        buttonRow.alignment = .centerY
+        buttonRow.spacing = 16
+        buttonRow.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(buttonRow)
+
+        let cancelButton = makeButton(title: CollaborationStrings.cancel, keyEquivalent: "\u{1b}") { [weak self] in
+            self?.finish(.alertSecondButtonReturn)
+        }
+        let signInButton = makeButton(title: CollaborationStrings.signIn, keyEquivalent: "\r") { [weak self] in
+            self?.finish(.alertFirstButtonReturn)
+        }
+        styleSecondaryButton(cancelButton)
+        stylePrimaryButton(signInButton)
+        buttonRow.addArrangedSubview(cancelButton)
+        buttonRow.addArrangedSubview(signInButton)
+
+        NSLayoutConstraint.activate([
+            stack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 28),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+
+            iconView.widthAnchor.constraint(equalToConstant: 64),
+            iconView.heightAnchor.constraint(equalToConstant: 64),
+            titleField.widthAnchor.constraint(equalToConstant: 364),
+            cancelButton.widthAnchor.constraint(equalToConstant: 144),
+            signInButton.widthAnchor.constraint(equalToConstant: 144),
+            cancelButton.heightAnchor.constraint(equalToConstant: 36),
+            signInButton.heightAnchor.constraint(equalToConstant: 36),
+        ])
     }
 
     func run() -> NSApplication.ModalResponse {
@@ -4833,6 +4883,60 @@ private final class CollaborationSignInRequiredPanel {
     private func finish(_ response: NSApplication.ModalResponse) {
         self.response = response
         NSApp.stopModal()
+    }
+
+    private func makeButton(
+        title: String,
+        keyEquivalent: String,
+        action: @escaping () -> Void
+    ) -> NSButton {
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.bezelStyle = .rounded
+        button.controlSize = .large
+        button.font = .systemFont(ofSize: 16, weight: .bold)
+        button.keyEquivalent = keyEquivalent
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let actionBox = ButtonActionBox(action)
+        actionBoxes.append(actionBox)
+        button.target = actionBox
+        button.action = #selector(ButtonActionBox.invoke)
+        return button
+    }
+
+    private func stylePrimaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
+        applyCollaborationAccentAlertButtonTitleStyle(
+            button,
+            font: NSFont.systemFont(ofSize: 16, weight: .bold)
+        )
+    }
+
+    private func styleSecondaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: "#2D2D2D") ?? NSColor.controlColor.withAlphaComponent(0.40)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        button.contentTintColor = .white
+        button.attributedTitle = NSAttributedString(
+            string: button.title,
+            attributes: [
+                .foregroundColor: NSColor.white,
+                .paragraphStyle: paragraph,
+                .font: NSFont.systemFont(ofSize: 16, weight: .bold),
+            ]
+        )
+    }
+
+    private final class ButtonActionBox: NSObject {
+        private let action: () -> Void
+
+        init(_ action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func invoke() {
+            action()
+        }
     }
 }
 
