@@ -561,9 +561,6 @@ struct TabItemView: View {
         // correct on the first evaluation; the cache only skips re-decoding.
         let cachedFaviconImage = renderedFaviconData == tab.iconImageData ? renderedFaviconImage : nil
         let faviconImage = cachedFaviconImage ?? tab.iconImageData.flatMap { NSImage(data: $0) }
-        #if DEBUG
-        let _ = bonsplitAvatarDebugLog("leadingIcon eval tab=\(tab.id.uuidString.prefix(4)) bytes=\(tab.iconImageData?.count ?? -1) icon=\(tab.icon ?? "nil") cacheValid=\(renderedFaviconData == tab.iconImageData) renderedFavicon=\(renderedFaviconImage != nil)")
-        #endif
 
         Group {
             if tab.isLoading {
@@ -604,9 +601,6 @@ struct TabItemView: View {
         }
         .onChange(of: tab.isLoading) { _ in updateGlobeFallback() }
         .onChange(of: tab.iconImageData) { _ in
-            #if DEBUG
-            bonsplitAvatarDebugLog("TabItemView.onChange(iconImageData) tab=\(tab.id) newBytes=\(tab.iconImageData?.count ?? -1)")
-            #endif
             updateRenderedFaviconImage()
             updateGlobeFallback()
         }

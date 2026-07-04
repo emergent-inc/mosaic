@@ -1,24 +1,6 @@
 import Foundation
 import SwiftUI
 
-#if DEBUG
-/// Diagnostic-only file logger for the terminal-tab avatar investigation.
-/// NSLog is not captured by the tagged dev build, so append to a fixed file.
-@inline(__always)
-func bonsplitAvatarDebugLog(_ message: @autoclosure () -> String) {
-    let line = "\(Date().timeIntervalSince1970) \(message())\n"
-    guard let data = line.data(using: .utf8) else { return }
-    let url = URL(fileURLWithPath: "/tmp/cmux-avatardbg.log")
-    if let handle = try? FileHandle(forWritingTo: url) {
-        defer { try? handle.close() }
-        _ = try? handle.seekToEnd()
-        try? handle.write(contentsOf: data)
-    } else {
-        try? data.write(to: url)
-    }
-}
-#endif
-
 /// Main controller for the split tab bar system
 @MainActor
 @Observable
@@ -320,11 +302,6 @@ public final class BonsplitController {
         var updatedTabs = pane.tabs
         updatedTabs[tabIndex] = updatedTab
         pane.tabs = updatedTabs
-        #if DEBUG
-        if iconImageData != nil {
-            bonsplitAvatarDebugLog("updateTab pane=\(ObjectIdentifier(pane)) controller=\(ObjectIdentifier(self)) tab=\(tabId.id) iconBytes=\(updatedTab.iconImageData?.count ?? -1) icon=\(updatedTab.icon ?? "nil")")
-        }
-        #endif
     }
 
     /// Close a tab by ID
