@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cmux-sparkle-xpc-test.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-APP_PATH="$WORK_DIR/cmux.app"
+APP_PATH="$WORK_DIR/Mosaic.app"
 SPARKLE_DIR="$APP_PATH/Contents/Frameworks/Sparkle.framework"
 VERSION_DIR="$SPARKLE_DIR/Versions/B"
 XPC_DIR="$VERSION_DIR/XPCServices"

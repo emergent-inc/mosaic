@@ -1138,13 +1138,13 @@ jobs:
         run: |
           set -euo pipefail
           APP="$(
-            find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/cmux DEV.app" -exec stat -f '%m %N' {} \; \
+            find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/Mosaic DEV.app" -exec stat -f '%m %N' {} \; \
               | sort -nr \
               | head -1 \
               | cut -d' ' -f2-
           )"
           if [ -z "${APP:-}" ] || [ ! -d "$APP" ]; then
-            echo "cmux DEV.app not found in DerivedData" >&2
+            echo "Mosaic DEV.app not found in DerivedData" >&2
             exit 1
           fi
 
@@ -1157,9 +1157,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          APP="$(find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/cmux DEV.app" -print -quit)"
+          APP="$(find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/Mosaic DEV.app" -print -quit)"
           if [ -z "${APP:-}" ] || [ ! -d "$APP" ]; then
-            echo "cmux DEV.app not found in DerivedData" >&2
+            echo "Mosaic DEV.app not found in DerivedData" >&2
             exit 1
           fi
 
@@ -1170,11 +1170,11 @@ jobs:
               || echo 'mosaic.com.emergent.app.debug'
           )"
 
-          pkill -x "cmux DEV" || true
+          pkill -x "Mosaic DEV" || true
           rm -f "$SOCK" "/tmp/cmux-${TAG}.sock" || true
           defaults write "$BUNDLE_ID" socketControlMode -string full >/dev/null 2>&1 || true
 
-          CMUX_TAG="$TAG" CMUX_SOCKET_PATH="$SOCK" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/cmux DEV" >/tmp/cmux-ci-lag.log 2>&1 &
+          CMUX_TAG="$TAG" CMUX_SOCKET_PATH="$SOCK" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/Mosaic DEV" >/tmp/cmux-ci-lag.log 2>&1 &
           APP_PID=$!
           trap 'kill "$APP_PID" >/dev/null 2>&1 || true' EXIT
 
@@ -1374,14 +1374,14 @@ jobs:
           set -euo pipefail
           ./scripts/install-prebuilt-ghostty-cli-helper.sh \
             ghostty-cli-helper/ghostty \
-            build-universal/Build/Products/Release/cmux.app
+            build-universal/Build/Products/Release/Mosaic.app
 
       - name: Validate Release artifact slices
         run: |
           set -euo pipefail
-          APP_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/MacOS/cmux"
-          CLI_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/cmux"
-          HELPER_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/ghostty"
+          APP_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/MacOS/Mosaic"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
+          HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           test -x "$APP_BINARY"
           test -x "$CLI_BINARY"
           test -x "$HELPER_BINARY"
@@ -1587,7 +1587,7 @@ jobs:
               HELPER_PID=""
             fi
             release_display_lock
-            pkill -x "cmux DEV" 2>/dev/null || true
+            pkill -x "Mosaic DEV" 2>/dev/null || true
             rm -f "$DIAG_PATH" "$DISPLAY_READY" "$DISPLAY_ID_PATH" "$DISPLAY_START" "$DISPLAY_DONE" "$HELPER_LOG" "$XCODEBUILD_LOG"
             rm -f /tmp/cmux-ui-test-prelaunch.json /tmp/cmux-ui-test-display-harness.json
           }
@@ -1603,7 +1603,7 @@ jobs:
             -o "$HELPER_PATH" scripts/create-virtual-display.m
 
           # Find the app binary
-          APP_BINARY=$(find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/cmux DEV.app/Contents/MacOS/cmux DEV" -print -quit 2>/dev/null || true)
+          APP_BINARY=$(find "$CMUX_DERIVED_DATA_PATH" -path "*/Build/Products/Debug/Mosaic DEV.app/Contents/MacOS/Mosaic DEV" -print -quit 2>/dev/null || true)
           if [ -z "$APP_BINARY" ]; then
             echo "ERROR: App binary not found in DerivedData" >&2
             exit 1
@@ -1694,7 +1694,7 @@ jobs:
 
             if [ "$APP_READY" != "true" ]; then
               echo "Attempt $attempt: App not ready after 15s"
-              pkill -x "cmux DEV" 2>/dev/null || true
+              pkill -x "Mosaic DEV" 2>/dev/null || true
               kill "$HELPER_PID" 2>/dev/null || true
               if [ "$attempt" -eq 2 ]; then
                 echo "Display resolution UI regression failed after 2 attempts" >&2
@@ -1783,7 +1783,7 @@ jobs:
               exit 0
             fi
 
-            pkill -x "cmux DEV" 2>/dev/null || true
+            pkill -x "Mosaic DEV" 2>/dev/null || true
             cleanup_attempt
 
             if [ "$attempt" -eq 2 ]; then

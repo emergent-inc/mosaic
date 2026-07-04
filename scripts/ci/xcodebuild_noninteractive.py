@@ -144,7 +144,7 @@ def main() -> int:
             pass
 
     # Forward a fast, non-interactive Swift crash backtrace into the XCTest
-    # host process (cmux DEV.app). The crash that matters happens in the app
+    # host process (Mosaic DEV.app). The crash that matters happens in the app
     # host, not in xcodebuild, and the job-level SWIFT_BACKTRACE only reaches
     # xcodebuild itself. xcodebuild copies TEST_RUNNER_-prefixed env vars (with
     # the prefix stripped) into the test host's environment, so this is what

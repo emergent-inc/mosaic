@@ -2,8 +2,14 @@ import AppKit
 import Foundation
 import Testing
 
-#if canImport(cmux_DEV)
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
+#elseif canImport(cmux_DEV)
 @testable import cmux_DEV
+#elseif canImport(cmux)
+@testable import cmux
 
 @Suite(.serialized)
 struct PostHogAnalyticsPropertiesTests {
@@ -260,6 +266,18 @@ struct PostHogAnalyticsPropertiesTests {
         #expect(NativeInteractionAnalytics.scrollDirection(-1) == "negative")
         #expect(NativeInteractionAnalytics.scrollDirection(0) == "none")
         #expect(NativeInteractionAnalytics.sanitizedIdentifier("Sidebar Help/Menu Button!") == "SidebarHelpMenuButton")
+    }
+
+    /// Regression guard for the scrollback outage: the interaction monitor must
+    /// never observe `.scrollWheel`. Its handler runs a re-entrant, side-effecting
+    /// `hitTest` during event dispatch, which poisons AppKit's responsive-scroll
+    /// target resolution and stops terminal wheel scrolling entirely.
+    @Test
+    func interactionMonitorMaskExcludesScrollWheel() {
+        #expect(!NativeInteractionAnalytics.mouseEventMask.contains(.scrollWheel))
+        // Mouse-button interactions we still care about must remain observed.
+        #expect(NativeInteractionAnalytics.mouseEventMask.contains(.leftMouseDown))
+        #expect(NativeInteractionAnalytics.mouseEventMask.contains(.leftMouseDragged))
     }
 
     @Test

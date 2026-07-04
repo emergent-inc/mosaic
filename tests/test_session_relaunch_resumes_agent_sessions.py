@@ -76,7 +76,7 @@ def _wait_for_socket_closed(socket_path: Path, timeout: float = 20.0) -> None:
 
 
 def _kill_existing(app_path: Path) -> None:
-    exe = app_path / "Contents" / "MacOS" / "cmux DEV"
+    exe = app_path / "Contents" / "MacOS" / "Mosaic DEV"
     subprocess.run(["pkill", "-f", str(exe)], capture_output=True, text=True)
     time.sleep(1.0)
 
@@ -185,7 +185,7 @@ def _write_hook_state(
 def main() -> int:
     app_path_str = os.environ.get("CMUX_APP_PATH", "").strip()
     if not app_path_str:
-        print("SKIP: set CMUX_APP_PATH to a built cmux DEV .app path")
+        print("SKIP: set CMUX_APP_PATH to a built Mosaic DEV .app path")
         return 0
     app_path = Path(app_path_str)
     if not app_path.exists():

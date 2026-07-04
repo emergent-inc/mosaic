@@ -3,14 +3,14 @@ import CmuxSettings
 import Foundation
 import Testing
 
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
-private typealias StoredShortcut = cmux_DEV.StoredShortcut
-private typealias ShortcutStroke = cmux_DEV.ShortcutStroke
-#elseif canImport(cmux)
-@testable import cmux
-private typealias StoredShortcut = cmux.StoredShortcut
-private typealias ShortcutStroke = cmux.ShortcutStroke
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+private typealias StoredShortcut = Mosaic_DEV.StoredShortcut
+private typealias ShortcutStroke = Mosaic_DEV.ShortcutStroke
+#elseif canImport(Mosaic)
+@testable import Mosaic
+private typealias StoredShortcut = Mosaic.StoredShortcut
+private typealias ShortcutStroke = Mosaic.ShortcutStroke
 #endif
 
 private final class ShortcutNoopFileSearchController: FileSearchControlling {

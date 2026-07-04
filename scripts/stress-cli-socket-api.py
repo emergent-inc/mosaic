@@ -356,9 +356,9 @@ class Diagnostics:
         if self.app_pgrep:
             patterns.append(self.app_pgrep)
         if self.tag:
-            patterns.append(f"cmux DEV {self.tag}.app/Contents/MacOS/cmux DEV")
-            patterns.append(f"cmux DEV {self.tag}")
-        patterns.append("cmux DEV")
+            patterns.append(f"Mosaic DEV {self.tag}.app/Contents/MacOS/Mosaic DEV")
+            patterns.append(f"Mosaic DEV {self.tag}")
+        patterns.append("Mosaic DEV")
         seen: set[int] = set()
         for pattern in patterns:
             try:
@@ -1533,7 +1533,7 @@ def resolve_cli_path(raw: str | None, tag: str | None) -> str:
     if env_cli:
         candidates.append(os.path.expanduser(env_cli))
     if tag:
-        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/cmux-{tag}/Build/Products/Debug/cmux DEV {tag}.app/Contents/Resources/bin/cmux"))
+        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/cmux-{tag}/Build/Products/Debug/Mosaic DEV {tag}.app/Contents/Resources/bin/cmux"))
         candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/cmux-{tag}/Build/Products/Debug/cmux"))
     last_cli = pathlib.Path("/tmp/cmux-last-cli-path")
     if last_cli.exists():

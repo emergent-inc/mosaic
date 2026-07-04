@@ -150,7 +150,7 @@ mkdir -p "$PWD/node_modules/oh-my-openagent"
     with tempfile.TemporaryDirectory(prefix="cmux-omo-skip-app-bundle-path-") as td:
         root = Path(td)
         fallback_bin = root / ".bun" / "bin"
-        stale_app_bin = root / "Older cmux.app" / "Contents" / "Resources" / "bin"
+        stale_app_bin = root / "Older Mosaic.app" / "Contents" / "Resources" / "bin"
         fallback_bin.mkdir(parents=True, exist_ok=True)
         stale_app_bin.mkdir(parents=True, exist_ok=True)
         user_config_dir = root / ".config" / "opencode"

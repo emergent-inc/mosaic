@@ -21,18 +21,29 @@ final class NativeInteractionAnalytics {
         installNotificationObservers()
     }
 
+    /// Mouse event types observed by the interaction monitor.
+    ///
+    /// IMPORTANT: `.scrollWheel` must never be included. `track(_:)` calls
+    /// `contentView.hitTest(_:)`, and cmux's hit-test chain is not
+    /// side-effect-free (overlays toggle `isHidden`, the terminal portal reads
+    /// `NSApp.currentEvent`, sets cursors, and notes interactions). Running that
+    /// re-entrant hit-test from a `.scrollWheel` local monitor, before AppKit
+    /// dispatches the event, poisons AppKit's responsive-scroll target
+    /// resolution so `GhosttyNSView.scrollWheel` is never called and terminal
+    /// scrollback stops working entirely. Scroll analytics is not worth breaking
+    /// the scroll-latency-sensitive path.
+    nonisolated static let mouseEventMask: NSEvent.EventTypeMask = [
+        .leftMouseDown,
+        .leftMouseUp,
+        .rightMouseDown,
+        .otherMouseDown,
+        .leftMouseDragged,
+        .rightMouseDragged,
+        .otherMouseDragged,
+    ]
+
     private func installEventMonitors() {
-        let mouseMask: NSEvent.EventTypeMask = [
-            .leftMouseDown,
-            .leftMouseUp,
-            .rightMouseDown,
-            .otherMouseDown,
-            .leftMouseDragged,
-            .rightMouseDragged,
-            .otherMouseDragged,
-            .scrollWheel,
-        ]
-        let mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseMask) { [weak self] event in
+        let mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: Self.mouseEventMask) { [weak self] event in
             self?.track(event)
             return event
         }

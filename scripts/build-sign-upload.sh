@@ -48,7 +48,7 @@ fi
 TAG="$1"
 SIGN_HASH="A050CC7E193C8221BDBA204E731B046CDCCC1B30"
 ENTITLEMENTS_TEMPLATE="cmux.entitlements"
-APP_PATH="build/Build/Products/Release/cmux.app"
+APP_PATH="build/Build/Products/Release/Mosaic.app"
 GHOSTTYKIT_CRASH_REPORT_SUBDIR="cmux/crash"
 STABLE_APPCAST_URL="${MOSAIC_STABLE_APPCAST_URL:-https://updates.mosaic.inc/stable/appcast.xml}"
 RELEASE_DOWNLOAD_URL_BASE="${MOSAIC_RELEASE_DOWNLOAD_URL_BASE:-https://download.mosaic.inc/releases}"
@@ -179,9 +179,9 @@ cask "cmux" do
   sha256 "${DMG_SHA256}"
 
   url "https://download.mosaic.inc/releases/v#{version}/mosaic-macos.dmg"
-  name "cmux"
+  name "Mosaic"
   desc "Lightweight native macOS terminal with vertical tabs for AI coding agents"
-  homepage "https://github.com/emergent-inc/cmux"
+  homepage "https://mosaic.inc"
 
   livecheck do
     url :url
@@ -190,8 +190,8 @@ cask "cmux" do
 
   depends_on macos: ">= :ventura"
 
-  app "cmux.app"
-  binary "#{appdir}/cmux.app/Contents/Resources/bin/cmux"
+  app "Mosaic.app"
+  binary "#{appdir}/Mosaic.app/Contents/Resources/bin/cmux"
 
   zap trash: [
     "~/Library/Application Support/cmux",
@@ -205,7 +205,7 @@ CASKEOF
     if git diff --staged --quiet; then
       echo "Homebrew cask already up to date"
     else
-      git commit -m "Update cmux to ${VERSION}"
+      git commit -m "Update Mosaic to ${VERSION}"
       git push
       echo "Homebrew cask updated"
     fi

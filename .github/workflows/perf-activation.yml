@@ -235,7 +235,7 @@ jobs:
           mkdir -p "$RESULTS_DIR"
           chmod 0777 "$RESULTS_DIR"
 
-          APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-$PERF_TAG/Build/Products/Debug/cmux DEV $PERF_TAG.app"
+          APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-$PERF_TAG/Build/Products/Debug/Mosaic DEV $PERF_TAG.app"
           BENCHMARK_CMD=(
             python3 scripts/perf-activation-session.py
             --tag "$PERF_TAG"
@@ -266,7 +266,7 @@ jobs:
       - name: Run Cmd-Tab activation benchmark
         run: |
           set -euo pipefail
-          APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-$PERF_TAG/Build/Products/Debug/cmux DEV $PERF_TAG.app"
+          APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-$PERF_TAG/Build/Products/Debug/Mosaic DEV $PERF_TAG.app"
           BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Contents/Info.plist")"
           # Prefer the console user's Aqua bootstrap when passwordless sudo is
           # available. Some self-hosted runners deliberately omit sudo; on
@@ -348,7 +348,7 @@ jobs:
       - name: Cleanup tagged app
         if: always()
         run: |
-          pkill -f "cmux DEV ${PERF_TAG}.app/Contents/MacOS/cmux DEV" || true
+          pkill -f "Mosaic DEV ${PERF_TAG}.app/Contents/MacOS/Mosaic DEV" || true
           rm -f "/tmp/cmux-debug-${PERF_TAG}.sock"
 
   activation-session:
