@@ -128,6 +128,7 @@ class RoomContextSocketServer:
             result = {
                 "room_id": "room-1",
                 "digest": "[1] message: Shared user message: build a website",
+                "context_pack_text": "Queryable transcript excerpts:\n- [1] claude/assistant: Claude A found the auth regression.",
                 "last_sequence": 1,
                 "current_surface_id": self.surface_id,
                 "reachable_surfaces": [
@@ -192,6 +193,8 @@ def main() -> int:
         return fail(f"missing reachable peer section: {additional!r}")
     if "Claude B" not in additional or peer_surface_id not in additional:
         return fail(f"missing peer label/surface id: {additional!r}")
+    if "Claude A found the auth regression." not in additional:
+        return fail(f"missing peer transcript context: {additional!r}")
     if expected not in additional:
         return fail(f"missing active handoff command {expected!r}: {additional!r}")
     if "built-in background-agent messaging" not in additional:

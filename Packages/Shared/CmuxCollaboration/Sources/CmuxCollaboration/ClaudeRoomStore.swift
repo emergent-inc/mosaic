@@ -46,6 +46,15 @@ public actor ClaudeRoomStore {
         return room
     }
 
+    /// Updates a room's delivery policy, creating the room when needed.
+    @discardableResult
+    public func setDeliveryPolicy(roomID: String, policy: ClaudeRoomDeliveryPolicy) -> ClaudeRoomSnapshot {
+        var room = rooms[roomID] ?? ClaudeRoomSnapshot(id: roomID)
+        room.deliveryPolicy = policy
+        rooms[roomID] = room
+        return room
+    }
+
     /// Removes a member or surface from a room.
     public func disconnect(roomID: String, memberID: String?, surfaceID: String?) -> ClaudeRoomSnapshot? {
         guard var room = rooms[roomID] else { return nil }
@@ -137,6 +146,10 @@ public actor ClaudeRoomStore {
         createdAt: Date = Date()
     ) -> AgentRoomTranscriptTurn {
         let existing = transcriptTurnsByRoomID[roomID] ?? []
+        if let sourceID,
+           let duplicate = existing.first(where: { $0.sourceID == sourceID }) {
+            return duplicate
+        }
         let nextSequence = (existing.last?.sequence ?? 0) + 1
         let turn = AgentRoomTranscriptTurn(
             roomID: roomID,
@@ -237,6 +250,38 @@ public actor ClaudeRoomStore {
             transcriptTurns: transcriptTurns,
             memberID: memberID,
             surfaceID: surfaceID,
+            sinceEventSequence: sinceEventSequence,
+            maxEvents: maxEvents,
+            maxTranscriptTurns: maxTranscriptTurns
+        )
+    }
+
+    /// Builds a focused context pack from room ledger events and peer transcript excerpts.
+    public func peerContextPack(
+        roomID: String,
+        recipientMemberID: String? = nil,
+        recipientSurfaceID: String? = nil,
+        sinceEventSequence: Int? = nil,
+        maxEvents: Int = 8,
+        maxTranscriptTurns: Int = 6
+    ) -> AgentRoomContextPack? {
+        guard let room = rooms[roomID] else { return nil }
+        let transcriptTurns = Array((transcriptTurnsByRoomID[roomID] ?? [])
+            .filter { turn in
+                if let recipientMemberID, turn.memberID == recipientMemberID { return false }
+                if let recipientSurfaceID, turn.surfaceID == recipientSurfaceID { return false }
+                return true
+            }
+            .suffix(maxTranscriptTurns))
+        return AgentRoomContextCompiler(
+            maxEvents: maxEvents,
+            maxTranscriptTurns: maxTranscriptTurns
+        )
+        .contextPack(
+            room: room,
+            transcriptTurns: transcriptTurns,
+            memberID: recipientMemberID,
+            surfaceID: recipientSurfaceID,
             sinceEventSequence: sinceEventSequence,
             maxEvents: maxEvents,
             maxTranscriptTurns: maxTranscriptTurns

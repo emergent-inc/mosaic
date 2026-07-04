@@ -1,4 +1,5 @@
 import AppKit
+import CmuxAgentChat
 import CMUXMobileCore
 import CmuxCollaboration
 import CmuxFoundation
@@ -714,6 +715,9 @@ final class CollaborationRuntime {
     @ObservationIgnored private let productAnalytics = ProductAnalytics.shared
     private var latestAgentRoomID: String?
     private let agentRoomActiveDispatchPromptBuilder = AgentRoomActiveDispatchPromptBuilder()
+    private let agentRoomTranscriptHistoryLimit = 24
+    private let agentRoomContextPackTranscriptLimit = 8
+    private let agentRoomTranscriptTurnCharacterLimit = 1_200
     @ObservationIgnored private var terminalSurfaceReadyObserver: NSObjectProtocol?
 
     private init() {
@@ -2047,9 +2051,11 @@ final class CollaborationRuntime {
         guard let surfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID) else {
             return ["connected": false, "error": "No terminal surface is available."]
         }
+        let liveAgentSession = TerminalController.shared.agentChatTranscriptService?
+            .liveSession(surfaceID: surfaceID.uuidString)
         let member = ClaudeRoomMember(
             surfaceID: surfaceID.uuidString,
-            agentSessionID: agentSessionID,
+            agentSessionID: agentSessionID ?? liveAgentSession?.sessionID,
             peerID: peerIdentity.peerID,
             displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle
         )
@@ -2067,10 +2073,12 @@ final class CollaborationRuntime {
         }
         agentRoomIDsBySurfaceID[surfaceID] = roomID
         agentRoomMemberIDsBySurfaceID[surfaceID] = member.id
+        _ = await agentRoomStore.setDeliveryPolicy(roomID: roomID, policy: .semiLive)
         let room = await agentRoomStore.connect(member: member, to: roomID)
         latestAgentRoomID = roomID
         cacheAgentRoom(room)
         reconcileAgentRoomMembership(with: room)
+        await ingestAgentRoomTranscriptHistory(roomID: roomID, members: room.members)
         try? await send(.agentRoomSnapshot(room))
         return agentRoomPayload(room)
     }
@@ -2143,10 +2151,24 @@ final class CollaborationRuntime {
         } else {
             roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
         }
-        guard let roomID else { return ["posted": false, "error": "No Claude room is active."] }
+        guard let roomID else {
+            #if DEBUG
+            cmuxDebugLog("agentRoom.post dropped: no active room (from raw=\(rawFromSurfaceID ?? "nil") resolved=\(fromSurfaceUUID?.uuidString ?? "nil"))")
+            #endif
+            return [
+                "posted": false,
+                "error": "No Claude room is active.",
+                "from_surface_resolved": fromSurfaceUUID?.uuidString ?? NSNull(),
+            ]
+        }
         let kind = rawKind.flatMap(ClaudeRoomEventKind.init(rawValue:)) ?? .message
         let fromSurfaceID = fromSurfaceUUID?.uuidString ?? rawFromSurfaceID
         let fromMemberID = fromSurfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
+        #if DEBUG
+        if fromSurfaceUUID.flatMap({ agentRoomIDsBySurfaceID[$0] }) != roomID {
+            cmuxDebugLog("agentRoom.post: from surface \(fromSurfaceID ?? "nil") is not a mapped member of room \(roomID); event still posts but peers may be unreachable")
+        }
+        #endif
         let result = await agentRoomStore.appendEvent(
             roomID: roomID,
             kind: kind,
@@ -2157,7 +2179,7 @@ final class CollaborationRuntime {
         )
         cacheAgentRoom(result.room)
         try? await send(.agentRoomEvent(result.event))
-        let dispatch = dispatchAgentRoomEventIfNeeded(result.event)
+        let dispatch = await dispatchAgentRoomEventIfNeeded(result.event)
         return [
             "posted": true,
             "event": encodedJSONObject(result.event),
@@ -2185,7 +2207,7 @@ final class CollaborationRuntime {
             Task { @MainActor in
                 await agentRoomStore.apply(snapshot: room)
                 try? await send(.agentRoomEvent(event))
-                _ = dispatchAgentRoomEventIfNeeded(event)
+                _ = await dispatchAgentRoomEventIfNeeded(event)
             }
             return [
                 "posted": true,
@@ -2257,8 +2279,20 @@ final class CollaborationRuntime {
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
             return ["digest": "", "error": "Claude room not found."]
         }
+        await ingestAgentRoomTranscriptHistory(roomID: roomID, members: room.members)
+        let contextPackText = await peerAgentRoomContextText(
+            roomID: roomID,
+            room: room,
+            recipientSurfaceID: surfaceUUID?.uuidString,
+            maxEvents: 0
+        )
         cacheAgentRoom(room)
-        return agentRoomDigestPayload(room: room, surfaceID: surfaceUUID?.uuidString, since: since)
+        return agentRoomDigestPayload(
+            room: room,
+            surfaceID: surfaceUUID?.uuidString,
+            since: since,
+            contextPackText: contextPackText
+        )
     }
 
     func agentRoomDigestPayloadSnapshot(roomID requestedRoomID: String?, surfaceID rawSurfaceID: String? = nil, since: Int?) -> [String: Any] {
@@ -2277,7 +2311,12 @@ final class CollaborationRuntime {
         return agentRoomDigestPayload(room: room, surfaceID: surfaceUUID?.uuidString, since: since)
     }
 
-    private func agentRoomDigestPayload(room: ClaudeRoomSnapshot, surfaceID: String?, since: Int?) -> [String: Any] {
+    private func agentRoomDigestPayload(
+        room: ClaudeRoomSnapshot,
+        surfaceID: String?,
+        since: Int?,
+        contextPackText: String = ""
+    ) -> [String: Any] {
         let digestRoom: ClaudeRoomSnapshot
         if let surfaceID {
             var filtered = room
@@ -2292,6 +2331,7 @@ final class CollaborationRuntime {
         return [
             "room_id": room.id,
             "digest": agentRoomDigestBuilder.digest(for: digestRoom, since: since),
+            "context_pack_text": contextPackText,
             "last_sequence": room.lastSequence,
             "current_surface_id": surfaceID ?? NSNull(),
             "reachable_surfaces": room.members
@@ -2315,6 +2355,81 @@ final class CollaborationRuntime {
             _ = await agentRoomDigestForAutomation(roomID: roomID, surfaceID: surfaceID, since: since)
         }
         return ["requested": true]
+    }
+
+    private func ingestAgentRoomTranscriptHistory(roomID: String, members: [ClaudeRoomMember]) async {
+        guard let service = TerminalController.shared.agentChatTranscriptService else { return }
+        for member in members {
+            guard let record = service.liveSession(surfaceID: member.surfaceID),
+                  let page = await service.history(
+                    sessionID: record.sessionID,
+                    beforeSeq: nil,
+                    limit: agentRoomTranscriptHistoryLimit
+                  ) else {
+                continue
+            }
+            for message in page.messages {
+                guard let text = agentRoomTranscriptText(from: message) else { continue }
+                _ = await agentRoomStore.appendTranscriptTurn(
+                    roomID: roomID,
+                    agentKind: record.agentKind.sourceName,
+                    memberID: member.id,
+                    surfaceID: member.surfaceID,
+                    role: agentRoomTranscriptRole(from: message.role),
+                    text: truncatedAgentRoomTranscriptText(text),
+                    sourceSequence: message.seq,
+                    sourceID: "\(record.sessionID):\(message.id)",
+                    createdAt: message.timestamp
+                )
+            }
+        }
+    }
+
+    private func peerAgentRoomContextText(
+        roomID: String,
+        room: ClaudeRoomSnapshot,
+        recipientSurfaceID: String?,
+        maxEvents: Int = 0
+    ) async -> String {
+        let recipientMemberID = recipientSurfaceID.flatMap { surfaceID in
+            room.members.first(where: { $0.surfaceID == surfaceID })?.id
+        }
+        let pack = await agentRoomStore.peerContextPack(
+            roomID: roomID,
+            recipientMemberID: recipientMemberID,
+            recipientSurfaceID: recipientSurfaceID,
+            maxEvents: maxEvents,
+            maxTranscriptTurns: agentRoomContextPackTranscriptLimit
+        )
+        return pack?.promptText.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func agentRoomTranscriptText(from message: ChatMessage) -> String? {
+        switch message.kind {
+        case .prose(let prose):
+            return prose.text.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        case .thought(let thought):
+            return thought.text.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        case .toolUse, .terminal, .fileEdit, .permissionRequest, .question, .status, .attachment, .unsupported:
+            return nil
+        }
+    }
+
+    private func agentRoomTranscriptRole(from role: ChatRole) -> AgentRoomTranscriptRole {
+        switch role {
+        case .user:
+            return .user
+        case .agent:
+            return .assistant
+        case .system:
+            return .system
+        }
+    }
+
+    private func truncatedAgentRoomTranscriptText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > agentRoomTranscriptTurnCharacterLimit else { return trimmed }
+        return String(trimmed.prefix(agentRoomTranscriptTurnCharacterLimit)) + "..."
     }
 
     func createSessionForAutomation(
@@ -2592,7 +2707,6 @@ final class CollaborationRuntime {
         let joinButton = alert.addButton(withTitle: CollaborationStrings.joinSession)
         styleAccentAlertButtonTitleBlack(joinButton)
         alert.addButton(withTitle: CollaborationStrings.cancel)
-        let joinButton = alert.buttons[0]
 
         let entryView = CollaborationInviteCodeEntryView(
             accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
@@ -4319,20 +4433,42 @@ final class CollaborationRuntime {
         ]
     }
 
-    private func dispatchAgentRoomEventIfNeeded(_ event: ClaudeRoomEvent) -> [String: Any] {
-        guard let prompt = agentRoomActiveDispatchPromptBuilder.prompt(for: event) else {
+    private func dispatchAgentRoomEventIfNeeded(_ event: ClaudeRoomEvent) async -> [String: Any] {
+        let room = await agentRoomStore.room(id: event.roomID)
+        let deliveryPolicy = room?.deliveryPolicy ?? .manual
+        guard agentRoomActiveDispatchPromptBuilder.shouldBroadcast(event, policy: deliveryPolicy) else {
             return ["attempted": false]
         }
-        let targetSurfaceIDs = Array(Set(event.targetSurfaceIDs)).sorted()
+        // Explicit targets win (targeted handoff/question/blocker). Otherwise, in
+        // a live room, broadcast to every member except the sender so a message
+        // typed into one agent reaches the others without any manual command.
+        let explicitTargets = Array(Set(event.targetSurfaceIDs))
+        let recipientSurfaceIDs: [String]
+        if !explicitTargets.isEmpty {
+            recipientSurfaceIDs = explicitTargets.sorted()
+        } else {
+            recipientSurfaceIDs = (room?.members ?? [])
+                .map(\.surfaceID)
+                .filter { $0 != event.fromSurfaceID }
+                .sorted()
+        }
         var sent: [[String: Any]] = []
         var failed: [[String: Any]] = []
-        for rawSurfaceID in targetSurfaceIDs {
+        for rawSurfaceID in recipientSurfaceIDs {
             guard let surfaceID = UUID(uuidString: rawSurfaceID) else {
                 failed.append(["surface_id": rawSurfaceID, "reason": "invalid_surface_id"])
                 continue
             }
             guard let panel = terminalPanel(surfaceID: surfaceID) else {
                 failed.append(["surface_id": rawSurfaceID, "reason": "surface_not_found"])
+                continue
+            }
+            guard let prompt = await activeAgentRoomDispatchPrompt(
+                for: event,
+                targetSurfaceID: rawSurfaceID,
+                policy: deliveryPolicy
+            ) else {
+                failed.append(["surface_id": rawSurfaceID, "reason": "prompt_unavailable"])
                 continue
             }
             switch panel.sendInputResult(prompt + "\r") {
@@ -4354,6 +4490,26 @@ final class CollaborationRuntime {
             "sent": sent,
             "failed": failed,
         ]
+    }
+
+    private func activeAgentRoomDispatchPrompt(
+        for event: ClaudeRoomEvent,
+        targetSurfaceID: String,
+        policy: ClaudeRoomDeliveryPolicy
+    ) async -> String? {
+        guard let prompt = agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy),
+              let room = await agentRoomStore.room(id: event.roomID) else {
+            return agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy)
+        }
+        await ingestAgentRoomTranscriptHistory(roomID: event.roomID, members: room.members)
+        let contextText = await peerAgentRoomContextText(
+            roomID: event.roomID,
+            room: room,
+            recipientSurfaceID: targetSurfaceID,
+            maxEvents: 0
+        )
+        guard !contextText.isEmpty else { return prompt }
+        return prompt + "\n\n" + contextText
     }
 
     private func encodedJSONObject<T: Encodable>(_ value: T) -> Any {

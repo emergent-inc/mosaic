@@ -156,6 +156,77 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
+    func transcriptTurnsDeduplicateBySourceID() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        let first = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "claude",
+            memberID: "member-a",
+            surfaceID: "surface-a",
+            role: .assistant,
+            text: "First indexed copy.",
+            sourceID: "session-a:line-1"
+        )
+        let duplicate = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "claude",
+            memberID: "member-a",
+            surfaceID: "surface-a",
+            role: .assistant,
+            text: "Duplicate replay should be ignored.",
+            sourceID: "session-a:line-1"
+        )
+
+        let turns = await store.transcriptTurns(roomID: "room-1", limit: 10)
+
+        #expect(duplicate == first)
+        #expect(turns.map(\.text) == ["First indexed copy."])
+    }
+
+    @Test
+    func peerContextPackExcludesRecipientTranscriptHistory() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "member-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "claude",
+            memberID: "member-a",
+            surfaceID: "surface-a",
+            role: .assistant,
+            text: "Claude A already diagnosed the failing hook path."
+        )
+        _ = await store.appendTranscriptTurn(
+            roomID: "room-1",
+            agentKind: "codex",
+            memberID: "member-b",
+            surfaceID: "surface-b",
+            role: .assistant,
+            text: "Codex B should not receive its own prior answer."
+        )
+
+        let pack = try #require(await store.peerContextPack(
+            roomID: "room-1",
+            recipientMemberID: "member-b",
+            recipientSurfaceID: "surface-b",
+            maxEvents: 0,
+            maxTranscriptTurns: 10
+        ))
+
+        #expect(pack.transcriptTurns.map(\.surfaceID) == ["surface-a"])
+        #expect(pack.promptText.contains("failing hook path"))
+        #expect(!pack.promptText.contains("own prior answer"))
+    }
+
+    @Test
     func contextPackScopesLedgerAndTranscriptHistory() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
@@ -229,5 +300,61 @@ struct ClaudeRoomStoreTests {
         #expect(builder.prompt(for: summary) == nil)
         #expect(!builder.shouldDispatch(untargetedQuestion))
         #expect(builder.prompt(for: untargetedQuestion) == nil)
+    }
+
+    @Test
+    func liveRoomBroadcastsPlainMessagesButManualDoesNot() {
+        let builder = AgentRoomActiveDispatchPromptBuilder(maxTextCharacters: 40)
+        let message = ClaudeRoomEvent(
+            sequence: 1,
+            roomID: "room-1",
+            kind: .message,
+            fromSurfaceID: "surface-a",
+            text: "the british are coming"
+        )
+
+        // A plain message broadcasts only when the room is live.
+        #expect(builder.shouldBroadcast(message, policy: .semiLive))
+        #expect(!builder.shouldBroadcast(message, policy: .manual))
+
+        // Broadcast prompt carries the relay header and the message text.
+        let prompt = builder.broadcastPrompt(for: message, policy: .semiLive)
+        #expect(prompt?.contains("Shared room message from surface surface-a") == true)
+        #expect(prompt?.contains("the british are coming") == true)
+        #expect(builder.broadcastPrompt(for: message, policy: .manual) == nil)
+
+        // Summaries never broadcast, even in a live room, to avoid runaway chatter.
+        let summary = ClaudeRoomEvent(
+            sequence: 2,
+            roomID: "room-1",
+            kind: .summary,
+            fromSurfaceID: "surface-a",
+            text: "Finished a normal turn."
+        )
+        #expect(!builder.shouldBroadcast(summary, policy: .semiLive))
+        #expect(builder.broadcastPrompt(for: summary, policy: .semiLive) == nil)
+    }
+
+    @Test
+    func relayPromptDetectionMatchesInjectedHeadersOnly() {
+        // Every header the builder can inject must be recognized as a relay prompt.
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room message from surface surface-a:\nhi"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room handoff from surface surface-a:\ndo x"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room question from surface surface-a:\nq"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room blocker from surface surface-a:\nb"))
+        // Leading whitespace is tolerated.
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("   Shared room message from surface s:\nhi"))
+        // Ordinary user prompts are not treated as relays.
+        #expect(!AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("the british are coming"))
+        #expect(!AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Please review the shared room"))
+    }
+
+    @Test
+    func setDeliveryPolicyUpdatesRoom() async {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", deliveryPolicy: .manual)
+        let updated = await store.setDeliveryPolicy(roomID: "room-1", policy: .semiLive)
+        #expect(updated.deliveryPolicy == .semiLive)
+        #expect(await store.room(id: "room-1")?.deliveryPolicy == .semiLive)
     }
 }

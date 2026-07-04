@@ -207,6 +207,14 @@ final class AgentChatTranscriptService {
         registry.record(sessionID: sessionID)
     }
 
+    /// The current live session bound to a terminal surface, if any.
+    ///
+    /// - Parameter surfaceID: Terminal surface UUID string.
+    /// - Returns: A non-ended record bound to the surface, or `nil`.
+    func liveSession(surfaceID: String) -> AgentChatSessionRecord? {
+        registry.liveSession(surfaceID: surfaceID)
+    }
+
     /// Re-adopts one session's terminal bindings from the hook store; see
     /// ``AgentChatSessionRegistry/refreshBindingsFromHookStore(sessionID:)``.
     @discardableResult
