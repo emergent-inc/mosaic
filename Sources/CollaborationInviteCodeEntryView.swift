@@ -31,7 +31,7 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
 
     init(accessibilityLabel: String) {
         self.slotLabels = (0..<CollaborationInviteCodeEntryModel.codeLength).map { _ in
-            NSTextField(labelWithString: "")
+            Self.makeSlotLabel()
         }
         let slotCount = CGFloat(CollaborationInviteCodeEntryModel.codeLength)
         let width = Self.slotSize.width * slotCount + Self.slotSpacing * (slotCount - 1)
@@ -50,6 +50,17 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         nil
+    }
+
+    private static func makeSlotLabel() -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.cell = CenteredCodeSlotCell(textCell: "")
+        label.isBordered = false
+        label.isBezeled = false
+        label.drawsBackground = false
+        label.isEditable = false
+        label.isSelectable = false
+        return label
     }
 
     override var acceptsFirstResponder: Bool {
@@ -238,5 +249,15 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         blink.repeatCount = .infinity
         blink.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         layer.add(blink, forKey: Self.caretBlinkAnimationKey)
+    }
+}
+
+private final class CenteredCodeSlotCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        var drawingRect = super.drawingRect(forBounds: rect)
+        let textSize = cellSize(forBounds: rect)
+        drawingRect.origin.y = rect.origin.y + floor((rect.height - textSize.height) / 2)
+        drawingRect.size.height = textSize.height
+        return drawingRect
     }
 }
