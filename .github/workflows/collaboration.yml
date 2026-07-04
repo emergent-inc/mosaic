@@ -1,4 +1,4 @@
-# CI/CD for the cmux Multiplayer collaboration relay (workers/collaboration).
+# CI/CD for the mosaic Multiplayer collaboration relay (workers/collaboration).
 #
 # PRs touching the service run typecheck + unit tests + a wrangler dry-run
 # build. Pushes to main additionally deploy to Cloudflare. `wrangler deploy`
@@ -26,7 +26,7 @@ on:
       relay_url:
         description: "Relay URL to smoke-test"
         required: false
-        default: "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
+        default: "https://mosaic-collaboration-worker.dorsa-rohani.workers.dev"
 
 permissions:
   contents: read
@@ -108,7 +108,7 @@ jobs:
       - name: Smoke production relay create/connect
         run: bun run --cwd workers/collaboration smoke:relay
         env:
-          CMUX_COLLABORATION_RELAY_URL: https://cmux-collaboration-worker.dorsa-rohani.workers.dev
+          MOSAIC_COLLABORATION_RELAY_URL: https://mosaic-collaboration-worker.dorsa-rohani.workers.dev
 
   live-smoke:
     if: github.event_name == 'workflow_dispatch'
@@ -127,4 +127,4 @@ jobs:
       - name: Smoke relay create/connect
         run: bun run --cwd workers/collaboration smoke:relay
         env:
-          CMUX_COLLABORATION_RELAY_URL: ${{ inputs.relay_url }}
+          MOSAIC_COLLABORATION_RELAY_URL: ${{ inputs.relay_url }}

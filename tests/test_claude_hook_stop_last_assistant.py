@@ -15,26 +15,26 @@ import time
 import uuid
 
 
-def resolve_cmux_cli() -> str:
-    explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
+def resolve_mosaic_cli() -> str:
+    explicit = os.environ.get("MOSAIC_CLI_BIN") or os.environ.get("MOSAIC_CLI")
     if explicit:
         if os.path.exists(explicit) and os.access(explicit, os.X_OK):
             return explicit
-        raise RuntimeError(f"Configured cmux CLI is not executable: {explicit}")
+        raise RuntimeError(f"Configured mosaic CLI is not executable: {explicit}")
 
     candidates: list[str] = []
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
-    candidates.extend(glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux"))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/mosaic")))
+    candidates.extend(glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic"))
     candidates = [path for path in candidates if os.path.exists(path) and os.access(path, os.X_OK)]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
         return candidates[0]
 
-    in_path = shutil.which("cmux")
+    in_path = shutil.which("mosaic")
     if in_path:
         return in_path
 
-    raise RuntimeError("Unable to find cmux CLI binary. Set CMUX_CLI_BIN.")
+    raise RuntimeError("Unable to find mosaic CLI binary. Set MOSAIC_CLI_BIN.")
 
 
 class CapturingSocketServer:
@@ -45,8 +45,8 @@ class CapturingSocketServer:
         self.ready = threading.Event()
         self.stop = threading.Event()
         self.error: Exception | None = None
-        self.root = tempfile.TemporaryDirectory(prefix="cmux-claude-stop-")
-        self.socket_path = os.path.join(self.root.name, "cmux.sock")
+        self.root = tempfile.TemporaryDirectory(prefix="mosaic-claude-stop-")
+        self.socket_path = os.path.join(self.root.name, "mosaic.sock")
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.server: socket.socket | None = None
 
@@ -143,7 +143,7 @@ class CapturingSocketServer:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
@@ -159,12 +159,12 @@ def main() -> int:
 
     with CapturingSocketServer(workspace_id=workspace_id, surface_id=surface_id) as server:
         env = os.environ.copy()
-        env["CMUX_SOCKET_PATH"] = server.socket_path
-        env["CMUX_WORKSPACE_ID"] = workspace_id
-        env["CMUX_SURFACE_ID"] = surface_id
-        env["CMUX_CLAUDE_HOOK_STATE_PATH"] = os.path.join(server.root.name, "state.json")
-        env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-        env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+        env["MOSAIC_SOCKET_PATH"] = server.socket_path
+        env["MOSAIC_WORKSPACE_ID"] = workspace_id
+        env["MOSAIC_SURFACE_ID"] = surface_id
+        env["MOSAIC_CLAUDE_HOOK_STATE_PATH"] = os.path.join(server.root.name, "state.json")
+        env["MOSAIC_CLI_SENTRY_DISABLED"] = "1"
+        env["MOSAIC_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
 
         cron_payload = {
             "session_id": f"sess-{uuid.uuid4().hex}",
@@ -175,7 +175,7 @@ def main() -> int:
                 "cron": "7 5 1 5 *",
                 "recurring": False,
                 "durable": True,
-                "prompt": "cmux issue 3395 repro",
+                "prompt": "mosaic issue 3395 repro",
             },
         }
         cron_proc = subprocess.run(

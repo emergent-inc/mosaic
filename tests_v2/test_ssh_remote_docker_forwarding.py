@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Docker integration: remote SSH proxy endpoint via `cmux ssh`."""
+"""Docker integration: remote SSH proxy endpoint via `mosaic ssh`."""
 
 from __future__ import annotations
 
@@ -19,36 +19,36 @@ from base64 import b64encode
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
-REMOTE_HTTP_PORT = int(os.environ.get("CMUX_SSH_TEST_REMOTE_HTTP_PORT", "43173"))
-REMOTE_WS_PORT = int(os.environ.get("CMUX_SSH_TEST_REMOTE_WS_PORT", "43174"))
-MAX_REMOTE_DAEMON_SIZE_BYTES = int(os.environ.get("CMUX_SSH_TEST_MAX_DAEMON_SIZE_BYTES", "15000000"))
-DOCKER_SSH_HOST = os.environ.get("CMUX_SSH_TEST_DOCKER_HOST", "127.0.0.1")
-DOCKER_PUBLISH_ADDR = os.environ.get("CMUX_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
+REMOTE_HTTP_PORT = int(os.environ.get("MOSAIC_SSH_TEST_REMOTE_HTTP_PORT", "43173"))
+REMOTE_WS_PORT = int(os.environ.get("MOSAIC_SSH_TEST_REMOTE_WS_PORT", "43174"))
+MAX_REMOTE_DAEMON_SIZE_BYTES = int(os.environ.get("MOSAIC_SSH_TEST_MAX_DAEMON_SIZE_BYTES", "15000000"))
+DOCKER_SSH_HOST = os.environ.get("MOSAIC_SSH_TEST_DOCKER_HOST", "127.0.0.1")
+DOCKER_PUBLISH_ADDR = os.environ.get("MOSAIC_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
@@ -57,21 +57,21 @@ def _run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = Tru
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if check and proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc
 
 
 def _run_cli_json(cli: str, args: list[str]) -> dict:
     env = dict(os.environ)
-    env.pop("CMUX_WORKSPACE_ID", None)
-    env.pop("CMUX_SURFACE_ID", None)
-    env.pop("CMUX_TAB_ID", None)
+    env.pop("MOSAIC_WORKSPACE_ID", None)
+    env.pop("MOSAIC_SURFACE_ID", None)
+    env.pop("MOSAIC_TAB_ID", None)
 
     proc = _run([cli, "--socket", SOCKET_PATH, "--json", *args], env=env)
     try:
         return json.loads(proc.stdout or "{}")
     except Exception as exc:  # noqa: BLE001
-        raise cmuxError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
+        raise mosaicError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
 
 
 def _docker_available() -> bool:
@@ -85,14 +85,14 @@ def _parse_host_port(docker_port_output: str) -> int:
     # docker port output form: "127.0.0.1:49154\n" or ":::\d+".
     text = docker_port_output.strip()
     if not text:
-        raise cmuxError("docker port output was empty")
+        raise mosaicError("docker port output was empty")
     last = text.split(":")[-1]
     return int(last)
 
 
 def _curl_via_socks(proxy_port: int, target_url: str) -> str:
     if shutil.which("curl") is None:
-        raise cmuxError("curl is required for SOCKS proxy verification")
+        raise mosaicError("curl is required for SOCKS proxy verification")
     proc = _run(
         [
             "curl",
@@ -108,7 +108,7 @@ def _curl_via_socks(proxy_port: int, target_url: str) -> str:
     )
     if proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"curl via SOCKS proxy failed: {merged}")
+        raise mosaicError(f"curl via SOCKS proxy failed: {merged}")
     return proc.stdout
 
 
@@ -121,7 +121,7 @@ def _recv_exact(sock: socket.socket, n: int) -> bytes:
     while len(out) < n:
         chunk = sock.recv(n - len(out))
         if not chunk:
-            raise cmuxError("unexpected EOF while reading socket")
+            raise mosaicError("unexpected EOF while reading socket")
         out.extend(chunk)
     return bytes(out)
 
@@ -131,19 +131,19 @@ def _recv_until(sock: socket.socket, marker: bytes, limit: int = 16384) -> bytes
     while marker not in out:
         chunk = sock.recv(1024)
         if not chunk:
-            raise cmuxError("unexpected EOF while reading response headers")
+            raise mosaicError("unexpected EOF while reading response headers")
         out.extend(chunk)
         if len(out) > limit:
-            raise cmuxError("response headers too large")
+            raise mosaicError("response headers too large")
     return bytes(out)
 
 
 def _read_socks5_connect_reply(sock: socket.socket) -> None:
     head = _recv_exact(sock, 4)
     if len(head) != 4 or head[0] != 0x05:
-        raise cmuxError(f"invalid SOCKS5 reply: {head!r}")
+        raise mosaicError(f"invalid SOCKS5 reply: {head!r}")
     if head[1] != 0x00:
-        raise cmuxError(f"SOCKS5 connect failed with status=0x{head[1]:02x}")
+        raise mosaicError(f"SOCKS5 connect failed with status=0x{head[1]:02x}")
 
     atyp = head[3]
     if atyp == 0x01:
@@ -154,7 +154,7 @@ def _read_socks5_connect_reply(sock: socket.socket) -> None:
     elif atyp == 0x04:
         _ = _recv_exact(sock, 16)
     else:
-        raise cmuxError(f"invalid SOCKS5 atyp in reply: 0x{atyp:02x}")
+        raise mosaicError(f"invalid SOCKS5 atyp in reply: 0x{atyp:02x}")
     _ = _recv_exact(sock, 2)  # bound port
 
 
@@ -167,7 +167,7 @@ def _read_http_response_from_connected_socket(sock: socket.socket) -> str:
 
     status_line = header_text.split("\r\n", 1)[0]
     if "200" not in status_line:
-        raise cmuxError(f"HTTP over SOCKS tunnel failed: {status_line!r}")
+        raise mosaicError(f"HTTP over SOCKS tunnel failed: {status_line!r}")
 
     content_length: int | None = None
     for line in header_text.split("\r\n")[1:]:
@@ -217,7 +217,7 @@ def _socks5_connect(proxy_host: str, proxy_port: int, target_host: str, target_p
     greeting = _recv_exact(sock, 2)
     if greeting != b"\x05\x00":
         sock.close()
-        raise cmuxError(f"SOCKS5 greeting failed: {greeting!r}")
+        raise mosaicError(f"SOCKS5 greeting failed: {greeting!r}")
 
     try:
         host_bytes = socket.inet_aton(target_host)
@@ -227,7 +227,7 @@ def _socks5_connect(proxy_host: str, proxy_port: int, target_host: str, target_p
         host_encoded = target_host.encode("utf-8")
         if len(host_encoded) > 255:
             sock.close()
-            raise cmuxError("target host too long for SOCKS5 domain form")
+            raise mosaicError("target host too long for SOCKS5 domain form")
         atyp = b"\x03"  # domain
         addr = bytes([len(host_encoded)]) + host_encoded
 
@@ -253,7 +253,7 @@ def _socks5_http_get_pipelined(proxy_host: str, proxy_port: int, target_host: st
         except OSError:
             host_encoded = target_host.encode("utf-8")
             if len(host_encoded) > 255:
-                raise cmuxError("target host too long for SOCKS5 domain form")
+                raise mosaicError("target host too long for SOCKS5 domain form")
             atyp = b"\x03"
             addr = bytes([len(host_encoded)]) + host_encoded
 
@@ -272,7 +272,7 @@ def _socks5_http_get_pipelined(proxy_host: str, proxy_port: int, target_host: st
 
         greeting_reply = _recv_exact(sock, 2)
         if greeting_reply != b"\x05\x00":
-            raise cmuxError(f"SOCKS5 greeting failed: {greeting_reply!r}")
+            raise mosaicError(f"SOCKS5 greeting failed: {greeting_reply!r}")
         _read_socks5_connect_reply(sock)
         return _read_http_response_from_connected_socket(sock)
     finally:
@@ -297,7 +297,7 @@ def _http_connect_tunnel(proxy_host: str, proxy_port: int, target_host: str, tar
     status_line = header_text.split("\r\n", 1)[0]
     if "200" not in status_line:
         sock.close()
-        raise cmuxError(f"HTTP CONNECT tunnel failed: {status_line!r}")
+        raise mosaicError(f"HTTP CONNECT tunnel failed: {status_line!r}")
     return sock
 
 
@@ -331,11 +331,11 @@ def _read_server_text_frame(sock: socket.socket) -> str:
         payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
 
     if opcode != 0x1:
-        raise cmuxError(f"Expected websocket text frame opcode=0x1, got opcode=0x{opcode:x}")
+        raise mosaicError(f"Expected websocket text frame opcode=0x1, got opcode=0x{opcode:x}")
     try:
         return payload.decode("utf-8")
     except Exception as exc:  # noqa: BLE001
-        raise cmuxError(f"WebSocket response payload is not valid UTF-8: {exc}")
+        raise mosaicError(f"WebSocket response payload is not valid UTF-8: {exc}")
 
 
 def _websocket_echo_on_connected_socket(sock: socket.socket, ws_host: str, ws_port: int, message: str, path_label: str) -> str:
@@ -354,7 +354,7 @@ def _websocket_echo_on_connected_socket(sock: socket.socket, ws_host: str, ws_po
     header_text = header_blob.decode("utf-8", errors="replace")
     status_line = header_text.split("\r\n", 1)[0]
     if "101" not in status_line:
-        raise cmuxError(f"WebSocket handshake failed over {path_label}: {status_line!r}")
+        raise mosaicError(f"WebSocket handshake failed over {path_label}: {status_line!r}")
 
     expected_accept = b64encode(
         hashlib.sha1((ws_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode("utf-8")).digest()
@@ -365,7 +365,7 @@ def _websocket_echo_on_connected_socket(sock: socket.socket, ws_host: str, ws_po
         if ":" in line
     }
     if lowered_headers.get("sec-websocket-accept", "") != expected_accept:
-        raise cmuxError(f"WebSocket handshake over {path_label} returned invalid Sec-WebSocket-Accept")
+        raise mosaicError(f"WebSocket handshake over {path_label} returned invalid Sec-WebSocket-Accept")
 
     sock.sendall(_encode_client_text_frame(message))
     return _read_server_text_frame(sock)
@@ -421,7 +421,7 @@ def _wait_for_ssh(host: str, host_port: int, key_path: Path, timeout: float = 20
         if probe.returncode == 0 and "ready" in probe.stdout:
             return
         time.sleep(0.5)
-    raise cmuxError("Timed out waiting for SSH server in docker fixture to become ready")
+    raise mosaicError("Timed out waiting for SSH server in docker fixture to become ready")
 
 
 def _remote_binary_size_bytes(host: str, host_port: int, key_path: Path, remote_path: str) -> int:
@@ -443,9 +443,9 @@ wc -c < "$full"
 def _extract_daemon_version_platform(remote_path: str) -> tuple[str, str]:
     parts = [segment for segment in remote_path.strip().split("/") if segment]
     try:
-        marker_index = parts.index("cmuxd-remote")
+        marker_index = parts.index("mosaicd-remote")
     except ValueError as exc:
-        raise cmuxError(f"remote daemon path missing cmuxd-remote marker: {remote_path!r}") from exc
+        raise mosaicError(f"remote daemon path missing mosaicd-remote marker: {remote_path!r}") from exc
 
     required_len = marker_index + 4
     _must(
@@ -455,14 +455,14 @@ def _extract_daemon_version_platform(remote_path: str) -> tuple[str, str]:
     version = parts[marker_index + 1]
     platform = parts[marker_index + 2]
     binary_name = parts[marker_index + 3]
-    _must(binary_name == "cmuxd-remote", f"unexpected daemon binary name in remote path: {remote_path!r}")
+    _must(binary_name == "mosaicd-remote", f"unexpected daemon binary name in remote path: {remote_path!r}")
     _must(bool(version), f"daemon version should not be empty in remote path: {remote_path!r}")
     _must(bool(platform), f"daemon platform should not be empty in remote path: {remote_path!r}")
     return version, platform
 
 
 def _local_cached_daemon_binary(version: str, platform: str) -> Path:
-    return Path(tempfile.gettempdir()) / "cmux-remote-daemon-build" / version / platform / "cmuxd-remote"
+    return Path(tempfile.gettempdir()) / "mosaic-remote-daemon-build" / version / platform / "mosaicd-remote"
 
 
 def _local_file_sha256(path: Path) -> str:
@@ -510,7 +510,7 @@ fi
     return digest
 
 
-def _wait_connected_proxy_port(client: cmux, workspace_id: str, timeout: float = 45.0) -> tuple[dict, int]:
+def _wait_connected_proxy_port(client: mosaic, workspace_id: str, timeout: float = 45.0) -> tuple[dict, int]:
     deadline = time.time() + timeout
     last_status = {}
     proxy_port: int | None = None
@@ -527,7 +527,7 @@ def _wait_connected_proxy_port(client: cmux, workspace_id: str, timeout: float =
         if state == "connected" and proxy_port is not None:
             return last_status, proxy_port
         time.sleep(0.5)
-    raise cmuxError(f"Remote proxy did not converge to connected state: {last_status}")
+    raise mosaicError(f"Remote proxy did not converge to connected state: {last_status}")
 
 
 def main() -> int:
@@ -540,9 +540,9 @@ def main() -> int:
     fixture_dir = repo_root / "tests" / "fixtures" / "ssh-remote"
     _must(fixture_dir.is_dir(), f"Missing docker fixture directory: {fixture_dir}")
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="cmux-ssh-docker-"))
-    image_tag = f"cmux-ssh-test:{secrets.token_hex(4)}"
-    container_name = f"cmux-ssh-test-{secrets.token_hex(4)}"
+    temp_dir = Path(tempfile.mkdtemp(prefix="mosaic-ssh-docker-"))
+    image_tag = f"mosaic-ssh-test:{secrets.token_hex(4)}"
+    container_name = f"mosaic-ssh-test-{secrets.token_hex(4)}"
     workspace_id = ""
     workspace_id_shared = ""
 
@@ -571,12 +571,12 @@ def main() -> int:
             host,
             host_ssh_port,
             key_path,
-            "test ! -e \"$HOME/.cmux/bin/cmuxd-remote\" && echo fresh",
+            "test ! -e \"$HOME/.mosaic/bin/mosaicd-remote\" && echo fresh",
             check=True,
         )
-        _must("fresh" in fresh_check.stdout, "Fresh container should not have preinstalled cmuxd-remote")
+        _must("fresh" in fresh_check.stdout, "Fresh container should not have preinstalled mosaicd-remote")
 
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             payload = _run_cli_json(
                 cli,
                 [
@@ -597,7 +597,7 @@ def main() -> int:
                     if str(row.get("ref") or "") == workspace_ref:
                         workspace_id = str(row.get("id") or "")
                         break
-            _must(bool(workspace_id), f"cmux ssh output missing workspace_id: {payload}")
+            _must(bool(workspace_id), f"mosaic ssh output missing workspace_id: {payload}")
 
             last_status, proxy_port = _wait_connected_proxy_port(client, workspace_id)
 
@@ -647,25 +647,25 @@ def main() -> int:
                 except Exception:
                     time.sleep(0.5)
                     continue
-                if "cmux-ssh-forward-ok" in body:
+                if "mosaic-ssh-forward-ok" in body:
                     break
                 time.sleep(0.3)
 
-            _must("cmux-ssh-forward-ok" in body, f"Forwarded HTTP endpoint returned unexpected body: {body[:120]!r}")
+            _must("mosaic-ssh-forward-ok" in body, f"Forwarded HTTP endpoint returned unexpected body: {body[:120]!r}")
             pipelined_body = _socks5_http_get_pipelined("127.0.0.1", proxy_port, "127.0.0.1", REMOTE_HTTP_PORT)
             _must(
-                "cmux-ssh-forward-ok" in pipelined_body,
+                "mosaic-ssh-forward-ok" in pipelined_body,
                 f"SOCKS pipelined greeting/connect+payload path returned unexpected body: {pipelined_body[:120]!r}",
             )
 
-            ws_message = "cmux-ws-over-socks-ok"
+            ws_message = "mosaic-ws-over-socks-ok"
             echoed_message = _websocket_echo_via_socks(proxy_port, "127.0.0.1", REMOTE_WS_PORT, ws_message)
             _must(
                 echoed_message == ws_message,
                 f"WebSocket echo over SOCKS proxy mismatch: {echoed_message!r} != {ws_message!r}",
             )
 
-            ws_connect_message = "cmux-ws-over-connect-ok"
+            ws_connect_message = "mosaic-ws-over-connect-ok"
             echoed_connect = _websocket_echo_via_connect(proxy_port, "127.0.0.1", REMOTE_WS_PORT, ws_connect_message)
             _must(
                 echoed_connect == ws_connect_message,
@@ -692,7 +692,7 @@ def main() -> int:
                     if str(row.get("ref") or "") == workspace_ref_shared:
                         workspace_id_shared = str(row.get("id") or "")
                         break
-            _must(bool(workspace_id_shared), f"cmux ssh output missing workspace_id for shared transport test: {payload_shared}")
+            _must(bool(workspace_id_shared), f"mosaic ssh output missing workspace_id for shared transport test: {payload_shared}")
 
             _, shared_proxy_port = _wait_connected_proxy_port(client, workspace_id_shared)
             _must(
@@ -714,21 +714,21 @@ def main() -> int:
 
         print(
             "PASS: docker SSH proxy endpoint is reachable, handles HTTP + WebSocket egress over SOCKS and CONNECT through remote host, and is shared across identical transports; "
-            f"uploaded cmuxd-remote size={binary_size_bytes} bytes, version={daemon_version}, platform={daemon_platform}"
+            f"uploaded mosaicd-remote size={binary_size_bytes} bytes, version={daemon_version}, platform={daemon_platform}"
         )
         return 0
 
     finally:
         if workspace_id:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id)
             except Exception:
                 pass
 
         if workspace_id_shared:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id_shared)
             except Exception:
                 pass

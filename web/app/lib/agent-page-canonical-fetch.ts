@@ -7,7 +7,7 @@ export function headersForCanonicalFetch({
 }): Headers {
   const headers = new Headers({
     accept: "text/html",
-    "x-cmux-agent-page-variant": "canonical-html",
+    "x-mosaic-agent-page-variant": "canonical-html",
   });
 
   copyRequestHeader(requestHeaders, headers, "authorization");

@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import Combine
 import Foundation
 
@@ -86,7 +86,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
 
     // MARK: - File watching
 
-    // Watches `filePath` (file + ancestor-directory recovery) via CmuxFileWatch.
+    // Watches `filePath` (file + ancestor-directory recovery) via MosaicFileWatch.
     private var fileWatcher: FileWatcher?
     private var fileWatchTask: Task<Void, Never>?
     private var originalTextContent: String = ""
@@ -99,7 +99,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
     // NotificationCenter token; removal is thread-safe so deinit can drop it.
     private nonisolated(unsafe) var typographyDefaultsObserver: NSObjectProtocol?
     // The typography default this viewer is currently tracking. While the panel
-    // still matches it, a default change (Set as Default / cmux.json reload) is
+    // still matches it, a default change (Set as Default / mosaic.json reload) is
     // adopted; once the user customizes the panel it diverges and is left alone.
     private var followedFontSize: Double
     private var followedFontFamily: String
@@ -131,7 +131,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
     }
 
     /// Adopt a changed typography default (from another viewer's "Set as Default"
-    /// or a `cmux.json` reload), but only while this viewer still matches the
+    /// or a `mosaic.json` reload), but only while this viewer still matches the
     /// default it was tracking — i.e. the user has not customized it.
     private func observeTypographyDefaults() {
         typographyDefaultsObserver = NotificationCenter.default.addObserver(
@@ -441,7 +441,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
 
     // MARK: - File watcher
 
-    /// Watches ``filePath`` for changes via ``CmuxFileWatch/FileWatcher``, which
+    /// Watches ``filePath`` for changes via ``MosaicFileWatch/FileWatcher``, which
     /// handles inode reattachment and nearest-existing-ancestor recovery
     /// internally; each change reloads the content.
     private func startWatching() {

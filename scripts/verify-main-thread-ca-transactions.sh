@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_PATH="${1:-${CMUX_APP_PATH:-}}"
-TAG="${CMUX_TAG:-ca-main-thread}"
-SOCKET_PATH="${CMUX_CA_ASSERT_SOCKET_PATH:-/tmp/cmux-debug-${TAG}.sock}"
-LOG_PATH="${CMUX_CA_ASSERT_LOG:-/tmp/cmux-ca-main-thread-${TAG}.log}"
-HOLD_SECONDS="${CMUX_CA_ASSERT_HOLD_SECONDS:-8}"
-READY_TIMEOUT_SECONDS="${CMUX_CA_ASSERT_READY_TIMEOUT_SECONDS:-60}"
-APP_PID_FILE="${CMUX_CA_ASSERT_PID_FILE:-/tmp/cmux-ca-main-thread-${TAG}.pid}"
+APP_PATH="${1:-${MOSAIC_APP_PATH:-}}"
+TAG="${MOSAIC_TAG:-ca-main-thread}"
+SOCKET_PATH="${MOSAIC_CA_ASSERT_SOCKET_PATH:-/tmp/mosaic-debug-${TAG}.sock}"
+LOG_PATH="${MOSAIC_CA_ASSERT_LOG:-/tmp/mosaic-ca-main-thread-${TAG}.log}"
+HOLD_SECONDS="${MOSAIC_CA_ASSERT_HOLD_SECONDS:-8}"
+READY_TIMEOUT_SECONDS="${MOSAIC_CA_ASSERT_READY_TIMEOUT_SECONDS:-60}"
+APP_PID_FILE="${MOSAIC_CA_ASSERT_PID_FILE:-/tmp/mosaic-ca-main-thread-${TAG}.pid}"
 
 if [ -z "$APP_PATH" ]; then
-  echo "usage: CMUX_APP_PATH=/path/to/Mosaic.app $0" >&2
+  echo "usage: MOSAIC_APP_PATH=/path/to/Mosaic.app $0" >&2
   echo "   or: $0 /path/to/Mosaic.app" >&2
-  echo "optional: CMUX_CA_ASSERT_SOCKET_PATH=/tmp/cmux-debug-<tag>.sock" >&2
+  echo "optional: MOSAIC_CA_ASSERT_SOCKET_PATH=/tmp/mosaic-debug-<tag>.sock" >&2
   exit 2
 fi
 
@@ -22,8 +22,8 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 APP_BASENAME="$(basename "$APP_PATH")"
-if [ "$APP_BASENAME" = "Mosaic DEV.app" ] && [ "${CMUX_ALLOW_UNTAGGED_CA_REGRESSION:-0}" != "1" ]; then
-  echo "ERROR: refusing to launch untagged Mosaic DEV.app without CMUX_ALLOW_UNTAGGED_CA_REGRESSION=1" >&2
+if [ "$APP_BASENAME" = "Mosaic DEV.app" ] && [ "${MOSAIC_ALLOW_UNTAGGED_CA_REGRESSION:-0}" != "1" ]; then
+  echo "ERROR: refusing to launch untagged Mosaic DEV.app without MOSAIC_ALLOW_UNTAGGED_CA_REGRESSION=1" >&2
   exit 2
 fi
 
@@ -33,7 +33,7 @@ if [ ! -x "$BINARY" ]; then
 fi
 
 if [ ! -x "$BINARY" ]; then
-  echo "ERROR: cmux executable not found in $APP_PATH" >&2
+  echo "ERROR: mosaic executable not found in $APP_PATH" >&2
   exit 2
 fi
 
@@ -75,13 +75,13 @@ rm -f "$SOCKET_PATH" "$LOG_PATH"
 
 CA_ASSERT_MAIN_THREAD_TRANSACTIONS=1 \
 CA_DEBUG_TRANSACTIONS=1 \
-CMUX_UI_TEST_MODE=1 \
-CMUX_DISABLE_SESSION_RESTORE=1 \
-CMUX_SOCKET_ENABLE=1 \
-CMUX_SOCKET_MODE=automation \
-CMUX_TAG="$TAG" \
-CMUX_SOCKET_PATH="$SOCKET_PATH" \
-CMUX_ALLOW_SOCKET_OVERRIDE=1 \
+MOSAIC_UI_TEST_MODE=1 \
+MOSAIC_DISABLE_SESSION_RESTORE=1 \
+MOSAIC_SOCKET_ENABLE=1 \
+MOSAIC_SOCKET_MODE=automation \
+MOSAIC_TAG="$TAG" \
+MOSAIC_SOCKET_PATH="$SOCKET_PATH" \
+MOSAIC_ALLOW_SOCKET_OVERRIDE=1 \
 "$BINARY" >"$LOG_PATH" 2>&1 &
 APP_PID=$!
 echo "$APP_PID" >"$APP_PID_FILE"
@@ -89,7 +89,7 @@ echo "$APP_PID" >"$APP_PID_FILE"
 wait_for_app_alive() {
   if ! kill -0 "$APP_PID" >/dev/null 2>&1; then
     wait "$APP_PID" >/dev/null 2>&1 || true
-    echo "FAIL: cmux exited while CA_ASSERT_MAIN_THREAD_TRANSACTIONS=1 was active" >&2
+    echo "FAIL: mosaic exited while CA_ASSERT_MAIN_THREAD_TRANSACTIONS=1 was active" >&2
     echo "--- app log tail ($LOG_PATH) ---" >&2
     tail -80 "$LOG_PATH" >&2 2>/dev/null || true
     exit 1
@@ -108,7 +108,7 @@ while [ "$SECONDS" -lt "$ready_deadline" ]; do
 done
 
 if [ "$socket_ready" -ne 1 ]; then
-  echo "FAIL: cmux stayed alive but did not create its socket at $SOCKET_PATH" >&2
+  echo "FAIL: mosaic stayed alive but did not create its socket at $SOCKET_PATH" >&2
   echo "--- app log tail ($LOG_PATH) ---" >&2
   tail -80 "$LOG_PATH" >&2 2>/dev/null || true
   exit 1
@@ -127,4 +127,4 @@ if grep -E "uncommitted CATransaction|implicit transaction wasn't created|CoreAn
   exit 1
 fi
 
-echo "PASS: cmux startup survived CoreAnimation main-thread transaction assertions"
+echo "PASS: mosaic startup survived CoreAnimation main-thread transaction assertions"

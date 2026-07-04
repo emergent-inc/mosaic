@@ -11,7 +11,7 @@ import Foundation
 /// WebKit text zoom does not resize. Keep `baseRenderPointSize` in sync with
 /// the `.markdown-body { font-size: ... }` rule in `Resources/markdown-viewer/shell.html`.
 enum MarkdownFontSizeSettings {
-    /// UserDefaults / cmux.json key (`markdown.fontSize`).
+    /// UserDefaults / mosaic.json key (`markdown.fontSize`).
     static let key = "markdown.fontSize"
     static let defaultPointSize: Double = 15
     static let minimumPointSize: Double = 8
@@ -26,7 +26,7 @@ enum MarkdownFontSizeSettings {
     }
 
     /// The persistent default point size, honoring `markdown.fontSize` from
-    /// UserDefaults / cmux.json and falling back to ``defaultPointSize``.
+    /// UserDefaults / mosaic.json and falling back to ``defaultPointSize``.
     static func resolvedDefault(defaults: UserDefaults = .standard) -> Double {
         guard let raw = defaults.object(forKey: key) as? NSNumber else {
             return defaultPointSize

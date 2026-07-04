@@ -1,13 +1,13 @@
 import AppKit
 import ObjectiveC
-import CmuxAppKitSupportUI
-import CmuxTerminal
+import MosaicAppKitSupportUI
+import MosaicTerminal
 #if DEBUG
 import Bonsplit
 #endif
 
-private var cmuxWindowTerminalPortalKey: UInt8 = 0
-private var cmuxWindowTerminalPortalCloseObserverKey: UInt8 = 0
+private var mosaicWindowTerminalPortalKey: UInt8 = 0
+private var mosaicWindowTerminalPortalCloseObserverKey: UInt8 = 0
 
 final class WindowTerminalHostView: NSView {
     private typealias DividerRegion = PortalSplitDividerRegion
@@ -449,7 +449,7 @@ final class WindowTerminalHostView: NSView {
         guard lastDragRouteSignature != signature else { return }
         lastDragRouteSignature = signature
 
-        cmuxDebugLog(
+        mosaicDebugLog(
             "portal.dragRoute passThrough=\(passThrough ? 1 : 0) " +
             "event=\(debugEventName(eventType)) target=\(targetClass) " +
             "types=\(debugPasteboardTypes(pasteboardTypes))"
@@ -630,7 +630,7 @@ final class WindowTerminalPortal: NSObject {
     private static let minimumRevealWidth: CGFloat = 24
     private static let minimumRevealHeight: CGFloat = 18
     private static let transientRecoveryRetryBudget: Int = 12
-#if CMUX_ISSUE_483_PORTAL_RECOVERY
+#if MOSAIC_ISSUE_483_PORTAL_RECOVERY
     private static let transientRecoveryEnabled = true
 #else
     private static let transientRecoveryEnabled = false
@@ -833,7 +833,7 @@ final class WindowTerminalPortal: NSObject {
             hostView.frame = frameInContainer
             CATransaction.commit()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.hostFrame.update host=\(portalDebugToken(hostView)) " +
                 "frame=\(portalDebugFrame(frameInContainer))"
             )
@@ -1008,7 +1008,7 @@ final class WindowTerminalPortal: NSObject {
         lastLoggedBonsplitContainerSignature = signature
 
         let containerClass = NSStringFromClass(type(of: container))
-        cmuxDebugLog(
+        mosaicDebugLog(
             "portal.bonsplit.container hosted=\(portalDebugToken(hostedView)) " +
             "class=\(containerClass) frame=\(portalDebugFrame(containerFrame)) " +
             "host=\(portalDebugFrameInWindow(hostView)) anchor=\(portalDebugFrameInWindow(anchorView))"
@@ -1075,7 +1075,7 @@ final class WindowTerminalPortal: NSObject {
         }
 #if DEBUG
         let hadSuperview = (entry.hostedView?.superview === hostView) ? 1 : 0
-        cmuxDebugLog(
+        mosaicDebugLog(
             "portal.detach hosted=\(portalDebugToken(entry.hostedView)) " +
             "anchor=\(portalDebugToken(entry.anchorView)) hadSuperview=\(hadSuperview)"
         )
@@ -1093,7 +1093,7 @@ final class WindowTerminalPortal: NSObject {
         entriesByHostedId[hostedId] = entry
         entry.hostedView?.isHidden = true
 #if DEBUG
-        cmuxDebugLog("portal.hideEntry hosted=\(portalDebugToken(entry.hostedView)) reason=workspaceUnmount")
+        mosaicDebugLog("portal.hideEntry hosted=\(portalDebugToken(entry.hostedView)) reason=workspaceUnmount")
 #endif
     }
 
@@ -1138,7 +1138,7 @@ final class WindowTerminalPortal: NSObject {
             let previousToken = entriesByHostedId[previousHostedId]
                 .map { portalDebugToken($0.hostedView) }
                 ?? String(describing: previousHostedId)
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.bind.replace anchor=\(portalDebugToken(anchorView)) " +
                 "oldHosted=\(previousToken) newHosted=\(portalDebugToken(hostedView))"
             )
@@ -1169,7 +1169,7 @@ final class WindowTerminalPortal: NSObject {
         let priorityIncreased = zPriority > (previousEntry?.zPriority ?? Int.min)
 #if DEBUG
         if previousEntry == nil || didChangeAnchor || becameVisible || priorityIncreased || hostedView.superview !== hostView {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.bind hosted=\(portalDebugToken(hostedView)) " +
                 "anchor=\(portalDebugToken(anchorView)) prevAnchor=\(portalDebugToken(previousEntry?.anchorView)) " +
                 "visible=\(visibleInUI ? 1 : 0) prevVisible=\((previousEntry?.visibleInUI ?? false) ? 1 : 0) " +
@@ -1206,7 +1206,7 @@ final class WindowTerminalPortal: NSObject {
 
         if hostedView.superview !== hostView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.reparent hosted=\(portalDebugToken(hostedView)) " +
                 "reason=attach super=\(portalDebugToken(hostedView.superview))"
             )
@@ -1217,7 +1217,7 @@ final class WindowTerminalPortal: NSObject {
             // Anchor-only churn is common during split tree updates; forcing remove/add there
             // causes transient inWindow=0 -> 1 bounces that can flash black.
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.reparent hosted=\(portalDebugToken(hostedView)) reason=raise " +
                 "didChangeAnchor=\(didChangeAnchor ? 1 : 0) becameVisible=\(becameVisible ? 1 : 0) " +
                 "priorityIncreased=\(priorityIncreased ? 1 : 0)"
@@ -1322,7 +1322,7 @@ final class WindowTerminalPortal: NSObject {
         entry.transientRecoveryRetriesRemaining -= 1
         entriesByHostedId[hostedId] = entry
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "portal.sync.deferRecover hosted=\(portalDebugToken(hostedView)) " +
             "reason=\(reason) remaining=\(entry.transientRecoveryRetriesRemaining)"
         )
@@ -1351,7 +1351,7 @@ final class WindowTerminalPortal: NSObject {
                     )
                 if shouldPreserveVisibleOnTransient {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "portal.hidden.deferKeep hosted=\(portalDebugToken(hostedView)) " +
                         "reason=missingAnchorOrWindow frame=\(portalDebugFrame(hostedView.frame))"
                     )
@@ -1363,7 +1363,7 @@ final class WindowTerminalPortal: NSObject {
             }
 #if DEBUG
             if !hostedView.isHidden {
-                cmuxDebugLog("portal.hidden hosted=\(portalDebugToken(hostedView)) value=1 reason=missingAnchorOrWindow")
+                mosaicDebugLog("portal.hidden hosted=\(portalDebugToken(hostedView)) value=1 reason=missingAnchorOrWindow")
             }
 #endif
             hostedView.isHidden = true
@@ -1380,7 +1380,7 @@ final class WindowTerminalPortal: NSObject {
         guard anchorView.window === window else {
 #if DEBUG
             if !hostedView.isHidden {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "portal.hidden hosted=\(portalDebugToken(hostedView)) value=1 " +
                     "reason=anchorWindowMismatch anchorWindow=\(portalDebugToken(anchorView.window?.contentView))"
                 )
@@ -1396,7 +1396,7 @@ final class WindowTerminalPortal: NSObject {
                     )
                 if shouldPreserveVisibleOnTransient {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "portal.hidden.deferKeep hosted=\(portalDebugToken(hostedView)) " +
                         "reason=anchorWindowMismatch frame=\(portalDebugFrame(hostedView.frame))"
                     )
@@ -1434,7 +1434,7 @@ final class WindowTerminalPortal: NSObject {
         let hostBoundsReady = hasFiniteHostBounds && hostBounds.width > 1 && hostBounds.height > 1
         if !hostBoundsReady {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.sync.defer hosted=\(portalDebugToken(hostedView)) " +
                 "reason=hostBoundsNotReady host=\(portalDebugFrame(hostBounds)) " +
                 "anchor=\(portalDebugFrame(frameInHost)) visibleInUI=\(entry.visibleInUI ? 1 : 0)"
@@ -1450,7 +1450,7 @@ final class WindowTerminalPortal: NSObject {
                     )
                 if shouldPreserveVisibleOnTransient {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "portal.hidden.deferKeep hosted=\(portalDebugToken(hostedView)) " +
                         "reason=hostBoundsNotReady frame=\(portalDebugFrame(hostedView.frame))"
                     )
@@ -1530,7 +1530,7 @@ final class WindowTerminalPortal: NSObject {
 #if DEBUG
         let frameWasClamped = hasFiniteFrame && !Self.rectApproximatelyEqual(frameInHost, targetFrame)
         if frameWasClamped {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.frame.clamp hosted=\(portalDebugToken(hostedView)) " +
                 "anchor=\(portalDebugToken(anchorView)) " +
                 "raw=\(portalDebugFrame(frameInHost)) clamped=\(portalDebugFrame(targetFrame)) " +
@@ -1540,12 +1540,12 @@ final class WindowTerminalPortal: NSObject {
         let collapsedToTiny = oldFrame.width > 1 && oldFrame.height > 1 && tinyFrame
         let restoredFromTiny = (oldFrame.width <= 1 || oldFrame.height <= 1) && !tinyFrame
         if collapsedToTiny {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.frame.collapse hosted=\(portalDebugToken(hostedView)) anchor=\(portalDebugToken(anchorView)) " +
                 "old=\(portalDebugFrame(oldFrame)) new=\(portalDebugFrame(targetFrame))"
             )
         } else if restoredFromTiny {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.frame.restore hosted=\(portalDebugToken(hostedView)) anchor=\(portalDebugToken(anchorView)) " +
                 "old=\(portalDebugFrame(oldFrame)) new=\(portalDebugFrame(targetFrame))"
             )
@@ -1557,7 +1557,7 @@ final class WindowTerminalPortal: NSObject {
         // briefly transitions through offscreen/tiny geometry during rapid split churn.
         if shouldHide, !hostedView.isHidden, !shouldPreserveVisibleOnTransientGeometry {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.hidden hosted=\(portalDebugToken(hostedView)) value=1 " +
                 "visibleInUI=\(entry.visibleInUI ? 1 : 0) anchorHidden=\(anchorHidden ? 1 : 0) " +
                 "tiny=\(tinyFrame ? 1 : 0) revealReady=\(revealReadyForDisplay ? 1 : 0) finite=\(hasFiniteFrame ? 1 : 0) " +
@@ -1569,7 +1569,7 @@ final class WindowTerminalPortal: NSObject {
         }
         if shouldPreserveVisibleOnTransientGeometry {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.hidden.deferKeep hosted=\(portalDebugToken(hostedView)) " +
                 "reason=\(transientRecoveryReason ?? "unknown") frame=\(portalDebugFrame(hostedView.frame))"
             )
@@ -1599,7 +1599,7 @@ final class WindowTerminalPortal: NSObject {
         if shouldDeferReveal {
 #if DEBUG
             if !Self.rectApproximatelyEqual(oldFrame, frameInHost) {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "portal.hidden.deferReveal hosted=\(portalDebugToken(hostedView)) " +
                     "frame=\(portalDebugFrame(frameInHost)) min=\(Int(Self.minimumRevealWidth))x\(Int(Self.minimumRevealHeight))"
                 )
@@ -1609,7 +1609,7 @@ final class WindowTerminalPortal: NSObject {
 
         if !shouldHide, hostedView.isHidden, revealReadyForDisplay {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.hidden hosted=\(portalDebugToken(hostedView)) value=0 " +
                 "visibleInUI=\(entry.visibleInUI ? 1 : 0) anchorHidden=\(anchorHidden ? 1 : 0) " +
                 "tiny=\(tinyFrame ? 1 : 0) revealReady=\(revealReadyForDisplay ? 1 : 0) finite=\(hasFiniteFrame ? 1 : 0) " +
@@ -1630,7 +1630,7 @@ final class WindowTerminalPortal: NSObject {
         }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "portal.sync.result hosted=\(portalDebugToken(hostedView)) " +
             "anchor=\(portalDebugToken(anchorView)) host=\(portalDebugToken(hostView)) " +
             "hostWin=\(hostView.window?.windowNumber ?? -1) " +
@@ -1918,7 +1918,7 @@ enum TerminalWindowPortalRegistry {
     }
 
     private static func installWindowCloseObserverIfNeeded(for window: NSWindow) {
-        guard objc_getAssociatedObject(window, &cmuxWindowTerminalPortalCloseObserverKey) == nil else { return }
+        guard objc_getAssociatedObject(window, &mosaicWindowTerminalPortalCloseObserverKey) == nil else { return }
         let windowId = ObjectIdentifier(window)
         let observer = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
@@ -1935,7 +1935,7 @@ enum TerminalWindowPortalRegistry {
         }
         objc_setAssociatedObject(
             window,
-            &cmuxWindowTerminalPortalCloseObserverKey,
+            &mosaicWindowTerminalPortalCloseObserverKey,
             observer,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
@@ -1952,11 +1952,11 @@ enum TerminalWindowPortalRegistry {
         hostedToWindowId = hostedToWindowId.filter { $0.value != windowId }
 
         guard let window else { return }
-        if let observer = objc_getAssociatedObject(window, &cmuxWindowTerminalPortalCloseObserverKey) {
+        if let observer = objc_getAssociatedObject(window, &mosaicWindowTerminalPortalCloseObserverKey) {
             NotificationCenter.default.removeObserver(observer)
         }
-        objc_setAssociatedObject(window, &cmuxWindowTerminalPortalCloseObserverKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        objc_setAssociatedObject(window, &cmuxWindowTerminalPortalKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &mosaicWindowTerminalPortalCloseObserverKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(window, &mosaicWindowTerminalPortalKey, nil, .OBJC_ASSOCIATION_RETAIN)
     }
 
     private static func pruneHostedMappings(for windowId: ObjectIdentifier, validHostedIds: Set<ObjectIdentifier>) {
@@ -1966,21 +1966,21 @@ enum TerminalWindowPortalRegistry {
     }
 
     private static func portal(for window: NSWindow, syncLayout: Bool = true) -> WindowTerminalPortal {
-        if let existing = objc_getAssociatedObject(window, &cmuxWindowTerminalPortalKey) as? WindowTerminalPortal {
+        if let existing = objc_getAssociatedObject(window, &mosaicWindowTerminalPortalKey) as? WindowTerminalPortal {
             portalsByWindowId[ObjectIdentifier(window)] = existing
             installWindowCloseObserverIfNeeded(for: window)
             return existing
         }
 
         let portal = WindowTerminalPortal(window: window, syncLayout: syncLayout)
-        objc_setAssociatedObject(window, &cmuxWindowTerminalPortalKey, portal, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &mosaicWindowTerminalPortalKey, portal, .OBJC_ASSOCIATION_RETAIN)
         portalsByWindowId[ObjectIdentifier(window)] = portal
         installWindowCloseObserverIfNeeded(for: window)
         return portal
     }
 
     private static func existingPortal(for window: NSWindow) -> WindowTerminalPortal? {
-        if let existing = objc_getAssociatedObject(window, &cmuxWindowTerminalPortalKey) as? WindowTerminalPortal {
+        if let existing = objc_getAssociatedObject(window, &mosaicWindowTerminalPortalKey) as? WindowTerminalPortal {
             portalsByWindowId[ObjectIdentifier(window)] = existing
             installWindowCloseObserverIfNeeded(for: window)
             return existing
@@ -2017,7 +2017,7 @@ enum TerminalWindowPortalRegistry {
             )
             blockedBindCount += 1
             blockedBindReasons[reason, default: 0] += 1
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "portal.bind.blocked hosted=\(portalDebugToken(hostedView)) " +
                 "reason=\(reason) expectedSurface=\(expectedSurfaceId?.uuidString.prefix(5) ?? "nil") " +
                 "expectedGeneration=\(expectedGeneration.map { String($0) } ?? "nil") " +

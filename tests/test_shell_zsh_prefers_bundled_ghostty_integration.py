@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Regression: the cmux zsh wrapper should prefer a bundled Ghostty zsh
-integration file in CMUX_SHELL_INTEGRATION_DIR over the fallback integration
+Regression: the mosaic zsh wrapper should prefer a bundled Ghostty zsh
+integration file in MOSAIC_SHELL_INTEGRATION_DIR over the fallback integration
 under GHOSTTY_RESOURCES_DIR.
 
-Without this, tagged cmux builds can silently load Ghostty's installed app
+Without this, tagged mosaic builds can silently load Ghostty's installed app
 integration instead of the version bundled with the build under test.
 """
 
@@ -23,7 +23,7 @@ def main() -> int:
         print(f"SKIP: missing wrapper .zshenv at {wrapper_dir}")
         return 0
 
-    base = Path("/tmp") / f"cmux_bundled_ghostty_zsh_{os.getpid()}"
+    base = Path("/tmp") / f"mosaic_bundled_ghostty_zsh_{os.getpid()}"
     try:
         shutil.rmtree(base, ignore_errors=True)
         base.mkdir(parents=True, exist_ok=True)
@@ -43,11 +43,11 @@ def main() -> int:
             (orig / filename).write_text("", encoding="utf-8")
 
         (bundled / "ghostty-integration.zsh").write_text(
-            'echo "bundled" >> "$CMUX_TEST_OUT"\n',
+            'echo "bundled" >> "$MOSAIC_TEST_OUT"\n',
             encoding="utf-8",
         )
         (fallback / "shell-integration" / "zsh" / "ghostty-integration").write_text(
-            'echo "fallback" >> "$CMUX_TEST_OUT"\n',
+            'echo "fallback" >> "$MOSAIC_TEST_OUT"\n',
             encoding="utf-8",
         )
 
@@ -55,11 +55,11 @@ def main() -> int:
         env["HOME"] = str(home)
         env["ZDOTDIR"] = str(wrapper_dir)
         env["GHOSTTY_ZSH_ZDOTDIR"] = str(orig)
-        env["CMUX_SHELL_INTEGRATION_DIR"] = str(bundled)
+        env["MOSAIC_SHELL_INTEGRATION_DIR"] = str(bundled)
         env["GHOSTTY_RESOURCES_DIR"] = str(fallback)
-        env["CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION"] = "1"
-        env["CMUX_SHELL_INTEGRATION"] = "0"
-        env["CMUX_TEST_OUT"] = str(marker)
+        env["MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION"] = "1"
+        env["MOSAIC_SHELL_INTEGRATION"] = "0"
+        env["MOSAIC_TEST_OUT"] = str(marker)
 
         result = subprocess.run(
             ["zsh", "-d", "-i", "-c", "true"],

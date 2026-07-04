@@ -17,7 +17,7 @@ let debugShortcutRoutingFocusedWindowOverrideForTesting = DebugShortcutRoutingFo
 private let didInstallShortcutRoutingWindowMakeKeyAndOrderFrontSwizzleForTesting: Void = {
     let targetClass: AnyClass = NSWindow.self
     let originalSelector = #selector(NSWindow.makeKeyAndOrderFront(_:))
-    let swizzledSelector = #selector(NSWindow.cmux_makeKeyAndOrderFront(_:))
+    let swizzledSelector = #selector(NSWindow.mosaic_makeKeyAndOrderFront(_:))
     guard let originalMethod = class_getInstanceMethod(targetClass, originalSelector),
           let swizzledMethod = class_getInstanceMethod(targetClass, swizzledSelector) else {
         return
@@ -62,8 +62,8 @@ extension AppDelegate {
 }
 
 extension NSWindow {
-    @objc func cmux_makeKeyAndOrderFront(_ sender: Any?) {
-        cmux_makeKeyAndOrderFront(sender)
+    @objc func mosaic_makeKeyAndOrderFront(_ sender: Any?) {
+        mosaic_makeKeyAndOrderFront(sender)
         guard debugShortcutRoutingFocusedWindowOverrideForTesting.shouldCaptureFocusedWindow else {
             return
         }

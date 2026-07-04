@@ -39,7 +39,7 @@ export function resolveVmEntitlements(
   options: VmEntitlementOptions = {},
 ): VmEntitlements {
   const billing = resolveBillingContext(user, options);
-  const planId = normalizedPlanId(billing.billingPlanId ?? env.CMUX_VM_DEFAULT_PLAN ?? "free");
+  const planId = normalizedPlanId(billing.billingPlanId ?? env.MOSAIC_VM_DEFAULT_PLAN ?? "free");
   return {
     planId,
     billingCustomerType: billing.billingCustomerType,
@@ -89,7 +89,7 @@ function resolveBillingContext(
     throw new VmBillingTeamResolutionError({
       code: "vm_billing_team_required",
       status: 409,
-      message: "This Stack Auth user has multiple teams. Send X-Cmux-Team-Id so Cloud VM billing is explicit.",
+      message: "This Stack Auth user has multiple teams. Send X-Mosaic-Team-Id so Cloud VM billing is explicit.",
     });
   }
 
@@ -110,14 +110,14 @@ function resolveBillingContext(
 
 function activeVmLimitForPlan(planId: string, env: Record<string, string | undefined>): number {
   const planKey = planId.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
-  const specific = env[`CMUX_VM_PLAN_${planKey}_MAX_ACTIVE_VMS`];
-  if (specific?.trim()) return positiveInteger(specific, `CMUX_VM_PLAN_${planKey}_MAX_ACTIVE_VMS`);
+  const specific = env[`MOSAIC_VM_PLAN_${planKey}_MAX_ACTIVE_VMS`];
+  if (specific?.trim()) return positiveInteger(specific, `MOSAIC_VM_PLAN_${planKey}_MAX_ACTIVE_VMS`);
 
   if (planId === "free" || planId === "hobby") {
-    return positiveInteger(env.CMUX_VM_FREE_MAX_ACTIVE_VMS ?? "5", "CMUX_VM_FREE_MAX_ACTIVE_VMS");
+    return positiveInteger(env.MOSAIC_VM_FREE_MAX_ACTIVE_VMS ?? "5", "MOSAIC_VM_FREE_MAX_ACTIVE_VMS");
   }
 
-  return positiveInteger(env.CMUX_VM_PAID_MAX_ACTIVE_VMS ?? "10", "CMUX_VM_PAID_MAX_ACTIVE_VMS");
+  return positiveInteger(env.MOSAIC_VM_PAID_MAX_ACTIVE_VMS ?? "10", "MOSAIC_VM_PAID_MAX_ACTIVE_VMS");
 }
 
 function normalizedPlanId(planId: string): string {

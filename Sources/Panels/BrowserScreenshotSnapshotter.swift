@@ -77,7 +77,7 @@ enum BrowserScreenshotWebViewSnapshotter {
             }
         } catch {
             #if DEBUG
-            cmuxDebugLog("browser.screenshot.fullPage.singleSnapshot.failed error=\(error.localizedDescription)")
+            mosaicDebugLog("browser.screenshot.fullPage.singleSnapshot.failed error=\(error.localizedDescription)")
             #endif
         }
 
@@ -214,7 +214,7 @@ enum BrowserScreenshotWebViewSnapshotter {
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.browserVisualAutomationRender")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.browserVisualAutomationRender")
         window.hasShadow = false
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -295,7 +295,7 @@ enum BrowserScreenshotWebViewSnapshotter {
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.browserVisualAutomationRender")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.browserVisualAutomationRender")
         window.hasShadow = false
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -360,7 +360,7 @@ enum BrowserScreenshotWebViewSnapshotter {
             _ = try await webView.evaluateJavaScript(visualCaptureLayoutFlushScript, contentWorld: .page)
         } catch {
             #if DEBUG
-            cmuxDebugLog("browser.screenshot.prepare.failed error=\(error.localizedDescription)")
+            mosaicDebugLog("browser.screenshot.prepare.failed error=\(error.localizedDescription)")
             #endif
         }
 
@@ -379,7 +379,7 @@ enum BrowserScreenshotWebViewSnapshotter {
                 webView.evaluateJavaScript(visualCaptureLayoutFlushScript) { _, error in
                     if let error {
                         #if DEBUG
-                        cmuxDebugLog("browser.screenshot.prepare.failed error=\(error.localizedDescription)")
+                        mosaicDebugLog("browser.screenshot.prepare.failed error=\(error.localizedDescription)")
                         #endif
                     }
                     forceAppKitLayout(for: webView)

@@ -1,7 +1,7 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
 import Bonsplit
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import SwiftUI
 #if DEBUG
 private func feedDebugResponderSummary(_ responder: NSResponder?) -> String {
@@ -133,12 +133,12 @@ private struct FeedSecondaryFilterButton: View {
             HStack(spacing: 3) {
                 Image(systemName: filter.symbolName)
                     .symbolRenderingMode(.monochrome)
-                    .cmuxFont(
+                    .mosaicFont(
                         size: RightSidebarChromeControlStyle.secondaryIconSize,
                         weight: RightSidebarChromeControlStyle.iconWeight
                     )
                 Text(filter.label)
-                    .cmuxFont(
+                    .mosaicFont(
                         size: RightSidebarChromeControlStyle.labelSize,
                         weight: RightSidebarChromeControlStyle.labelWeight
                     )
@@ -407,7 +407,7 @@ private struct FeedListView: View {
             // assistant messages, session markers, and raw
             // notifications are intentionally excluded — they're too
             // noisy for a sidebar and already visible in the agent's
-            // terminal or the cmux notification system. Stop events
+            // terminal or the mosaic notification system. Stop events
             // render a "reply to Claude" textbox so the user can
             // nudge Claude without switching focus to the terminal.
             base = items.filter { item in
@@ -584,14 +584,14 @@ private struct FeedListView: View {
                           defaultValue: "No pending decisions")
                  : String(localized: "feed.empty.activity.title",
                           defaultValue: "No activity yet"))
-                .cmuxFont(size: 12)
+                .mosaicFont(size: 12)
                 .foregroundColor(.secondary)
             Text(filter == .actionable
                  ? String(localized: "feed.empty.actionable.subtitle",
                           defaultValue: "Permission, plan, and question requests from AI agents will appear here.")
                  : String(localized: "feed.empty.activity.subtitle",
                           defaultValue: "Agent decisions and todo-list updates will appear here."))
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .foregroundColor(.secondary.opacity(0.7))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
@@ -1021,7 +1021,7 @@ struct FeedItemRow: View, Equatable {
                 FeedContextBlock(context: context, source: snapshot.source)
             } else if let echo = promptEcho, !echo.isEmpty {
                 Text(echo)
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .truncationMode(.tail)
@@ -1081,11 +1081,11 @@ struct FeedItemRow: View, Equatable {
     private var chipHeader: some View {
         HStack(alignment: .center, spacing: 8) {
             Image(systemName: snapshot.kind.symbolName)
-                .cmuxFont(size: 12, weight: .medium)
+                .mosaicFont(size: 12, weight: .medium)
                 .foregroundColor(kindTint)
                 .frame(width: 14, height: 14)
             Text(headerTitle)
-                .cmuxFont(size: 12, weight: .medium)
+                .mosaicFont(size: 12, weight: .medium)
                 .foregroundColor(.primary.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -1155,7 +1155,7 @@ struct FeedItemRow: View, Equatable {
 
     private func chip(text: String, fg: Color, bg: Color, mono: Bool = false) -> some View {
         Text(text)
-            .cmuxFont(size: 10, weight: .medium, monospacedDigit: mono)
+            .mosaicFont(size: 10, weight: .medium, monospacedDigit: mono)
             .foregroundColor(fg)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -1318,7 +1318,7 @@ struct FeedItemRow: View, Equatable {
 
     private func statusTag(_ text: String, color: Color) -> some View {
         Text(text)
-            .cmuxFont(size: 10, weight: .medium)
+            .mosaicFont(size: 10, weight: .medium)
             .foregroundColor(color)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
@@ -1403,7 +1403,7 @@ private struct FeedLabeledTextRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(label)
-                .cmuxFont(size: 10, weight: .semibold)
+                .mosaicFont(size: 10, weight: .semibold)
                 .foregroundColor(labelColor)
                 .frame(width: 48, alignment: .leading)
             if rendersMarkdown {
@@ -1414,7 +1414,7 @@ private struct FeedLabeledTextRow: View {
                 )
             } else {
                 Text(text)
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .foregroundColor(textColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1509,10 +1509,10 @@ private struct PermissionActionArea: View {
     private var toolLabel: some View {
         HStack(spacing: 5) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .cmuxFont(size: 10, weight: .medium)
+                .mosaicFont(size: 10, weight: .medium)
                 .foregroundColor(.orange)
             Text(toolName)
-                .cmuxFont(size: 11, weight: .semibold)
+                .mosaicFont(size: 11, weight: .semibold)
                 .foregroundColor(.orange)
         }
     }
@@ -1527,11 +1527,11 @@ private struct PermissionActionArea: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if let sigil = preview.sigil {
                         Text(sigil)
-                            .cmuxFont(size: 11, weight: .medium, design: .monospaced)
+                            .mosaicFont(size: 11, weight: .medium, design: .monospaced)
                             .foregroundColor(.orange)
                     }
                     Text(primary)
-                        .cmuxFont(size: 11, design: .monospaced)
+                        .mosaicFont(size: 11, design: .monospaced)
                         .foregroundColor(.primary.opacity(0.95))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1539,7 +1539,7 @@ private struct PermissionActionArea: View {
             }
             if let secondary = preview.secondary, !secondary.isEmpty {
                 Text(secondary)
-                    .cmuxFont(size: 10)
+                    .mosaicFont(size: 10)
                     .foregroundColor(.secondary.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1690,13 +1690,13 @@ struct FeedButton: View {
         HStack(spacing: iconSpacing) {
             if let leadingIcon {
                 Image(systemName: leadingIcon)
-                    .cmuxFont(size: iconSize, weight: .semibold)
+                    .mosaicFont(size: iconSize, weight: .semibold)
             }
             Text(label)
-                .cmuxFont(size: labelSize, weight: .semibold)
+                .mosaicFont(size: labelSize, weight: .semibold)
             if let trailingIcon {
                 Image(systemName: trailingIcon)
-                    .cmuxFont(size: iconSize, weight: .semibold)
+                    .mosaicFont(size: iconSize, weight: .semibold)
             }
         }
     }
@@ -1711,7 +1711,7 @@ struct FeedButton: View {
                 Image(systemName: trailingIcon)
             }
         }
-        .cmuxFont(size: labelSize, weight: .semibold)
+        .mosaicFont(size: labelSize, weight: .semibold)
     }
 
     private func performAction() {
@@ -2260,7 +2260,7 @@ private struct ExitPlanActionArea: View {
                     axis: .vertical
                 )
                 .textFieldStyle(.plain)
-                .cmuxFont(size: 12)
+                .mosaicFont(size: 12)
                 .tint(Color.primary.opacity(0.75))
                 .focused($feedbackFocused)
                 .lineLimit(2...5)
@@ -2364,10 +2364,10 @@ private struct ExitPlanAllowedPromptsView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
                 Image(systemName: "checklist")
-                    .cmuxFont(size: 10, weight: .medium)
+                    .mosaicFont(size: 10, weight: .medium)
                     .foregroundColor(Color.purple.opacity(0.85))
                 Text(String(localized: "feed.exitplan.allowedPrompts", defaultValue: "Allowed prompts"))
-                    .cmuxFont(size: 11, weight: .semibold)
+                    .mosaicFont(size: 11, weight: .semibold)
                     .foregroundColor(Color.purple.opacity(0.9))
             }
             VStack(alignment: .leading, spacing: 5) {
@@ -2375,7 +2375,7 @@ private struct ExitPlanAllowedPromptsView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if !prompt.tool.isEmpty {
                             Text(prompt.tool)
-                                .cmuxFont(size: 10, weight: .semibold)
+                                .mosaicFont(size: 10, weight: .semibold)
                                 .foregroundColor(.purple)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
@@ -2385,7 +2385,7 @@ private struct ExitPlanAllowedPromptsView: View {
                                 )
                         }
                         Text(prompt.prompt)
-                            .cmuxFont(size: 11)
+                            .mosaicFont(size: 11)
                             .foregroundColor(.primary.opacity(0.86))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2407,13 +2407,13 @@ private struct ExitPlanPlanFileView: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: "doc.text")
-                .cmuxFont(size: 10, weight: .medium)
+                .mosaicFont(size: 10, weight: .medium)
                 .foregroundColor(.secondary)
             Text(String(localized: "feed.exitplan.planFile", defaultValue: "Plan file"))
-                .cmuxFont(size: 10, weight: .semibold)
+                .mosaicFont(size: 10, weight: .semibold)
                 .foregroundColor(.secondary)
             Text((path as NSString).lastPathComponent)
-                .cmuxFont(size: 10, design: .monospaced)
+                .mosaicFont(size: 10, design: .monospaced)
                 .foregroundColor(.secondary.opacity(0.85))
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -2448,7 +2448,7 @@ private struct FeedMarkdownInlineText: View {
             )
         )) ?? AttributedString(text)
         Text(parsed)
-            .cmuxFont(size: fontSize, weight: weight ?? .regular)
+            .mosaicFont(size: fontSize, weight: weight ?? .regular)
             .foregroundColor(foregroundColor)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -2480,7 +2480,7 @@ private struct PlanBodyView: View {
                         ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                             HStack(alignment: .top, spacing: 5) {
                                 Text("\(item.index).")
-                                    .cmuxFont(size: 11, weight: .medium, monospacedDigit: true)
+                                    .mosaicFont(size: 11, weight: .medium, monospacedDigit: true)
                                     .foregroundColor(.secondary)
                                 markdownText(item.text, color: .primary.opacity(0.85))
                             }
@@ -2519,7 +2519,7 @@ private struct PlanBodyView: View {
             )
         } else {
             Text(text)
-                .cmuxFont(size: 11, weight: weight ?? .regular)
+                .mosaicFont(size: 11, weight: weight ?? .regular)
                 .foregroundColor(color)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -2638,7 +2638,7 @@ private struct QuestionActionArea: View {
     let onReply: ([String]) -> Void
 
     private static let skipInterviewAndPlanAnswer = "Skip interview and plan immediately"
-    private static let customAnswerSelectionId = "__cmux_custom_answer__"
+    private static let customAnswerSelectionId = "__mosaic_custom_answer__"
 
     // Per-question selections keyed by question id.
     @State private var selections: [String: Set<String>] = [:]
@@ -2648,7 +2648,7 @@ private struct QuestionActionArea: View {
     @State private var freeTexts: [String: String] = [:]
     @State private var customAnswerFocusKey: String?
     @State private var customAnswerFocusRequest = 0
-    @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+    @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
 
     var body: some View {
         let _ = globalFontPercent
@@ -2747,7 +2747,7 @@ private struct QuestionActionArea: View {
         }) {
             HStack(alignment: .top, spacing: 10) {
                 Text("\(index)")
-                    .cmuxFont(size: 11, weight: .bold, monospacedDigit: true)
+                    .mosaicFont(size: 11, weight: .bold, monospacedDigit: true)
                     .foregroundColor(selected ? .white : .secondary)
                     .frame(width: 20, height: 20)
                     .background(
@@ -2756,18 +2756,18 @@ private struct QuestionActionArea: View {
                     )
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
-                        .cmuxFont(size: 12, weight: .semibold)
+                        .mosaicFont(size: 12, weight: .semibold)
                         .foregroundColor(.primary)
                     if let description = option.description, !description.isEmpty {
                         Text(description)
-                            .cmuxFont(size: 11)
+                            .mosaicFont(size: 11)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer()
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .cmuxFont(size: 12, weight: .medium)
+                    .mosaicFont(size: 12, weight: .medium)
                     .foregroundColor(selected ? Color(red: 0.24, green: 0.48, blue: 0.88) : .secondary.opacity(0.45))
             }
             .padding(10)
@@ -2797,7 +2797,7 @@ private struct QuestionActionArea: View {
         let font = GlobalFontMagnification.systemFont(ofSize: 12, weight: .semibold)
         return HStack(alignment: .top, spacing: 10) {
             Text("\(index)")
-                .cmuxFont(size: 11, weight: .bold, monospacedDigit: true)
+                .mosaicFont(size: 11, weight: .bold, monospacedDigit: true)
                 .foregroundColor(selected ? .white : .secondary)
                 .frame(width: 20, height: 20)
                 .background(
@@ -2815,7 +2815,7 @@ private struct QuestionActionArea: View {
                 onBlur: onBlurRow
             )
             Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                .cmuxFont(size: 12, weight: .medium)
+                .mosaicFont(size: 12, weight: .medium)
                 .foregroundColor(selected ? Color(red: 0.24, green: 0.48, blue: 0.88) : .secondary.opacity(0.45))
                 .padding(.leading, 8)
                 .padding(.top, 3)
@@ -2845,19 +2845,19 @@ private struct QuestionActionArea: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .top, spacing: 5) {
                 Text("\(index).")
-                    .cmuxFont(size: 11, weight: .semibold, monospacedDigit: true)
+                    .mosaicFont(size: 11, weight: .semibold, monospacedDigit: true)
                     .foregroundColor(.blue)
                 Text(question.prompt)
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .foregroundColor(.primary.opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
             }
             if question.multiSelect {
                 HStack(spacing: 3) {
                     Image(systemName: "checklist")
-                        .cmuxFont(size: 8, weight: .medium)
+                        .mosaicFont(size: 8, weight: .medium)
                     Text(String(localized: "feed.question.multiSelect", defaultValue: "Multi-select"))
-                        .cmuxFont(size: 9, weight: .semibold)
+                        .mosaicFont(size: 9, weight: .semibold)
                         .tracking(0.3)
                 }
                 .foregroundColor(.orange)
@@ -2871,7 +2871,7 @@ private struct QuestionActionArea: View {
             if question.options.isEmpty {
                 Text(String(localized: "feed.question.noOptions",
                             defaultValue: "Agent provided no options."))
-                    .cmuxFont(size: 10)
+                    .mosaicFont(size: 10)
                     .foregroundColor(.secondary)
             } else {
                 WrapHStack(spacing: 6) {
@@ -3664,7 +3664,7 @@ private struct StopActionArea: View {
         draft.reply.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     private var canSend: Bool { !trimmed.isEmpty }
-    @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+    @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
     private var replyFont: NSFont { GlobalFontMagnification.systemFont(ofSize: 12) }
     private var replyBinding: Binding<String> {
         Binding(
@@ -3678,10 +3678,10 @@ private struct StopActionArea: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 5) {
                 Image(systemName: "checkmark.circle")
-                    .cmuxFont(size: 10)
+                    .mosaicFont(size: 10)
                     .foregroundColor(.secondary)
                 Text(String(localized: "feed.stop.label", defaultValue: "Claude finished — reply to continue"))
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .foregroundColor(.secondary)
             }
             FeedInlineTextField(
@@ -3758,7 +3758,7 @@ private struct TelemetryActionArea: View {
             .truncationMode(.tail)
         } else if !summary.isEmpty {
             Text(summary)
-                .cmuxFont(size: 11, design: .monospaced)
+                .mosaicFont(size: 11, design: .monospaced)
                 .foregroundColor(.secondary.opacity(0.85))
                 .lineLimit(3)
                 .truncationMode(.tail)
@@ -3807,10 +3807,10 @@ private struct TodoListBody: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 4) {
                 Text(String(localized: "feed.todos.title", defaultValue: "Tasks"))
-                    .cmuxFont(size: 11, weight: .semibold)
+                    .mosaicFont(size: 11, weight: .semibold)
                     .foregroundColor(.primary.opacity(0.9))
                 Text(summaryLabel)
-                    .cmuxFont(size: 10)
+                    .mosaicFont(size: 10)
                     .foregroundColor(.secondary)
             }
             VStack(alignment: .leading, spacing: 3) {
@@ -3825,7 +3825,7 @@ private struct TodoListBody: View {
                             localized: "feed.todos.moreCompleted",
                             defaultValue: "... +\(done.count - visibleDone.count) completed"
                         ))
-                            .cmuxFont(size: 11)
+                            .mosaicFont(size: 11)
                             .foregroundColor(.secondary.opacity(0.8))
                             .padding(.leading, 22)
                     }
@@ -3834,7 +3834,7 @@ private struct TodoListBody: View {
                 if expanded && done.count > 2 {
                     TrackedButton("feedpanelview_button_3835", action: { expanded = false }) {
                         Text(String(localized: "feed.todos.collapse", defaultValue: "Collapse"))
-                            .cmuxFont(size: 11)
+                            .mosaicFont(size: 11)
                             .foregroundColor(.secondary.opacity(0.8))
                             .padding(.leading, 22)
                     }
@@ -3863,11 +3863,11 @@ private struct TodoListBody: View {
     private func row(_ todo: WorkstreamTaskTodo) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: symbol(for: todo.state))
-                .cmuxFont(size: 11, weight: .medium)
+                .mosaicFont(size: 11, weight: .medium)
                 .foregroundColor(color(for: todo.state))
                 .frame(width: 14, height: 14)
             Text(todo.content)
-                .cmuxFont(size: 12)
+                .mosaicFont(size: 12)
                 .foregroundColor(todo.state == .completed
                     ? .secondary.opacity(0.7)
                     : .primary.opacity(0.9))
@@ -3900,7 +3900,7 @@ private struct ResolvedDivider: View {
         HStack(spacing: 8) {
             line
             Text(String(localized: "feed.divider.resolved", defaultValue: "Resolved"))
-                .cmuxFont(size: 10, weight: .medium)
+                .mosaicFont(size: 10, weight: .medium)
                 .tracking(0.5)
                 .foregroundColor(.secondary.opacity(0.7))
             line

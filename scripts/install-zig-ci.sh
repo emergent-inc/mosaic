@@ -5,7 +5,7 @@ ZIG_REQUIRED="${ZIG_REQUIRED:-0.15.2}"
 ZIG_MINISIGN_PUBLIC_KEY="${ZIG_MINISIGN_PUBLIC_KEY:-RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U}"
 ZIG_INDEX_URL="${ZIG_INDEX_URL:-https://ziglang.org/download/index.json}"
 ZIG_EXPECTED_SHA256="${ZIG_EXPECTED_SHA256:-}"
-ZIG_WORK_PARENT="${RUNNER_TEMP:-/tmp/cmux-zig-ci}"
+ZIG_WORK_PARENT="${RUNNER_TEMP:-/tmp/mosaic-zig-ci}"
 ZIG_SYSTEM_PREFIX="${ZIG_SYSTEM_PREFIX:-/usr/local}"
 ZIG_SYSTEM_PREFIX="${ZIG_SYSTEM_PREFIX%/}"
 export HOMEBREW_NO_AUTO_UPDATE="${HOMEBREW_NO_AUTO_UPDATE:-1}"
@@ -21,7 +21,7 @@ publish_zig_for_later_steps() {
     echo "$zig_dir" >> "$GITHUB_PATH"
   fi
   if [ -n "${GITHUB_ENV:-}" ]; then
-    echo "CMUX_ZIG=$zig_path" >> "$GITHUB_ENV"
+    echo "MOSAIC_ZIG=$zig_path" >> "$GITHUB_ENV"
   fi
 }
 
@@ -83,7 +83,7 @@ esac
 
 ZIG_NAME="zig-${ZIG_ARCH}-macos-${ZIG_REQUIRED}"
 mkdir -p "$ZIG_WORK_PARENT"
-ZIG_WORK_ROOT="$(mktemp -d "${ZIG_WORK_PARENT%/}/cmux-zig-install-${ZIG_REQUIRED}.XXXXXX")"
+ZIG_WORK_ROOT="$(mktemp -d "${ZIG_WORK_PARENT%/}/mosaic-zig-install-${ZIG_REQUIRED}.XXXXXX")"
 cleanup_work_root() {
   rm -rf "$ZIG_WORK_ROOT"
 }
@@ -147,7 +147,7 @@ verify_zig_sha256() {
 }
 
 install_zig_without_sudo() {
-  local install_parent="${RUNNER_TEMP:-/tmp/cmux-zig-ci}"
+  local install_parent="${RUNNER_TEMP:-/tmp/mosaic-zig-ci}"
   local install_root="${ZIG_INSTALL_ROOT:-${install_parent}}"
   local source_root
   local target_root

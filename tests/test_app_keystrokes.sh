@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test script that sends keystrokes to cmux via AppleScript
+# Test script that sends keystrokes to mosaic via AppleScript
 # This tests the actual keyboard input path through the app
 
 set -e
@@ -17,7 +17,7 @@ fi
 echo "Mosaic is running"
 echo ""
 
-# Activate cmux
+# Activate mosaic
 osascript -e 'tell application "Mosaic" to activate'
 sleep 0.5
 

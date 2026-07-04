@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 process.env.SKIP_ENV_VALIDATION = "1";
 process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_key";
 process.env.CLERK_SECRET_KEY = "sk_test_secret_key_that_is_long_enough_for_native_tokens";
-process.env.CMUX_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
+process.env.MOSAIC_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
 
 const { makeNativeRefreshHandler } = await import("../app/api/auth/native/refresh/route");
 const {
@@ -30,7 +30,7 @@ describe("native auth refresh route", () => {
       }),
     });
 
-    const response = await POST(new Request("https://cmux.test/api/auth/native/refresh", {
+    const response = await POST(new Request("https://mosaic.test/api/auth/native/refresh", {
       method: "POST",
       headers: {
         "X-Mosaic-Refresh-Token": original.refreshToken,
@@ -81,7 +81,7 @@ describe("native auth refresh route", () => {
       }),
     });
 
-    const response = await POST(new Request("https://cmux.test/api/auth/native/refresh", {
+    const response = await POST(new Request("https://mosaic.test/api/auth/native/refresh", {
       method: "POST",
       body: JSON.stringify({ refreshToken: original.refreshToken }),
     }));
@@ -123,10 +123,10 @@ describe("native auth refresh route", () => {
       }),
     });
 
-    const response = await POST(new Request("https://cmux.test/api/auth/native/refresh", {
+    const response = await POST(new Request("https://mosaic.test/api/auth/native/refresh", {
       method: "POST",
       headers: {
-        "X-Cmux-Refresh-Token": original.refreshToken,
+        "X-Mosaic-Refresh-Token": original.refreshToken,
       },
     }));
 
@@ -144,12 +144,12 @@ describe("native auth refresh route", () => {
     const accessOnly = mintNativeSessionTokenPair({ userId: "user_legacy" }).accessToken;
 
     for (const request of [
-      new Request("https://cmux.test/api/auth/native/refresh", { method: "POST" }),
-      new Request("https://cmux.test/api/auth/native/refresh", {
+      new Request("https://mosaic.test/api/auth/native/refresh", { method: "POST" }),
+      new Request("https://mosaic.test/api/auth/native/refresh", {
         method: "POST",
         headers: { "X-Mosaic-Refresh-Token": "not-a-token" },
       }),
-      new Request("https://cmux.test/api/auth/native/refresh", {
+      new Request("https://mosaic.test/api/auth/native/refresh", {
         method: "POST",
         headers: { "X-Mosaic-Refresh-Token": accessOnly },
       }),

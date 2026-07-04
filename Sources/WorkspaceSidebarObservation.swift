@@ -1,7 +1,7 @@
 import Combine
-import CmuxCore
+import MosaicCore
 import Foundation
-import CmuxSidebar
+import MosaicSidebar
 import SwiftUI
 
 private struct SidebarPanelObservationState: Equatable {

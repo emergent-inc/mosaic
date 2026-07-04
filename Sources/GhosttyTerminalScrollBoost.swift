@@ -1,6 +1,6 @@
 import AppKit
 
-/// Classifies a terminal scroll event for cmux's historical precise-delta boost.
+/// Classifies a terminal scroll event for mosaic's historical precise-delta boost.
 struct GhosttyTerminalScrollBoost {
     /// Whether AppKit marked the scroll event as carrying precise deltas.
     let hasPreciseScrollingDeltas: Bool
@@ -9,7 +9,7 @@ struct GhosttyTerminalScrollBoost {
     /// The momentum phase reported by AppKit after a gesture ends.
     let momentumPhase: NSEvent.Phase
 
-    /// Creates a boost classifier from the AppKit scroll attributes cmux uses.
+    /// Creates a boost classifier from the AppKit scroll attributes mosaic uses.
     init(
         hasPreciseScrollingDeltas: Bool,
         phase: NSEvent.Phase,
@@ -29,7 +29,7 @@ struct GhosttyTerminalScrollBoost {
         )
     }
 
-    /// Whether the event should receive cmux's historical 2x precise-delta boost.
+    /// Whether the event should receive mosaic's historical 2x precise-delta boost.
     var shouldDoublePreciseScrollDelta: Bool {
         guard hasPreciseScrollingDeltas else { return false }
         return !phase.isEmpty || !momentumPhase.isEmpty

@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 
 enum ShortcutHintAnimation {
@@ -50,7 +50,7 @@ struct ShortcutHintPill: View {
 
     var body: some View {
         Text(text)
-            .cmuxFont(size: fontSize, weight: .semibold, design: .rounded)
+            .mosaicFont(size: fontSize, weight: .semibold, design: .rounded)
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)

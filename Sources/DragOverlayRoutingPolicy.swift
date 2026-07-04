@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
 import Foundation
-import CmuxTerminal
+import MosaicTerminal
 
 enum FileDropResolvedBehavior: Equatable {
     case text
@@ -190,7 +190,7 @@ enum FileDropTextDropController {
 
 enum DragOverlayRoutingPolicy {
     static let bonsplitTabTransferType = NSPasteboard.PasteboardType("com.splittabbar.tabtransfer")
-    static let filePreviewTransferType = NSPasteboard.PasteboardType("com.cmux.filepreview.transfer")
+    static let filePreviewTransferType = NSPasteboard.PasteboardType("com.mosaic.filepreview.transfer")
     static let sidebarTabReorderType = NSPasteboard.PasteboardType(SidebarTabDragPayload.typeIdentifier)
 
     static func hasBonsplitTabTransfer(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {

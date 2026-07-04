@@ -12,18 +12,18 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 SOCKET_PATH = (
-    os.environ.get("CMUX_SOCKET_PATH")
-    or "/tmp/cmux-debug.sock"
+    os.environ.get("MOSAIC_SOCKET_PATH")
+    or "/tmp/mosaic-debug.sock"
 )
 
 
 def _parse_probe_response(response: str) -> dict[str, str]:
     if not response.startswith("OK "):
-        raise cmuxError(response)
+        raise mosaicError(response)
     parsed: dict[str, str] = {}
     for token in response.split()[1:]:
         if "=" not in token:
@@ -36,12 +36,12 @@ def _parse_probe_response(response: str) -> dict[str, str]:
 def _parse_bounds(bounds: str) -> tuple[float, float]:
     parts = bounds.split("x", 1)
     if len(parts) != 2:
-        raise cmuxError(f"Unexpected bounds format: {bounds}")
+        raise mosaicError(f"Unexpected bounds format: {bounds}")
     return float(parts[0]), float(parts[1])
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as client:
+    with mosaic(SOCKET_PATH) as client:
         client.activate_app()
         workspace_id = client.new_workspace()
         try:
@@ -55,17 +55,17 @@ def main() -> int:
 
             width, height = _parse_bounds(deferred.get("bounds", "0x0"))
             if width <= 2 or height <= 2:
-                raise cmuxError(
+                raise mosaicError(
                     f"Focused terminal bounds too small for overlay probe: {width}x{height}"
                 )
 
             if deferred.get("animated") != "1":
-                raise cmuxError(
+                raise mosaicError(
                     "Deferred drop-overlay show did not animate. "
                     f"response={deferred_raw}"
                 )
             if direct.get("animated") != "1":
-                raise cmuxError(
+                raise mosaicError(
                     "Direct drop-overlay show did not animate. "
                     f"response={direct_raw}"
                 )

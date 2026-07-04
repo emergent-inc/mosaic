@@ -59,8 +59,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set([
   "ios_push_deeplink_failed",
   "ios_crash",
   // Shared native app activity
-  "cmux_daily_active",
-  "cmux_hourly_active",
+  "mosaic_daily_active",
+  "mosaic_hourly_active",
   // macOS product actions
   "mac_action_performed",
   "mac_button_clicked",

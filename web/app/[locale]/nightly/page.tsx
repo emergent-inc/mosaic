@@ -75,7 +75,7 @@ export default function NightlyPage() {
           {t.rich("warning", {
             githubLink: (chunks) => (
               <a
-                href="https://github.com/emergent-inc/cmux/issues"
+                href="https://github.com/emergent-inc/mosaic/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={linkClass}

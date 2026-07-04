@@ -60,7 +60,7 @@ jobs:
       - name: Upload universal Ghostty CLI helper
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cmux-ghostty-cli-helper
+          name: mosaic-ghostty-cli-helper
           path: ghostty-cli-helper/ghostty
           if-no-files-found: error
 
@@ -188,7 +188,7 @@ jobs:
             rustup default stable
           fi
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
-          CMUX_NODE_BIN="$(command -v node)"
+          MOSAIC_NODE_BIN="$(command -v node)"
           export npm_config_prefix="$RUNNER_TEMP/npm-global"
           mkdir -p "$npm_config_prefix"
           npm install --global "create-dmg@${CREATE_DMG_VERSION}"
@@ -196,7 +196,7 @@ jobs:
           mkdir -p "$wrapper_dir"
           cat > "$wrapper_dir/create-dmg" <<EOF
           #!/usr/bin/env bash
-          exec "$CMUX_NODE_BIN" "$npm_config_prefix/lib/node_modules/create-dmg/cli.js" "\$@"
+          exec "$MOSAIC_NODE_BIN" "$npm_config_prefix/lib/node_modules/create-dmg/cli.js" "\$@"
           EOF
           chmod +x "$wrapper_dir/create-dmg"
           echo "$wrapper_dir" >> "$GITHUB_PATH"
@@ -211,7 +211,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .spm-cache
-          key: spm-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ hashFiles('mosaic.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-
 
       - name: Sanitize Swift package cache
@@ -243,9 +243,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ci-artifacts
-          APP_LOG="ci-artifacts/cmux-release-xcodebuild.log"
+          APP_LOG="ci-artifacts/mosaic-release-xcodebuild.log"
           set +e
-          CMUX_SKIP_ZIG_BUILD=1 xcodebuild -scheme cmux -configuration Release -derivedDataPath build-universal \
+          MOSAIC_SKIP_ZIG_BUILD=1 xcodebuild -scheme mosaic -configuration Release -derivedDataPath build-universal \
             -destination 'generic/platform=macOS' \
             -clonedSourcePackagesDirPath .spm-cache \
             -jobs 2 \
@@ -268,7 +268,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cmux-release-build-diagnostics-${{ github.run_id }}
+          name: mosaic-release-build-diagnostics-${{ github.run_id }}
           path: ci-artifacts/*.log
           if-no-files-found: ignore
 
@@ -276,7 +276,7 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: cmux-ghostty-cli-helper
+          name: mosaic-ghostty-cli-helper
           path: ghostty-cli-helper
 
       - name: Install universal Ghostty CLI helper
@@ -292,7 +292,7 @@ jobs:
         run: |
           set -euo pipefail
           APP_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/MacOS/Mosaic"
-          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/mosaic"
           HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           APP_ARCHS="$(lipo -archs "$APP_BINARY")"
           CLI_ARCHS="$(lipo -archs "$CLI_BINARY")"
@@ -311,9 +311,9 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
           set -euo pipefail
-          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
-          [ -x "$CLI_BINARY" ] || { echo "cmux CLI binary not found at $CLI_BINARY" >&2; exit 1; }
-          CMUX_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/mosaic"
+          [ -x "$CLI_BINARY" ] || { echo "mosaic CLI binary not found at $CLI_BINARY" >&2; exit 1; }
+          MOSAIC_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
 
       - name: Verify bundled Ghostty theme picker helper
         if: steps.guard_release_assets.outputs.skip_all != 'true'
@@ -377,8 +377,8 @@ jobs:
           fi
           APP_PATH="build-universal/Build/Products/Release/Mosaic.app"
           PROFILE_PATH="$APP_PATH/Contents/embedded.provisionprofile"
-          TMP_PROFILE="$(mktemp /tmp/cmux-release-profile.XXXXXX)"
-          TMP_PLIST="$(mktemp /tmp/cmux-release-profile.XXXXXX.plist)"
+          TMP_PROFILE="$(mktemp /tmp/mosaic-release-profile.XXXXXX)"
+          TMP_PLIST="$(mktemp /tmp/mosaic-release-profile.XXXXXX.plist)"
           trap 'rm -f "$TMP_PROFILE" "$TMP_PLIST"' EXIT
           echo "$APPLE_RELEASE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$TMP_PROFILE"
           security cms -D -i "$TMP_PROFILE" > "$TMP_PLIST"
@@ -419,10 +419,10 @@ jobs:
           APP_PATH="build-universal/Build/Products/Release/Mosaic.app"
           ENTITLEMENTS="$RUNNER_TEMP/mosaic.release.entitlements"
           ./scripts/resolve-app-entitlements.sh \
-            cmux.release.entitlements \
+            mosaic.release.entitlements \
             "$ENTITLEMENTS" \
             "mosaic.com.emergent.app"
-          ./scripts/sign-cmux-bundle.sh \
+          ./scripts/sign-mosaic-bundle.sh \
             "$APP_PATH" \
             "$ENTITLEMENTS" \
             "$APPLE_SIGNING_IDENTITY"
@@ -454,8 +454,8 @@ jobs:
           xcrun stapler staple "$APP_PATH"
           xcrun stapler validate "$APP_PATH"
           spctl -a -vv --type execute "$APP_PATH"
-          CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI=1 CMUX_SMOKE_DEBUG_LOGS=1 CMUX_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
-          CMUX_SMOKE_DIRECT_EXEC=1 CMUX_SMOKE_DEBUG_LOGS=1 CMUX_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
+          MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI=1 MOSAIC_SMOKE_DEBUG_LOGS=1 MOSAIC_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
+          MOSAIC_SMOKE_DIRECT_EXEC=1 MOSAIC_SMOKE_DEBUG_LOGS=1 MOSAIC_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
           ./scripts/verify-app-bundle-channel-metadata.sh "$APP_PATH" stable
           ./scripts/smoke-installable-artifact.sh --channel stable "$APP_PATH"
           rm -f "$ZIP_SUBMIT"
@@ -486,7 +486,7 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: emergent.inc
-          SENTRY_PROJECT: cmuxterm-macos
+          SENTRY_PROJECT: mosaicterm-macos
         run: |
           if [ -z "$SENTRY_AUTH_TOKEN" ]; then
             echo "SENTRY_AUTH_TOKEN not set, skipping dSYM upload"
@@ -511,7 +511,7 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_upload != 'true' && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cmux-release-dry-run
+          name: mosaic-release-dry-run
           path: |
             mosaic-macos.dmg
             appcast.xml

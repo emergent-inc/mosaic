@@ -1,5 +1,5 @@
-import CMUXAuthCore
-import CmuxAuthRuntime
+import MosaicAuthCore
+import MosaicAuthRuntime
 import Foundation
 import Observation
 

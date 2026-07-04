@@ -1,5 +1,5 @@
 import Foundation
-import CmuxFoundation
+import MosaicFoundation
 
 struct ConfigSourceEnvironment {
     let homeDirectoryURL: URL
@@ -9,7 +9,7 @@ struct ConfigSourceEnvironment {
 
     init(
         homeDirectoryURL: URL,
-        currentBundleIdentifier: String? = CmuxGhosttyConfigPathResolver.releaseBundleIdentifier,
+        currentBundleIdentifier: String? = MosaicGhosttyConfigPathResolver.releaseBundleIdentifier,
         previewDirectoryURL: URL? = nil,
         fileManager: FileManager = .default
     ) {
@@ -18,7 +18,7 @@ struct ConfigSourceEnvironment {
         self.fileManager = fileManager
         self.currentBundleIdentifier = currentBundleIdentifier
         self.previewDirectoryURL = previewDirectoryURL?.standardizedFileURL
-            ?? CmuxGhosttyConfigPathResolver().configDirectoryURL(
+            ?? MosaicGhosttyConfigPathResolver().configDirectoryURL(
                 currentBundleIdentifier: currentBundleIdentifier,
                 appSupportDirectory: standardizedHome
                     .appendingPathComponent("Library", isDirectory: true)
@@ -34,8 +34,8 @@ struct ConfigSourceEnvironment {
         )
     }
 
-    var cmuxConfigURL: URL {
-        CmuxGhosttyConfigPathResolver().activeOrEditableConfigURL(
+    var mosaicConfigURL: URL {
+        MosaicGhosttyConfigPathResolver().activeOrEditableConfigURL(
             currentBundleIdentifier: currentBundleIdentifier,
             appSupportDirectory: appSupportDirectoryURL,
             fileManager: fileManager
@@ -67,27 +67,27 @@ struct ConfigSourceEnvironment {
         previewDirectoryURL.appendingPathComponent("config.synced-preview", isDirectory: false)
     }
 
-    func materializeCmuxConfigFileIfNeeded() throws -> URL {
-        let url = cmuxConfigURL
+    func materializeMosaicConfigFileIfNeeded() throws -> URL {
+        let url = mosaicConfigURL
         guard !fileManager.fileExists(atPath: url.path) else { return url }
-        try writeCmuxConfigContents("", to: url)
+        try writeMosaicConfigContents("", to: url)
         return url
     }
 
     func materializedGhosttySettingsEditorURLs() throws -> [URL] {
-        let cmuxURL = try materializeCmuxConfigFileIfNeeded()
+        let mosaicURL = try materializeMosaicConfigFileIfNeeded()
 
         var collector = GhosttySettingsConfigFileCollector(
             fileManager: fileManager,
             homeDirectoryURL: homeDirectoryURL
         )
-        collector.append(cmuxURL)
+        collector.append(mosaicURL)
 
         for url in standaloneGhosttyDisplayCandidates where isRegularFile(at: url) {
             collector.append(url)
         }
 
-        for url in CmuxGhosttyConfigPathResolver().loadConfigURLs(
+        for url in MosaicGhosttyConfigPathResolver().loadConfigURLs(
             currentBundleIdentifier: currentBundleIdentifier,
             appSupportDirectory: appSupportDirectoryURL,
             fileManager: fileManager
@@ -99,14 +99,14 @@ struct ConfigSourceEnvironment {
         return collector.urls
     }
 
-    func writeCmuxConfigContents(_ contents: String) throws {
-        let url = cmuxConfigURL
-        try writeCmuxConfigContents(contents, to: url)
+    func writeMosaicConfigContents(_ contents: String) throws {
+        let url = mosaicConfigURL
+        try writeMosaicConfigContents(contents, to: url)
     }
 
-    func writeCmuxConfigSetting(key: String, value: String) throws {
-        let url = try materializeCmuxConfigFileIfNeeded()
-        try CmuxGhosttyConfigSettingEditor().writeSetting(
+    func writeMosaicConfigSetting(key: String, value: String) throws {
+        let url = try materializeMosaicConfigFileIfNeeded()
+        try MosaicGhosttyConfigSettingEditor().writeSetting(
             key: key,
             value: value,
             to: url,
@@ -114,7 +114,7 @@ struct ConfigSourceEnvironment {
         )
     }
 
-    private func writeCmuxConfigContents(_ contents: String, to url: URL) throws {
+    private func writeMosaicConfigContents(_ contents: String, to url: URL) throws {
         let writeURL = configWriteURL(for: url)
         try fileManager.createDirectory(
             at: writeURL.deletingLastPathComponent(),
@@ -199,19 +199,19 @@ struct ConfigSourceSnapshot {
 }
 
 enum ConfigSource: String, CaseIterable, Identifiable {
-    case cmux
+    case mosaic
     case synced
 
     var id: Self { self }
 
     var isEditable: Bool {
-        self == .cmux
+        self == .mosaic
     }
 
     func snapshot(environment: ConfigSourceEnvironment = .live()) -> ConfigSourceSnapshot {
         switch self {
-        case .cmux:
-            let url = environment.cmuxConfigURL
+        case .mosaic:
+            let url = environment.mosaicConfigURL
             return ConfigSourceSnapshot(
                 source: self,
                 primaryURL: url,
@@ -226,7 +226,7 @@ enum ConfigSource: String, CaseIterable, Identifiable {
             let hasStandaloneGhosttyConfig = environment.isRegularFile(at: ghosttyURL)
             let renderedContents = Self.renderSyncedPreview(
                 ghosttyURL: hasStandaloneGhosttyConfig ? ghosttyURL : nil,
-                cmuxURLs: CmuxGhosttyConfigPathResolver().loadConfigURLs(
+                mosaicURLs: MosaicGhosttyConfigPathResolver().loadConfigURLs(
                     currentBundleIdentifier: environment.currentBundleIdentifier,
                     appSupportDirectory: environment.appSupportDirectoryURL,
                     fileManager: environment.fileManager
@@ -276,14 +276,14 @@ enum ConfigSource: String, CaseIterable, Identifiable {
 
     private static func renderSyncedPreview(
         ghosttyURL: URL?,
-        cmuxURLs: [URL],
+        mosaicURLs: [URL],
         environment: ConfigSourceEnvironment
     ) -> String {
-        // Preserve Ghostty key order, then overlay cmux entries using last-wins precedence.
+        // Preserve Ghostty key order, then overlay mosaic entries using last-wins precedence.
         var effectiveEntriesByKey: [String: ParsedConfigEntry] = [:]
         var orderedKeys: [String] = []
 
-        for sourceURL in ([ghosttyURL].compactMap { $0 } + cmuxURLs) {
+        for sourceURL in ([ghosttyURL].compactMap { $0 } + mosaicURLs) {
             for entry in parsedEntries(from: sourceURL) {
                 if effectiveEntriesByKey[entry.key] == nil {
                     orderedKeys.append(entry.key)

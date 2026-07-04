@@ -1,0 +1,31 @@
+import MosaicFoundation
+import Darwin
+import Foundation
+import XCTest
+
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
+#endif
+
+// The descriptor-level read regressions (would-block on an open writer,
+// end-of-file on a closed writer, partial data preserved on a failing read)
+// are covered in MosaicFoundation's FileHandleProcessPipeReadingTests, next to
+// the moved implementation. This app-side test pins the consumer behavior
+// that depends on app types.
+final class ProcessPipeReadCrashRegressionTests: XCTestCase {
+    func testProcessOutputCollectorTreatsBrokenReadDescriptorAsClosedPipe() {
+        let stdout = Pipe()
+        let stderr = Pipe()
+        let collector = ProcessOutputCollector(stdout: stdout, stderr: stderr)
+
+        try? stdout.fileHandleForWriting.close()
+        try? stderr.fileHandleForWriting.close()
+        Darwin.close(stdout.fileHandleForReading.fileDescriptor)
+
+        let output = collector.finish()
+
+        XCTAssertEqual(output, "")
+    }
+}

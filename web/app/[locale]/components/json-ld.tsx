@@ -49,7 +49,7 @@ export function faqPage(qas: { question: string; answer: string }[]) {
   };
 }
 
-/** Build a schema.org Article for a blog post. Author defaults to cmux. */
+/** Build a schema.org Article for a blog post. Author defaults to mosaic. */
 export function articleSchema(opts: {
   locale: string;
   path: string;

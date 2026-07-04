@@ -1,20 +1,20 @@
 import Foundation
-import CmuxCore
-import CmuxBrowser
-import CmuxFoundation
-import CmuxSettings
+import MosaicCore
+import MosaicBrowser
+import MosaicFoundation
+import MosaicSettings
 import Combine
-import CmuxAppKitSupportUI
+import MosaicAppKitSupportUI
 import WebKit
 import AppKit
 import Bonsplit
-import CmuxTerminalCore
+import MosaicTerminalCore
 import Network
 import CFNetwork
 import SQLite3
 import CryptoKit
 import Darwin
-import CmuxTerminal
+import MosaicTerminal
 #if canImport(CommonCrypto)
 import CommonCrypto
 #endif
@@ -288,10 +288,10 @@ enum BrowserImportHintSettings {
 }
 
 // `BrowserProfileDefinition` and `BrowserProfileClearOutcome` now live in the
-// `CmuxBrowser` package (imported above); the call sites reference them
+// `MosaicBrowser` package (imported above); the call sites reference them
 // unqualified through that import.
 
-// Adapts `BrowserHistoryStore` to the `CmuxBrowser` history seams so the
+// Adapts `BrowserHistoryStore` to the `MosaicBrowser` history seams so the
 // profile repository can manage per-profile history stores without depending on
 // the app-target `BrowserHistoryStore` type.
 extension BrowserHistoryStore: BrowserProfileHistoryStore {}
@@ -317,7 +317,7 @@ private final class BrowserProfileHistoryAdapter: BrowserProfileHistoryProviding
     }
 }
 
-// Adapts WebKit's `WKWebsiteDataStore` to the `CmuxBrowser` data-store
+// Adapts WebKit's `WKWebsiteDataStore` to the `MosaicBrowser` data-store
 // seam, mapping the built-in default profile to the default store and bridging
 // the legacy completion-handler wipe to `async`/`await` at this one boundary.
 @MainActor
@@ -366,7 +366,7 @@ final class BrowserProfileStore: ObservableObject {
             historyProvider: BrowserProfileHistoryAdapter(),
             websiteDataStoreProvider: BrowserProfileWebsiteDataStoreAdapter(),
             fileRemover: BrowserProfileFileRemover(),
-            bundleIdentifier: Bundle.main.bundleIdentifier ?? "cmux",
+            bundleIdentifier: Bundle.main.bundleIdentifier ?? "mosaic",
             defaultProfileDisplayName: String(localized: "browser.profile.default", defaultValue: "Default")
         )
         mirrorPublishedState()
@@ -446,63 +446,63 @@ final class BrowserProfileStore: ObservableObject {
 }
 
 enum BrowserLinkOpenSettings {
-    static let openTerminalLinksInCmuxBrowserKey = "browserOpenTerminalLinksInCmuxBrowser"
-    static let defaultOpenTerminalLinksInCmuxBrowser: Bool = true
+    static let openTerminalLinksInMosaicBrowserKey = "browserOpenTerminalLinksInMosaicBrowser"
+    static let defaultOpenTerminalLinksInMosaicBrowser: Bool = true
 
-    static let openSidebarPullRequestLinksInCmuxBrowserKey = "browserOpenSidebarPullRequestLinksInCmuxBrowser"
-    static let defaultOpenSidebarPullRequestLinksInCmuxBrowser: Bool = true
+    static let openSidebarPullRequestLinksInMosaicBrowserKey = "browserOpenSidebarPullRequestLinksInMosaicBrowser"
+    static let defaultOpenSidebarPullRequestLinksInMosaicBrowser: Bool = true
 
-    static let openSidebarPortLinksInCmuxBrowserKey = "browserOpenSidebarPortLinksInCmuxBrowser"
-    static let defaultOpenSidebarPortLinksInCmuxBrowser: Bool = true
+    static let openSidebarPortLinksInMosaicBrowserKey = "browserOpenSidebarPortLinksInMosaicBrowser"
+    static let defaultOpenSidebarPortLinksInMosaicBrowser: Bool = true
 
-    static let interceptTerminalOpenCommandInCmuxBrowserKey = "browserInterceptTerminalOpenCommandInCmuxBrowser"
-    static let defaultInterceptTerminalOpenCommandInCmuxBrowser: Bool = true
+    static let interceptTerminalOpenCommandInMosaicBrowserKey = "browserInterceptTerminalOpenCommandInMosaicBrowser"
+    static let defaultInterceptTerminalOpenCommandInMosaicBrowser: Bool = true
 
     static let browserHostWhitelistKey = "browserHostWhitelist"
     static let defaultBrowserHostWhitelist: String = ""
     static let browserExternalOpenPatternsKey = "browserExternalOpenPatterns"
     static let defaultBrowserExternalOpenPatterns: String = ""
 
-    static func openTerminalLinksInCmuxBrowser(defaults: UserDefaults = .standard) -> Bool {
+    static func openTerminalLinksInMosaicBrowser(defaults: UserDefaults = .standard) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled(defaults: defaults) else { return false }
-        if defaults.object(forKey: openTerminalLinksInCmuxBrowserKey) == nil {
-            return defaultOpenTerminalLinksInCmuxBrowser
+        if defaults.object(forKey: openTerminalLinksInMosaicBrowserKey) == nil {
+            return defaultOpenTerminalLinksInMosaicBrowser
         }
-        return defaults.bool(forKey: openTerminalLinksInCmuxBrowserKey)
+        return defaults.bool(forKey: openTerminalLinksInMosaicBrowserKey)
     }
 
-    static func openSidebarPullRequestLinksInCmuxBrowser(defaults: UserDefaults = .standard) -> Bool {
+    static func openSidebarPullRequestLinksInMosaicBrowser(defaults: UserDefaults = .standard) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled(defaults: defaults) else { return false }
-        if defaults.object(forKey: openSidebarPullRequestLinksInCmuxBrowserKey) == nil {
-            return defaultOpenSidebarPullRequestLinksInCmuxBrowser
+        if defaults.object(forKey: openSidebarPullRequestLinksInMosaicBrowserKey) == nil {
+            return defaultOpenSidebarPullRequestLinksInMosaicBrowser
         }
-        return defaults.bool(forKey: openSidebarPullRequestLinksInCmuxBrowserKey)
+        return defaults.bool(forKey: openSidebarPullRequestLinksInMosaicBrowserKey)
     }
 
-    static func openSidebarPortLinksInCmuxBrowser(defaults: UserDefaults = .standard) -> Bool {
+    static func openSidebarPortLinksInMosaicBrowser(defaults: UserDefaults = .standard) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled(defaults: defaults) else { return false }
-        if defaults.object(forKey: openSidebarPortLinksInCmuxBrowserKey) == nil {
-            return defaultOpenSidebarPortLinksInCmuxBrowser
+        if defaults.object(forKey: openSidebarPortLinksInMosaicBrowserKey) == nil {
+            return defaultOpenSidebarPortLinksInMosaicBrowser
         }
-        return defaults.bool(forKey: openSidebarPortLinksInCmuxBrowserKey)
+        return defaults.bool(forKey: openSidebarPortLinksInMosaicBrowserKey)
     }
 
-    static func interceptTerminalOpenCommandInCmuxBrowser(defaults: UserDefaults = .standard) -> Bool {
+    static func interceptTerminalOpenCommandInMosaicBrowser(defaults: UserDefaults = .standard) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled(defaults: defaults) else { return false }
-        if defaults.object(forKey: interceptTerminalOpenCommandInCmuxBrowserKey) != nil {
-            return defaults.bool(forKey: interceptTerminalOpenCommandInCmuxBrowserKey)
+        if defaults.object(forKey: interceptTerminalOpenCommandInMosaicBrowserKey) != nil {
+            return defaults.bool(forKey: interceptTerminalOpenCommandInMosaicBrowserKey)
         }
 
         // Migrate existing behavior for users who only had the link-click toggle.
-        if defaults.object(forKey: openTerminalLinksInCmuxBrowserKey) != nil {
-            return defaults.bool(forKey: openTerminalLinksInCmuxBrowserKey)
+        if defaults.object(forKey: openTerminalLinksInMosaicBrowserKey) != nil {
+            return defaults.bool(forKey: openTerminalLinksInMosaicBrowserKey)
         }
 
-        return defaultInterceptTerminalOpenCommandInCmuxBrowser
+        return defaultInterceptTerminalOpenCommandInMosaicBrowser
     }
 
-    static func initialInterceptTerminalOpenCommandInCmuxBrowserValue(defaults: UserDefaults = .standard) -> Bool {
-        interceptTerminalOpenCommandInCmuxBrowser(defaults: defaults)
+    static func initialInterceptTerminalOpenCommandInMosaicBrowserValue(defaults: UserDefaults = .standard) -> Bool {
+        interceptTerminalOpenCommandInMosaicBrowser(defaults: defaults)
     }
 
     static func hostWhitelist(defaults: UserDefaults = .standard) -> [String] {
@@ -601,7 +601,7 @@ enum BrowserLinkOpenSettings {
 
 enum BrowserAvailabilitySettings {
     static let disabledKey = "browserDisabledOverride"
-    static let didChangeNotification = Notification.Name("cmux.browserAvailabilityDidChange")
+    static let didChangeNotification = Notification.Name("mosaic.browserAvailabilityDidChange")
     static let defaultDisabled = false
 
     static func isDisabled(defaults: UserDefaults = .standard) -> Bool {
@@ -669,7 +669,7 @@ enum BrowserInsecureHTTPSettings {
         defaults.set(patterns.joined(separator: "\n"), forKey: allowlistKey)
     }
 
-    // Single source of truth: the host normalizer moved to CmuxCore with the
+    // Single source of truth: the host normalizer moved to MosaicCore with the
     // loopback alias lift; this forwards so allowlist semantics stay identical.
     static func normalizeHost(_ rawHost: String) -> String? {
         RemoteLoopbackProxyAlias.normalizeHost(rawHost)
@@ -791,10 +791,10 @@ enum BrowserFileSystemAccessBridge {
       if (typeof window.showOpenFilePicker === "function") {
         return true;
       }
-      if (window.__cmuxFileSystemAccessBridgeInstalled) {
+      if (window.__mosaicFileSystemAccessBridgeInstalled) {
         return true;
       }
-      window.__cmuxFileSystemAccessBridgeInstalled = true;
+      window.__mosaicFileSystemAccessBridgeInstalled = true;
 
       const makeDOMException = (name, message) => {
         try {
@@ -1036,7 +1036,7 @@ private let browserEmbeddedNavigationSchemes: Set<String> = [
     "about",
     "applewebdata",
     "blob",
-    "cmux-diff-viewer",
+    "mosaic-diff-viewer",
     "data",
     "file",
     "http",
@@ -1213,7 +1213,7 @@ private func browserOpenExternalNavigationURL(
         browserPresentExternalNavigationFailure(for: url, in: webView, presentAlert: presentAlert)
     }
 #if DEBUG
-    cmuxDebugLog(
+    mosaicDebugLog(
         "browser.navigation.external source=\(source) opened=\(opened ? 1 : 0) " +
         "url=\(browserNavigationDebugURL(url))"
     )
@@ -1236,7 +1236,7 @@ func browserHandleExternalNavigation(
         let request = URLRequest(url: fallbackURL)
         loadFallbackRequest(request)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.navigation.external source=\(source) opened=1 fallback=1 " +
             "fallbackURL=\(browserNavigationDebugURL(fallbackURL)) url=\(browserNavigationDebugURL(url))"
         )
@@ -1250,7 +1250,7 @@ func browserHandleExternalNavigation(
             completion: { shouldOpenApp in
                 guard shouldOpenApp else {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "browser.navigation.external source=\(source) opened=0 prompt=1 allowed=0 " +
                         "url=\(browserNavigationDebugURL(externalURL))"
                     )
@@ -1283,10 +1283,10 @@ func normalizedBrowserHistoryNamespace(bundleIdentifier: String) -> String {
 
 func browserIsTemporaryHistoryURL(_ url: URL?) -> Bool {
     guard let url else { return false }
-    if url.scheme?.lowercased() == CmuxDiffViewerURLSchemeHandler.scheme {
+    if url.scheme?.lowercased() == MosaicDiffViewerURLSchemeHandler.scheme {
         return true
     }
-    guard url.fragment == "cmux-diff-viewer",
+    guard url.fragment == "mosaic-diff-viewer",
           url.scheme?.lowercased() == "http",
           let host = url.host else {
         return false
@@ -1302,7 +1302,7 @@ func browserIsTemporaryHistoryURL(_ url: URL?) -> Bool {
 final class BrowserHistoryStore: ObservableObject {
     static let shared = BrowserHistoryStore()
 
-    /// Persisted history record. Owned by `CmuxBrowser`; this alias keeps
+    /// Persisted history record. Owned by `MosaicBrowser`; this alias keeps
     /// existing `BrowserHistoryStore.Entry` call sites byte-identical after the
     /// value type moved into the package.
     typealias Entry = BrowserHistoryEntry
@@ -1326,7 +1326,7 @@ final class BrowserHistoryStore: ObservableObject {
     private let saveDebounceNanoseconds: UInt64 = 120_000_000
 
     // Pure suggestion matching/scoring and persistence I/O live in
-    // `CmuxBrowser`; the store owns only the @Published entry list, the
+    // `MosaicBrowser`; the store owns only the @Published entry list, the
     // first-load lifecycle, and the debounced-save scheduling.
     private let suggestionEngine = BrowserHistorySuggestionEngine()
     private let fileRepository = BrowserHistoryFileRepository()
@@ -1709,7 +1709,7 @@ final class BrowserHistoryStore: ObservableObject {
         guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }
-        let bundleId = Bundle.main.bundleIdentifier ?? "cmux"
+        let bundleId = Bundle.main.bundleIdentifier ?? "mosaic"
         return BrowserHistoryLocation(applicationSupportDirectory: appSupport, bundleIdentifier: bundleId)
     }
 
@@ -1735,8 +1735,8 @@ actor BrowserSearchSuggestionService {
 
         // Deterministic UI-test hook for validating remote suggestion rendering
         // without relying on external network behavior.
-        let forced = ProcessInfo.processInfo.environment["CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON"]
-            ?? UserDefaults.standard.string(forKey: "CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON")
+        let forced = ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_REMOTE_SUGGESTIONS_JSON"]
+            ?? UserDefaults.standard.string(forKey: "MOSAIC_UI_TEST_REMOTE_SUGGESTIONS_JSON")
         if let forced,
            let data = forced.data(using: .utf8),
            let parsed = try? JSONSerialization.jsonObject(with: data) as? [Any] {
@@ -1901,9 +1901,9 @@ nonisolated enum BrowserWebViewLifecycleState: String {
     case closing
 }
 
-final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
-    static let scheme = "cmux-diff-viewer"
-    static let shared = CmuxDiffViewerURLSchemeHandler()
+final class MosaicDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
+    static let scheme = "mosaic-diff-viewer"
+    static let shared = MosaicDiffViewerURLSchemeHandler()
     static let maxRegisteredFiles = 1024
 
     struct RegisteredFile {
@@ -1927,12 +1927,12 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
     private let lock = NSLock()
     private var sessions: [String: Session] = [:]
     private var activeSchemeTasks: [ObjectIdentifier: SchemeTaskState] = [:]
-    private let streamQueue = DispatchQueue(label: "com.emergent.inc.cmux.diff-viewer-stream", qos: .userInitiated)
+    private let streamQueue = DispatchQueue(label: "com.emergent.inc.mosaic.diff-viewer-stream", qos: .userInitiated)
     // Branch picker routes shell out to the bundled CLI (git). Run them on a
     // dedicated concurrent queue, NOT the serial file-serving streamQueue, so a
     // slow/hung git invocation cannot stall restored diff-viewer file serving.
     private let pickerQueue = DispatchQueue(
-        label: "com.emergent.inc.cmux.diff-viewer-picker",
+        label: "com.emergent.inc.mosaic.diff-viewer-picker",
         qos: .userInitiated,
         attributes: .concurrent
     )
@@ -1940,18 +1940,18 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
     private let pickerCommandTimeout: TimeInterval = 15
     private let maxSessionAge: TimeInterval = 24 * 60 * 60
     private let trustedRootURL = URL(fileURLWithPath: "/tmp", isDirectory: true)
-        .appendingPathComponent("cmux-diff-viewer-\(Darwin.getuid())", isDirectory: true)
+        .appendingPathComponent("mosaic-diff-viewer-\(Darwin.getuid())", isDirectory: true)
         .standardizedFileURL
         .resolvingSymlinksInPath()
 
     func register(token: String, files: [RegisteredFile], now: Date = Date()) throws {
         guard Self.isValidToken(token) else {
-            throw NSError(domain: "CmuxDiffViewerURLSchemeHandler", code: 1, userInfo: [
+            throw NSError(domain: "MosaicDiffViewerURLSchemeHandler", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Invalid diff viewer token"
             ])
         }
         guard !files.isEmpty else {
-            throw NSError(domain: "CmuxDiffViewerURLSchemeHandler", code: 2, userInfo: [
+            throw NSError(domain: "MosaicDiffViewerURLSchemeHandler", code: 2, userInfo: [
                 NSLocalizedDescriptionKey: "Diff viewer allowlist is empty"
             ])
         }
@@ -1961,7 +1961,7 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
             guard Self.isValidRequestPath(file.requestPath),
                   Self.isAllowedMimeType(file.mimeType),
                   Self.pathExtensionMatchesMimeType(path: file.requestPath, mimeType: file.mimeType) else {
-                throw NSError(domain: "CmuxDiffViewerURLSchemeHandler", code: 3, userInfo: [
+                throw NSError(domain: "MosaicDiffViewerURLSchemeHandler", code: 3, userInfo: [
                     NSLocalizedDescriptionKey: "Invalid diff viewer allowlist entry"
                 ])
             }
@@ -1972,12 +1972,12 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
                   FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory),
                   !isDirectory.boolValue,
                   FileManager.default.isReadableFile(atPath: standardizedURL.path) else {
-                throw NSError(domain: "CmuxDiffViewerURLSchemeHandler", code: 4, userInfo: [
+                throw NSError(domain: "MosaicDiffViewerURLSchemeHandler", code: 4, userInfo: [
                     NSLocalizedDescriptionKey: "Diff viewer file is not readable"
                 ])
             }
             guard byPath[file.requestPath] == nil else {
-                throw NSError(domain: "CmuxDiffViewerURLSchemeHandler", code: 5, userInfo: [
+                throw NSError(domain: "MosaicDiffViewerURLSchemeHandler", code: 5, userInfo: [
                     NSLocalizedDescriptionKey: "Duplicate diff viewer allowlist entry"
                 ])
             }
@@ -2062,11 +2062,11 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
            Self.isValidToken(token),
            hasActiveSession(token: token) {
             let path = (URLComponents(url: requestURL, resolvingAgainstBaseURL: false)?.percentEncodedPath ?? requestURL.path)
-            if path == "/__cmux_diff_viewer_refs" {
+            if path == "/__mosaic_diff_viewer_refs" {
                 handleDiffViewerRefsRoute(requestURL: requestURL, token: token, urlSchemeTask: urlSchemeTask)
                 return
             }
-            if path == "/__cmux_diff_viewer_branch" {
+            if path == "/__mosaic_diff_viewer_branch" {
                 handleDiffViewerBranchRoute(requestURL: requestURL, token: token, urlSchemeTask: urlSchemeTask)
                 return
             }
@@ -2090,15 +2090,15 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
         return result
     }
 
-    /// Path to the bundled `cmux` CLI used to run the headless picker commands.
+    /// Path to the bundled `mosaic` CLI used to run the headless picker commands.
     private func bundledCLIURL() -> URL? {
-        if let env = ProcessInfo.processInfo.environment["CMUX_BUNDLED_CLI_PATH"],
+        if let env = ProcessInfo.processInfo.environment["MOSAIC_BUNDLED_CLI_PATH"],
            !env.isEmpty,
            FileManager.default.isExecutableFile(atPath: env) {
             return URL(fileURLWithPath: env)
         }
         let candidate = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/Resources/bin/cmux", isDirectory: false)
+            .appendingPathComponent("Contents/Resources/bin/mosaic", isDirectory: false)
         if FileManager.default.isExecutableFile(atPath: candidate.path) {
             return candidate
         }
@@ -2122,7 +2122,7 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
 
         // Drain stdout concurrently with the wait so the child can never block on
         // a full pipe while we wait, and we still capture all output.
-        let drainQueue = DispatchQueue(label: "com.emergent.inc.cmux.diff-viewer-picker-drain")
+        let drainQueue = DispatchQueue(label: "com.emergent.inc.mosaic.diff-viewer-picker-drain")
         var collected = Data()
         let drainDone = DispatchSemaphore(value: 0)
         let readHandle = stdoutPipe.fileHandleForReading
@@ -2396,15 +2396,15 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
         defer { try? handle.close() }
         let head = (try? handle.read(upToCount: 1024)) ?? Data()
         if let text = String(data: head, encoding: .utf8),
-           text.contains("data-cmux-diff-pending=\"true\"") || text.contains("data-cmux-diff-redirect") {
+           text.contains("data-mosaic-diff-pending=\"true\"") || text.contains("data-mosaic-diff-redirect") {
             return false
         }
         return true
     }
 
     /// Extracts the diff viewer `(token, requestPath)` from a live diff viewer
-    /// URL, accepting both the custom scheme (`cmux-diff-viewer://<token>/<path>`)
-    /// and the local HTTP server form (`http://127.0.0.1:<port>/<token>/<path>#cmux-diff-viewer`).
+    /// URL, accepting both the custom scheme (`mosaic-diff-viewer://<token>/<path>`)
+    /// and the local HTTP server form (`http://127.0.0.1:<port>/<token>/<path>#mosaic-diff-viewer`).
     static func diffViewerComponents(from url: URL?) -> (token: String, requestPath: String)? {
         guard let url else { return nil }
         if url.scheme == scheme, let token = url.host, isValidToken(token) {
@@ -2684,19 +2684,19 @@ final class BrowserPanel: Panel, ObservableObject {
 
     static let telemetryHookBootstrapScriptSource = """
     (() => {
-      if (window.__cmuxHooksInstalled) return true;
-      window.__cmuxHooksInstalled = true;
+      if (window.__mosaicHooksInstalled) return true;
+      window.__mosaicHooksInstalled = true;
 
-      window.__cmuxConsoleLog = window.__cmuxConsoleLog || [];
+      window.__mosaicConsoleLog = window.__mosaicConsoleLog || [];
       const __pushConsole = (level, args) => {
         try {
           const text = Array.from(args || []).map((x) => {
             if (typeof x === 'string') return x;
             try { return JSON.stringify(x); } catch (_) { return String(x); }
           }).join(' ');
-          window.__cmuxConsoleLog.push({ level, text, timestamp_ms: Date.now() });
-          if (window.__cmuxConsoleLog.length > 512) {
-            window.__cmuxConsoleLog.splice(0, window.__cmuxConsoleLog.length - 512);
+          window.__mosaicConsoleLog.push({ level, text, timestamp_ms: Date.now() });
+          if (window.__mosaicConsoleLog.length > 512) {
+            window.__mosaicConsoleLog.splice(0, window.__mosaicConsoleLog.length - 512);
           }
         } catch (_) {}
       };
@@ -2710,16 +2710,16 @@ final class BrowserPanel: Panel, ObservableObject {
         };
       }
 
-      window.__cmuxErrorLog = window.__cmuxErrorLog || [];
+      window.__mosaicErrorLog = window.__mosaicErrorLog || [];
       window.addEventListener('error', (ev) => {
         try {
           const message = String((ev && ev.message) || '');
           const source = String((ev && ev.filename) || '');
           const line = Number((ev && ev.lineno) || 0);
           const col = Number((ev && ev.colno) || 0);
-          window.__cmuxErrorLog.push({ message, source, line, column: col, timestamp_ms: Date.now() });
-          if (window.__cmuxErrorLog.length > 512) {
-            window.__cmuxErrorLog.splice(0, window.__cmuxErrorLog.length - 512);
+          window.__mosaicErrorLog.push({ message, source, line, column: col, timestamp_ms: Date.now() });
+          if (window.__mosaicErrorLog.length > 512) {
+            window.__mosaicErrorLog.splice(0, window.__mosaicErrorLog.length - 512);
           }
         } catch (_) {}
       });
@@ -2727,9 +2727,9 @@ final class BrowserPanel: Panel, ObservableObject {
         try {
           const reason = ev && ev.reason;
           const message = typeof reason === 'string' ? reason : (reason && reason.message ? String(reason.message) : String(reason));
-          window.__cmuxErrorLog.push({ message, source: 'unhandledrejection', line: 0, column: 0, timestamp_ms: Date.now() });
-          if (window.__cmuxErrorLog.length > 512) {
-            window.__cmuxErrorLog.splice(0, window.__cmuxErrorLog.length - 512);
+          window.__mosaicErrorLog.push({ message, source: 'unhandledrejection', line: 0, column: 0, timestamp_ms: Date.now() });
+          if (window.__mosaicErrorLog.length > 512) {
+            window.__mosaicErrorLog.splice(0, window.__mosaicErrorLog.length - 512);
           }
         } catch (_) {}
       });
@@ -2740,20 +2740,20 @@ final class BrowserPanel: Panel, ObservableObject {
 
     static let dialogTelemetryHookBootstrapScriptSource = """
     (() => {
-      if (window.__cmuxDialogHooksInstalled) return true;
-      window.__cmuxDialogHooksInstalled = true;
+      if (window.__mosaicDialogHooksInstalled) return true;
+      window.__mosaicDialogHooksInstalled = true;
 
-      window.__cmuxDialogQueue = window.__cmuxDialogQueue || [];
-      window.__cmuxDialogDefaults = window.__cmuxDialogDefaults || { confirm: false, prompt: null };
+      window.__mosaicDialogQueue = window.__mosaicDialogQueue || [];
+      window.__mosaicDialogDefaults = window.__mosaicDialogDefaults || { confirm: false, prompt: null };
       const __pushDialog = (type, message, defaultText) => {
-        window.__cmuxDialogQueue.push({
+        window.__mosaicDialogQueue.push({
           type,
           message: String(message || ''),
           default_text: defaultText == null ? null : String(defaultText),
           timestamp_ms: Date.now()
         });
-        if (window.__cmuxDialogQueue.length > 128) {
-          window.__cmuxDialogQueue.splice(0, window.__cmuxDialogQueue.length - 128);
+        if (window.__mosaicDialogQueue.length > 128) {
+          window.__mosaicDialogQueue.splice(0, window.__mosaicDialogQueue.length - 128);
         }
       };
 
@@ -2762,11 +2762,11 @@ final class BrowserPanel: Panel, ObservableObject {
       };
       window.confirm = function(message) {
         __pushDialog('confirm', message, null);
-        return !!window.__cmuxDialogDefaults.confirm;
+        return !!window.__mosaicDialogDefaults.confirm;
       };
       window.prompt = function(message, defaultValue) {
         __pushDialog('prompt', message, defaultValue == null ? null : defaultValue);
-        const v = window.__cmuxDialogDefaults.prompt;
+        const v = window.__mosaicDialogDefaults.prompt;
         if (v === null || v === undefined) {
           return defaultValue == null ? '' : String(defaultValue);
         }
@@ -2815,7 +2815,7 @@ final class BrowserPanel: Panel, ObservableObject {
 
     /// Owns the address-bar page-focus capture/restore subsystem.
     ///
-    /// The repository (in `CmuxBrowser`) runs the capture/restore scripts
+    /// The repository (in `MosaicBrowser`) runs the capture/restore scripts
     /// through ``BrowserOmnibarPageFocusAdapter``, which reaches back to this
     /// panel's current `webView` weakly so the panel and repository do not retain
     /// each other.
@@ -2920,7 +2920,7 @@ final class BrowserPanel: Panel, ObservableObject {
     private var nativeCanGoForward: Bool = false
 
     /// The replayable back/forward session history this surface restores from a
-    /// prior launch. The pure stack state machine lives in `CmuxBrowser`;
+    /// prior launch. The pure stack state machine lives in `MosaicBrowser`;
     /// this surface owns the instance, feeds it the resolved live current URL,
     /// and performs the `WKWebView` calls its decisions return. The temporary-URL
     /// classification (diff viewer + remote loopback proxy alias) is inverted into
@@ -2976,7 +2976,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 clearBrowserFocusMode(reason: "searchStateCreated")
                 preferredFocusIntent = .findField
 #if DEBUG
-                cmuxDebugLog("browser.find.state.created panel=\(id.uuidString.prefix(5))")
+                mosaicDebugLog("browser.find.state.created panel=\(id.uuidString.prefix(5))")
 #endif
                 searchNeedleCancellable = searchState.$needle
                     .removeDuplicates()
@@ -2992,7 +2992,7 @@ final class BrowserPanel: Panel, ObservableObject {
                     .sink { [weak self] needle in
                         guard let self else { return }
 #if DEBUG
-                        cmuxDebugLog("browser.find.needle.updated panel=\(self.id.uuidString.prefix(5)) bytes=\(needle.lengthOfBytes(using: .utf8))")
+                        mosaicDebugLog("browser.find.needle.updated panel=\(self.id.uuidString.prefix(5)) bytes=\(needle.lengthOfBytes(using: .utf8))")
 #endif
                         self.executeFindSearch(needle)
                     }
@@ -3002,7 +3002,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 if preferredFocusIntent == .findField { preferredFocusIntent = .webView }
                 invalidateSearchFocusRequests(reason: "searchStateCleared")
 #if DEBUG
-                cmuxDebugLog("browser.find.state.cleared panel=\(id.uuidString.prefix(5))")
+                mosaicDebugLog("browser.find.state.cleared panel=\(id.uuidString.prefix(5))")
 #endif
                 executeFindClear()
             }
@@ -3073,7 +3073,7 @@ final class BrowserPanel: Panel, ObservableObject {
     /// `<audio>` element, in the main frame or any iframe, reported by the
     /// injected media-playback hook. Keeps an actively-playing pane alive in the
     /// background instead of being discarded after the hidden delay
-    /// (https://github.com/emergent-inc/cmux/issues/5409).
+    /// (https://github.com/emergent-inc/mosaic/issues/5409).
     private(set) var isPlayingMedia: Bool = false {
         didSet {
             guard oldValue != isPlayingMedia else { return }
@@ -3125,7 +3125,7 @@ final class BrowserPanel: Panel, ObservableObject {
     private func refreshAudioMediaActivity(reason: String) { setMediaActivity(isPlayingAudio: !audibleMediaFrameIDs.isEmpty && !isMuted, reason: reason) }
     var pendingReactGrabReturnTargetPanelId: UUID?
     var pendingReactGrabRoundTripToken: String?
-    let reactGrabBridgeSessionUpdaterName = "__cmuxReactGrabBridgeSync_\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
+    let reactGrabBridgeSessionUpdaterName = "__mosaicReactGrabBridgeSync_\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
     private var preferredDeveloperToolsPresentation: DeveloperToolsPresentation = .unknown
     private var forceDeveloperToolsRefreshOnNextAttach: Bool = false
     private var developerToolsRestoreRetryWorkItem: DispatchWorkItem?
@@ -3142,7 +3142,7 @@ final class BrowserPanel: Panel, ObservableObject {
     }
     private var pendingRemoteNavigation: PendingRemoteNavigation?
     private let bypassesRemoteWorkspaceProxy: Bool
-    /// Marks this surface as transparent internal cmux UI (e.g. the diff viewer
+    /// Marks this surface as transparent internal mosaic UI (e.g. the diff viewer
     /// or other custom UI) rather than a normal web page. When set, the webview
     /// is made fully clear over a transparent Ghostty theme so the page's own
     /// CSS owns the background. See `applyWebViewBackground(color:)`.
@@ -3192,10 +3192,10 @@ final class BrowserPanel: Panel, ObservableObject {
     @discardableResult
     private func applyMuteState(_ muted: Bool? = nil, to webView: WKWebView, reason: String) -> Bool {
         let targetMuted = muted ?? isMuted
-        let applied = webView.cmuxSetPageAudioMuted(targetMuted)
+        let applied = webView.mosaicSetPageAudioMuted(targetMuted)
 #if DEBUG
         if !applied {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.audioMute.applyUnavailable panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason) muted=\(targetMuted ? 1 : 0)"
             )
@@ -3371,7 +3371,7 @@ final class BrowserPanel: Panel, ObservableObject {
         isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
-        if let oldCmuxWebView = oldWebView as? CmuxWebView { oldCmuxWebView.clearBrowserDownloadCallbacks() }
+        if let oldMosaicWebView = oldWebView as? MosaicWebView { oldMosaicWebView.clearBrowserDownloadCallbacks() }
 
         let replacement = Self.makeWebView(
             profileID: profileID,
@@ -3468,7 +3468,7 @@ final class BrowserPanel: Panel, ObservableObject {
             lockedPortalHost = nil
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.host.rearm panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) pane=\(paneId.id.uuidString.prefix(5))"
         )
@@ -3486,7 +3486,7 @@ final class BrowserPanel: Panel, ObservableObject {
             activePortalHostLease = nil
             lockedPortalHost = nil
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.host.skip panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason).localInlineDevTools host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
                 "inWin=\(inWindow ? 1 : 0) size=\(String(format: "%.1fx%.1f", bounds.width, bounds.height))"
@@ -3522,7 +3522,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 inWindow
             if shouldForceDistinctReplacement {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.portal.host.claim panel=\(id.uuidString.prefix(5)) " +
                     "reason=\(reason) host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
                     "inWin=\(inWindow ? 1 : 0) size=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) " +
@@ -3557,7 +3557,7 @@ final class BrowserPanel: Panel, ObservableObject {
                     lockedPortalHost = nil
                 }
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.portal.host.claim panel=\(id.uuidString.prefix(5)) " +
                     "reason=\(reason) host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
                     "inWin=\(inWindow ? 1 : 0) size=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) " +
@@ -3570,7 +3570,7 @@ final class BrowserPanel: Panel, ObservableObject {
             }
 
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.host.skip panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason) host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
                 "inWin=\(inWindow ? 1 : 0) size=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) " +
@@ -3584,7 +3584,7 @@ final class BrowserPanel: Panel, ObservableObject {
 
         activePortalHostLease = next
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.host.claim panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) host=\(hostId) pane=\(paneId.id.uuidString.prefix(5)) " +
             "inWin=\(inWindow ? 1 : 0) size=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) " +
@@ -3602,7 +3602,7 @@ final class BrowserPanel: Panel, ObservableObject {
             lockedPortalHost = nil
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.host.release panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) host=\(hostId) pane=\(current.paneId.uuidString.prefix(5)) " +
             "inWin=\(current.inWindow ? 1 : 0) area=\(String(format: "%.1f", current.area))"
@@ -3622,14 +3622,14 @@ final class BrowserPanel: Panel, ObservableObject {
     private static func makeWebView(
         profileID: UUID,
         websiteDataStore: WKWebsiteDataStore? = nil
-    ) -> CmuxWebView {
+    ) -> MosaicWebView {
         let config = WKWebViewConfiguration()
         configureWebViewConfiguration(
             config,
             websiteDataStore: websiteDataStore ?? BrowserProfileStore.shared.websiteDataStore(for: profileID)
         )
 
-        let webView = CmuxWebView(frame: .zero, configuration: config)
+        let webView = MosaicWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = true
         if #available(macOS 13.3, *) {
             webView.isInspectable = true
@@ -3651,10 +3651,10 @@ final class BrowserPanel: Panel, ObservableObject {
         // Ensure browser cookies/storage persist across navigations and launches.
         // This reduces repeated consent/bot-challenge flows on sites like Google.
         configuration.websiteDataStore = websiteDataStore
-        if configuration.urlSchemeHandler(forURLScheme: CmuxDiffViewerURLSchemeHandler.scheme) == nil {
+        if configuration.urlSchemeHandler(forURLScheme: MosaicDiffViewerURLSchemeHandler.scheme) == nil {
             configuration.setURLSchemeHandler(
-                CmuxDiffViewerURLSchemeHandler.shared,
-                forURLScheme: CmuxDiffViewerURLSchemeHandler.scheme
+                MosaicDiffViewerURLSchemeHandler.shared,
+                forURLScheme: MosaicDiffViewerURLSchemeHandler.scheme
             )
         }
         // Review-comment persistence + TextBox attach for diff viewer pages.
@@ -3678,7 +3678,7 @@ final class BrowserPanel: Panel, ObservableObject {
         // Keep browser console/error/dialog telemetry active from document start on every navigation.
         // Main frame only — injecting into cross-origin iframes causes CAPTCHA providers
         // (reCAPTCHA, hCaptcha, Cloudflare Turnstile) to detect the overridden console.*
-        // methods and __cmux* globals as environment tampering, failing the challenge.
+        // methods and __mosaic* globals as environment tampering, failing the challenge.
         configuration.userContentController.addUserScript(
             WKUserScript(
                 source: Self.telemetryHookBootstrapScriptSource,
@@ -3715,14 +3715,14 @@ final class BrowserPanel: Panel, ObservableObject {
         // plain-text paste so Cmd+Shift+V is only consumed when the browser can use it.
         configuration.userContentController.addUserScript(
             WKUserScript(
-                source: CmuxWebView.pasteAsPlainTextFocusTrackingBootstrapScriptSource,
+                source: MosaicWebView.pasteAsPlainTextFocusTrackingBootstrapScriptSource,
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: true
             )
         )
         // Report <video>/<audio> playback so a hidden pane with actively-playing
         // media is exempted from memory discard
-        // (https://github.com/emergent-inc/cmux/issues/5409). Injected into every
+        // (https://github.com/emergent-inc/mosaic/issues/5409). Injected into every
         // frame so embedded players in cross-origin iframes keep the pane alive
         // too. Runs in an isolated content world (shared DOM, separate JS scope)
         // so the handler is hidden from page JavaScript that could otherwise post
@@ -3738,7 +3738,7 @@ final class BrowserPanel: Panel, ObservableObject {
         )
     }
 
-    private func bindWebView(_ webView: CmuxWebView) {
+    private func bindWebView(_ webView: MosaicWebView) {
         DiffCommentsBridge.associate(panelId: id, workspaceId: workspaceId, with: webView)
         webView.onMouseBackButton = { [weak self] in
             self?.goBack()
@@ -3775,7 +3775,7 @@ final class BrowserPanel: Panel, ObservableObject {
             self?.openLinkInNewTab(url: url)
         }
         configureMoveTabToNewWorkspaceContextMenu(for: webView); configureNavigationDelegateCallbacks()
-        webView.cmuxDownloadDelegate = downloadDelegate
+        webView.mosaicDownloadDelegate = downloadDelegate
         webView.navigationDelegate = navigationDelegate
         webView.uiDelegate = uiDelegate
         setupObservers(for: webView)
@@ -3806,7 +3806,7 @@ final class BrowserPanel: Panel, ObservableObject {
         guard let navigationDelegate else { return }
         let boundWebViewInstanceID = webViewInstanceID
         let boundHistoryStore = historyStore
-        (webView as? CmuxWebView)?.onSubframeDownloadIntent = { [weak navigationDelegate] in
+        (webView as? MosaicWebView)?.onSubframeDownloadIntent = { [weak navigationDelegate] in
             navigationDelegate?.recordSubframeDownloadIntent($0)
         }
         navigationDelegate.didRenderPDFDocument = { [weak self] url, isMainFrame in
@@ -4171,7 +4171,7 @@ final class BrowserPanel: Panel, ObservableObject {
         browserUIDelegate.closeRequested = { [weak self] closedWebView in
             guard let self, self.isCurrentWebView(closedWebView) else { return }
 #if DEBUG
-            cmuxDebugLog("browser.webViewDidClose panel=\(self.id.uuidString.prefix(5))")
+            mosaicDebugLog("browser.webViewDidClose panel=\(self.id.uuidString.prefix(5))")
 #endif
             self.webViewDidRequestClose?()
         }
@@ -4242,7 +4242,7 @@ final class BrowserPanel: Panel, ObservableObject {
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.browserBackgroundPreload")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.browserBackgroundPreload")
         window.hasShadow = false
         window.alphaValue = 0
         window.ignoresMouseEvents = true
@@ -4258,7 +4258,7 @@ final class BrowserPanel: Panel, ObservableObject {
         window.orderFrontRegardless()
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.backgroundPreload.host.create panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason)"
         )
@@ -4304,7 +4304,7 @@ final class BrowserPanel: Panel, ObservableObject {
         )
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.prompt.queue panel=\(id.uuidString.prefix(5)) " +
             "pending=\(pendingInteractiveBrowserPrompts.count)"
         )
@@ -4320,7 +4320,7 @@ final class BrowserPanel: Panel, ObservableObject {
         isPresentingPendingInteractiveBrowserPrompt = true
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.prompt.drain panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) remaining=\(pendingInteractiveBrowserPrompts.count)"
         )
@@ -4341,7 +4341,7 @@ final class BrowserPanel: Panel, ObservableObject {
         isPresentingPendingInteractiveBrowserPrompt = false
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.prompt.cancel panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) count=\(prompts.count)"
         )
@@ -4364,7 +4364,7 @@ final class BrowserPanel: Panel, ObservableObject {
         preloadWindow.contentView = nil
         preloadWindow.close()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.backgroundPreload.host.close panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason)"
         )
@@ -4527,7 +4527,7 @@ final class BrowserPanel: Panel, ObservableObject {
         guard isMainFrame else { return }
         renderedPDFDocumentURL = url
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.pdf.rendered panel=\(id.uuidString.prefix(5)) " +
             "mainFrame=\(isMainFrame ? 1 : 0) url=\(browserNavigationDebugURL(url))"
         )
@@ -4609,7 +4609,7 @@ final class BrowserPanel: Panel, ObservableObject {
         isMainFrameProvisionalNavigationActive = false
         previousWebView.navigationDelegate = nil
         previousWebView.uiDelegate = nil
-        if let previousCmuxWebView = previousWebView as? CmuxWebView { previousCmuxWebView.clearBrowserDownloadCallbacks() }
+        if let previousMosaicWebView = previousWebView as? MosaicWebView { previousMosaicWebView.clearBrowserDownloadCallbacks() }
 
         profileID = resolvedProfileID
         historyStore = BrowserProfileStore.shared.historyStore(for: resolvedProfileID)
@@ -4704,7 +4704,7 @@ final class BrowserPanel: Panel, ObservableObject {
             refreshNavigationAvailability()
         case .clearedForward(let liveCurrentString):
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.history.restore.forward.clear panel=\(id.uuidString.prefix(5)) " +
                 "current=\(liveCurrentString)"
             )
@@ -4733,8 +4733,8 @@ final class BrowserPanel: Panel, ObservableObject {
         // though the local HTTP server that originally served them is gone.
         if let token = snapshot.diffViewerToken,
            let requestPath = snapshot.diffViewerRequestPath,
-           CmuxDiffViewerURLSchemeHandler.shared.registerFromManifest(token: token),
-           let diffURL = CmuxDiffViewerURLSchemeHandler.diffViewerURL(token: token, requestPath: requestPath) {
+           MosaicDiffViewerURLSchemeHandler.shared.registerFromManifest(token: token),
+           let diffURL = MosaicDiffViewerURLSchemeHandler.diffViewerURL(token: token, requestPath: requestPath) {
             hiddenWebViewDiscardManager.updateRestoredSessionRenderIntent(snapshot.shouldRenderWebView)
             setMuted(snapshot.isMuted)
             setOmnibarVisible(snapshot.omnibarVisible ?? false)
@@ -4796,7 +4796,7 @@ final class BrowserPanel: Panel, ObservableObject {
         // local-only, non-pending manifest); otherwise persisting would leave a
         // blank panel on restart with no URL to fall back to.
         if let components = diffViewerSessionComponents() {
-            return CmuxDiffViewerURLSchemeHandler.shared.diffViewerRestorable(
+            return MosaicDiffViewerURLSchemeHandler.shared.diffViewerRestorable(
                 token: components.token,
                 requestPath: components.requestPath
             )
@@ -4809,7 +4809,7 @@ final class BrowserPanel: Panel, ObservableObject {
         return true
     }
 
-    /// Whether this surface is transparent internal cmux UI, for the session
+    /// Whether this surface is transparent internal mosaic UI, for the session
     /// snapshot (so it restores transparent rather than opaque).
     var sessionSnapshotTransparentBackground: Bool {
         usesTransparentBackground
@@ -4818,8 +4818,8 @@ final class BrowserPanel: Panel, ObservableObject {
     /// The diff viewer `(token, requestPath)` for the live URL, if this surface
     /// is currently showing a diff viewer; used to persist + restore it.
     func diffViewerSessionComponents() -> (token: String, requestPath: String)? {
-        CmuxDiffViewerURLSchemeHandler.diffViewerComponents(from: webView.url)
-            ?? CmuxDiffViewerURLSchemeHandler.diffViewerComponents(from: currentURL)
+        MosaicDiffViewerURLSchemeHandler.diffViewerComponents(from: webView.url)
+            ?? MosaicDiffViewerURLSchemeHandler.diffViewerComponents(from: currentURL)
     }
 
     func preferredURLStringForSessionSnapshot() -> String? {
@@ -4923,7 +4923,7 @@ final class BrowserPanel: Panel, ObservableObject {
         webViewObservers.append(progressObserver)
 
         let fullscreenObserver = webView.observe(\.fullscreenState, options: [.initial, .new]) { [weak self] webView, _ in
-            let isElementFullscreenActive = webView.cmuxIsElementFullscreenActiveOrTransitioning
+            let isElementFullscreenActive = webView.mosaicIsElementFullscreenActiveOrTransitioning
             let fullscreenState = webView.fullscreenState
             Task { @MainActor in
                 guard let self, self.isCurrentWebView(webView, instanceID: observedWebViewInstanceID) else { return }
@@ -4937,7 +4937,7 @@ final class BrowserPanel: Panel, ObservableObject {
                     reason: "fullscreenStateChanged"
                 )
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.fullscreen.state panel=\(self.id.uuidString.prefix(5)) " +
                     "web=\(ObjectIdentifier(webView)) state=\(String(describing: fullscreenState)) " +
                     "active=\(isElementFullscreenActive ? 1 : 0)"
@@ -5173,7 +5173,7 @@ final class BrowserPanel: Panel, ObservableObject {
         }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.webview.replace.begin panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) " +
             "renderable=\(wasRenderable ? 1 : 0) restoreURL=\(restoreURLString ?? "nil") " +
@@ -5199,7 +5199,7 @@ final class BrowserPanel: Panel, ObservableObject {
         isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
-        if let oldCmuxWebView = oldWebView as? CmuxWebView { oldCmuxWebView.clearBrowserDownloadCallbacks() }
+        if let oldMosaicWebView = oldWebView as? MosaicWebView { oldMosaicWebView.clearBrowserDownloadCallbacks() }
 
         let replacement = Self.makeWebView(
             profileID: profileID,
@@ -5245,7 +5245,7 @@ final class BrowserPanel: Panel, ObservableObject {
         }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.webview.replace.end panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) " +
             "instance=\(webViewInstanceID.uuidString.prefix(6)) " +
@@ -5263,7 +5263,7 @@ final class BrowserPanel: Panel, ObservableObject {
         let recoveryURL = pendingWebContentRecoveryURL
         clearWebContentTerminationRecovery()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.webcontent.recover panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) url=\(recoveryURL?.absoluteString ?? "nil")"
         )
@@ -5429,7 +5429,7 @@ final class BrowserPanel: Panel, ObservableObject {
             guard self.isCurrentWebView(webView, instanceID: refreshWebViewInstanceID) else { return }
             guard self.isCurrentFaviconRefresh(generation: refreshGeneration) else { return }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.favicon.begin " +
                 "panel=\(id.uuidString.prefix(5)) " +
                 "page=\(pageURL.absoluteString)"
@@ -5500,7 +5500,7 @@ final class BrowserPanel: Panel, ObservableObject {
             let iconURL = discoveredURL ?? fallbackURL
             guard let iconURL else { return }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.favicon.iconURL " +
                 "panel=\(id.uuidString.prefix(5)) " +
                 "discovered=\(discoveredURL?.absoluteString ?? "<nil>") " +
@@ -5513,7 +5513,7 @@ final class BrowserPanel: Panel, ObservableObject {
             let iconURLString = iconURL.absoluteString
             if iconURLString == lastFaviconURLString, faviconPNGData != nil {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.favicon.skipCached " +
                     "panel=\(id.uuidString.prefix(5)) " +
                     "icon=\(iconURLString)"
@@ -5536,7 +5536,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 defer { remoteSession?.finishTasksAndInvalidate() }
                 if let remoteSession {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "browser.favicon.fetch " +
                         "panel=\(id.uuidString.prefix(5)) " +
                         "via=proxy " +
@@ -5546,7 +5546,7 @@ final class BrowserPanel: Panel, ObservableObject {
                     (data, response) = try await remoteSession.data(for: effectiveRequest)
                 } else {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "browser.favicon.fetch " +
                         "panel=\(id.uuidString.prefix(5)) " +
                         "via=direct " +
@@ -5557,7 +5557,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 }
             } catch {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.favicon.fetchError " +
                     "panel=\(id.uuidString.prefix(5)) " +
                     "error=\(String(describing: error))"
@@ -5572,7 +5572,7 @@ final class BrowserPanel: Panel, ObservableObject {
                   (200..<300).contains(http.statusCode) else {
 #if DEBUG
                 let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.favicon.badResponse " +
                     "panel=\(id.uuidString.prefix(5)) " +
                     "status=\(status)"
@@ -5581,7 +5581,7 @@ final class BrowserPanel: Panel, ObservableObject {
                 return
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.favicon.response " +
                 "panel=\(id.uuidString.prefix(5)) " +
                 "status=\(http.statusCode) " +
@@ -5592,7 +5592,7 @@ final class BrowserPanel: Panel, ObservableObject {
             // Use >= 2x the rendered point size so we don't upscale (blurry) on Retina.
             guard let png = Self.makeFaviconPNGData(from: data, targetPx: 32) else {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.favicon.decodeFailed " +
                     "panel=\(id.uuidString.prefix(5)) " +
                     "bytes=\(data.count)"
@@ -5603,7 +5603,7 @@ final class BrowserPanel: Panel, ObservableObject {
             // Only update if we got a real icon; keep the old one otherwise to avoid flashes.
             faviconPNGData = png
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.favicon.ready " +
                 "panel=\(id.uuidString.prefix(5)) " +
                 "pngBytes=\(png.count)"
@@ -5860,7 +5860,7 @@ final class BrowserPanel: Panel, ObservableObject {
         var rewrittenRequest = request
         rewrittenRequest.url = rewrittenURL
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.remoteProxy.\(logScope) " +
             "panel=\(id.uuidString.prefix(5)) " +
             "from=\(url.absoluteString) " +
@@ -5960,7 +5960,7 @@ final class BrowserPanel: Panel, ObservableObject {
         alert.messageText = String(localized: "browser.error.insecure.title", defaultValue: "Connection isn\u{2019}t secure")
         alert.informativeText = String(localized: "browser.error.insecure.message", defaultValue: "\(host) uses plain HTTP, so traffic can be read or modified on the network.\n\nOpen this URL in your default browser, or proceed in mosaic.")
         alert.addButton(withTitle: String(localized: "browser.openInDefaultBrowser", defaultValue: "Open in Default Browser"))
-        alert.addButton(withTitle: String(localized: "browser.proceedInCmux", defaultValue: "Proceed in mosaic"))
+        alert.addButton(withTitle: String(localized: "browser.proceedInMosaic", defaultValue: "Proceed in mosaic"))
         alert.addButton(withTitle: String(localized: "common.cancel", defaultValue: "Cancel"))
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = String(localized: "browser.alwaysAllowHost", defaultValue: "Always allow this host in mosaic")
@@ -6118,7 +6118,7 @@ extension BrowserPanel {
         guard needsWorkspaceContextReset else {
             resetWebViewLifecycleMetadata()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.contextReset.skip panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason) render=\(shouldRenderWebView ? 1 : 0)"
             )
@@ -6127,7 +6127,7 @@ extension BrowserPanel {
         }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.contextReset.begin panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) render=\(shouldRenderWebView ? 1 : 0) " +
             "url=\(preferredURLStringForOmnibar() ?? "nil")"
@@ -6191,7 +6191,7 @@ extension BrowserPanel {
         isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
-        if let oldCmuxWebView = oldWebView as? CmuxWebView { oldCmuxWebView.clearBrowserDownloadCallbacks() }
+        if let oldMosaicWebView = oldWebView as? MosaicWebView { oldMosaicWebView.clearBrowserDownloadCallbacks() }
 
         let replacement = Self.makeWebView(
             profileID: profileID,
@@ -6206,7 +6206,7 @@ extension BrowserPanel {
         refreshNavigationAvailability()
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.contextReset.end panel=\(id.uuidString.prefix(5)) " +
             "reason=\(reason) instance=\(webViewInstanceID.uuidString.prefix(6))"
         )
@@ -6378,7 +6378,7 @@ extension BrowserPanel {
             return
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.newTab.open.begin panel=\(id.uuidString.prefix(5)) " +
             "workspace=\(workspaceId.uuidString.prefix(5)) url=\(browserNavigationDebugURL(seed.url)) bypass=\(seed.bypassInsecureHTTPHostOnce ?? "nil")"
         )
@@ -6386,14 +6386,14 @@ extension BrowserPanel {
         guard BrowserAvailabilitySettings.isEnabled() else {
             _ = NSWorkspace.shared.open(seed.url)
 #if DEBUG
-            cmuxDebugLog("browser.newTab.open.external panel=\(id.uuidString.prefix(5)) reason=browser_disabled")
+            mosaicDebugLog("browser.newTab.open.external panel=\(id.uuidString.prefix(5)) reason=browser_disabled")
 #endif
             return
         }
         if Workspace.openDockBrowserLinkInNewTabIfNeeded(panel: self, seed: seed) { return }
         guard let app = AppDelegate.shared else {
 #if DEBUG
-            cmuxDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=missingAppDelegate")
+            mosaicDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=missingAppDelegate")
 #endif
             return
         }
@@ -6402,13 +6402,13 @@ extension BrowserPanel {
             preferredWorkspaceId: workspaceId
         )?.workspace else {
 #if DEBUG
-            cmuxDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=workspaceMissing")
+            mosaicDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=workspaceMissing")
 #endif
             return
         }
         guard let paneId = workspace.paneId(forPanelId: id) else {
 #if DEBUG
-            cmuxDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=paneMissing")
+            mosaicDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=paneMissing")
 #endif
             return
         }
@@ -6421,12 +6421,12 @@ extension BrowserPanel {
             bypassInsecureHTTPHostOnce: seed.bypassInsecureHTTPHostOnce
         ) else {
 #if DEBUG
-            cmuxDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=newPanelFailed")
+            mosaicDebugLog("browser.newTab.open.abort panel=\(id.uuidString.prefix(5)) reason=newPanelFailed")
 #endif
             return
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.newTab.open.done panel=\(id.uuidString.prefix(5)) " +
             "workspace=\(workspace.id.uuidString.prefix(5)) pane=\(paneId.id.uuidString.prefix(5))"
         )
@@ -6492,7 +6492,7 @@ extension BrowserPanel {
     }
 
     private static func windowContainsInspectorViews(_ root: NSView) -> Bool {
-        if cmuxIsWebInspectorObject(root) {
+        if mosaicIsWebInspectorObject(root) {
             return true
         }
         for subview in root.subviews where windowContainsInspectorViews(subview) {
@@ -6584,7 +6584,7 @@ extension BrowserPanel {
         // closing _inspector here tears down the frontend while attach continues.
         scheduleDetachedDeveloperToolsWindowCloseResolution(source: "willClose")
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools detachedClose.defer panel=\(id.uuidString.prefix(5)) " +
             "window=\(window.windowNumber) \(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
@@ -6608,7 +6608,7 @@ extension BrowserPanel {
         guard detachedDeveloperToolsWindowBelongsToPanel(window) else { return false }
         let closed = closeDeveloperToolsForTeardown()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools detachedClose.\(source) panel=\(id.uuidString.prefix(5)) " +
             "closed=\(closed ? 1 : 0) \(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
@@ -6660,7 +6660,7 @@ extension BrowserPanel {
             developerToolsLastKnownVisibleAt = Date()
             cancelDeveloperToolsRestoreRetry()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.devtools detachedClose.redock panel=\(id.uuidString.prefix(5)) " +
                 "source=\(source) \(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
             )
@@ -6669,7 +6669,7 @@ extension BrowserPanel {
         }
 
         let elapsed = Date().timeIntervalSince(startedAt)
-        // WebKit's attach path is not reflected in cmux's transition flag, so a
+        // WebKit's attach path is not reflected in mosaic's transition flag, so a
         // no-window/no-layout state remains ambiguous until the bounded deadline.
         if preferredDeveloperToolsVisible,
            elapsed < developerToolsDetachedWindowCloseResolutionMaxDuration {
@@ -6687,7 +6687,7 @@ extension BrowserPanel {
         reevaluateHiddenWebViewDiscardAfterDeveloperToolsHidden()
         cancelDeveloperToolsRestoreRetry()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools detachedClose.manual panel=\(id.uuidString.prefix(5)) " +
             "source=\(source) \(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
@@ -6695,7 +6695,7 @@ extension BrowserPanel {
     }
 
     private func detachedDeveloperToolsWindowBelongsToPanel(_ window: NSWindow) -> Bool {
-        guard let frontendWebView = webView.cmuxInspectorFrontendWebView(),
+        guard let frontendWebView = webView.mosaicInspectorFrontendWebView(),
               let contentView = window.contentView else {
             return false
         }
@@ -6712,7 +6712,7 @@ extension BrowserPanel {
               let mainWindow = webView.window else { return }
         for window in NSApp.windows where window !== mainWindow && Self.isDetachedInspectorWindow(window) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.devtools strayWindow.close panel=\(id.uuidString.prefix(5)) " +
                 "title=\(window.title) frame=\(NSStringFromRect(window.frame))"
             )
@@ -6734,17 +6734,17 @@ extension BrowserPanel {
         if preferredDeveloperToolsPresentation != .unknown {
             guard preferredDeveloperToolsPresentation == .attached else { return }
             guard webView.superview != nil, webView.window != nil else { return }
-            guard inspector.cmuxCallBool(selector: NSSelectorFromString("isAttached")) == false else { return }
+            guard inspector.mosaicCallBool(selector: NSSelectorFromString("isAttached")) == false else { return }
         }
         let attachSelector = NSSelectorFromString("attach")
         guard inspector.responds(to: attachSelector) else { return }
-        inspector.cmuxCallVoid(selector: attachSelector)
+        inspector.mosaicCallVoid(selector: attachSelector)
     }
 
     @discardableResult
     private func revealDeveloperTools(_ inspector: NSObject) -> Bool {
         let isVisibleSelector = NSSelectorFromString("isVisible")
-        if inspector.cmuxCallBool(selector: isVisibleSelector) ?? false {
+        if inspector.mosaicCallBool(selector: isVisibleSelector) ?? false {
             developerToolsDetachedOpenGraceDeadline = nil
             developerToolsLastKnownVisibleAt = Date()
             return true
@@ -6754,8 +6754,8 @@ extension BrowserPanel {
 
         let showSelector = NSSelectorFromString("show")
         guard inspector.responds(to: showSelector) else { return false }
-        inspector.cmuxCallVoid(selector: showSelector)
-        let visibleAfterShow = inspector.cmuxCallBool(selector: isVisibleSelector) ?? false
+        inspector.mosaicCallVoid(selector: showSelector)
+        let visibleAfterShow = inspector.mosaicCallBool(selector: isVisibleSelector) ?? false
         if visibleAfterShow {
             developerToolsLastKnownVisibleAt = Date()
         }
@@ -6772,21 +6772,21 @@ extension BrowserPanel {
     @discardableResult
     private func concealDeveloperTools(_ inspector: NSObject) -> Bool {
         let isVisibleSelector = NSSelectorFromString("isVisible")
-        guard inspector.cmuxCallBool(selector: isVisibleSelector) ?? false else { return true }
+        guard inspector.mosaicCallBool(selector: isVisibleSelector) ?? false else { return true }
 
         var invokedSelector = false
         for rawSelector in ["hide", "close"] {
             let selector = NSSelectorFromString(rawSelector)
             guard inspector.responds(to: selector) else { continue }
             invokedSelector = true
-            inspector.cmuxCallVoid(selector: selector)
-            if !(inspector.cmuxCallBool(selector: isVisibleSelector) ?? false) {
+            inspector.mosaicCallVoid(selector: selector)
+            if !(inspector.mosaicCallBool(selector: isVisibleSelector) ?? false) {
                 return true
             }
         }
 
         guard invokedSelector else { return false }
-        return !(inspector.cmuxCallBool(selector: isVisibleSelector) ?? false)
+        return !(inspector.mosaicCallBool(selector: isVisibleSelector) ?? false)
     }
 
     private var isDeveloperToolsTransitionInFlight: Bool {
@@ -6837,7 +6837,7 @@ extension BrowserPanel {
                 cancelDeveloperToolsRestoreRetry()
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.devtools transition.queue panel=\(id.uuidString.prefix(5)) " +
                 "source=\(source) target=\(targetVisible ? 1 : 0) \(debugDeveloperToolsStateSummary())"
             )
@@ -6853,10 +6853,10 @@ extension BrowserPanel {
         to targetVisible: Bool,
         source: String
     ) -> Bool {
-        guard let inspector = webView.cmuxInspectorObject() else { return false }
+        guard let inspector = webView.mosaicInspectorObject() else { return false }
 
         let isVisibleSelector = NSSelectorFromString("isVisible")
-        let visible = inspector.cmuxCallBool(selector: isVisibleSelector) ?? false
+        let visible = inspector.mosaicCallBool(selector: isVisibleSelector) ?? false
         setPreferredDeveloperToolsVisible(targetVisible)
         developerToolsTransitionTargetVisible = targetVisible
         if targetVisible {
@@ -6881,7 +6881,7 @@ extension BrowserPanel {
         }
 
         if targetVisible {
-            let visibleAfterTransition = inspector.cmuxCallBool(selector: isVisibleSelector) ?? false
+            let visibleAfterTransition = inspector.mosaicCallBool(selector: isVisibleSelector) ?? false
             if visibleAfterTransition {
                 syncDeveloperToolsPresentationPreferenceFromUI()
                 cancelDeveloperToolsRestoreRetry()
@@ -6908,7 +6908,7 @@ extension BrowserPanel {
     @discardableResult
     func toggleDeveloperTools() -> Bool {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools toggle.begin panel=\(id.uuidString.prefix(5)) " +
             "\(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
@@ -6916,13 +6916,13 @@ extension BrowserPanel {
         let targetVisible = !effectiveDeveloperToolsVisibilityIntent()
         let handled = enqueueDeveloperToolsVisibilityTransition(to: targetVisible, source: "toggle")
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools toggle.end panel=\(id.uuidString.prefix(5)) targetVisible=\(targetVisible ? 1 : 0) " +
             "\(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.devtools toggle.tick panel=\(self.id.uuidString.prefix(5)) " +
                 "\(self.debugDeveloperToolsStateSummary()) \(self.debugDeveloperToolsGeometrySummary())"
             )
@@ -6940,7 +6940,7 @@ extension BrowserPanel {
     func showDeveloperToolsConsole() -> Bool {
         guard showDeveloperTools() else { return false }
         guard !isDeveloperToolsTransitionInFlight else { return true }
-        guard let inspector = webView.cmuxInspectorObject() else { return true }
+        guard let inspector = webView.mosaicInspectorObject() else { return true }
         // WebKit private inspector API differs by OS; try known console selectors.
         let consoleSelectors = [
             "showConsole",
@@ -6950,7 +6950,7 @@ extension BrowserPanel {
         for raw in consoleSelectors {
             let selector = NSSelectorFromString(raw)
             if inspector.responds(to: selector) {
-                inspector.cmuxCallVoid(selector: selector)
+                inspector.mosaicCallVoid(selector: selector)
                 break
             }
         }
@@ -6978,8 +6978,8 @@ extension BrowserPanel {
 
     /// Called before WKWebView detaches so manual inspector closes are respected.
     func syncDeveloperToolsPreferenceFromInspector(preserveVisibleIntent: Bool = false) {
-        guard let inspector = webView.cmuxInspectorObject() else { return }
-        guard let visible = inspector.cmuxCallBool(selector: NSSelectorFromString("isVisible")) else { return }
+        guard let inspector = webView.mosaicInspectorObject() else { return }
+        guard let visible = inspector.mosaicCallBool(selector: NSSelectorFromString("isVisible")) else { return }
         if isDeveloperToolsTransitionInFlight {
             let targetVisible = pendingDeveloperToolsTransitionTargetVisible ?? developerToolsTransitionTargetVisible ?? visible
             setPreferredDeveloperToolsVisible(targetVisible)
@@ -7077,8 +7077,8 @@ extension BrowserPanel {
             return false
         }
         guard developerToolsLastKnownVisibleAt != nil else { return false }
-        guard let inspector = inspector ?? webView.cmuxInspectorObject() else { return false }
-        guard let visible = inspector.cmuxCallBool(selector: NSSelectorFromString("isVisible")) else { return false }
+        guard let inspector = inspector ?? webView.mosaicInspectorObject() else { return false }
+        guard let visible = inspector.mosaicCallBool(selector: NSSelectorFromString("isVisible")) else { return false }
         guard !visible else {
             developerToolsLastKnownVisibleAt = Date()
             return false
@@ -7091,7 +7091,7 @@ extension BrowserPanel {
         reevaluateHiddenWebViewDiscardAfterDeveloperToolsHidden()
         cancelDeveloperToolsRestoreRetry()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.devtools attachedClose.consume panel=\(id.uuidString.prefix(5)) " +
             "\(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
         )
@@ -7107,12 +7107,12 @@ extension BrowserPanel {
             return
         }
         guard !isDeveloperToolsTransitionInFlight else { return }
-        guard let inspector = webView.cmuxInspectorObject() else {
+        guard let inspector = webView.mosaicInspectorObject() else {
             scheduleDeveloperToolsRestoreRetry()
             return
         }
 
-        let visible = inspector.cmuxCallBool(selector: NSSelectorFromString("isVisible")) ?? false
+        let visible = inspector.mosaicCallBool(selector: NSSelectorFromString("isVisible")) ?? false
         if visible {
             let shouldForceRefresh = forceDeveloperToolsRefreshOnNextAttach
             forceDeveloperToolsRefreshOnNextAttach = false
@@ -7121,7 +7121,7 @@ extension BrowserPanel {
             developerToolsLastKnownVisibleAt = Date()
             #if DEBUG
             if shouldForceRefresh {
-                cmuxDebugLog("browser.devtools refresh.consumeVisible panel=\(id.uuidString.prefix(5)) \(debugDeveloperToolsStateSummary())")
+                mosaicDebugLog("browser.devtools refresh.consumeVisible panel=\(id.uuidString.prefix(5)) \(debugDeveloperToolsStateSummary())")
             }
             #endif
             cancelDeveloperToolsRestoreRetry()
@@ -7139,7 +7139,7 @@ extension BrowserPanel {
             developerToolsDetachedOpenGraceDeadline = nil
             cancelDeveloperToolsRestoreRetry()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.devtools detachedClose.consume panel=\(id.uuidString.prefix(5)) " +
                 "\(debugDeveloperToolsStateSummary()) \(debugDeveloperToolsGeometrySummary())"
             )
@@ -7153,7 +7153,7 @@ extension BrowserPanel {
 
         #if DEBUG
         if shouldForceRefresh {
-            cmuxDebugLog("browser.devtools refresh.forceShowWhenHidden panel=\(id.uuidString.prefix(5)) \(debugDeveloperToolsStateSummary())")
+            mosaicDebugLog("browser.devtools refresh.forceShowWhenHidden panel=\(id.uuidString.prefix(5)) \(debugDeveloperToolsStateSummary())")
         }
         #endif
         // WebKit inspector show can trigger transient first-responder churn while
@@ -7163,7 +7163,7 @@ extension BrowserPanel {
             _ = revealDeveloperTools(inspector)
         }
         setPreferredDeveloperToolsVisible(true)
-        let visibleAfterShow = inspector.cmuxCallBool(selector: NSSelectorFromString("isVisible")) ?? false
+        let visibleAfterShow = inspector.mosaicCallBool(selector: NSSelectorFromString("isVisible")) ?? false
         if visibleAfterShow {
             syncDeveloperToolsPresentationPreferenceFromUI()
             developerToolsLastKnownVisibleAt = Date()
@@ -7176,8 +7176,8 @@ extension BrowserPanel {
 
     @discardableResult
     func isDeveloperToolsVisible() -> Bool {
-        guard let inspector = webView.cmuxInspectorObject() else { return false }
-        return inspector.cmuxCallBool(selector: NSSelectorFromString("isVisible")) ?? false
+        guard let inspector = webView.mosaicInspectorObject() else { return false }
+        return inspector.mosaicCallBool(selector: NSSelectorFromString("isVisible")) ?? false
     }
 
     @discardableResult
@@ -7196,7 +7196,7 @@ extension BrowserPanel {
         guard preferredDeveloperToolsVisible else { return }
         forceDeveloperToolsRefreshOnNextAttach = true
         #if DEBUG
-        cmuxDebugLog("browser.devtools refresh.request panel=\(id.uuidString.prefix(5)) reason=\(reason) \(debugDeveloperToolsStateSummary())")
+        mosaicDebugLog("browser.devtools refresh.request panel=\(id.uuidString.prefix(5)) reason=\(reason) \(debugDeveloperToolsStateSummary())")
         #endif
     }
 
@@ -7437,7 +7437,7 @@ extension BrowserPanel {
     private func postBrowserSearchFocusNotification(reason: String, generation: UInt64, selectAll: Bool) {
         guard canApplySearchFocusRequest(generation) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.find.focusNotification.skip panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason) generation=\(generation)"
             )
@@ -7446,7 +7446,7 @@ extension BrowserPanel {
         }
 #if DEBUG
         let window = webView.window
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.find.focusNotification panel=\(id.uuidString.prefix(5)) " +
             "generation=\(generation) " +
             "reason=\(reason) selectAll=\(selectAll ? 1 : 0) window=\(window?.windowNumber ?? -1) " +
@@ -7510,7 +7510,7 @@ extension BrowserPanel {
 
         guard canEnterBrowserFocusMode else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.focusMode.activate.reject panel=\(id.uuidString.prefix(5)) " +
                 "reason=\(reason) render=\(shouldRenderWebView ? 1 : 0) " +
                 "window=\(webView.window == nil ? 0 : 1) hidden=\(webView.isHiddenOrHasHiddenAncestor ? 1 : 0) " +
@@ -7534,7 +7534,7 @@ extension BrowserPanel {
         }
 
 #if DEBUG
-        cmuxDebugLog("browser.focusMode.activate panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("browser.focusMode.activate panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
         NotificationCenter.default.post(name: .browserFocusModeStateDidChange, object: id)
         return true
@@ -7552,7 +7552,7 @@ extension BrowserPanel {
         isBrowserFocusModeExitArmed = false
         isBrowserFocusModeActive = false
 #if DEBUG
-        cmuxDebugLog("browser.focusMode.clear panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("browser.focusMode.clear panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
         if shouldNotify {
             NotificationCenter.default.post(name: .browserFocusModeStateDidChange, object: id)
@@ -7569,7 +7569,7 @@ extension BrowserPanel {
         browserFocusModeExitArmedAt = nil
         isBrowserFocusModeExitArmed = false
 #if DEBUG
-        cmuxDebugLog("browser.focusMode.escape.disarm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("browser.focusMode.escape.disarm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
     }
 
@@ -7603,7 +7603,7 @@ extension BrowserPanel {
 
         guard !event.isARepeat else {
 #if DEBUG
-            cmuxDebugLog("browser.focusMode.escape.repeat panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+            mosaicDebugLog("browser.focusMode.escape.repeat panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
             return .consume
         }
@@ -7611,7 +7611,7 @@ extension BrowserPanel {
         let eventFingerprint = BrowserFocusModePlainEscapeEventFingerprint(event)
         if lastBrowserFocusModePlainEscapeEventFingerprint == eventFingerprint {
 #if DEBUG
-            cmuxDebugLog("browser.focusMode.escape.duplicate panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+            mosaicDebugLog("browser.focusMode.escape.duplicate panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
             return .consume
         }
@@ -7625,7 +7625,7 @@ extension BrowserPanel {
 
             browserFocusModeExitArmedAt = event.timestamp
 #if DEBUG
-            cmuxDebugLog("browser.focusMode.escape.rearm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+            mosaicDebugLog("browser.focusMode.escape.rearm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
             return .forwardToWebView
         }
@@ -7633,7 +7633,7 @@ extension BrowserPanel {
         isBrowserFocusModeExitArmed = true
         browserFocusModeExitArmedAt = event.timestamp
 #if DEBUG
-        cmuxDebugLog("browser.focusMode.escape.arm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("browser.focusMode.escape.arm panel=\(id.uuidString.prefix(5)) reason=\(reason)")
 #endif
         return .forwardToWebView
     }
@@ -7689,7 +7689,7 @@ extension BrowserPanel {
     func suppressOmnibarAutofocus(for seconds: TimeInterval) {
         suppressOmnibarAutofocusUntil = Date().addingTimeInterval(seconds)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.focus.omnibarAutofocus.suppress panel=\(id.uuidString.prefix(5)) " +
             "seconds=\(String(format: "%.2f", seconds))"
         )
@@ -7699,7 +7699,7 @@ extension BrowserPanel {
     func suppressWebViewFocus(for seconds: TimeInterval) {
         suppressWebViewFocusUntil = Date().addingTimeInterval(seconds)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.focus.webView.suppress panel=\(id.uuidString.prefix(5)) " +
             "seconds=\(String(format: "%.2f", seconds))"
         )
@@ -7709,7 +7709,7 @@ extension BrowserPanel {
     func clearWebViewFocusSuppression() {
         suppressWebViewFocusUntil = nil
 #if DEBUG
-        cmuxDebugLog("browser.focus.webView.suppress.clear panel=\(id.uuidString.prefix(5))")
+        mosaicDebugLog("browser.focus.webView.suppress.clear panel=\(id.uuidString.prefix(5))")
 #endif
     }
 
@@ -7737,7 +7737,7 @@ extension BrowserPanel {
         let enteringAddressBar = !suppressWebViewFocusForAddressBar
         if enteringAddressBar {
 #if DEBUG
-            cmuxDebugLog("browser.focus.addressBarSuppress.begin panel=\(id.uuidString.prefix(5))")
+            mosaicDebugLog("browser.focus.addressBarSuppress.begin panel=\(id.uuidString.prefix(5))")
 #endif
             invalidateAddressBarPageFocusRestoreAttempts()
         }
@@ -7750,7 +7750,7 @@ extension BrowserPanel {
     func endSuppressWebViewFocusForAddressBar() {
         if suppressWebViewFocusForAddressBar {
 #if DEBUG
-            cmuxDebugLog("browser.focus.addressBarSuppress.end panel=\(id.uuidString.prefix(5))")
+            mosaicDebugLog("browser.focus.addressBarSuppress.end panel=\(id.uuidString.prefix(5))")
 #endif
         }
         suppressWebViewFocusForAddressBar = false
@@ -7772,7 +7772,7 @@ extension BrowserPanel {
                 pendingAddressBarFocusSelectionIntent = .selectAll
                 self.pendingAddressBarFocusRequestId = requestId
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.focus.addressBar.request panel=\(id.uuidString.prefix(5)) " +
                     "request=\(requestId.uuidString.prefix(8)) result=upgrade_to_select_all"
                 )
@@ -7780,7 +7780,7 @@ extension BrowserPanel {
                 return requestId
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.focus.addressBar.request panel=\(id.uuidString.prefix(5)) " +
                 "request=\(pendingAddressBarFocusRequestId.uuidString.prefix(8)) result=reuse_pending " +
                 "selection=\(String(describing: pendingAddressBarFocusSelectionIntent))"
@@ -7792,7 +7792,7 @@ extension BrowserPanel {
         pendingAddressBarFocusSelectionIntent = selectionIntent
         pendingAddressBarFocusRequestId = requestId
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.focus.addressBar.request panel=\(id.uuidString.prefix(5)) " +
             "request=\(requestId.uuidString.prefix(8)) result=new " +
             "selection=\(String(describing: selectionIntent))"
@@ -7896,7 +7896,7 @@ extension BrowserPanel {
             preferredFocusIntent = .findField
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.focus.prepare panel=\(id.uuidString.prefix(5)) " +
             "target=\(String(describing: target)) suppressWeb=\(shouldSuppressWebViewFocus() ? 1 : 0)"
         )
@@ -7916,7 +7916,7 @@ extension BrowserPanel {
             let requestId = requestAddressBarFocus(selectionIntent: .preserveFieldEditorSelection)
             NotificationCenter.default.post(name: .browserFocusAddressBar, object: id)
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.focus.restore panel=\(id.uuidString.prefix(5)) " +
                 "target=addressBar request=\(requestId.uuidString.prefix(8))"
             )
@@ -7955,7 +7955,7 @@ extension BrowserPanel {
             let yielded = BrowserWindowPortalRegistry.yieldSearchOverlayFocusIfOwned(by: id, in: window)
 #if DEBUG
             if yielded {
-                cmuxDebugLog("focus.handoff.yield panel=\(id.uuidString.prefix(5)) target=browserFind")
+                mosaicDebugLog("focus.handoff.yield panel=\(id.uuidString.prefix(5)) target=browserFind")
             }
 #endif
             return yielded
@@ -7968,7 +7968,7 @@ extension BrowserPanel {
             browserPrepareOmnibarForProgrammaticBlur(panelId: id, responder: window.firstResponder)
             clearAddressBarFocusTrackingForYield()
 #if DEBUG
-            cmuxDebugLog("focus.handoff.yield panel=\(id.uuidString.prefix(5)) target=addressBar")
+            mosaicDebugLog("focus.handoff.yield panel=\(id.uuidString.prefix(5)) target=addressBar")
 #endif
             return true
         case .webView:
@@ -7987,7 +7987,7 @@ extension BrowserPanel {
     private func beginSearchFocusRequest(reason: String) -> UInt64 {
         searchFocusRequestGeneration &+= 1
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.find.focusLease.begin panel=\(id.uuidString.prefix(5)) " +
             "generation=\(searchFocusRequestGeneration) reason=\(reason)"
         )
@@ -7998,7 +7998,7 @@ extension BrowserPanel {
     private func invalidateSearchFocusRequests(reason: String) {
         searchFocusRequestGeneration &+= 1
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.find.focusLease.invalidate panel=\(id.uuidString.prefix(5)) " +
             "generation=\(searchFocusRequestGeneration) reason=\(reason)"
         )
@@ -8008,7 +8008,7 @@ extension BrowserPanel {
     func acknowledgeAddressBarFocusRequest(_ requestId: UUID) {
         guard pendingAddressBarFocusRequestId == requestId else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.focus.addressBar.requestAck panel=\(id.uuidString.prefix(5)) " +
                 "request=\(requestId.uuidString.prefix(8)) result=ignored " +
                 "pending=\(pendingAddressBarFocusRequestId?.uuidString.prefix(8) ?? "nil")"
@@ -8019,7 +8019,7 @@ extension BrowserPanel {
         pendingAddressBarFocusRequestId = nil
         pendingAddressBarFocusSelectionIntent = .preserveFieldEditorSelection
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.focus.addressBar.requestAck panel=\(id.uuidString.prefix(5)) " +
             "request=\(requestId.uuidString.prefix(8)) result=cleared"
         )
@@ -8194,7 +8194,7 @@ extension BrowserPanel {
         var count = 0
         while let current = stack.popLast() {
             for subview in current.subviews {
-                if cmuxIsWebInspectorObject(subview) {
+                if mosaicIsWebInspectorObject(subview) {
                     count += 1
                 }
                 stack.append(subview)
@@ -8206,7 +8206,7 @@ extension BrowserPanel {
     func debugDeveloperToolsStateSummary() -> String {
         let preferred = preferredDeveloperToolsVisible ? 1 : 0
         let visible = isDeveloperToolsVisible() ? 1 : 0
-        let inspector = webView.cmuxInspectorObject() == nil ? 0 : 1
+        let inspector = webView.mosaicInspectorObject() == nil ? 0 : 1
         let attached = webView.superview == nil ? 0 : 1
         let inWindow = webView.window == nil ? 0 : 1
         let forceRefresh = forceDeveloperToolsRefreshOnNextAttach ? 1 : 0
@@ -8296,7 +8296,7 @@ private extension BrowserPanel {
     }
 
     static func isInspectorView(_ view: NSView) -> Bool {
-        cmuxIsWebInspectorObject(view)
+        mosaicIsWebInspectorObject(view)
     }
 
     static func isVisibleSideDockInspectorCandidate(_ view: NSView) -> Bool {
@@ -8333,7 +8333,7 @@ extension BrowserPanel {
 }
 
 extension WKWebView {
-    func cmuxInspectorObject() -> NSObject? {
+    func mosaicInspectorObject() -> NSObject? {
         let selector = NSSelectorFromString("_inspector")
         guard responds(to: selector),
               let inspector = perform(selector)?.takeUnretainedValue() as? NSObject else {
@@ -8342,8 +8342,8 @@ extension WKWebView {
         return inspector
     }
 
-    func cmuxInspectorFrontendWebView() -> WKWebView? {
-        guard let inspector = cmuxInspectorObject() else { return nil }
+    func mosaicInspectorFrontendWebView() -> WKWebView? {
+        guard let inspector = mosaicInspectorObject() else { return nil }
         let selector = NSSelectorFromString("inspectorWebView")
         guard inspector.responds(to: selector),
               let inspectorWebView = inspector.perform(selector)?.takeUnretainedValue() as? WKWebView else {
@@ -8376,26 +8376,26 @@ enum WebViewInspectorTeardown {
         assert(Thread.isMainThread)
 
         guard !isInspectorFrontendWebView(webView),
-              let inspector = webView.cmuxInspectorObject() else {
+              let inspector = webView.mosaicInspectorObject() else {
             return false
         }
 
         let isVisibleSelector = NSSelectorFromString("isVisible")
         let isAttachedSelector = NSSelectorFromString("isAttached")
-        let isVisible = inspector.cmuxCallBool(selector: isVisibleSelector)
-        let isAttached = inspector.cmuxCallBool(selector: isAttachedSelector)
+        let isVisible = inspector.mosaicCallBool(selector: isVisibleSelector)
+        let isAttached = inspector.mosaicCallBool(selector: isAttachedSelector)
         let shouldClose = (isVisible == true)
             || (isAttached == true)
             || (isVisible == nil && isAttached == nil)
         guard shouldClose else { return false }
 
-        // cmux already opens Web Inspector through WebKit's `_inspector` object
+        // mosaic already opens Web Inspector through WebKit's `_inspector` object
         // because the deployable SDK surface does not expose a stable close API.
         // Keep teardown on the same auditable SPI path so WebKit unregisters the
         // inspector window observers before the parent AppKit close cascade runs.
         let closeSelector = NSSelectorFromString("close")
         guard inspector.responds(to: closeSelector) else { return false }
-        inspector.cmuxCallVoid(selector: closeSelector)
+        inspector.mosaicCallVoid(selector: closeSelector)
         return true
     }
 
@@ -8429,19 +8429,19 @@ enum WebViewInspectorTeardown {
     }
 
     private static func isInspectorFrontendWebView(_ webView: WKWebView) -> Bool {
-        cmuxIsWebInspectorObject(webView)
+        mosaicIsWebInspectorObject(webView)
     }
 }
 
 private extension NSObject {
-    func cmuxCallBool(selector: Selector) -> Bool? {
+    func mosaicCallBool(selector: Selector) -> Bool? {
         guard responds(to: selector) else { return nil }
         typealias Fn = @convention(c) (AnyObject, Selector) -> Bool
         let fn = unsafeBitCast(method(for: selector), to: Fn.self)
         return fn(self, selector)
     }
 
-    func cmuxCallVoid(selector: Selector) {
+    func mosaicCallVoid(selector: Selector) {
         guard responds(to: selector) else { return }
         typealias Fn = @convention(c) (AnyObject, Selector) -> Void
         let fn = unsafeBitCast(method(for: selector), to: Fn.self)
@@ -8476,7 +8476,7 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
     var savePanelParentWindow: (() -> NSWindow?)?
 
     private static let tempDir: URL = {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("cmux-downloads", isDirectory: true)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("mosaic-downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }()
@@ -8527,7 +8527,7 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
     ) throws -> URL {
         let directory = filenameResolver.downloadsDirectory(fileManager: fileManager)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
-        try tempURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL)
+        try tempURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL)
         var lastCollisionError: Error?
         for _ in 0..<Self.maxDownloadDestinationCollisionRetries {
             let destinationURL = filenameResolver.uniqueDownloadDestination(
@@ -8568,13 +8568,13 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
                 return
             }
             do {
-                try tempURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL)
+                try tempURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL)
                 if FileManager.default.fileExists(atPath: destURL.path) {
                     _ = try FileManager.default.replaceItemAt(destURL, withItemAt: tempURL)
                 } else {
                     try FileManager.default.moveItem(at: tempURL, to: destURL)
                 }
-                try? destURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL); self?.onDownloadSaved?(suggestedFilename, destURL, false, downloadID)
+                try? destURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL); self?.onDownloadSaved?(suggestedFilename, destURL, false, downloadID)
             } catch {
                 try? FileManager.default.removeItem(at: tempURL)
                 self?.onDownloadFailed?(error, false, downloadID)
@@ -8612,7 +8612,7 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
             self?.onDownloadStarted?(safeFilename, downloadID)
         }
         #if DEBUG
-        cmuxDebugLog("download.decideDestination file=<redacted>")
+        mosaicDebugLog("download.decideDestination file=<redacted>")
         #endif
         completionHandler(destURL)
     }
@@ -8620,12 +8620,12 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
     func downloadDidFinish(_ download: WKDownload) {
         guard let info = removeState(for: download) else {
             #if DEBUG
-            cmuxDebugLog("download.finished missing-state")
+            mosaicDebugLog("download.finished missing-state")
             #endif
             return
         }
         #if DEBUG
-        cmuxDebugLog("download.finished file=<redacted>")
+        mosaicDebugLog("download.finished file=<redacted>")
         #endif
         let filenameResolver = BrowserDownloadFilenameResolver()
         Task { @MainActor in
@@ -8659,7 +8659,7 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
             case .success(let destinationURL):
                 self.onDownloadSaved?(suggestedFilename, destinationURL, true, info.downloadID)
                 #if DEBUG
-                cmuxDebugLog("download.saved path=<redacted>")
+                mosaicDebugLog("download.saved path=<redacted>")
                 #endif
             case .failure(let error):
                 try? FileManager.default.removeItem(at: info.tempURL)
@@ -8680,7 +8680,7 @@ class BrowserDownloadDelegate: NSObject, WKDownloadDelegate {
             self?.onDownloadFailed?(error, true, downloadID)
         }
         #if DEBUG
-        cmuxDebugLog("download.failed error=\(error.localizedDescription)")
+        mosaicDebugLog("download.failed error=\(error.localizedDescription)")
         #endif
         NSLog("BrowserPanel download failed: %@", error.localizedDescription)
     }
@@ -8743,7 +8743,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
             "status=\(windowFeatures.statusBarVisibility?.stringValue ?? "nil")",
             "menu=\(windowFeatures.menuBarVisibility?.stringValue ?? "nil")"
         ].joined(separator: ",")
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.nav.createWebView navType=\(navType) button=\(navigationAction.buttonNumber) " +
             "mods=\(navigationAction.modifierFlags.rawValue) targetNil=\(navigationAction.targetFrame == nil ? 1 : 0) " +
             "targetMain=\(targetMainFrame) method=\(requestMethod) url=\(requestURL) " +
@@ -8766,7 +8766,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
             return nil
         }
 
-        let hasRecentMiddleClickIntent = CmuxWebView.hasRecentMiddleClickIntent(for: webView)
+        let hasRecentMiddleClickIntent = MosaicWebView.hasRecentMiddleClickIntent(for: webView)
         let popupFeaturesWereSpecified = browserNavigationPopupFeaturesWereSpecified(windowFeatures: windowFeatures)
         let shouldOpenSimpleUserGesturePopupInCurrentTab = browserNavigationShouldOpenSimpleUserGesturePopupInCurrentTab(
             navigationType: navigationAction.navigationType,
@@ -8782,7 +8782,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
         if shouldOpenSimpleUserGesturePopupInCurrentTab {
             if let url = navigationAction.request.url {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.nav.createWebView.action kind=requestNavigationSimpleUserGesture intent=currentTab " +
                     "url=\(browserNavigationDebugURL(url))"
                 )
@@ -8809,7 +8809,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
 
         if isScriptedPopup, let popupWebView = openPopup?(configuration, windowFeatures) {
 #if DEBUG
-            cmuxDebugLog("browser.nav.createWebView.action kind=popup")
+            mosaicDebugLog("browser.nav.createWebView.action kind=popup")
 #endif
             return popupWebView
         }
@@ -8819,7 +8819,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
             if let requestNavigation {
                 let intent: BrowserInsecureHTTPNavigationIntent = .newTab
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.nav.createWebView.action kind=requestNavigation intent=newTab " +
                     "url=\(browserNavigationDebugURL(url))"
                 )
@@ -8828,7 +8828,7 @@ private class BrowserUIDelegate: NSObject, WKUIDelegate {
                 requestNavigation(navigationAction.request, intent)
             } else {
 #if DEBUG
-                cmuxDebugLog("browser.nav.createWebView.action kind=openInNewTab url=\(url.absoluteString)")
+                mosaicDebugLog("browser.nav.createWebView.action kind=openInNewTab url=\(url.absoluteString)")
 #endif
                 openInNewTab?(url)
             }
@@ -10111,7 +10111,7 @@ enum BrowserDataImporter {
     ) throws {
         let fileManager = FileManager.default
         let tempRoot = fileManager.temporaryDirectory.appendingPathComponent(
-            "cmux-browser-import-\(UUID().uuidString)",
+            "mosaic-browser-import-\(UUID().uuidString)",
             isDirectory: true
         )
         try fileManager.createDirectory(at: tempRoot, withIntermediateDirectories: true)
@@ -10208,7 +10208,7 @@ enum BrowserImportUITestFixtureLoader {
     }
 
     static func browsers(from environment: [String: String]) -> [InstalledBrowserCandidate]? {
-        guard let rawFixture = environment["CMUX_UI_TEST_BROWSER_IMPORT_FIXTURE"],
+        guard let rawFixture = environment["MOSAIC_UI_TEST_BROWSER_IMPORT_FIXTURE"],
               let data = rawFixture.data(using: .utf8),
               let fixture = try? JSONDecoder().decode(BrowserFixture.self, from: data) else {
             return nil
@@ -10218,7 +10218,7 @@ enum BrowserImportUITestFixtureLoader {
             InstalledBrowserProfile(
                 displayName: name,
                 rootURL: FileManager.default.temporaryDirectory
-                    .appendingPathComponent("cmux-ui-test-browser-import")
+                    .appendingPathComponent("mosaic-ui-test-browser-import")
                     .appendingPathComponent(
                         fixture.browserName
                             .lowercased()
@@ -10262,7 +10262,7 @@ enum BrowserImportUITestFixtureLoader {
     }
 
     static func destinationProfiles(from environment: [String: String]) -> [BrowserProfileDefinition]? {
-        guard let rawDestinations = environment["CMUX_UI_TEST_BROWSER_IMPORT_DESTINATIONS"],
+        guard let rawDestinations = environment["MOSAIC_UI_TEST_BROWSER_IMPORT_DESTINATIONS"],
               let data = rawDestinations.data(using: .utf8),
               let names = try? JSONDecoder().decode([String].self, from: data),
               !names.isEmpty else {
@@ -10465,8 +10465,8 @@ final class BrowserDataImportCoordinator {
         destinationProfiles: [BrowserProfileDefinition]?
     ) -> Bool {
         let environment = ProcessInfo.processInfo.environment
-        guard environment["CMUX_UI_TEST_BROWSER_IMPORT_MODE"] == "capture-only" else { return false }
-        guard let path = environment["CMUX_UI_TEST_BROWSER_IMPORT_CAPTURE_PATH"], !path.isEmpty else {
+        guard environment["MOSAIC_UI_TEST_BROWSER_IMPORT_MODE"] == "capture-only" else { return false }
+        guard let path = environment["MOSAIC_UI_TEST_BROWSER_IMPORT_CAPTURE_PATH"], !path.isEmpty else {
             return true
         }
 
@@ -11083,7 +11083,7 @@ final class BrowserDataImportCoordinator {
 
             let destinationTitleLabel = NSTextField(
                 labelWithString: String(
-                    localized: "browser.import.destination.cmux",
+                    localized: "browser.import.destination.mosaic",
                     defaultValue: "mosaic destination"
                 )
             )
@@ -11630,10 +11630,10 @@ extension BrowserPanel {
     /// Debug-log sink handed to `BrowserOmnibarPageFocusRepository`.
     ///
     /// In release builds this is `nil`, so the repository emits no logging and
-    /// the former `#if DEBUG`-guarded `cmuxDebugLog` calls stay compiled out.
+    /// the former `#if DEBUG`-guarded `mosaicDebugLog` calls stay compiled out.
     static var omnibarPageFocusLogSink: (@MainActor @Sendable (String) -> Void)? {
 #if DEBUG
-        return { message in cmuxDebugLog(message) }
+        return { message in mosaicDebugLog(message) }
 #else
         return nil
 #endif

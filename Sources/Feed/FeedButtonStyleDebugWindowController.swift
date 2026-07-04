@@ -1,6 +1,6 @@
 #if DEBUG
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 
 enum FeedButtonDebugVisualStyle: String, CaseIterable, Identifiable {
@@ -795,7 +795,7 @@ final class FeedButtonStyleDebugWindowController: ReleasingWindowController {
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = true
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.feedButtonStyleDebug")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.feedButtonStyleDebug")
         window.minSize = NSSize(width: 460, height: 520)
         window.center()
         window.contentView = NSHostingView(rootView: FeedButtonStyleDebugView())
@@ -910,14 +910,14 @@ private struct FeedButtonStyleDebugView: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(String(localized: "feed.buttonDebug.title", defaultValue: "Feed Buttons"))
-                    .cmuxFont(size: 17, weight: .semibold)
+                    .mosaicFont(size: 17, weight: .semibold)
                 Text(
                     String(
                         localized: "feed.buttonDebug.subtitle",
                         defaultValue: "Tune every Feed button kind live."
                     )
                 )
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .foregroundStyle(.secondary)
             }
             Spacer()
@@ -975,10 +975,10 @@ private struct FeedButtonStyleDebugView: View {
         }) {
             HStack(spacing: 7) {
                 Image(systemName: palette == activePalette ? "checkmark.circle.fill" : "circle")
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                 paletteSwatches(palette)
                 Text(palette.label)
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
@@ -1039,7 +1039,7 @@ private struct FeedButtonStyleDebugView: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(label)
-                .cmuxFont(size: 10, weight: .semibold)
+                .mosaicFont(size: 10, weight: .semibold)
                 .foregroundStyle(previewColorScheme == .dark ? Color.white.opacity(0.70) : Color.black.opacity(0.58))
                 .frame(width: 34, alignment: .leading)
             ForEach([FeedButton.Kind.primary, .success, .warning, .destructive]) { kind in
@@ -1112,13 +1112,13 @@ private struct FeedButtonStyleDebugView: View {
                 .pickerStyle(.menu)
 
                 Text(String(localized: "feed.buttonDebug.variations", defaultValue: "Variations"))
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .foregroundStyle(.secondary)
 
                 ForEach(FeedButtonDebugPresetSection.all) { section in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(section.label)
-                            .cmuxFont(size: 10, weight: .semibold)
+                            .mosaicFont(size: 10, weight: .semibold)
                             .foregroundStyle(.secondary)
                         LazyVGrid(
                             columns: [
@@ -1193,9 +1193,9 @@ private struct FeedButtonStyleDebugView: View {
         }) {
             HStack(spacing: 6) {
                 Image(systemName: preset == activePreset ? "checkmark.circle.fill" : "circle")
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                 Text(preset.label)
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
@@ -1230,7 +1230,7 @@ private struct FeedButtonStyleDebugView: View {
                             .foregroundStyle(selectedKind == kind ? Color.accentColor : Color.secondary)
                             .frame(width: 15)
                         Text(kind.debugLabel)
-                            .cmuxFont(size: 12, weight: .medium)
+                            .mosaicFont(size: 12, weight: .medium)
                         Spacer()
                         FeedButton(label: kind.debugLabel, kind: kind, size: .compact) {
                             selectedKind = kind
@@ -1264,7 +1264,7 @@ private struct FeedButtonStyleDebugView: View {
                 )
                 HStack {
                     Text(String(localized: "feed.buttonDebug.preview", defaultValue: "Preview"))
-                        .cmuxFont(size: 11, weight: .medium)
+                        .mosaicFont(size: 11, weight: .medium)
                         .foregroundStyle(.secondary)
                     Spacer()
                     FeedButton(label: selectedKind.debugLabel, kind: selectedKind, size: .medium) {}
@@ -1340,11 +1340,11 @@ private struct FeedButtonStyleDebugView: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .frame(width: 150, alignment: .leading)
             Slider(value: value, in: range)
             Text(sliderValue(value.wrappedValue, suffix: suffix))
-                .cmuxFont(size: 10, monospacedDigit: true)
+                .mosaicFont(size: 10, monospacedDigit: true)
                 .foregroundStyle(.secondary)
                 .frame(width: 44, alignment: .trailing)
         }

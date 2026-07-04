@@ -7,15 +7,15 @@ export const projects = {
   staging: {
     projectId: "prj_804LTAUdOwulMvEfcmfnU8bvGo3T",
     orgId: "team_KndpHsJ15gO2OoAP2SO0thYn",
-    projectName: "cmux-staging",
+    projectName: "mosaic-staging",
     label: "staging",
-    url: "https://cmux-staging.vercel.app",
+    url: "https://mosaic-staging.vercel.app",
     stackLabel: "staging",
   },
   production: {
     projectId: "prj_kH8qcuoliyJ2TLI4vMM03rnNVzr4",
     orgId: "team_KndpHsJ15gO2OoAP2SO0thYn",
-    projectName: "cmux",
+    projectName: "mosaic",
     label: "production",
     url: "https://mosaic.inc",
     stackLabel: "prod",
@@ -25,13 +25,13 @@ export const projects = {
 export const requiredRuntimeEnvKeys = [
   "AWS_REGION",
   "AWS_ROLE_ARN",
-  "CMUX_DB_DRIVER",
-  "CMUX_VM_CREATE_ENABLED",
-  "CMUX_VM_DEFAULT_PROVIDER",
-  "CMUX_VM_E2B_ENABLED",
-  "CMUX_VM_FREESTYLE_ENABLED",
+  "MOSAIC_DB_DRIVER",
+  "MOSAIC_VM_CREATE_ENABLED",
+  "MOSAIC_VM_DEFAULT_PROVIDER",
+  "MOSAIC_VM_E2B_ENABLED",
+  "MOSAIC_VM_FREESTYLE_ENABLED",
   "E2B_API_KEY",
-  "E2B_CMUXD_WS_TEMPLATE",
+  "E2B_MOSAICD_WS_TEMPLATE",
   "FREESTYLE_API_KEY",
   "FREESTYLE_SANDBOX_SNAPSHOT",
   "NEXT_PUBLIC_STACK_PROJECT_ID",
@@ -44,20 +44,20 @@ export const requiredRuntimeEnvKeys = [
 ];
 
 export const recommendedRuntimeEnvKeys = [
-  "CMUX_DB_POOL_MAX",
-  "CMUX_DB_SSL_REJECT_UNAUTHORIZED",
+  "MOSAIC_DB_POOL_MAX",
+  "MOSAIC_DB_SSL_REJECT_UNAUTHORIZED",
   "OTEL_EXPORTER_OTLP_ENDPOINT",
   "OTEL_EXPORTER_OTLP_HEADERS",
   "OTEL_SERVICE_NAME",
 ];
 
 export const forbiddenRuntimeEnvKeys = [
-  "CMUX_DB_SSL_CA_PEM",
-  "CMUX_DB_SSL_CA_PEM_BASE64",
+  "MOSAIC_DB_SSL_CA_PEM",
+  "MOSAIC_DB_SSL_CA_PEM_BASE64",
 ];
 
 export const legacyCloudVmEnvKeys = [
-  "CMUX_RIVET_INTERNAL_SECRET",
+  "MOSAIC_RIVET_INTERNAL_SECRET",
   "RIVET_ENDPOINT",
   "RIVET_NAMESPACE",
   "RIVET_PUBLIC_ENDPOINT",
@@ -105,7 +105,7 @@ export function resolveWebDir(input) {
 }
 
 export function withLinkedVercelProject(project, fn) {
-  const scratch = mkdtempSync(path.join(tmpdir(), `cmux-${project.label}-vercel-`));
+  const scratch = mkdtempSync(path.join(tmpdir(), `mosaic-${project.label}-vercel-`));
   try {
     const vercelDir = path.join(scratch, ".vercel");
     mkdirSync(vercelDir, { recursive: true });
@@ -127,10 +127,10 @@ export function pullProductionEnv(project) {
 }
 
 export function loadTargetEnv(project) {
-  const source = process.env.CMUX_CLOUD_VM_ENV_SOURCE ?? "vercel";
+  const source = process.env.MOSAIC_CLOUD_VM_ENV_SOURCE ?? "vercel";
   if (source === "vercel") return pullProductionEnv(project);
   if (source === "process") return processEnvObject();
-  throw new Error(`Unknown CMUX_CLOUD_VM_ENV_SOURCE ${source}`);
+  throw new Error(`Unknown MOSAIC_CLOUD_VM_ENV_SOURCE ${source}`);
 }
 
 export function requireEnvKeys(env, keys, label) {

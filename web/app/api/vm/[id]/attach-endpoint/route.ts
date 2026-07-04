@@ -16,21 +16,21 @@ export async function POST(
   return withAuthedVmApiRoute(
     request,
     "/api/vm/[id]/attach-endpoint",
-    { "cmux.vm.operation": "open_attach" },
+    { "mosaic.vm.operation": "open_attach" },
     "/api/vm/[id]/attach-endpoint failed",
     async ({ user, span }) => {
       const { id } = await params;
       const body = await parseAttachBody(request);
       const requireDaemon = body.requireDaemon === true || body.require_daemon === true;
-      setSpanAttributes(span, { "cmux.vm.id": id });
-      setSpanAttributes(span, { "cmux.vm.attach.require_daemon": requireDaemon });
+      setSpanAttributes(span, { "mosaic.vm.id": id });
+      setSpanAttributes(span, { "mosaic.vm.attach.require_daemon": requireDaemon });
       try {
         const endpoint = await runVmWorkflow(openAttachEndpoint({
           userId: user.id,
           providerVmId: id,
           options: { requireDaemon },
         }));
-        setSpanAttributes(span, { "cmux.vm.attach.transport": endpoint.transport });
+        setSpanAttributes(span, { "mosaic.vm.attach.transport": endpoint.transport });
         return jsonResponse(endpoint);
       } catch (err) {
         if (isVmNotFoundError(err)) return notFoundVm(id);

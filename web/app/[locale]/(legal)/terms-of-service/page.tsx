@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Mosaic",
-  description: "Terms of service for cmux",
+  description: "Terms of service for mosaic",
   alternates: { canonical: "https://mosaic.inc/terms-of-service" },
 };
 
@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
       <p>
         The website located at{" "}
         <a href="https://mosaic.inc">mosaic.inc</a> (the
-        &ldquo;Site&rdquo;) and the cmux desktop application (the
+        &ldquo;Site&rdquo;) and the mosaic desktop application (the
         &ldquo;Application&rdquo;) are copyrighted works belonging to emergent.inc
         (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;, and
         &ldquo;we&rdquo;). These Terms of Use (these &ldquo;Terms&rdquo;) set

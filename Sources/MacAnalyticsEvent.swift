@@ -19,7 +19,7 @@ struct MacAnalyticsEvent: RawRepresentable, Hashable, Sendable {
     static let errorNotificationShown = MacAnalyticsEvent(rawValue: "mac_error_notification_shown")
     static let modalAlertShown = MacAnalyticsEvent(rawValue: "mac_modal_alert_shown")
     static let errorCaptured = MacAnalyticsEvent(rawValue: "mac_error_captured")
-    static let uiInteraction = MacAnalyticsEvent(rawValue: "cmux_ui_interaction")
+    static let uiInteraction = MacAnalyticsEvent(rawValue: "mosaic_ui_interaction")
     static let collaborationShareInitiated = MacAnalyticsEvent(rawValue: "mac_collaboration_share_initiated")
     static let collaborationSessionCreated = MacAnalyticsEvent(rawValue: "mac_collaboration_session_created")
     static let collaborationSessionJoined = MacAnalyticsEvent(rawValue: "mac_collaboration_session_joined")

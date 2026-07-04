@@ -36,7 +36,7 @@ def test_removes_workspace_state_and_keeps_downloaded_cache() -> None:
         checkout.write_text("// package fixture\n")
         package_state.write_text('{"package":"owned"}\n')
         state.write_text(
-            '{"artifacts":["/Users/ec2-user/actions-runner-cmux/_work/cmux/cmux/'
+            '{"artifacts":["/Users/ec2-user/actions-runner-mosaic/_work/mosaic/mosaic/'
             '.ci-source-packages/artifacts/sparkle/Sparkle/Sparkle.xcframework"]}\n'
         )
 

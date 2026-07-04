@@ -1,4 +1,4 @@
-import CMUXMobileCore
+import MosaicMobileCore
 import Darwin
 import Foundation
 

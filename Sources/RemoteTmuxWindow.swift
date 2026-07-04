@@ -3,7 +3,7 @@ import Foundation
 /// A tmux window within a mirrored session, assembled from the control-mode
 /// stream (`%window-add` / `%layout-change`) by ``RemoteTmuxControlConnection``.
 ///
-/// Maps to a cmux tab; its ``layout`` tree (parsed by
+/// Maps to a mosaic tab; its ``layout`` tree (parsed by
 /// ``RemoteTmuxRawLayoutParser``) maps to the tab's pane splits.
 struct RemoteTmuxWindow: Sendable, Equatable, Codable {
     /// tmux's numeric window id (the `@N` without the leading `@`), stable for

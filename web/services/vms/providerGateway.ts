@@ -36,7 +36,7 @@ export type VmProviderGatewayShape = {
   ) => Effect.Effect<void, VmProviderOperationError>;
 };
 
-export class VmProviderGateway extends Context.Tag("cmux/VmProviderGateway")<
+export class VmProviderGateway extends Context.Tag("mosaic/VmProviderGateway")<
   VmProviderGateway,
   VmProviderGatewayShape
 >() {}

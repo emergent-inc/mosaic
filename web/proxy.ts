@@ -7,11 +7,11 @@ import { isAgentPageVariantPath } from "./app/lib/agent-page-paths";
 const intlMiddleware = createMiddleware(routing);
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-function cmuxMiddleware(request: NextRequest) {
+function mosaicMiddleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
 
-  // 301 redirect cmux.dev (and www.cmux.dev) to mosaic.inc, preserving path and query
-  if (host === "cmux.dev" || host === "www.cmux.dev") {
+  // 301 redirect mosaic.dev (and www.mosaic.dev) to mosaic.inc, preserving path and query
+  if (host === "mosaic.dev" || host === "www.mosaic.dev") {
     const url = new URL(request.url);
     url.host = "mosaic.inc";
     url.protocol = "https:";
@@ -42,7 +42,7 @@ function cmuxMiddleware(request: NextRequest) {
     url.pathname = "/agent-page-variant";
     url.searchParams.set("path", pathname);
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-cmux-agent-page-path", pathname);
+    requestHeaders.set("x-mosaic-agent-page-path", pathname);
     return NextResponse.rewrite(url, {
       request: { headers: requestHeaders },
     });
@@ -82,7 +82,7 @@ export default clerkMiddleware(async (auth, request) => {
     await auth.protect();
   }
 
-  return cmuxMiddleware(request);
+  return mosaicMiddleware(request);
 });
 
 export const config = {

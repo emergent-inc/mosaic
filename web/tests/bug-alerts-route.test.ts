@@ -1,9 +1,9 @@
 const originalSkipEnvValidation = process.env.SKIP_ENV_VALIDATION;
-const originalWebhook = process.env.CMUX_BUG_ALERTS_WEBHOOK_URL;
-const originalSharedSecret = process.env.CMUX_BUG_ALERTS_SHARED_SECRET;
+const originalWebhook = process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL;
+const originalSharedSecret = process.env.MOSAIC_BUG_ALERTS_SHARED_SECRET;
 process.env.SKIP_ENV_VALIDATION = "1";
-process.env.CMUX_BUG_ALERTS_WEBHOOK_URL = "https://hooks.test/cmux-bugs";
-process.env.CMUX_BUG_ALERTS_SHARED_SECRET = "test-secret";
+process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL = "https://hooks.test/mosaic-bugs";
+process.env.MOSAIC_BUG_ALERTS_SHARED_SECRET = "test-secret";
 
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
@@ -31,23 +31,23 @@ afterAll(() => {
     process.env.SKIP_ENV_VALIDATION = originalSkipEnvValidation;
   }
   if (originalWebhook === undefined) {
-    delete process.env.CMUX_BUG_ALERTS_WEBHOOK_URL;
+    delete process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL;
   } else {
-    process.env.CMUX_BUG_ALERTS_WEBHOOK_URL = originalWebhook;
+    process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL = originalWebhook;
   }
   if (originalSharedSecret === undefined) {
-    delete process.env.CMUX_BUG_ALERTS_SHARED_SECRET;
+    delete process.env.MOSAIC_BUG_ALERTS_SHARED_SECRET;
   } else {
-    process.env.CMUX_BUG_ALERTS_SHARED_SECRET = originalSharedSecret;
+    process.env.MOSAIC_BUG_ALERTS_SHARED_SECRET = originalSharedSecret;
   }
 });
 
 function bugAlertRequest(body: unknown, secret = "test-secret"): Request {
-  return new Request("https://cmux.test/api/bug-alerts", {
+  return new Request("https://mosaic.test/api/bug-alerts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Cmux-Bug-Alerts-Secret": secret,
+      "X-Mosaic-Bug-Alerts-Secret": secret,
     },
     body: JSON.stringify(body),
   });
@@ -75,7 +75,7 @@ describe("bug alerts route", () => {
     const calls = (fetchMock as unknown as {
       mock: { calls: Array<[string, RequestInit]> };
     }).mock.calls;
-    expect(calls[0]?.[0]).toBe("https://hooks.test/cmux-bugs");
+    expect(calls[0]?.[0]).toBe("https://hooks.test/mosaic-bugs");
     const body = JSON.parse(String(calls[0]?.[1].body));
     expect(body.text).toContain("mac_error_notification_shown");
     expect(body.text).toContain("notification.crash");
@@ -127,8 +127,8 @@ describe("bug alerts route", () => {
   });
 
   test("accepts high-signal alerts without notification when webhook is unset", async () => {
-    const previousWebhook = process.env.CMUX_BUG_ALERTS_WEBHOOK_URL;
-    delete process.env.CMUX_BUG_ALERTS_WEBHOOK_URL;
+    const previousWebhook = process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL;
+    delete process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL;
     try {
       const response = await route.POST(bugAlertRequest({
         event: "mac_error_captured",
@@ -142,9 +142,9 @@ describe("bug alerts route", () => {
       expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       if (previousWebhook === undefined) {
-        delete process.env.CMUX_BUG_ALERTS_WEBHOOK_URL;
+        delete process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL;
       } else {
-        process.env.CMUX_BUG_ALERTS_WEBHOOK_URL = previousWebhook;
+        process.env.MOSAIC_BUG_ALERTS_WEBHOOK_URL = previousWebhook;
       }
     }
   });
@@ -155,7 +155,7 @@ describe("bug alerts route", () => {
     const response = await route.POST(bugAlertRequest({
       event: "mac_error_captured",
       severity: "error",
-      source: "runCmuxModalAlert",
+      source: "runMosaicModalAlert",
       error_kind: "modal_alert.critical",
     }));
 

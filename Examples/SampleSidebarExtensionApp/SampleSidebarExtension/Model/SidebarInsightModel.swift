@@ -1,5 +1,5 @@
 import Foundation
-import CmuxExtensionKit
+import MosaicExtensionKit
 
 struct SidebarInsightModel {
     var sequence: UInt64
@@ -17,7 +17,7 @@ struct SidebarInsightModel {
     var allWorkspaces: [WorkspaceInsight]
     var focusQueue: [WorkspaceInsight]
 
-    init(snapshot: CmuxSidebarSnapshot) {
+    init(snapshot: MosaicSidebarSnapshot) {
         let insights = snapshot.workspaces.map {
             WorkspaceInsight(workspace: $0, selectedWorkspaceID: snapshot.selectedWorkspaceID)
         }
@@ -56,7 +56,7 @@ struct WorkspaceInsight: Identifiable {
     var latestNotification: String?
     var surfaces: [SurfaceInsight]
 
-    init(workspace: CmuxSidebarWorkspace, selectedWorkspaceID: UUID?) {
+    init(workspace: MosaicSidebarWorkspace, selectedWorkspaceID: UUID?) {
         id = workspace.id
         title = workspace.title
         subtitle = workspace.detail ?? workspace.rootPath?.lastPathComponent ?? workspace.projectRootPath?.lastPathComponent ?? ""
@@ -86,11 +86,11 @@ struct WorkspaceInsight: Identifiable {
 struct SurfaceInsight: Identifiable {
     var id: UUID
     var title: String
-    var kind: CmuxSidebarSurfaceKind
+    var kind: MosaicSidebarSurfaceKind
     var isFocused: Bool
     var unreadCount: Int
 
-    init(surface: CmuxSidebarSurface) {
+    init(surface: MosaicSidebarSurface) {
         id = surface.id
         title = surface.title
         kind = surface.kind

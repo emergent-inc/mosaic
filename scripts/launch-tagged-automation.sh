@@ -104,11 +104,11 @@ fi
 
 TAG_ID="$(sanitize_bundle "$TAG")"
 TAG_SLUG="$(sanitize_path "$TAG")"
-APP="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG_SLUG}/Build/Products/Debug/Mosaic DEV ${TAG}.app"
+APP="$HOME/Library/Developer/Xcode/DerivedData/mosaic-${TAG_SLUG}/Build/Products/Debug/Mosaic DEV ${TAG}.app"
 BID="mosaic.com.emergent.app.debug.${TAG_ID}"
-SOCK="/tmp/cmux-debug-${TAG_SLUG}.sock"
-DSOCK="$HOME/Library/Application Support/cmux/cmuxd-dev-${TAG_SLUG}.sock"
-LOG="/tmp/cmux-debug-${TAG_SLUG}.log"
+SOCK="/tmp/mosaic-debug-${TAG_SLUG}.sock"
+DSOCK="$HOME/Library/Application Support/mosaic/mosaicd-dev-${TAG_SLUG}.sock"
+LOG="/tmp/mosaic-debug-${TAG_SLUG}.log"
 
 if [[ ! -d "$APP" ]]; then
   echo "error: tagged app not found at $APP" >&2
@@ -123,23 +123,23 @@ sleep 0.5
 
 OPEN_ENV=(
   env
-  -u CMUX_SOCKET_PATH
-  -u CMUX_SOCKET_MODE
-  -u CMUX_TAB_ID
-  -u CMUX_PANEL_ID
-  -u CMUX_SURFACE_ID
-  -u CMUX_WORKSPACE_ID
-  -u CMUXD_UNIX_PATH
-  -u CMUX_TAG
-  -u CMUX_PORT
-  -u CMUX_PORT_END
-  -u CMUX_PORT_RANGE
-  -u CMUX_DEBUG_LOG
-  -u CMUX_BUNDLE_ID
-  -u CMUX_DISABLE_SESSION_RESTORE
-  -u CMUX_SHELL_INTEGRATION
-  -u CMUX_SHELL_INTEGRATION_DIR
-  -u CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION
+  -u MOSAIC_SOCKET_PATH
+  -u MOSAIC_SOCKET_MODE
+  -u MOSAIC_TAB_ID
+  -u MOSAIC_PANEL_ID
+  -u MOSAIC_SURFACE_ID
+  -u MOSAIC_WORKSPACE_ID
+  -u MOSAICD_UNIX_PATH
+  -u MOSAIC_TAG
+  -u MOSAIC_PORT
+  -u MOSAIC_PORT_END
+  -u MOSAIC_PORT_RANGE
+  -u MOSAIC_DEBUG_LOG
+  -u MOSAIC_BUNDLE_ID
+  -u MOSAIC_DISABLE_SESSION_RESTORE
+  -u MOSAIC_SHELL_INTEGRATION
+  -u MOSAIC_SHELL_INTEGRATION_DIR
+  -u MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION
   -u GHOSTTY_BIN_DIR
   -u GHOSTTY_RESOURCES_DIR
   -u GHOSTTY_SHELL_FEATURES
@@ -147,11 +147,11 @@ OPEN_ENV=(
   -u GH_PAGER
   -u TERMINFO
   -u XDG_DATA_DIRS
-  "CMUX_SOCKET_MODE=${MODE}"
-  "CMUX_SOCKET_PATH=${SOCK}"
-  "CMUXD_UNIX_PATH=${DSOCK}"
-  "CMUX_DEBUG_LOG=${LOG}"
-  "CMUX_DISABLE_SESSION_RESTORE=1"
+  "MOSAIC_SOCKET_MODE=${MODE}"
+  "MOSAIC_SOCKET_PATH=${SOCK}"
+  "MOSAICD_UNIX_PATH=${DSOCK}"
+  "MOSAIC_DEBUG_LOG=${LOG}"
+  "MOSAIC_DISABLE_SESSION_RESTORE=1"
 )
 
 for kv in "${EXTRA_ENV[@]}"; do
@@ -176,7 +176,7 @@ fi
 echo "app: $APP"
 echo "bundle_id: $BID"
 echo "socket: $SOCK"
-echo "cmuxd_socket: $DSOCK"
+echo "mosaicd_socket: $DSOCK"
 echo "log: $LOG"
 echo "mode: $MODE"
 echo "socket_ready: $(if [[ -S "$SOCK" ]]; then echo yes; else echo no; fi)"

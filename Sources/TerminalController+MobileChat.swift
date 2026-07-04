@@ -1,5 +1,5 @@
-import CmuxAgentChat
-import CmuxTerminal
+import MosaicAgentChat
+import MosaicTerminal
 import Foundation
 
 /// `mobile.chat.*` RPC handlers: the Mac side of the iOS agent chat
@@ -64,7 +64,7 @@ extension TerminalController {
     /// optionally scoped to one workspace.
     ///
     /// When a `workspace_id` W is given, sessions are scoped by the SURFACE'S
-    /// CURRENT workspace, never the record's stored `workspaceID`. cmux
+    /// CURRENT workspace, never the record's stored `workspaceID`. mosaic
     /// workspace ids regenerate on every Mac relaunch while surface ids are
     /// stable, so a session created before the last relaunch carries a stale
     /// stored `workspaceID` and would otherwise be dropped from its terminal's
@@ -92,7 +92,7 @@ extension TerminalController {
                 .map(\.descriptor)
             let encoded = descriptors.compactMap { service.wirePayload($0) }
             #if DEBUG
-            cmuxDebugLog("agentChat.list workspace=nil records=\(service.sessionRecords(workspaceID: nil).count) returned=\(encoded.count)")
+            mosaicDebugLog("agentChat.list workspace=nil records=\(service.sessionRecords(workspaceID: nil).count) returned=\(encoded.count)")
             #endif
             return .ok(["sessions": encoded])
         }
@@ -103,7 +103,7 @@ extension TerminalController {
             requireTerminal: false
         ) else {
             #if DEBUG
-            cmuxDebugLog("agentChat.list workspace=\(workspaceID.prefix(8)) RESOLVE_FAILED returned=0")
+            mosaicDebugLog("agentChat.list workspace=\(workspaceID.prefix(8)) RESOLVE_FAILED returned=0")
             #endif
             return .ok(["sessions": []])
         }
@@ -133,7 +133,7 @@ extension TerminalController {
                !mobileChatRecordMatchesAgent(record: record) {
                 #if DEBUG
                 dropDeadPID += 1
-                cmuxDebugLog("agentChat.list drop=deadPID session=\(record.sessionID.prefix(8)) kind=\(record.agentKind.sourceName) surface=\(record.surfaceID?.prefix(8) ?? "nil") pid=\(record.pid.map(String.init) ?? "nil")")
+                mosaicDebugLog("agentChat.list drop=deadPID session=\(record.sessionID.prefix(8)) kind=\(record.agentKind.sourceName) surface=\(record.surfaceID?.prefix(8) ?? "nil") pid=\(record.pid.map(String.init) ?? "nil")")
                 #endif
                 continue
             }
@@ -152,7 +152,7 @@ extension TerminalController {
             }
         }
         #if DEBUG
-        cmuxDebugLog("agentChat.list workspace=\(workspaceID.prefix(8)) total=\(allRecords.count) dropNotInWS=\(dropNotInWorkspace) dropDeadPID=\(dropDeadPID) kept=\(kept) returned=\(encoded.count)")
+        mosaicDebugLog("agentChat.list workspace=\(workspaceID.prefix(8)) total=\(allRecords.count) dropNotInWS=\(dropNotInWorkspace) dropDeadPID=\(dropDeadPID) kept=\(kept) returned=\(encoded.count)")
         #endif
         return .ok(["sessions": encoded])
     }
@@ -203,7 +203,7 @@ extension TerminalController {
             // when the refresh actually changed the resolution inputs (a
             // pointless retry re-runs the codex directory walk).
             #if DEBUG
-            cmuxDebugLog("mobile.chat.history transcript unresolved session=\(sessionID.prefix(8)); refreshing bindings")
+            mosaicDebugLog("mobile.chat.history transcript unresolved session=\(sessionID.prefix(8)); refreshing bindings")
             #endif
             let refreshed = await service.refreshSessionBindings(sessionID: sessionID)
             if refreshed?.transcriptPath != staleRecord.transcriptPath
@@ -213,7 +213,7 @@ extension TerminalController {
         }
         guard let page else {
             #if DEBUG
-            cmuxDebugLog("mobile.chat.history not_found session=\(sessionID.prefix(8))")
+            mosaicDebugLog("mobile.chat.history not_found session=\(sessionID.prefix(8))")
             #endif
             return .err(code: "not_found", message: String(
                 localized: "mobile.chat.error.transcriptNotReadable",
@@ -383,7 +383,7 @@ extension TerminalController {
             return ["workspace_id": workspaceID, "surface_id": surfaceID]
         }
         #if DEBUG
-        cmuxDebugLog("mobile.chat binding stale session=\(sessionID.prefix(8)) surface=\(record.surfaceID?.prefix(8) ?? "nil"); refreshing from hook store")
+        mosaicDebugLog("mobile.chat binding stale session=\(sessionID.prefix(8)) surface=\(record.surfaceID?.prefix(8) ?? "nil"); refreshing from hook store")
         #endif
         if let refreshed = await service.refreshSessionBindings(sessionID: sessionID),
            let surfaceID = refreshed.surfaceID,
@@ -392,7 +392,7 @@ extension TerminalController {
             return ["workspace_id": workspaceID, "surface_id": surfaceID]
         }
         #if DEBUG
-        cmuxDebugLog("mobile.chat binding unresolved session=\(sessionID.prefix(8))")
+        mosaicDebugLog("mobile.chat binding unresolved session=\(sessionID.prefix(8))")
         #endif
         return nil
     }
@@ -440,10 +440,10 @@ extension TerminalController {
     /// binding is authoritative — NEVER the terminal title or screen-scraped
     /// agent detection, which can both hide a correctly-bound live session (a
     /// renamed title or a scrolled-off banner) and mis-attribute. The reliable
-    /// signal is process liveness: when cmux knows the agent pid, a live pid
+    /// signal is process liveness: when mosaic knows the agent pid, a live pid
     /// means the agent is still here and a dead pid means it is gone (the
     /// process-exit watcher ends it). When the pid is unknown — a session
-    /// re-bound on resume from cmux's own authority, whose pid is not backfilled
+    /// re-bound on resume from mosaic's own authority, whose pid is not backfilled
     /// until the agent's own hooks arrive (e.g. an `sr codex resume` that
     /// bypasses the hook-injecting shim) — trust the durable surface binding
     /// rather than inventing a negative that would wrongly hide a live session.
@@ -457,7 +457,7 @@ extension TerminalController {
               let resolved = mobileResolveWorkspaceAndSurface(params: terminalParams, requireTerminal: true),
               let surfaceId = resolved.surfaceId else {
             #if DEBUG
-            cmuxDebugLog("mobile.chat terminal unresolved session=\(sessionID.prefix(8))")
+            mosaicDebugLog("mobile.chat terminal unresolved session=\(sessionID.prefix(8))")
             #endif
             return nil
         }

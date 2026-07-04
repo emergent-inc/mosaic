@@ -136,15 +136,15 @@ extension TerminalController {
         }
     }
 
-    /// `remote.tmux.window` — open a dedicated cmux window mirroring every tmux
-    /// session on a host (the `cmux ssh-tmux` CLI entry point).
+    /// `remote.tmux.window` — open a dedicated mosaic window mirroring every tmux
+    /// session on a host (the `mosaic ssh-tmux` CLI entry point).
     ///
     /// Params: `host` (required), optional `port` (Int), optional `identity_file`
     /// (String), optional `activate` (Bool, default `true`).
     ///
     /// Returns `{mirrored: true, window_id}` on success, or
     /// `{auth_required: true, ssh_argv: […]}` when the host needs interactive
-    /// authentication. cmux's control client uses plain pipes and cannot prompt,
+    /// authentication. mosaic's control client uses plain pipes and cannot prompt,
     /// so the CLI runs `ssh_argv` in the user's terminal (where the tty makes
     /// password / host-key / MFA / FIDO prompts work) to open the shared
     /// ControlMaster, then re-issues this command — which now succeeds by
@@ -206,7 +206,7 @@ extension TerminalController {
 
     /// `remote.tmux.state` — report a control client's observed control-mode state.
     ///
-    /// Diagnostics surface for verifying the ghostty → cmux event pipe end to end.
+    /// Diagnostics surface for verifying the ghostty → mosaic event pipe end to end.
     nonisolated func v2RemoteTmuxState(id: Any?, params: [String: Any]) -> String {
         guard RemoteTmuxController.isEnabled else {
             return v2Error(id: id, code: "disabled", message: String(localized: "socket.remoteTmux.disabled", defaultValue: "remote tmux beta is disabled"))

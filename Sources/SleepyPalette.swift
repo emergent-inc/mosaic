@@ -1,4 +1,4 @@
-import CmuxSettingsUI
+import MosaicSettingsUI
 import SwiftUI
 
 // MARK: - Palettes
@@ -22,7 +22,7 @@ enum SleepyPalette {
                 "c": logo.sleepyDarkened(0.30),
                 "Y": Color(red: 1.0, green: 0.93, blue: 0.70),
             ]
-        case .cmux:
+        case .mosaic:
             return base(
                 face: Color(red: 0.88, green: 0.93, blue: 1.0),
                 faceShade: Color(red: 0.69, green: 0.77, blue: 0.93),
@@ -53,7 +53,7 @@ enum SleepyPalette {
         }
     }
 
-    /// Shared accents (blush, pom-pom, moon, and the always-cyan cmux logo).
+    /// Shared accents (blush, pom-pom, moon, and the always-cyan mosaic logo).
     private static func base(face: Color, faceShade: Color, cap: Color, capShade: Color) -> [Character: Color] {
         [
             "O": face,
@@ -62,7 +62,7 @@ enum SleepyPalette {
             "p": capShade,
             "W": .white,
             "B": Color(red: 1.0, green: 0.60, blue: 0.71),
-            "H": Color(red: 0.74, green: 0.96, blue: 1.0),   // cmux logo highlight
+            "H": Color(red: 0.74, green: 0.96, blue: 1.0),   // mosaic logo highlight
             "C": Color(red: 0.42, green: 0.87, blue: 1.0),
             "c": Color(red: 0.16, green: 0.52, blue: 0.93),
             "Y": Color(red: 1.0, green: 0.93, blue: 0.70),
@@ -86,7 +86,7 @@ enum SleepyPalette {
             return [.black, .black]
         case .midnight:
             return [Color(red: 0.06, green: 0.07, blue: 0.14), Color(red: 0.01, green: 0.01, blue: 0.03)]
-        case .cmux:
+        case .mosaic:
             return [Color(red: 0.08, green: 0.16, blue: 0.28), Color(red: 0.01, green: 0.02, blue: 0.06)]
         case .aurora:
             return [Color(red: 0.07, green: 0.20, blue: 0.16), Color(red: 0.03, green: 0.04, blue: 0.10)]

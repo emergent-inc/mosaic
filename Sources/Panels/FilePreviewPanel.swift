@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
 import AVKit
 import Bonsplit
@@ -92,8 +92,8 @@ struct FileExternalOpenApplicationResolver: Sendable {
         if Bundle.main.bundleIdentifier?.lowercased() == bundleIdentifier {
             return false
         }
-        return !bundleIdentifier.hasPrefix("dev.cmux.")
-            && !bundleIdentifier.hasPrefix("com.cmuxterm.")
+        return !bundleIdentifier.hasPrefix("dev.mosaic.")
+            && !bundleIdentifier.hasPrefix("com.mosaicterm.")
     }
 }
 
@@ -285,7 +285,7 @@ struct FileExternalOpenMenu: View {
             PanelHeaderIconGlyph(systemName: "square.and.arrow.up")
         case .chrome:
             Image(systemName: "square.and.arrow.up")
-                .cmuxFont(size: 16, weight: .semibold)
+                .mosaicFont(size: 16, weight: .semibold)
                 .foregroundStyle(.secondary)
                 .frame(width: style.buttonSize.width, height: style.buttonSize.height)
                 .contentShape(Rectangle())
@@ -1422,19 +1422,19 @@ struct FilePreviewPanelView: View {
     private var fileUnavailableView: some View {
         VStack(spacing: 12) {
             Image(systemName: "doc.questionmark")
-                .cmuxFont(size: 40)
+                .mosaicFont(size: 40)
                 .foregroundStyle(.secondary)
             Text(String(localized: "filePreview.fileUnavailable.title", defaultValue: "File unavailable"))
-                .cmuxFont(.headline)
+                .mosaicFont(.headline)
             Text(panel.filePath)
-                .cmuxFont(size: 12, design: .monospaced)
+                .mosaicFont(size: 12, design: .monospaced)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 24)
             Text(String(localized: "filePreview.fileUnavailable.message", defaultValue: "The file may have been moved or deleted."))
-                .cmuxFont(.caption)
+                .mosaicFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1625,9 +1625,9 @@ private struct FilePreviewPDFSidebarChromeView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "sidebar.left")
-                    .cmuxFont(size: 17, weight: .regular)
+                    .mosaicFont(size: 17, weight: .regular)
                 Image(systemName: "chevron.down")
-                    .cmuxFont(size: 10, weight: .semibold)
+                    .mosaicFont(size: 10, weight: .semibold)
                     .foregroundStyle(.secondary)
             }
             .frame(width: 58, height: 36)
@@ -1806,7 +1806,7 @@ struct FilePreviewPDFZoomChromeView: View {
         } else {
             TrackedButton("filepreviewpanel_button_1807", action: action) {
                 Image(systemName: systemName)
-                    .cmuxFont(size: 16, weight: .regular)
+                    .mosaicFont(size: 16, weight: .regular)
                     .frame(width: 38, height: 36)
                     .contentShape(Rectangle())
             }
@@ -1836,7 +1836,7 @@ private struct FilePreviewChromeIconButton: View {
     var body: some View {
         TrackedButton("filepreviewpanel_button_1837", action: action) {
             Image(systemName: systemName)
-                .cmuxFont(size: 16, weight: .semibold)
+                .mosaicFont(size: 16, weight: .semibold)
                 .frame(width: 42, height: 40)
         }
         .buttonStyle(FilePreviewChromeHoverButtonStyle(isHovered: isHovered))
@@ -1856,9 +1856,9 @@ private struct FilePreviewChromeSidebarMenuLabel: View {
         HStack(spacing: 6) {
             Image(systemName: "sidebar.left")
             Image(systemName: "chevron.down")
-                .cmuxFont(size: 11, weight: .semibold)
+                .mosaicFont(size: 11, weight: .semibold)
         }
-        .cmuxFont(size: 16, weight: .semibold)
+        .mosaicFont(size: 16, weight: .semibold)
         .foregroundStyle(isHovered ? Color.primary : Color.secondary)
         .frame(width: 68, height: 34)
         .background {
@@ -2485,7 +2485,7 @@ final class FilePreviewPDFContainerView: NSView, NSSplitViewDelegate, NSOutlineV
     private var lastAppliedPDFScrollBackgroundAppearance: PDFScrollBackgroundAppearance?
     private var fontMagnificationObserver: GlobalFontMagnificationChangeObserver?
     private static let documentLoadQueue = DispatchQueue(
-        label: "com.cmux.file-preview.pdf-document-load",
+        label: "com.mosaic.file-preview.pdf-document-load",
         qos: .userInitiated
     )
 
@@ -3115,7 +3115,7 @@ final class FilePreviewPDFContainerView: NSView, NSSplitViewDelegate, NSOutlineV
         let preferredWidth = preferredSidebarWidthForCurrentMode()
         let thumbnailWidth = thumbnailView.preferredSidebarWidth()
         let tocWidth = FilePreviewPDFSizing.preferredOutlineSidebarWidth(for: outlineRoot)
-        cmuxDebugLog(
+        mosaicDebugLog(
             "filePreview.pdf.sidebarWidth reason=\(reason) mode=\(mode) " +
             "current=\(formatSidebarWidth(currentWidth)) " +
             "proposed=\(formatSidebarWidth(proposed)) " +
@@ -3482,7 +3482,7 @@ final class FilePreviewPDFContainerView: NSView, NSSplitViewDelegate, NSOutlineV
 
     #if DEBUG
     private func logPDFResizeProbe(_ message: @autoclosure () -> String) {
-        cmuxDebugLog("filePreview.pdf.resize \(message())")
+        mosaicDebugLog("filePreview.pdf.resize \(message())")
     }
 
     private func pdfDebugState() -> String {
@@ -3736,7 +3736,7 @@ final class FilePreviewImageContainerView: NSView {
     private var previewBackgroundColor = NSColor.textBackgroundColor
     private var drawsPreviewBackground = true
     private static let imageLoadQueue = DispatchQueue(
-        label: "com.cmux.file-preview.image-load",
+        label: "com.mosaic.file-preview.image-load",
         qos: .userInitiated
     )
 

@@ -1,14 +1,14 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
 import SwiftUI
 
 /// Debug-menu window for the shared, cross-tag default display that new DEBUG
-/// cmux windows open on.
+/// mosaic windows open on.
 ///
 /// Reads and writes ``DevWindowDisplayDefault`` (persisted in the shared
-/// `cmux.json` via ``CmuxSettings``, not `@AppStorage`, so the value applies to
+/// `mosaic.json` via ``MosaicSettings``, not `@AppStorage`, so the value applies to
 /// every tagged dev build, not just this one). The same value is also settable
-/// from `cmux window default-display`.
+/// from `mosaic window default-display`.
 final class DevWindowDisplayDebugWindowController: ReleasingWindowController {
     static let shared = DevWindowDisplayDebugWindowController()
 
@@ -27,7 +27,7 @@ final class DevWindowDisplayDebugWindowController: ReleasingWindowController {
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = true
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.devWindowDisplay")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.devWindowDisplay")
         window.center()
         window.contentView = NSHostingView(rootView: DevWindowDisplayDebugView())
         AppDelegate.shared?.applyWindowDecorations(to: window)
@@ -53,12 +53,12 @@ private struct DevWindowDisplayDebugView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(String(localized: "debug.devWindowDisplay.title", defaultValue: "Dev Window Display"))
-                .cmuxFont(.headline)
+                .mosaicFont(.headline)
             Text(String(
                 localized: "debug.devWindowDisplay.description",
                 defaultValue: "New DEBUG mosaic windows open on the selected display. Shared across all tagged dev builds; applied at window creation."
             ))
-            .cmuxFont(.subheadline)
+            .mosaicFont(.subheadline)
             .foregroundStyle(.secondary)
 
             GroupBox {
@@ -93,7 +93,7 @@ private struct DevWindowDisplayDebugView: View {
             }
 
             Text(currentLabel)
-                .cmuxFont(.footnote)
+                .mosaicFont(.footnote)
                 .foregroundStyle(.secondary)
             Spacer()
         }

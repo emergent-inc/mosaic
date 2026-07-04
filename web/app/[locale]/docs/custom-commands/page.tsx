@@ -62,13 +62,13 @@ export default function CustomCommandsPage() {
       <p>{t("fileLocationsDesc")}</p>
       <ul>
         <li>
-          <strong>{t("localConfig")}</strong> <code>./.cmux/cmux.json</code> - {t("localConfigDesc")}
+          <strong>{t("localConfig")}</strong> <code>./.mosaic/mosaic.json</code> - {t("localConfigDesc")}
         </li>
         <li>
-          <strong>{t("fallbackLocal")}</strong> <code>./cmux.json</code> - {t("fallbackLocalDesc")}
+          <strong>{t("fallbackLocal")}</strong> <code>./mosaic.json</code> - {t("fallbackLocalDesc")}
         </li>
         <li>
-          <strong>{t("globalConfig")}</strong> <code>~/.config/cmux/cmux.json</code> - {t("globalConfigDesc")}
+          <strong>{t("globalConfig")}</strong> <code>~/.config/mosaic/mosaic.json</code> - {t("globalConfigDesc")}
         </li>
       </ul>
       <Callout type="info">{t("precedenceNote")}</Callout>
@@ -96,9 +96,9 @@ export default function CustomCommandsPage() {
           actions: (chunks) => <code>{chunks}</code>,
         })}
       </p>
-      <CodeBlock title="cmux.json" lang="json">{`{
+      <CodeBlock title="mosaic.json" lang="json">{`{
   "actions": {
-    "cmux.newTerminal": {
+    "mosaic.newTerminal": {
       "type": "command",
       "title": "Codex",
       "subtitle": "Open Codex in a new terminal tab",
@@ -132,10 +132,10 @@ export default function CustomCommandsPage() {
   "ui": {
     "surfaceTabBar": {
       "buttons": [
-        "cmux.newTerminal",
-        "cmux.newBrowser",
-        "cmux.splitRight",
-        "cmux.splitDown",
+        "mosaic.newTerminal",
+        "mosaic.newBrowser",
+        "mosaic.splitRight",
+        "mosaic.splitDown",
         "claude"
       ]
     }
@@ -230,7 +230,7 @@ export default function CustomCommandsPage() {
           separator: inlineCode,
         })}
       </p>
-      <CodeBlock title="cmux.json" lang="json">{`{
+      <CodeBlock title="mosaic.json" lang="json">{`{
   "actions": {
     "worktree-agents": {
       "type": "workspaceCommand",
@@ -245,8 +245,8 @@ export default function CustomCommandsPage() {
       "contextMenu": [
         { "action": "worktree-agents", "title": "Worktree Agents" },
         { "type": "separator" },
-        { "action": "cmux.newTerminal", "title": "New Terminal" },
-        { "action": "cmux.newBrowser", "title": "New Browser" }
+        { "action": "mosaic.newTerminal", "title": "New Terminal" },
+        { "action": "mosaic.newBrowser", "title": "New Browser" }
       ]
     }
   },
@@ -267,7 +267,7 @@ export default function CustomCommandsPage() {
                   {
                     "type": "terminal",
                     "name": "Worktree",
-                    "command": "set -euo pipefail; state=\\"\${TMPDIR:-/tmp}/cmux-worktree-\${CMUX_WORKSPACE_ID:-manual}.dir\\"; rm -f \\"$state\\"; repo=$(git rev-parse --show-toplevel); mkdir -p \\"$repo/../worktrees\\"; slug=agents-$(date +%Y%m%d-%H%M%S); dir=\\"$repo/../worktrees/$slug\\"; git -C \\"$repo\\" worktree add -b \\"$slug\\" \\"$dir\\"; printf \\"%s\\\\n\\" \\"$dir\\" > \\"$state\\"; cd \\"$dir\\"; exec \\"\${SHELL:-/bin/zsh}\\" -l",
+                    "command": "set -euo pipefail; state=\\"\${TMPDIR:-/tmp}/mosaic-worktree-\${MOSAIC_WORKSPACE_ID:-manual}.dir\\"; rm -f \\"$state\\"; repo=$(git rev-parse --show-toplevel); mkdir -p \\"$repo/../worktrees\\"; slug=agents-$(date +%Y%m%d-%H%M%S); dir=\\"$repo/../worktrees/$slug\\"; git -C \\"$repo\\" worktree add -b \\"$slug\\" \\"$dir\\"; printf \\"%s\\\\n\\" \\"$dir\\" > \\"$state\\"; cd \\"$dir\\"; exec \\"\${SHELL:-/bin/zsh}\\" -l",
                     "focus": true
                   }
                 ]
@@ -283,7 +283,7 @@ export default function CustomCommandsPage() {
                       {
                         "type": "terminal",
                         "name": "Codex",
-                        "command": "state=\\"\${TMPDIR:-/tmp}/cmux-worktree-\${CMUX_WORKSPACE_ID:-manual}.dir\\"; echo \\"Waiting for worktree...\\"; while [ ! -s \\"$state\\" ]; do sleep 0.2; done; dir=$(cat \\"$state\\"); cd \\"$dir\\"; exec codex --dangerously-bypass-approvals-and-sandbox"
+                        "command": "state=\\"\${TMPDIR:-/tmp}/mosaic-worktree-\${MOSAIC_WORKSPACE_ID:-manual}.dir\\"; echo \\"Waiting for worktree...\\"; while [ ! -s \\"$state\\" ]; do sleep 0.2; done; dir=$(cat \\"$state\\"); cd \\"$dir\\"; exec codex --dangerously-bypass-approvals-and-sandbox"
                       }
                     ]
                   }
@@ -294,7 +294,7 @@ export default function CustomCommandsPage() {
                       {
                         "type": "terminal",
                         "name": "Claude",
-                        "command": "state=\\"\${TMPDIR:-/tmp}/cmux-worktree-\${CMUX_WORKSPACE_ID:-manual}.dir\\"; echo \\"Waiting for worktree...\\"; while [ ! -s \\"$state\\" ]; do sleep 0.2; done; dir=$(cat \\"$state\\"); cd \\"$dir\\"; exec claude --dangerously-skip-permissions"
+                        "command": "state=\\"\${TMPDIR:-/tmp}/mosaic-worktree-\${MOSAIC_WORKSPACE_ID:-manual}.dir\\"; echo \\"Waiting for worktree...\\"; while [ ! -s \\"$state\\" ]; do sleep 0.2; done; dir=$(cat \\"$state\\"); cd \\"$dir\\"; exec claude --dangerously-skip-permissions"
                       }
                     ]
                   }
@@ -318,7 +318,7 @@ export default function CustomCommandsPage() {
 
       <DocsHeading level={2} id="simple-commands">{t("simpleCommands")}</DocsHeading>
       <p>{t("simpleCommandsDesc")}</p>
-      <CodeBlock title="cmux.json" lang="json">{`{
+      <CodeBlock title="mosaic.json" lang="json">{`{
   "commands": [
     {
       "name": "Run Tests",
@@ -341,7 +341,7 @@ export default function CustomCommandsPage() {
 
       <DocsHeading level={2} id="workspace-commands">{t("workspaceCommands")}</DocsHeading>
       <p>{t("workspaceCommandsDesc")}</p>
-      <CodeBlock title="cmux.json" lang="json">{`{
+      <CodeBlock title="mosaic.json" lang="json">{`{
   "commands": [
     {
       "name": "Dev Environment",
@@ -437,10 +437,10 @@ export default function CustomCommandsPage() {
       </ul>
 
       <DocsHeading level={2} id="full-example">{t("fullExample")}</DocsHeading>
-      <CodeBlock title="cmux.json" lang="json">{`{
+      <CodeBlock title="mosaic.json" lang="json">{`{
   "actions": {
     "web-dev": { "type": "workspaceCommand", "commandName": "Web Dev" },
-    "cmux.newTerminal": {
+    "mosaic.newTerminal": {
       "type": "command",
       "title": "Codex",
       "command": "codex --dangerously-bypass-approvals-and-sandbox",
@@ -466,10 +466,10 @@ export default function CustomCommandsPage() {
   "ui": {
     "surfaceTabBar": {
       "buttons": [
-        "cmux.newTerminal",
-        "cmux.newBrowser",
-        "cmux.splitRight",
-        "cmux.splitDown",
+        "mosaic.newTerminal",
+        "mosaic.newBrowser",
+        "mosaic.splitRight",
+        "mosaic.splitDown",
         {
           "action": "claude",
           "title": "Claude Here"
@@ -551,7 +551,7 @@ export default function CustomCommandsPage() {
                   {
                     "type": "terminal",
                     "name": "Events",
-                    "command": "tail -f /tmp/cmux-debug.log",
+                    "command": "tail -f /tmp/mosaic-debug.log",
                     "focus": true
                   }
                 ]

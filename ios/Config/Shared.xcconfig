@@ -6,9 +6,9 @@
 // ==========================================
 // Project Identity
 // ==========================================
-PRODUCT_NAME = cmux
+PRODUCT_NAME = mosaic
 PRODUCT_DISPLAY_NAME = Mosaic
-PRODUCT_BUNDLE_IDENTIFIER = dev.cmux.ios
+PRODUCT_BUNDLE_IDENTIFIER = dev.mosaic.ios
 // User-visible version (CFBundleShortVersionString). Semver X.Y.Z, bumped on
 // release with ios/scripts/bump-ios-version.sh. Keep this human-meaningful and
 // tellable; CFBundleVersion (CURRENT_PROJECT_VERSION) is the monotonic build id
@@ -20,18 +20,18 @@ CURRENT_PROJECT_VERSION = 1
 // build is tellable. Empty by default, so release/TestFlight builds show a clean
 // "1.0.0". ios/scripts/reload.sh overrides these on the xcodebuild command line
 // with the short git SHA and the --tag, and Config/Info.plist maps them to the
-// CMUXGitSHA / CMUXDevTag Info.plist keys that AppVersionInfo reads.
-CMUX_GIT_SHA =
-CMUX_DEV_TAG =
+// MosaicGitSHA / MosaicDevTag Info.plist keys that AppVersionInfo reads.
+MOSAIC_GIT_SHA =
+MOSAIC_DEV_TAG =
 
 // Per-developer presence/paired-Mac-backup worker override, baked into the
-// CMUXPresenceBaseURL Info.plist key so a normally-tapped dev device build (which
+// MosaicPresenceBaseURL Info.plist key so a normally-tapped dev device build (which
 // sees no shell env) talks to an isolated worker instead of the shared
-// cmux-presence-dev. Empty by default (release/TestFlight resolve to nil/disabled
+// mosaic-presence-dev. Empty by default (release/TestFlight resolve to nil/disabled
 // or the Debug default). ios/scripts/reload.sh overrides it from
-// $CMUX_PRESENCE_BASE_URL. See workers/presence/scripts/deploy-dev.sh and
+// $MOSAIC_PRESENCE_BASE_URL. See workers/presence/scripts/deploy-dev.sh and
 // PresenceServiceConfiguration.resolvedServiceBaseURL.
-CMUX_PRESENCE_BASE_URL =
+MOSAIC_PRESENCE_BASE_URL =
 
 // ==========================================
 // Platform Configuration
@@ -53,18 +53,18 @@ INFOPLIST_KEY_NSCameraUsageDescription = Scan Mosaic pairing QR codes from your 
 // ==========================================
 // Entitlements
 // ==========================================
-// AI agents can modify Config/cmux.entitlements to add capabilities
-CODE_SIGN_ENTITLEMENTS = Config/cmux.entitlements
+// AI agents can modify Config/mosaic.entitlements to add capabilities
+CODE_SIGN_ENTITLEMENTS = Config/mosaic.entitlements
 
 // ==========================================
 // Pairing URL scheme (channel-specific)
 // ==========================================
-// The cmux pairing/attach deep-link scheme this build registers in
+// The mosaic pairing/attach deep-link scheme this build registers in
 // CFBundleURLTypes (Config/Info.plist). Channel-specific so the system Camera
 // app can never hand a beta/prod pairing QR to a dev build that also claimed
-// the scheme: dev (Debug/tagged) builds register cmux-ios-dev, Release
-// (TestFlight beta + App Store) overrides this to cmux-ios in
+// the scheme: dev (Debug/tagged) builds register mosaic-ios-dev, Release
+// (TestFlight beta + App Store) overrides this to mosaic-ios in
 // Release.xcconfig. The default here is the dev scheme so an unknown build
 // configuration can never hijack release links. Keep both values in sync with
-// CmxPairingURLScheme in Packages/Shared/CMUXMobileCore.
-CMUX_IOS_URL_SCHEME = cmux-ios-dev
+// CmxPairingURLScheme in Packages/Shared/MosaicMobileCore.
+MOSAIC_IOS_URL_SCHEME = mosaic-ios-dev

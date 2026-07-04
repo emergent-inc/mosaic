@@ -29,16 +29,16 @@ def child_exit_code(status: int) -> int:
 
 
 def idle_timeout_seconds() -> float | None:
-    raw = os.environ.get("CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS")
+    raw = os.environ.get("MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS")
     if raw is None:
-        raw = os.environ.get("CMUX_XCODEBUILD_NONINTERACTIVE_TIMEOUT_SECONDS")
+        raw = os.environ.get("MOSAIC_XCODEBUILD_NONINTERACTIVE_TIMEOUT_SECONDS")
     if not raw:
         return None
     try:
         seconds = float(raw)
     except ValueError:
         print(
-            "CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS must be numeric",
+            "MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS must be numeric",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -48,14 +48,14 @@ def idle_timeout_seconds() -> float | None:
 
 
 def post_test_timeout_seconds() -> float | None:
-    raw = os.environ.get("CMUX_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS")
+    raw = os.environ.get("MOSAIC_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS")
     if not raw:
         return None
     try:
         seconds = float(raw)
     except ValueError:
         print(
-            "CMUX_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS must be numeric",
+            "MOSAIC_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS must be numeric",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -132,7 +132,7 @@ def main() -> int:
     post_test_deadline: float | None = None
     selected_tests_result: str | None = None
     saw_passing_terminal_summary = False
-    log_path = os.environ.get("CMUX_XCODEBUILD_NONINTERACTIVE_LOG_PATH")
+    log_path = os.environ.get("MOSAIC_XCODEBUILD_NONINTERACTIVE_LOG_PATH")
     log_file: BinaryIO | None = None
     if log_path:
         log_file = open(log_path, "ab", buffering=0)

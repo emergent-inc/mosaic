@@ -1,11 +1,11 @@
-import CmuxExtensionKit
+import MosaicExtensionKit
 import Observation
 import SwiftUI
 
 @main
 @Observable
-final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
-    static let manifest = CmuxExtensionManifest(
+final class TabsVisibleSidebarExtension: @MainActor MosaicSidebarExtension {
+    static let manifest = MosaicExtensionManifest(
         id: "co.emergent.inc.TabsVisibleSidebar.Extension",
         displayName: String(localized: "tabsVisible.manifest.displayName", defaultValue: "Tabs Visible Sidebar"),
         readScopes: [
@@ -19,12 +19,12 @@ final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
         ]
     )
 
-    private(set) var snapshot: CmuxSidebarSnapshot?
+    private(set) var snapshot: MosaicSidebarSnapshot?
     private(set) var errorText: String?
     var expandedWorkspaceIDs: Set<UUID> = []
 
     @ObservationIgnored
-    private var host: CmuxSidebarHost?
+    private var host: MosaicSidebarHost?
 
     required init() {}
 
@@ -32,7 +32,7 @@ final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
         TabsVisibleSidebarView(extensionModel: self)
     }
 
-    func update(context: CmuxSidebarContext) {
+    func update(context: MosaicSidebarContext) {
         snapshot = context.snapshot
         host = context.host
         errorText = nil
@@ -42,12 +42,12 @@ final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
         }
     }
 
-    func connectionStatusDidChange(_ status: CmuxSidebarConnectionStatus) {
+    func connectionStatusDidChange(_ status: MosaicSidebarConnectionStatus) {
         switch status {
         case .connected:
             errorText = nil
         case .waitingForHost:
-            errorText = String(localized: "tabsVisible.waitingForHost", defaultValue: "Waiting for cmux")
+            errorText = String(localized: "tabsVisible.waitingForHost", defaultValue: "Waiting for mosaic")
         case .error(let message):
             errorText = message
         }
@@ -73,10 +73,10 @@ final class TabsVisibleSidebarExtension: @MainActor CmuxSidebarExtension {
         do {
             try await operation()
             errorText = nil
-        } catch CmuxSidebarActionError.rejected(let message) {
+        } catch MosaicSidebarActionError.rejected(let message) {
             errorText = message
         } catch {
-            errorText = String(localized: "tabsVisible.actionDenied", defaultValue: "cmux did not allow that action")
+            errorText = String(localized: "tabsVisible.actionDenied", defaultValue: "mosaic did not allow that action")
         }
     }
 }

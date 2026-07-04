@@ -45,7 +45,7 @@ jobs:
       run:
         working-directory: web
     env:
-      CMUX_CLOUD_VM_ENV_SOURCE: process
+      MOSAIC_CLOUD_VM_ENV_SOURCE: process
       NEXT_PUBLIC_STACK_PROJECT_ID: ${{ vars.NEXT_PUBLIC_STACK_PROJECT_ID }}
       NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: ${{ vars.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY }}
       STACK_SECRET_SERVER_KEY: ${{ secrets.STACK_SECRET_SERVER_KEY }}

@@ -1,9 +1,9 @@
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 import Foundation
 import Bonsplit
 import AppKit
-import CmuxAppKitSupportUI
+import MosaicAppKitSupportUI
 
 /// View that renders the appropriate panel view based on panel type
 struct PanelContentView: View {
@@ -137,8 +137,8 @@ struct PanelContentView: View {
                 )
             }
         case .extensionBrowser:
-            if let extensionBrowserPanel = panel as? CMUXSidebarExtensionBrowserPanel {
-                CMUXSidebarExtensionBrowserPanelView(
+            if let extensionBrowserPanel = panel as? MosaicSidebarExtensionBrowserPanel {
+                MosaicSidebarExtensionBrowserPanelView(
                     panel: extensionBrowserPanel,
                     onRequestPanelFocus: onRequestPanelFocus
                 )
@@ -177,11 +177,11 @@ struct PanelFilePathHeader<TrailingContent: View>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            CmuxSystemSymbolImage(systemName: iconSystemName, pointSize: 16)
+            MosaicSystemSymbolImage(systemName: iconSystemName, pointSize: 16)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(filePath)
-                .cmuxFont(size: 11, design: .monospaced)
+                .mosaicFont(size: 11, design: .monospaced)
                 .foregroundStyle(Color(nsColor: foregroundColor).opacity(0.68))
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -227,7 +227,7 @@ struct PanelHeaderIconButton: View {
         .onHover { hovering in
             isHovering = hovering
         }
-        .cmuxCursorOnHover(hoverCursor, enabled: !isDisabled && isEnabled)
+        .mosaicCursorOnHover(hoverCursor, enabled: !isDisabled && isEnabled)
     }
 
     private var effectiveIsHovering: Bool {
@@ -260,13 +260,13 @@ struct PanelHeaderIconGlyph: View {
     let systemName: String
 
     var body: some View {
-        CmuxSystemSymbolImage(systemName: systemName, pointSize: 13)
+        MosaicSystemSymbolImage(systemName: systemName, pointSize: 13)
             .frame(width: 20, height: 20, alignment: .center)
             .contentShape(Rectangle())
     }
 }
 
-struct CmuxHoverCursorModifier: ViewModifier {
+struct MosaicHoverCursorModifier: ViewModifier {
     let cursor: NSCursor
     let enabled: Bool
     @State private var cursorPushed = false
@@ -304,7 +304,7 @@ struct CmuxHoverCursorModifier: ViewModifier {
 }
 
 extension View {
-    func cmuxCursorOnHover(_ cursor: NSCursor, enabled: Bool = true) -> some View {
-        modifier(CmuxHoverCursorModifier(cursor: cursor, enabled: enabled))
+    func mosaicCursorOnHover(_ cursor: NSCursor, enabled: Bool = true) -> some View {
+        modifier(MosaicHoverCursorModifier(cursor: cursor, enabled: enabled))
     }
 }

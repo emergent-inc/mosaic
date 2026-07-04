@@ -4,7 +4,7 @@ import re
 import secrets
 import time
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -13,7 +13,7 @@ OSC_ESCAPE_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
 
 def must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def wait_for(pred, timeout_s: float = 5.0, step_s: float = 0.05) -> None:
@@ -22,7 +22,7 @@ def wait_for(pred, timeout_s: float = 5.0, step_s: float = 0.05) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
 def clean_line(raw: str) -> str:
@@ -32,13 +32,13 @@ def clean_line(raw: str) -> str:
     return line.strip()
 
 
-def layout_panes(client: cmux) -> list[dict]:
+def layout_panes(client: mosaic) -> list[dict]:
     layout_payload = client.layout_debug() or {}
     layout = layout_payload.get("layout") or {}
     return list(layout.get("panes") or [])
 
 
-def pane_extent(client: cmux, pane_id: str, axis: str) -> float:
+def pane_extent(client: mosaic, pane_id: str, axis: str) -> float:
     panes = layout_panes(client)
     for pane in panes:
         pid = str(pane.get("paneId") or pane.get("pane_id") or "")
@@ -46,10 +46,10 @@ def pane_extent(client: cmux, pane_id: str, axis: str) -> float:
             continue
         frame = pane.get("frame") or {}
         return float(frame.get(axis) or 0.0)
-    raise cmuxError(f"Pane {pane_id} missing from debug layout panes: {panes}")
+    raise mosaicError(f"Pane {pane_id} missing from debug layout panes: {panes}")
 
 
-def workspace_panes(client: cmux, workspace_id: str) -> list[tuple[str, bool, int]]:
+def workspace_panes(client: mosaic, workspace_id: str) -> list[tuple[str, bool, int]]:
     payload = client._call("pane.list", {"workspace_id": workspace_id}) or {}
     out: list[tuple[str, bool, int]] = []
     for row in payload.get("panes") or []:
@@ -61,14 +61,14 @@ def workspace_panes(client: cmux, workspace_id: str) -> list[tuple[str, bool, in
     return out
 
 
-def focused_pane_id(client: cmux, workspace_id: str) -> str:
+def focused_pane_id(client: mosaic, workspace_id: str) -> str:
     for pane_id, focused, _surface_count in workspace_panes(client, workspace_id):
         if focused:
             return pane_id
-    raise cmuxError("No focused pane found")
+    raise mosaicError("No focused pane found")
 
 
-def surface_scrollback_text(client: cmux, workspace_id: str, surface_id: str) -> str:
+def surface_scrollback_text(client: mosaic, workspace_id: str, surface_id: str) -> str:
     payload = client._call(
         "surface.read_text",
         {"workspace_id": workspace_id, "surface_id": surface_id, "scrollback": True},
@@ -76,18 +76,18 @@ def surface_scrollback_text(client: cmux, workspace_id: str, surface_id: str) ->
     return str(payload.get("text") or "")
 
 
-def surface_scrollback_lines(client: cmux, workspace_id: str, surface_id: str) -> list[str]:
+def surface_scrollback_lines(client: mosaic, workspace_id: str, surface_id: str) -> list[str]:
     text = surface_scrollback_text(client, workspace_id, surface_id)
     return [clean_line(raw) for raw in text.splitlines()]
 
 
-def scrollback_has_exact_line(client: cmux, workspace_id: str, surface_id: str, token: str) -> bool:
+def scrollback_has_exact_line(client: mosaic, workspace_id: str, surface_id: str, token: str) -> bool:
     return token in surface_scrollback_lines(client, workspace_id, surface_id)
 
 
-def wait_for_surface_command_roundtrip(client: cmux, workspace_id: str, surface_id: str) -> None:
+def wait_for_surface_command_roundtrip(client: mosaic, workspace_id: str, surface_id: str) -> None:
     for _attempt in range(1, 5):
-        token = f"CMUX_READY_{secrets.token_hex(4)}"
+        token = f"MOSAIC_READY_{secrets.token_hex(4)}"
         client.send_surface(surface_id, f"echo {token}\n")
         try:
             wait_for(
@@ -95,15 +95,15 @@ def wait_for_surface_command_roundtrip(client: cmux, workspace_id: str, surface_
                 timeout_s=2.5,
             )
             return
-        except cmuxError:
+        except mosaicError:
             time.sleep(0.1)
-    raise cmuxError("Timed out waiting for surface command roundtrip")
+    raise mosaicError("Timed out waiting for surface command roundtrip")
 
 
-def pick_resize_direction_for_pane(client: cmux, pane_ids: list[str], target_pane: str) -> tuple[str, str]:
+def pick_resize_direction_for_pane(client: mosaic, pane_ids: list[str], target_pane: str) -> tuple[str, str]:
     panes = [p for p in layout_panes(client) if str(p.get("paneId") or p.get("pane_id") or "") in pane_ids]
     if len(panes) < 2:
-        raise cmuxError(f"Need >=2 panes for resize test, got {panes}")
+        raise mosaicError(f"Need >=2 panes for resize test, got {panes}")
 
     def x_of(p: dict) -> float:
         return float((p.get("frame") or {}).get("x") or 0.0)

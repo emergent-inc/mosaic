@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deterministically sort the high-churn sections of cmux.xcodeproj/project.pbxproj.
+Deterministically sort the high-churn sections of mosaic.xcodeproj/project.pbxproj.
 
 What we sort:
   - Every entry inside PBXBuildFile and PBXFileReference (Xcode picks
@@ -28,7 +28,7 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_PATH = Path("cmux.xcodeproj/project.pbxproj")
+DEFAULT_PATH = Path("mosaic.xcodeproj/project.pbxproj")
 
 ENTRY_COMMENT_RE = re.compile(r"/\*\s*(?P<label>.+?)\s*\*/")
 

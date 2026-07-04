@@ -1,6 +1,6 @@
-# cmux.json settings
+# mosaic.json settings
 
-Global app preferences live in `~/.config/cmux/cmux.json`.
+Global app preferences live in `~/.config/mosaic/mosaic.json`.
 
 ## `app.windowTitleTemplate`
 
@@ -9,7 +9,7 @@ Opt-in template for the macOS `NSWindow.title`. Leave it unset or set it to an e
 ```json
 {
   "app": {
-    "windowTitleTemplate": "[cmux:{windowToken}] {activeWorkspace}"
+    "windowTitleTemplate": "[mosaic:{windowToken}] {activeWorkspace}"
   }
 }
 ```
@@ -20,14 +20,14 @@ Supported placeholders:
 - `{windowToken}`: the first 8 characters of the persisted window UUID.
 - `{activeWorkspace}`: the active workspace title, falling back to the default title when the workspace title is blank.
 - `{activeDirectory}`: the active workspace's current directory.
-- `{defaultTitle}`: the title cmux would have used without a template.
-- `{appName}`: `cmux`.
+- `{defaultTitle}`: the title mosaic would have used without a template.
+- `{appName}`: `mosaic`.
 
-For tiling window managers such as AeroSpace or yabai, match on the stable token in the title. For example, the template above gives each restored macOS window a title containing `[cmux:abcd1234]`, so a rule can match `\\[cmux:abcd1234\\]`. The token is stable across relaunches for restored windows because it comes from the persisted window UUID.
+For tiling window managers such as AeroSpace or yabai, match on the stable token in the title. For example, the template above gives each restored macOS window a title containing `[mosaic:abcd1234]`, so a rule can match `\\[mosaic:abcd1234\\]`. The token is stable across relaunches for restored windows because it comes from the persisted window UUID.
 
 ## `app.confirmQuit`
 
-Controls when cmux asks before quitting:
+Controls when mosaic asks before quitting:
 
 - `always`: show the quit confirmation on Cmd+Q or app quit.
 - `dirty-only`: show it only when a workspace has a terminal or panel that reports close confirmation is needed.
@@ -47,7 +47,7 @@ Default: `right`.
 
 ## `terminal.agentHibernation`
 
-Opt-in Agent Hibernation. cmux kills idle background agent processes to free RAM and CPU, then resumes each one with its saved session when you visit its tab. See [agent-hooks.md](agent-hooks.md#agent-hibernation) for the full behavior, including the confirmation settle window and how resume works.
+Opt-in Agent Hibernation. mosaic kills idle background agent processes to free RAM and CPU, then resumes each one with its saved session when you visit its tab. See [agent-hooks.md](agent-hooks.md#agent-hibernation) for the full behavior, including the confirmation settle window and how resume works.
 
 ```json
 {
@@ -63,13 +63,13 @@ Opt-in Agent Hibernation. cmux kills idle background agent processes to free RAM
 
 - `enabled`: turn Agent Hibernation on. Default: `false`.
 - `idleSeconds`: seconds a background idle agent terminal must be quiet before it can hibernate. A ~60s confirmation settle window still applies on top of this. Default: `5`. Range: `5`-`604800`.
-- `maxLiveTerminals`: how many live restorable agent terminals to keep before cmux hibernates the oldest idle background ones. Nothing hibernates while you are at or under this count. Default: `12`. Range: `1`-`256`.
+- `maxLiveTerminals`: how many live restorable agent terminals to keep before mosaic hibernates the oldest idle background ones. Nothing hibernates while you are at or under this count. Default: `12`. Range: `1`-`256`.
 
-Enable it from the command palette (`⌘⇧P` -> Enable Agent Hibernation), from **Settings > Terminal > Agent Hibernation**, or with `cmux agent-hibernation on`.
+Enable it from the command palette (`⌘⇧P` -> Enable Agent Hibernation), from **Settings > Terminal > Agent Hibernation**, or with `mosaic agent-hibernation on`.
 
 ## `automation.workspaceAutoNaming`
 
-Opt-in AI auto-naming of workspaces and tabs from agent conversation content. When enabled, cmux summarizes supported agent sessions into short sidebar and tab names using each agent's own binary, and refreshes them as the conversation topic shifts. See [workspace-auto-naming.md](workspace-auto-naming.md) for the supported adapter list and full behavior.
+Opt-in AI auto-naming of workspaces and tabs from agent conversation content. When enabled, mosaic summarizes supported agent sessions into short sidebar and tab names using each agent's own binary, and refreshes them as the conversation topic shifts. See [workspace-auto-naming.md](workspace-auto-naming.md) for the supported adapter list and full behavior.
 
 ```json
 {
@@ -97,4 +97,4 @@ Default: `unified`.
 }
 ```
 
-The toolbar layout toggle persists the last user choice for future generated diff viewers. Passing `cmux diff --layout split` or `cmux diff --layout unified` overrides both the saved toolbar choice and this default for that invocation.
+The toolbar layout toggle persists the last user choice for future generated diff viewers. Passing `mosaic diff --layout split` or `mosaic diff --layout unified` overrides both the saved toolbar choice and this default for that invocation.

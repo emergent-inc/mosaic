@@ -1,5 +1,5 @@
-import CmuxFoundation
-import CMUXProjectModel
+import MosaicFoundation
+import MosaicProjectModel
 import SwiftUI
 
 /// Build Settings tab inside ``ProjectPanelView``.
@@ -29,7 +29,7 @@ struct ProjectBuildSettingsTabView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text("Target")
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .foregroundStyle(.secondary)
                 targetPicker
                 Spacer(minLength: 4)
@@ -37,12 +37,12 @@ struct ProjectBuildSettingsTabView: View {
                     .foregroundStyle(.secondary)
                 TextField("Filter settings", text: $panel.settingsSearchText)
                     .textFieldStyle(.plain)
-                    .cmuxFont(size: 12)
+                    .mosaicFont(size: 12)
                 Toggle("Customized only", isOn: $panel.settingsCustomizedOnly)
                     .toggleStyle(.checkbox)
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                 Text("\(rowCount) settings")
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .foregroundStyle(.secondary)
             }
         }
@@ -117,7 +117,7 @@ struct ProjectBuildSettingsTabView: View {
     @ViewBuilder
     private func columnHeader(_ title: String, weight: CGFloat, alignment: Alignment) -> some View {
         Text(title)
-            .cmuxFont(size: 11, weight: .semibold)
+            .mosaicFont(size: 11, weight: .semibold)
             .foregroundStyle(.secondary)
             .frame(width: weight, alignment: alignment)
     }
@@ -198,7 +198,7 @@ private struct SettingsRow: View {
         HStack(spacing: 0) {
             Spacer().frame(width: 3)
             Text(row.key)
-                .cmuxFont(size: 11, weight: .medium, design: .monospaced)
+                .mosaicFont(size: 11, weight: .medium, design: .monospaced)
                 .frame(width: settingColumnWidth, alignment: .leading)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -225,7 +225,7 @@ private struct SettingsRow: View {
             }
         }()
         Text(value)
-            .cmuxFont(size: 11, design: .monospaced)
+            .mosaicFont(size: 11, design: .monospaced)
             .lineLimit(1)
             .truncationMode(.tail)
             .foregroundStyle(value == "—" ? Color.secondary.opacity(0.6) : style)

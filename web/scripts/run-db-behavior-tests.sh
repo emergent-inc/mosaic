@@ -9,27 +9,27 @@ if [[ -z "${DIRECT_DATABASE_URL:-${DATABASE_URL:-}}" ]]; then
   exit 2
 fi
 
-export CMUX_DB_TEST=1
+export MOSAIC_DB_TEST=1
 
 test_files=()
 while IFS= read -r test_file; do
-  if grep -q "process\\.env\\.CMUX_DB_TEST" "$test_file"; then
+  if grep -q "process\\.env\\.MOSAIC_DB_TEST" "$test_file"; then
     test_files+=("$test_file")
   fi
 done < <(find tests \( -name "*.test.ts" -o -name "*.test.tsx" \) -print | sort)
 
 if [[ "${#test_files[@]}" -eq 0 ]]; then
-  echo "No CMUX_DB_TEST-gated test files found" >&2
+  echo "No MOSAIC_DB_TEST-gated test files found" >&2
   exit 1
 fi
 
-printf 'Running %s DB behavior test file(s) with CMUX_DB_TEST=1\n' "${#test_files[@]}"
+printf 'Running %s DB behavior test file(s) with MOSAIC_DB_TEST=1\n' "${#test_files[@]}"
 failed_files=()
 zero_test_files=()
 skipped_test_files=()
 for test_file in "${test_files[@]}"; do
   printf '\n==> bun test %s\n' "$test_file"
-  output_file="$(mktemp /tmp/cmux-db-behavior-test.XXXXXX.log)"
+  output_file="$(mktemp /tmp/mosaic-db-behavior-test.XXXXXX.log)"
   set +e
   bun test "$test_file" 2>&1 | tee "$output_file"
   test_status=${PIPESTATUS[0]}
@@ -55,7 +55,7 @@ if [[ "${#zero_test_files[@]}" -gt 0 ]]; then
 fi
 
 if [[ "${#skipped_test_files[@]}" -gt 0 ]]; then
-  printf '\n%s DB behavior test file(s) skipped tests while CMUX_DB_TEST=1:\n' "${#skipped_test_files[@]}" >&2
+  printf '\n%s DB behavior test file(s) skipped tests while MOSAIC_DB_TEST=1:\n' "${#skipped_test_files[@]}" >&2
   printf '  %s\n' "${skipped_test_files[@]}" >&2
   exit 1
 fi

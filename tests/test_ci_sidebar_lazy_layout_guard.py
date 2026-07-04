@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """CI guard for ./scripts/check-sidebar-lazy-layout.py.
 
-Verifies the guard reports "ok" on the real cmux repo and correctly *fails* on
+Verifies the guard reports "ok" on the real mosaic repo and correctly *fails* on
 every way the workspace-sidebar lazy-layout contract can be broken. The negative
 cases are what keep the guard from rotting into a no-op.
 
 Cases:
-  (a) Real cmux repo passes (Sources/ContentView.swift).
+  (a) Real mosaic repo passes (Sources/ContentView.swift).
   (b) A fixture whose guarded functions are clean code but whose comments and
       string literals deliberately name every forbidden token still passes
       (comment/string neutralization works -- this mirrors the real source,
@@ -261,13 +261,13 @@ def main():
             False, "renamed guarded function fails (no silent skip)",
         ) else 1
 
-        # (i) Custom-Layout discovery must cover repo-owned Packages/ (where cmux
+        # (i) Custom-Layout discovery must cover repo-owned Packages/ (where mosaic
         # migrates app code) and exclude build/vendor trees. (#6870 review)
         guard = load_guard_module()
         fake_root = os.path.join(workdir, "fakerepo")
         write_text(os.path.join(fake_root, "Sources", "Z.swift"),
                    "struct SourcesLayout: Layout {}\n")
-        write_text(os.path.join(fake_root, "Packages", "macOS", "CmuxSidebar",
+        write_text(os.path.join(fake_root, "Packages", "macOS", "MosaicSidebar",
                                 "Sources", "X.swift"),
                    "struct PackagedRowsLayout: Layout {}\n")
         write_text(os.path.join(fake_root, "Packages", "macOS", "Dep", ".build",

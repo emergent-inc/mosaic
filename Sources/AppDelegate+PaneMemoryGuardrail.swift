@@ -15,7 +15,7 @@ extension AppDelegate {
             count + manager.discardHiddenBrowserWebViewsForSystemMemoryPressure(now: now)
         }
 #if DEBUG
-        cmuxDebugLog("browser.memoryPressure.discardHidden count=\(discardedCount)")
+        mosaicDebugLog("browser.memoryPressure.discardHidden count=\(discardedCount)")
 #endif
     }
 

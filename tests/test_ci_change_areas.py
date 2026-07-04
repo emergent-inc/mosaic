@@ -117,7 +117,7 @@ def test_agent_session_resources_run_web_and_macos() -> None:
 
 
 def test_ios_only_skips_main_macos_ci() -> None:
-    assert_areas(["ios/cmux/ContentView.swift"], macos=False, web=False, go=False)
+    assert_areas(["ios/mosaic/ContentView.swift"], macos=False, web=False, go=False)
 
 
 def test_remote_daemon_runs_go_only() -> None:

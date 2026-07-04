@@ -1,4 +1,4 @@
-import CmuxCommandPalette
+import MosaicCommandPalette
 import Foundation
 
 /// Command palette surface for canvas layout actions. Every command routes

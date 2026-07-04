@@ -1,4 +1,4 @@
-import CmuxSettingsUI
+import MosaicSettingsUI
 import SwiftUI
 
 /// Cute pixel-art sleeping scene for Sleepy Mode. Renders from the live
@@ -234,7 +234,7 @@ struct SleepyFaceView: View {
             )
             drawSprite(in: &ctx, rows: rows, palette: palette, origin: origin, pixel: pixel)
             drawFace(in: &ctx, origin: origin, pixel: pixel, breath: breath, time: t, ink: ink, forceOpen: eyesForceOpen)
-            drawCmuxLogo(in: &ctx, center: center, mascotRows: rows.count, pixel: pixel, time: t, palette: palette)
+            drawMosaicLogo(in: &ctx, center: center, mascotRows: rows.count, pixel: pixel, time: t, palette: palette)
         }
 
         if let p = heartProgress {
@@ -410,20 +410,20 @@ struct SleepyFaceView: View {
         }
     }
 
-    /// logoFace: cmux cube as the left eye, a `-` dash as the (winking)
+    /// logoFace: mosaic cube as the left eye, a `-` dash as the (winking)
     /// right eye, blush, and a small sleepy mouth.
     private func drawLogoFace(in ctx: inout GraphicsContext, center: CGPoint, pixel: CGFloat, breath: Double, time t: Double, palette: [Character: Color], ink: Color) {
         let eyePixel = max(2, (pixel * 0.6).rounded())
-        let logoW = SleepyArt.cmuxLogo.first?.count ?? 11
-        let logoH = SleepyArt.cmuxLogo.count
+        let logoW = SleepyArt.mosaicLogo.first?.count ?? 11
+        let logoH = SleepyArt.mosaicLogo.count
         let gap = 3 * eyePixel
 
-        // Left eye: cmux cube.
+        // Left eye: mosaic cube.
         let leftOrigin = CGPoint(
             x: (center.x - gap - CGFloat(logoW) * eyePixel).rounded(),
             y: (center.y - CGFloat(logoH) / 2 * eyePixel).rounded()
         )
-        drawSprite(in: &ctx, rows: SleepyArt.cmuxLogo, palette: palette, origin: leftOrigin, pixel: eyePixel)
+        drawSprite(in: &ctx, rows: SleepyArt.mosaicLogo, palette: palette, origin: leftOrigin, pixel: eyePixel)
 
         // Right eye: a sleepy `-` dash, vertically centred to the cube.
         let dashW = 5, dashY = (center.y - eyePixel).rounded()
@@ -457,17 +457,17 @@ struct SleepyFaceView: View {
         return phase > 0.0 && phase < 0.5
     }
 
-    // MARK: - cmux logo, moon, stars, z's
+    // MARK: - mosaic logo, moon, stars, z's
 
-    private func drawCmuxLogo(in ctx: inout GraphicsContext, center: CGPoint, mascotRows: Int, pixel: CGFloat, time t: Double, palette: [Character: Color]) {
-        let cols = SleepyArt.cmuxLogo.first?.count ?? 9
+    private func drawMosaicLogo(in ctx: inout GraphicsContext, center: CGPoint, mascotRows: Int, pixel: CGFloat, time t: Double, palette: [Character: Color]) {
+        let cols = SleepyArt.mosaicLogo.first?.count ?? 9
         let logoPixel = max(2, (pixel * 0.8).rounded())
         let origin = CGPoint(
             x: (center.x - CGFloat(cols) / 2 * logoPixel).rounded(),
             y: (center.y + CGFloat(mascotRows) / 2 * pixel + 3 * pixel).rounded()
         )
         let pulse = 0.72 + 0.28 * (0.5 + 0.5 * sin(t * 2 * .pi / 3.2))
-        drawSprite(in: &ctx, rows: SleepyArt.cmuxLogo, palette: palette, origin: origin, pixel: logoPixel, alpha: pulse)
+        drawSprite(in: &ctx, rows: SleepyArt.mosaicLogo, palette: palette, origin: origin, pixel: logoPixel, alpha: pulse)
     }
 
     private func drawMoon(in ctx: inout GraphicsContext, size: CGSize, pixel: CGFloat, time t: Double, palette: [Character: Color]) {

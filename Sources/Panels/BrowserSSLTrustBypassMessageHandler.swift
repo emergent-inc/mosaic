@@ -2,7 +2,7 @@ import Foundation
 import WebKit
 
 final class BrowserSSLTrustBypassMessageHandler: NSObject, WKScriptMessageHandler {
-    static let name = "cmuxSSLTrustBypass"
+    static let name = "mosaicSSLTrustBypass"
 
     private let canHandleToken: @MainActor (String) -> Bool
     private let handleToken: @MainActor (String) -> Void

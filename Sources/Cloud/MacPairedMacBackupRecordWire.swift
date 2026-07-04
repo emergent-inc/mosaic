@@ -1,4 +1,4 @@
-import CMUXMobileCore
+import MosaicMobileCore
 
 struct MacPairedMacBackupRecordWire: Encodable {
     let macDeviceID: String

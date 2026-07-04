@@ -12,15 +12,15 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _wait_for_file_text(path: Path, needle: str, timeout_s: float = 8.0) -> str:
@@ -32,7 +32,7 @@ def _wait_for_file_text(path: Path, needle: str, timeout_s: float = 8.0) -> str:
         if needle in last_text:
             return last_text
         time.sleep(0.1)
-    raise cmuxError(f"Timed out waiting for {needle!r} from background split terminal: {last_text!r}")
+    raise mosaicError(f"Timed out waiting for {needle!r} from background split terminal: {last_text!r}")
 
 
 def _first_terminal_surface_id(payload: dict) -> str:
@@ -42,14 +42,14 @@ def _first_terminal_surface_id(payload: dict) -> str:
             surface_id = str(row.get("id") or "")
             if surface_id:
                 return surface_id
-    raise cmuxError(f"surface.list returned no terminal surface: {payload}")
+    raise mosaicError(f"surface.list returned no terminal surface: {payload}")
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         baseline_workspace = c.current_workspace()
         created_workspace = ""
-        marker_path = Path(tempfile.gettempdir()) / f"cmux-bg-split-send-{time.time_ns()}.txt"
+        marker_path = Path(tempfile.gettempdir()) / f"mosaic-bg-split-send-{time.time_ns()}.txt"
         try:
             payload = c._call("workspace.create", {}) or {}
             created_workspace = str(payload.get("workspace_id") or "")
@@ -78,7 +78,7 @@ def main() -> int:
                 "surface.split in a background workspace should not steal workspace focus",
             )
 
-            token = f"CMUX_BG_SPLIT_SEND_{time.time_ns()}"
+            token = f"MOSAIC_BG_SPLIT_SEND_{time.time_ns()}"
             command = (
                 "python3 -c "
                 + shlex.quote(

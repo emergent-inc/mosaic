@@ -14,7 +14,7 @@ to attach. We must not lose those saved hosts and their IPs when a user upgrades
 1. **Same bundle id, version bump** (TestFlight → next TestFlight build, or App
    Store → App Store). The app container is preserved, so the SQLite files
    survive. The only risk is a future schema migration that strands the store.
-2. **Bundle id change** (external founders/beta `dev.cmux.app.beta` → a future
+2. **Bundle id change** (external founders/beta `dev.mosaic.app.beta` → a future
    production bundle id) and **reinstall / new device**. The app container is
    NOT shared across bundle ids, and a delete+reinstall wipes it, so the local
    SQLite + the UserDefaults device id are gone. Recovery must come from a
@@ -97,7 +97,7 @@ headers; we additionally forward the verified user id (`x-presence-user-id`) and
 stash it on the WS attachment (alongside `expiresAt`/`syncCollections`). The
 `handleSyncHello` path, on a `pairedMacs` subscription, resolves frames from
 `pairedMacs:<connUserId>` and relabels them. Reads then flow through the existing
-`CmuxSyncStore` local-first cache exactly like `devices`.
+`MosaicSyncStore` local-first cache exactly like `devices`.
 
 ### 3.4 Record shape
 
@@ -128,7 +128,7 @@ re-pushes are cheap and don't churn `rev`.
 ### 3.6 Restore (DO → phone), sign-in-gated
 
 The mirror image of `PairedMacMigration`. On sign-in, after the `pairedMacs`
-snapshot lands in `CmuxSyncStore`, `PairedMacRestore` merges each record into
+snapshot lands in `MosaicSyncStore`, `PairedMacRestore` merges each record into
 `MobilePairedMacStore`:
 
 - Insert hosts absent locally (the reinstall / bundle-change / new-device case).

@@ -1,8 +1,8 @@
 #if DEBUG
 import AppKit
-import CmuxTestSupport
+import MosaicTestSupport
 import Foundation
-import CmuxTerminal
+import MosaicTerminal
 
 @MainActor
 final class TerminalViewportUITestRecorder {
@@ -26,8 +26,8 @@ final class TerminalViewportUITestRecorder {
     private var timer: DispatchSourceTimer?
 
     static func isEnabled(environment: [String: String]) -> Bool {
-        guard environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_SETUP"] == "1",
-              environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+        guard environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_SETUP"] == "1",
+              environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
             return false
         }
         return true
@@ -39,12 +39,12 @@ final class TerminalViewportUITestRecorder {
     ) {
         self.environment = environment
         self.contextProvider = contextProvider
-        initialWindowSize = Self.parseWindowSize(environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_WINDOW_SIZE"])
-        initialWindowSizeText = Self.requestedWindowSizeText(environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_WINDOW_SIZE"])
-        resizeWindowSize = Self.parseWindowSize(environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_RESIZE_WINDOW_SIZE"])
-        resizeWindowSizeText = Self.requestedWindowSizeText(environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_RESIZE_WINDOW_SIZE"])
-        hideSidebar = environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_HIDE_SIDEBAR"] == "1"
-        hideRightSidebar = environment["CMUX_UI_TEST_TERMINAL_VIEWPORT_HIDE_RIGHT_SIDEBAR"] == "1"
+        initialWindowSize = Self.parseWindowSize(environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_WINDOW_SIZE"])
+        initialWindowSizeText = Self.requestedWindowSizeText(environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_WINDOW_SIZE"])
+        resizeWindowSize = Self.parseWindowSize(environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_RESIZE_WINDOW_SIZE"])
+        resizeWindowSizeText = Self.requestedWindowSizeText(environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_RESIZE_WINDOW_SIZE"])
+        hideSidebar = environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_HIDE_SIDEBAR"] == "1"
+        hideRightSidebar = environment["MOSAIC_UI_TEST_TERMINAL_VIEWPORT_HIDE_RIGHT_SIDEBAR"] == "1"
         deadline = Date().addingTimeInterval(20)
     }
 
@@ -151,7 +151,7 @@ final class TerminalViewportUITestRecorder {
     }
 
     private func writeData(_ updates: [String: String]) {
-        _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
+        _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "MOSAIC_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
             for (key, value) in updates {
                 payload[key] = value
             }

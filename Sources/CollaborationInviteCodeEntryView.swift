@@ -1,5 +1,5 @@
 import AppKit
-import CmuxCollaboration
+import MosaicCollaboration
 
 @MainActor
 final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
@@ -244,7 +244,7 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         restartCaretBlink()
     }
 
-    private static let caretBlinkAnimationKey = "cmux.inviteCode.caretBlink"
+    private static let caretBlinkAnimationKey = "mosaic.inviteCode.caretBlink"
 
     private func restartCaretBlink() {
         guard let layer = caret.layer else { return }

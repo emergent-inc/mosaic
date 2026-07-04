@@ -1,19 +1,19 @@
-// cmux-feed-plugin-marker v1
-// Bridges OpenCode's plugin event bus to the cmux socket's feed.* verbs.
-// Installed by `cmux hooks setup` or `cmux hooks opencode install`.
-// DO NOT EDIT MANUALLY - cmux upgrades this file in place.
+// mosaic-feed-plugin-marker v1
+// Bridges OpenCode's plugin event bus to the mosaic socket's feed.* verbs.
+// Installed by `mosaic hooks setup` or `mosaic hooks opencode install`.
+// DO NOT EDIT MANUALLY - mosaic upgrades this file in place.
 
 const net = require("node:net");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const DEFAULT_SOCKET = `${os.homedir()}/.config/cmux/cmux.sock`;
-const SOCKET_PATH = process.env.CMUX_SOCKET_PATH || DEFAULT_SOCKET;
+const DEFAULT_SOCKET = `${os.homedir()}/.config/mosaic/mosaic.sock`;
+const SOCKET_PATH = process.env.MOSAIC_SOCKET_PATH || DEFAULT_SOCKET;
 const REPLY_TIMEOUT_MS = 120_000;
 const MAX_PLAN_BYTES = 128 * 1024;
 
-export const CMUXFeed = async (ctx) => {
+export const MosaicFeed = async (ctx) => {
   let client = null;
   let buffered = "";
   const pending = new Map();
@@ -251,7 +251,7 @@ export const CMUXFeed = async (ctx) => {
       const bytes = fs.readSync(fd, buffer, 0, length, 0);
       const text = buffer.subarray(0, bytes).toString("utf8");
       if (stat.size <= bytes) return text;
-      return `${text}\n\n[cmux truncated plan file at ${bytes} bytes.]`;
+      return `${text}\n\n[mosaic truncated plan file at ${bytes} bytes.]`;
     } finally {
       fs.closeSync(fd);
     }
@@ -296,7 +296,7 @@ export const CMUXFeed = async (ctx) => {
       await replyQuestion(requestId, [["No"]]);
       await sendPlanFeedback(
         sid,
-        `User rejected the plan via cmux Feed and wants this change: ${feedback}\n\nUpdate the plan file, then call plan_exit again.`
+        `User rejected the plan via mosaic Feed and wants this change: ${feedback}\n\nUpdate the plan file, then call plan_exit again.`
       );
       return;
     }
@@ -310,7 +310,7 @@ export const CMUXFeed = async (ctx) => {
       await replyQuestion(requestId, [["No"]]);
       await sendPlanFeedback(
         sid,
-        "User chose Ultraplan via cmux Feed. Refine the plan more deeply, update the plan file, then call plan_exit again."
+        "User chose Ultraplan via mosaic Feed. Refine the plan more deeply, update the plan file, then call plan_exit again."
       );
       return;
     }
@@ -326,7 +326,7 @@ export const CMUXFeed = async (ctx) => {
       await replyQuestion(requestId, [["No"]]);
       await sendPlanFeedback(
         sid,
-        "cmux could not apply the selected permission mode. Ask the user to approve the plan again before switching to build mode."
+        "mosaic could not apply the selected permission mode. Ask the user to approve the plan again before switching to build mode."
       );
       return;
     }
@@ -405,8 +405,8 @@ export const CMUXFeed = async (ctx) => {
     const state = sessionState(sessionId);
     const context = extra?.context || contextForSession(sessionId);
     const workspaceId =
-      typeof process.env.CMUX_WORKSPACE_ID === "string" && process.env.CMUX_WORKSPACE_ID.trim()
-        ? process.env.CMUX_WORKSPACE_ID.trim()
+      typeof process.env.MOSAIC_WORKSPACE_ID === "string" && process.env.MOSAIC_WORKSPACE_ID.trim()
+        ? process.env.MOSAIC_WORKSPACE_ID.trim()
         : null;
     const event = {
       session_id: `opencode-${sessionId}`,
@@ -565,7 +565,7 @@ export const CMUXFeed = async (ctx) => {
                 sessionId: sid,
                 requestId,
                 reply: permissionReplyForMode(mode),
-                message: mode === "deny" ? "User denied permission via cmux Feed." : undefined,
+                message: mode === "deny" ? "User denied permission via mosaic Feed." : undefined,
               });
             } catch (e) { /* ignore - opencode already moved on */ }
           }

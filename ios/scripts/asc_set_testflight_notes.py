@@ -19,7 +19,7 @@ Auth comes from the environment (the same vars the upload script already sets):
   ASC_API_KEY_P8_BASE64 (the base64-encoded .p8 contents).
 
 Usage:
-  asc_set_testflight_notes.py --bundle-id dev.cmux.app.beta \
+  asc_set_testflight_notes.py --bundle-id dev.mosaic.app.beta \
       --build-number 20260613120501 --notes-file /tmp/notes.txt \
       [--locale en-US] [--timeout-seconds 900] [--poll-seconds 20]
 

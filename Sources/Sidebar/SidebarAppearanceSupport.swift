@@ -1,13 +1,13 @@
 import AppKit
-import CmuxAppKitSupportUI
-import CmuxFoundation
+import MosaicAppKitSupportUI
+import MosaicFoundation
 import Foundation
 import SwiftUI
-import CmuxSettings
+import MosaicSettings
 
 enum SidebarMatchTerminalBackgroundSettings {
     static let userDefaultsKey = "sidebarMatchTerminalBackground"
-    static let legacyAppliedSettingsFileDefaultKey = "cmux.settingsFile.sidebarMatchTerminalBackground.appliedDefault.v1"
+    static let legacyAppliedSettingsFileDefaultKey = "mosaic.settingsFile.sidebarMatchTerminalBackground.appliedDefault.v1"
 }
 
 enum SidebarTabItemFontScale {
@@ -69,13 +69,13 @@ func titlebarControlForegroundNSColor(opacity: CGFloat) -> NSColor {
 }
 
 func titlebarControlForegroundNSColor(opacity: CGFloat, appearance: WindowAppearanceSnapshot) -> NSColor {
-    cmuxReadableForegroundNSColor(
+    mosaicReadableForegroundNSColor(
         on: appearance.compositedTerminalBackgroundColor,
         opacity: opacity
     )
 }
 
-func cmuxAccentNSColor(for colorScheme: ColorScheme) -> NSColor {
+func mosaicAccentNSColor(for colorScheme: ColorScheme) -> NSColor {
     switch colorScheme {
     case .dark:
         return NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
@@ -89,50 +89,50 @@ func cmuxAccentNSColor(for colorScheme: ColorScheme) -> NSColor {
     }
 }
 
-func cmuxAccentNSColor(for appAppearance: NSAppearance?) -> NSColor {
+func mosaicAccentNSColor(for appAppearance: NSAppearance?) -> NSColor {
     let bestMatch = appAppearance?.bestMatch(from: [.darkAqua, .aqua])
     let scheme: ColorScheme = (bestMatch == .darkAqua) ? .dark : .light
-    return cmuxAccentNSColor(for: scheme)
+    return mosaicAccentNSColor(for: scheme)
 }
 
-func cmuxAccentNSColor() -> NSColor {
+func mosaicAccentNSColor() -> NSColor {
     NSColor(name: nil) { appearance in
-        cmuxAccentNSColor(for: appearance)
+        mosaicAccentNSColor(for: appearance)
     }
 }
 
-func cmuxAccentColor() -> Color {
-    Color(nsColor: cmuxAccentNSColor())
+func mosaicAccentColor() -> Color {
+    Color(nsColor: mosaicAccentNSColor())
 }
 
-func cmuxReadableColorScheme(for backgroundColor: NSColor) -> ColorScheme {
-    let backgroundLuminance = cmuxRelativeLuminance(backgroundColor)
-    let whiteContrast = cmuxContrastRatio(backgroundLuminance, 1.0)
-    let blackContrast = cmuxContrastRatio(backgroundLuminance, 0.0)
+func mosaicReadableColorScheme(for backgroundColor: NSColor) -> ColorScheme {
+    let backgroundLuminance = mosaicRelativeLuminance(backgroundColor)
+    let whiteContrast = mosaicContrastRatio(backgroundLuminance, 1.0)
+    let blackContrast = mosaicContrastRatio(backgroundLuminance, 0.0)
     return whiteContrast >= blackContrast ? .dark : .light
 }
 
-func cmuxReadableForegroundNSColor(on backgroundColor: NSColor, opacity: CGFloat) -> NSColor {
+func mosaicReadableForegroundNSColor(on backgroundColor: NSColor, opacity: CGFloat) -> NSColor {
     let clampedOpacity = max(0, min(opacity, 1))
-    return cmuxReadableForegroundBaseColor(on: backgroundColor)
+    return mosaicReadableForegroundBaseColor(on: backgroundColor)
         .withAlphaComponent(clampedOpacity)
 }
 
-func cmuxReadableForegroundNSColor(
+func mosaicReadableForegroundNSColor(
     preferred preferredColor: NSColor,
     on backgroundColor: NSColor,
     minimumContrast: CGFloat = 4.5
 ) -> NSColor {
     let foregroundForComparison = preferredColor.alphaComponent < 1
-        ? cmuxCompositedNSColor(preferredColor, over: backgroundColor)
+        ? mosaicCompositedNSColor(preferredColor, over: backgroundColor)
         : preferredColor
-    guard cmuxContrastRatio(foreground: foregroundForComparison, background: backgroundColor) < minimumContrast else {
+    guard mosaicContrastRatio(foreground: foregroundForComparison, background: backgroundColor) < minimumContrast else {
         return preferredColor
     }
-    return cmuxReadableForegroundNSColor(on: backgroundColor, opacity: preferredColor.alphaComponent)
+    return mosaicReadableForegroundNSColor(on: backgroundColor, opacity: preferredColor.alphaComponent)
 }
 
-func cmuxCompositedNSColor(_ foreground: NSColor, over background: NSColor) -> NSColor {
+func mosaicCompositedNSColor(_ foreground: NSColor, over background: NSColor) -> NSColor {
     let fg = foreground.usingColorSpace(.sRGB) ?? foreground
     let bg = background.usingColorSpace(.sRGB) ?? background
     var foregroundRed: CGFloat = 0
@@ -156,18 +156,18 @@ func cmuxCompositedNSColor(_ foreground: NSColor, over background: NSColor) -> N
     )
 }
 
-func cmuxContrastRatio(foreground: NSColor, background: NSColor) -> CGFloat {
-    cmuxContrastRatio(
-        cmuxRelativeLuminance(foreground),
-        cmuxRelativeLuminance(background)
+func mosaicContrastRatio(foreground: NSColor, background: NSColor) -> CGFloat {
+    mosaicContrastRatio(
+        mosaicRelativeLuminance(foreground),
+        mosaicRelativeLuminance(background)
     )
 }
 
-private func cmuxReadableForegroundBaseColor(on backgroundColor: NSColor) -> NSColor {
-    cmuxReadableColorScheme(for: backgroundColor) == .dark ? .white : .black
+private func mosaicReadableForegroundBaseColor(on backgroundColor: NSColor) -> NSColor {
+    mosaicReadableColorScheme(for: backgroundColor) == .dark ? .white : .black
 }
 
-private func cmuxRelativeLuminance(_ color: NSColor) -> CGFloat {
+private func mosaicRelativeLuminance(_ color: NSColor) -> CGFloat {
     let srgb = color.usingColorSpace(.sRGB) ?? color
     var red: CGFloat = 0
     var green: CGFloat = 0
@@ -187,7 +187,7 @@ private func cmuxRelativeLuminance(_ color: NSColor) -> CGFloat {
         + 0.0722 * linearized(blue)
 }
 
-private func cmuxContrastRatio(_ lhs: CGFloat, _ rhs: CGFloat) -> CGFloat {
+private func mosaicContrastRatio(_ lhs: CGFloat, _ rhs: CGFloat) -> CGFloat {
     let lighter = max(lhs, rhs)
     let darker = min(lhs, rhs)
     return (lighter + 0.05) / (darker + 0.05)
@@ -238,7 +238,7 @@ func sidebarSelectedWorkspaceBackgroundNSColor(
        let parsed = NSColor(hex: hex) {
         return parsed
     }
-    return cmuxAccentNSColor(for: colorScheme)
+    return mosaicAccentNSColor(for: colorScheme)
 }
 
 func sidebarSelectedWorkspaceForegroundNSColor(opacity: CGFloat) -> NSColor {
@@ -253,11 +253,11 @@ func sidebarSelectedWorkspaceForegroundNSColor(
     opacity: CGFloat
 ) -> NSColor {
     let clampedOpacity = max(0, min(opacity, 1))
-    let whiteContrast = cmuxContrastRatio(foreground: .white, background: backgroundColor)
+    let whiteContrast = mosaicContrastRatio(foreground: .white, background: backgroundColor)
     guard whiteContrast < 2.75 else {
         return NSColor.white.withAlphaComponent(clampedOpacity)
     }
-    return cmuxReadableForegroundNSColor(on: backgroundColor, opacity: clampedOpacity)
+    return mosaicReadableForegroundNSColor(on: backgroundColor, opacity: clampedOpacity)
 }
 
 struct SidebarWorkspaceRowBackgroundStyle {
@@ -295,7 +295,7 @@ func sidebarWorkspaceRowBackgroundStyle(
         for: colorScheme,
         sidebarSelectionColorHex: sidebarSelectionColorHex
     )
-    let accentBackground = cmuxAccentNSColor(for: colorScheme)
+    let accentBackground = mosaicAccentNSColor(for: colorScheme)
     let customBackground = customColorHex.flatMap {
         WorkspaceTabColorSettings.displayNSColor(
             hex: $0,

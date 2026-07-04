@@ -36,7 +36,7 @@ fi
 if ! awk '
   /^      - name: Inject universal Ghostty CLI helper/ { in_inject=1; next }
   in_inject && /^      - name:/ { in_inject=0 }
-  in_inject && /install -m 755 \/tmp\/cmux-ghostty-helper-universal "\$DEST"/ { saw_install=1 }
+  in_inject && /install -m 755 \/tmp\/mosaic-ghostty-helper-universal "\$DEST"/ { saw_install=1 }
   END { exit !saw_install }
 ' "$WORKFLOW_FILE"; then
   echo "FAIL: nightly workflow must inject the verified universal Ghostty helper into the app"

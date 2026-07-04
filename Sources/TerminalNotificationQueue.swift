@@ -156,7 +156,7 @@ final class TerminalMutationBus: @unchecked Sendable {
         lock.unlock()
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "notification.queue.enqueue seq=\(sequence) workspace=\(notification.key.tabId.uuidString.prefix(8)) surface=\(notification.key.surfaceId?.uuidString.prefix(8) ?? "nil") coalesces=\(coalesces ? 1 : 0) removed=\(removedCount) pending=\(pendingCount) generation=\(generation) titleLen=\(notification.title.count) subtitleLen=\(notification.subtitle.count) bodyLen=\(notification.body.count)"
         )
 #endif
@@ -303,7 +303,7 @@ final class TerminalMutationBus: @unchecked Sendable {
         lock.unlock()
 #if DEBUG
         if !batch.isEmpty {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "notification.queue.drain batch=\(batch.count) remaining=\(remaining) firstSeq=\(batch.first?.sequence ?? 0) lastSeq=\(batch.last?.sequence ?? 0)"
             )
         }
@@ -329,7 +329,7 @@ final class TerminalMutationBus: @unchecked Sendable {
             switch entry.mutation {
             case .deliverNotification(let notification):
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "notification.queue.perform seq=\(entry.sequence) workspace=\(notification.key.tabId.uuidString.prefix(8)) surface=\(notification.key.surfaceId?.uuidString.prefix(8) ?? "nil") titleLen=\(notification.title.count) subtitleLen=\(notification.subtitle.count) bodyLen=\(notification.body.count)"
                 )
 #endif
@@ -364,7 +364,7 @@ extension TerminalController {
     ) {
         TerminalMutationBus.shared.discardPendingNotifications(forTabId: tabId, surfaceId: surfaceId)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "notification.sync.deliver workspace=\(tabId.uuidString.prefix(8)) surface=\(surfaceId?.uuidString.prefix(8) ?? "nil") titleLen=\(title.count) subtitleLen=\(subtitle.count) bodyLen=\(body.count)"
         )
 #endif
@@ -382,14 +382,14 @@ extension TerminalNotificationStore {
     fileprivate func deliverQueuedNotification(_ notification: QueuedTerminalNotification) {
         guard shouldDeliverQueuedNotification(notification) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "notification.queue.deliver.skip workspace=\(notification.key.tabId.uuidString.prefix(8)) surface=\(notification.key.surfaceId?.uuidString.prefix(8) ?? "nil") reason=targetMissing titleLen=\(notification.title.count) subtitleLen=\(notification.subtitle.count) bodyLen=\(notification.body.count)"
             )
 #endif
             return
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "notification.queue.deliver workspace=\(notification.key.tabId.uuidString.prefix(8)) surface=\(notification.key.surfaceId?.uuidString.prefix(8) ?? "nil") titleLen=\(notification.title.count) subtitleLen=\(notification.subtitle.count) bodyLen=\(notification.body.count)"
         )
 #endif
@@ -434,12 +434,12 @@ extension TerminalNotificationStore {
         }
     }
 
-    /// Effects for the out-of-band fallback path, where cmux plays feedback
+    /// Effects for the out-of-band fallback path, where mosaic plays feedback
     /// itself because the OS will not deliver the banner.
     ///
-    /// A user who explicitly turned cmux notifications off (`.denied`) asked
+    /// A user who explicitly turned mosaic notifications off (`.denied`) asked
     /// for silence, so the direct `NSSound` fallback must not punch through
-    /// the denial (https://github.com/emergent-inc/cmux/issues/5650). Every
+    /// the denial (https://github.com/emergent-inc/mosaic/issues/5650). Every
     /// other state keeps the audible fallback: fresh installs
     /// (`.notDetermined`) have expressed no preference, and granted states
     /// only reach the fallback when delivery itself failed.

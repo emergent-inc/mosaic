@@ -11,7 +11,7 @@ import {
 
 const usage = "Usage: audit-vercel-env.mjs [web-dir] <staging|production> [--strict]";
 const { target, project, rest } = parseWebDirAndTarget(process.argv.slice(2), usage);
-const strict = rest.includes("--strict") || parseBoolean(process.env.CMUX_CLOUD_VM_ENV_AUDIT_STRICT, false);
+const strict = rest.includes("--strict") || parseBoolean(process.env.MOSAIC_CLOUD_VM_ENV_AUDIT_STRICT, false);
 
 try {
   const env = pullProductionEnv(project);

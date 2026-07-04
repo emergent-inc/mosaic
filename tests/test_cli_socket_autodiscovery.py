@@ -15,24 +15,24 @@ import threading
 import time
 
 
-def resolve_cmux_cli() -> str:
-    explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
+def resolve_mosaic_cli() -> str:
+    explicit = os.environ.get("MOSAIC_CLI_BIN") or os.environ.get("MOSAIC_CLI")
     if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
         return explicit
 
     candidates: list[str] = []
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
-    candidates.extend(glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux"))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/mosaic")))
+    candidates.extend(glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic"))
     candidates = [p for p in candidates if os.path.exists(p) and os.access(p, os.X_OK)]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
         return candidates[0]
 
-    in_path = shutil.which("cmux")
+    in_path = shutil.which("mosaic")
     if in_path:
         return in_path
 
-    raise RuntimeError("Unable to find cmux CLI binary. Set CMUX_CLI_BIN.")
+    raise RuntimeError("Unable to find mosaic CLI binary. Set MOSAIC_CLI_BIN.")
 
 
 class PingServer:
@@ -119,7 +119,7 @@ class PingServer:
 
 
 def write_marker(home: str, marker_name: str, socket_path: str) -> None:
-    app_support = os.path.join(home, ".local", "state", "cmux")
+    app_support = os.path.join(home, ".local", "state", "mosaic")
     os.makedirs(app_support, exist_ok=True)
     with open(os.path.join(app_support, marker_name), "w", encoding="utf-8") as f:
         f.write(f"{socket_path}\n")
@@ -127,7 +127,7 @@ def write_marker(home: str, marker_name: str, socket_path: str) -> None:
 
 def temporary_socket_home(prefix: str) -> tempfile.TemporaryDirectory:
     # Darwin caps Unix socket paths at a little over 100 bytes. Keep fake HOME
-    # roots short because stable sockets live under ~/.local/state/cmux.
+    # roots short because stable sockets live under ~/.local/state/mosaic.
     return tempfile.TemporaryDirectory(prefix=prefix, dir="/tmp")
 
 
@@ -162,7 +162,7 @@ def bundled_cli_for_variant(cli_path: str, root: str, app_name: str, bundle_id: 
     contents_dir = os.path.join(app_dir, "Contents")
     bin_dir = os.path.join(app_dir, "Contents", "Resources", "bin")
     os.makedirs(bin_dir, exist_ok=True)
-    bundled_cli = os.path.join(bin_dir, "cmux")
+    bundled_cli = os.path.join(bin_dir, "mosaic")
     shutil.copy2(cli_path, bundled_cli)
     os.chmod(bundled_cli, 0o755)
     copy_runtime_frameworks(cli_path, contents_dir)
@@ -192,12 +192,12 @@ def run_ping(
     env = os.environ.copy()
     env["HOME"] = home
     env["CFFIXED_USER_HOME"] = home
-    env.pop("CMUX_SOCKET_PATH", None)
-    env.pop("CMUX_SOCKET", None)
-    env.pop("CMUX_BUNDLE_ID", None)
-    env.pop("CMUX_TAG", None)
-    env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-    env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+    env.pop("MOSAIC_SOCKET_PATH", None)
+    env.pop("MOSAIC_SOCKET", None)
+    env.pop("MOSAIC_BUNDLE_ID", None)
+    env.pop("MOSAIC_TAG", None)
+    env["MOSAIC_CLI_SENTRY_DISABLED"] = "1"
+    env["MOSAIC_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
@@ -225,7 +225,7 @@ def expect_ping_uses_socket(cli_path: str, home: str, socket_path: str, label: s
     try:
         proc = run_ping(cli_path, home)
     except Exception as exc:
-        print(f"FAIL: invoking {label} cmux ping failed: {exc}")
+        print(f"FAIL: invoking {label} mosaic ping failed: {exc}")
         return False
     finally:
         server.join(timeout=2.0)
@@ -239,13 +239,13 @@ def expect_ping_uses_socket(cli_path: str, home: str, socket_path: str, label: s
         return False
 
     if proc.returncode != 0:
-        print(f"FAIL: {label} cmux ping returned non-zero status")
+        print(f"FAIL: {label} mosaic ping returned non-zero status")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
 
     if proc.stdout.strip() != "PONG":
-        print(f"FAIL: {label} cmux ping did not use the expected socket")
+        print(f"FAIL: {label} mosaic ping did not use the expected socket")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
@@ -278,9 +278,9 @@ def expect_ping_ignores_dev_tag(
             return False
 
     try:
-        proc = run_ping(cli_path, home, extra_env={"CMUX_TAG": rogue_tag})
+        proc = run_ping(cli_path, home, extra_env={"MOSAIC_TAG": rogue_tag})
     except Exception as exc:
-        print(f"FAIL: invoking {label} cmux ping failed: {exc}")
+        print(f"FAIL: invoking {label} mosaic ping failed: {exc}")
         return False
     finally:
         expected_server.join(timeout=2.0)
@@ -292,13 +292,13 @@ def expect_ping_ignores_dev_tag(
                 pass
 
     if proc.returncode != 0:
-        print(f"FAIL: {label} cmux ping returned non-zero status")
+        print(f"FAIL: {label} mosaic ping returned non-zero status")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
 
     if proc.stdout.strip() != "PONG":
-        print(f"FAIL: {label} cmux ping followed CMUX_TAG to the rogue dev socket")
+        print(f"FAIL: {label} mosaic ping followed MOSAIC_TAG to the rogue dev socket")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
@@ -327,7 +327,7 @@ def expect_ping_does_not_use_socket(
     try:
         proc = run_ping(cli_path, home)
     except Exception as exc:
-        print(f"FAIL: invoking {label} cmux ping failed unexpectedly: {exc}")
+        print(f"FAIL: invoking {label} mosaic ping failed unexpectedly: {exc}")
         return False
     finally:
         server.join(timeout=2.0)
@@ -337,7 +337,7 @@ def expect_ping_does_not_use_socket(
             pass
 
     if proc.stdout.strip() == "WRONG":
-        print(f"FAIL: {label} cmux ping used the stable socket fallback")
+        print(f"FAIL: {label} mosaic ping used the stable socket fallback")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
@@ -347,10 +347,10 @@ def expect_ping_does_not_use_socket(
 
 def python_client_default_bundle_id(extra_env: dict[str, str]) -> str:
     env = os.environ.copy()
-    env.pop("CMUX_SOCKET_PATH", None)
-    env.pop("CMUX_SOCKET", None)
-    env.pop("CMUX_BUNDLE_ID", None)
-    env.pop("CMUX_TAG", None)
+    env.pop("MOSAIC_SOCKET_PATH", None)
+    env.pop("MOSAIC_SOCKET", None)
+    env.pop("MOSAIC_BUNDLE_ID", None)
+    env.pop("MOSAIC_TAG", None)
     env.update(extra_env)
 
     tests_dir = os.path.dirname(os.path.abspath(__file__))
@@ -358,7 +358,7 @@ def python_client_default_bundle_id(extra_env: dict[str, str]) -> str:
     env["PYTHONPATH"] = tests_dir if not python_path else f"{tests_dir}{os.pathsep}{python_path}"
 
     proc = subprocess.run(
-        [sys.executable, "-c", "from cmux import cmux; print(cmux.default_bundle_id())"],
+        [sys.executable, "-c", "from mosaic import mosaic; print(mosaic.default_bundle_id())"],
         text=True,
         capture_output=True,
         env=env,
@@ -366,16 +366,16 @@ def python_client_default_bundle_id(extra_env: dict[str, str]) -> str:
         check=False,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"cmux.py bundle resolution failed: {proc.stderr!r}")
+        raise RuntimeError(f"mosaic.py bundle resolution failed: {proc.stderr!r}")
     return proc.stdout.strip()
 
 
 def python_client_default_socket_path(extra_env: dict[str, str]) -> str:
     env = os.environ.copy()
-    env.pop("CMUX_SOCKET_PATH", None)
-    env.pop("CMUX_SOCKET", None)
-    env.pop("CMUX_BUNDLE_ID", None)
-    env.pop("CMUX_TAG", None)
+    env.pop("MOSAIC_SOCKET_PATH", None)
+    env.pop("MOSAIC_SOCKET", None)
+    env.pop("MOSAIC_BUNDLE_ID", None)
+    env.pop("MOSAIC_TAG", None)
     env.update(extra_env)
 
     tests_dir = os.path.dirname(os.path.abspath(__file__))
@@ -383,7 +383,7 @@ def python_client_default_socket_path(extra_env: dict[str, str]) -> str:
     env["PYTHONPATH"] = tests_dir if not python_path else f"{tests_dir}{os.pathsep}{python_path}"
 
     proc = subprocess.run(
-        [sys.executable, "-c", "from cmux import cmux; print(cmux.default_socket_path())"],
+        [sys.executable, "-c", "from mosaic import mosaic; print(mosaic.default_socket_path())"],
         text=True,
         capture_output=True,
         env=env,
@@ -391,43 +391,43 @@ def python_client_default_socket_path(extra_env: dict[str, str]) -> str:
         check=False,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"cmux.py socket resolution failed: {proc.stderr!r}")
+        raise RuntimeError(f"mosaic.py socket resolution failed: {proc.stderr!r}")
     return proc.stdout.strip()
 
 
 def test_python_client_ignores_unknown_bundle_env() -> bool:
     expected_tagged_debug = "mosaic.com.emergent.app.debug.variant.test.tag"
     actual = python_client_default_bundle_id({
-        "CMUX_BUNDLE_ID": "com.example.stale.bundle",
-        "CMUX_TAG": "variant-test-tag",
+        "MOSAIC_BUNDLE_ID": "com.example.stale.bundle",
+        "MOSAIC_TAG": "variant-test-tag",
     })
     if actual != expected_tagged_debug:
-        print("FAIL: python client trusted unknown CMUX_BUNDLE_ID over CMUX_TAG")
+        print("FAIL: python client trusted unknown MOSAIC_BUNDLE_ID over MOSAIC_TAG")
         print(f"expected={expected_tagged_debug!r}")
         print(f"actual={actual!r}")
         return False
 
     actual = python_client_default_bundle_id({
-        "CMUX_BUNDLE_ID": "mosaic.com.emergent.app",
-        "CMUX_TAG": "rogue-stable-tag",
+        "MOSAIC_BUNDLE_ID": "mosaic.com.emergent.app",
+        "MOSAIC_TAG": "rogue-stable-tag",
     })
     if actual != "mosaic.com.emergent.app":
-        print("FAIL: python client rejected known stable CMUX_BUNDLE_ID")
+        print("FAIL: python client rejected known stable MOSAIC_BUNDLE_ID")
         print(f"actual={actual!r}")
         return False
 
-    print("PASS: python client ignores unknown CMUX_BUNDLE_ID values")
+    print("PASS: python client ignores unknown MOSAIC_BUNDLE_ID values")
     return True
 
 
 def test_python_client_treats_stable_override_as_implicit() -> bool:
     tag = f"python-stale-stable-{os.getpid()}"
-    expected_socket = f"/tmp/cmux-debug-{tag}.sock"
+    expected_socket = f"/tmp/mosaic-debug-{tag}.sock"
 
-    with temporary_socket_home("cmux-py-") as home:
-        app_support = os.path.join(home, ".local", "state", "cmux")
+    with temporary_socket_home("mosaic-py-") as home:
+        app_support = os.path.join(home, ".local", "state", "mosaic")
         os.makedirs(app_support, exist_ok=True)
-        stable_socket = os.path.join(app_support, "cmux.sock")
+        stable_socket = os.path.join(app_support, "mosaic.sock")
 
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
@@ -439,8 +439,8 @@ def test_python_client_treats_stable_override_as_implicit() -> bool:
             actual = python_client_default_socket_path({
                 "HOME": home,
                 "CFFIXED_USER_HOME": home,
-                "CMUX_SOCKET_PATH": stable_socket,
-                "CMUX_TAG": tag,
+                "MOSAIC_SOCKET_PATH": stable_socket,
+                "MOSAIC_TAG": tag,
             })
         finally:
             server.close()
@@ -450,7 +450,7 @@ def test_python_client_treats_stable_override_as_implicit() -> bool:
                 pass
 
     if actual != expected_socket:
-        print("FAIL: python client followed a stale stable CMUX_SOCKET_PATH")
+        print("FAIL: python client followed a stale stable MOSAIC_SOCKET_PATH")
         print(f"expected={expected_socket!r}")
         print(f"actual={actual!r}")
         return False
@@ -461,22 +461,22 @@ def test_python_client_treats_stable_override_as_implicit() -> bool:
 
 def test_variant_last_socket_markers(cli_path: str) -> bool:
     pid = os.getpid()
-    stable_socket = f"/tmp/cmux-issue3542-stable-{pid}.sock"
-    nightly_socket = f"/tmp/cmux-issue3542-nightly-{pid}.sock"
-    dev_agent_socket = f"/tmp/cmux-issue3542-dev-agent-{pid}.sock"
-    rogue_stable_socket = f"/tmp/cmux-debug-rogue-stable-{pid}.sock"
+    stable_socket = f"/tmp/mosaic-issue3542-stable-{pid}.sock"
+    nightly_socket = f"/tmp/mosaic-issue3542-nightly-{pid}.sock"
+    dev_agent_socket = f"/tmp/mosaic-issue3542-dev-agent-{pid}.sock"
+    rogue_stable_socket = f"/tmp/mosaic-debug-rogue-stable-{pid}.sock"
     rogue_stable_tag = f"rogue-stable-{pid}"
-    rogue_nightly_socket = f"/tmp/cmux-debug-rogue-nightly-{pid}.sock"
+    rogue_nightly_socket = f"/tmp/mosaic-debug-rogue-nightly-{pid}.sock"
     rogue_nightly_tag = f"rogue-nightly-{pid}"
-    rogue_dev_agent_socket = f"/tmp/cmux-debug-rogue-dev-agent-{pid}.sock"
+    rogue_dev_agent_socket = f"/tmp/mosaic-debug-rogue-dev-agent-{pid}.sock"
     rogue_dev_agent_tag = f"rogue-dev-agent-{pid}"
 
-    with temporary_socket_home("cmux-home-") as home, \
-            tempfile.TemporaryDirectory(prefix="cmux-cli-variant-apps-") as apps:
+    with temporary_socket_home("mosaic-home-") as home, \
+            tempfile.TemporaryDirectory(prefix="mosaic-cli-variant-apps-") as apps:
         stable_cli = bundled_cli_for_variant(
             cli_path,
             apps,
-            "cmux",
+            "mosaic",
             "mosaic.com.emergent.app",
         )
         nightly_cli = bundled_cli_for_variant(
@@ -515,7 +515,7 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
                 stable_socket,
                 rogue_stable_socket,
                 rogue_stable_tag,
-                "stable with stray CMUX_TAG",
+                "stable with stray MOSAIC_TAG",
             ):
                 return False
             if not expect_ping_ignores_dev_tag(
@@ -524,7 +524,7 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
                 nightly_socket,
                 rogue_nightly_socket,
                 rogue_nightly_tag,
-                "nightly with stray CMUX_TAG",
+                "nightly with stray MOSAIC_TAG",
             ):
                 return False
             if not expect_ping_ignores_dev_tag(
@@ -533,7 +533,7 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
                 dev_agent_socket,
                 rogue_dev_agent_socket,
                 rogue_dev_agent_tag,
-                "dev-agent with stray CMUX_TAG",
+                "dev-agent with stray MOSAIC_TAG",
             ):
                 return False
 
@@ -541,8 +541,8 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
                 home,
                 ".local",
                 "state",
-                "cmux",
-                "cmux.sock",
+                "mosaic",
+                "mosaic.sock",
             )
             if not expect_ping_does_not_use_socket(
                 isolated_nightly_cli,
@@ -569,9 +569,9 @@ def test_variant_last_socket_markers(cli_path: str) -> bool:
     return True
 
 
-def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
+def test_base_debug_cli_discovers_mosaic_tag(cli_path: str) -> bool:
     tag = f"cli-autodiscover-{os.getpid()}"
-    socket_path = f"/tmp/cmux-debug-{tag}.sock"
+    socket_path = f"/tmp/mosaic-debug-{tag}.sock"
     server = PingServer(socket_path)
     server.start()
 
@@ -584,13 +584,13 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
         return False
 
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = "/tmp/cmux.sock"
-    env["CMUX_TAG"] = tag
-    env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-    env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+    env["MOSAIC_SOCKET_PATH"] = "/tmp/mosaic.sock"
+    env["MOSAIC_TAG"] = tag
+    env["MOSAIC_CLI_SENTRY_DISABLED"] = "1"
+    env["MOSAIC_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
 
     try:
-        with tempfile.TemporaryDirectory(prefix="cmux-cli-base-debug-app-") as apps:
+        with tempfile.TemporaryDirectory(prefix="mosaic-cli-base-debug-app-") as apps:
             debug_cli = bundled_cli_for_variant(
                 cli_path,
                 apps,
@@ -606,7 +606,7 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
                 check=False,
             )
     except Exception as exc:
-        print(f"FAIL: invoking cmux ping failed: {exc}")
+        print(f"FAIL: invoking mosaic ping failed: {exc}")
         return False
     finally:
         server.join(timeout=2.0)
@@ -620,13 +620,13 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
         return False
 
     if proc.returncode != 0:
-        print("FAIL: cmux ping returned non-zero status")
+        print("FAIL: mosaic ping returned non-zero status")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
 
     if proc.stdout.strip() != "PONG":
-        print("FAIL: cmux ping did not use auto-discovered socket")
+        print("FAIL: mosaic ping did not use auto-discovered socket")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return False
@@ -636,12 +636,12 @@ def test_base_debug_cli_discovers_cmux_tag(cli_path: str) -> bool:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    if not test_base_debug_cli_discovers_cmux_tag(cli_path):
+    if not test_base_debug_cli_discovers_mosaic_tag(cli_path):
         return 1
 
     if not test_variant_last_socket_markers(cli_path):
@@ -653,7 +653,7 @@ def main() -> int:
     if not test_python_client_treats_stable_override_as_implicit():
         return 1
 
-    print("PASS: cmux ping auto-discovers tagged socket from CMUX_TAG")
+    print("PASS: mosaic ping auto-discovers tagged socket from MOSAIC_TAG")
     return 0
 
 

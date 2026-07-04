@@ -16,7 +16,7 @@ type Target = "e2b" | "freestyle" | "all";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(webRoot, "..");
-const buildRoot = path.join(webRoot, ".cmux-cloud-build");
+const buildRoot = path.join(webRoot, ".mosaic-cloud-build");
 const UTF8_LOCALE = "C.UTF-8";
 const STRICT_SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -36,47 +36,47 @@ const CLOUD_SHELL_PACKAGES = [
   "unzip",
   "xz-utils",
 ];
-const PRIMARY_LINUX_USER = "cmux";
-const NODE_MAJOR = String(positiveIntFromEnv("CMUX_CLOUD_IMAGE_NODE_MAJOR", 22));
-const BUN_VERSION = semverFromEnv("CMUX_CLOUD_IMAGE_BUN_VERSION", "1.3.13");
+const PRIMARY_LINUX_USER = "mosaic";
+const NODE_MAJOR = String(positiveIntFromEnv("MOSAIC_CLOUD_IMAGE_NODE_MAJOR", 22));
+const BUN_VERSION = semverFromEnv("MOSAIC_CLOUD_IMAGE_BUN_VERSION", "1.3.13");
 const FREESTYLE_SNAPSHOT_CREATE_TIMEOUT_MS = positiveIntFromEnv(
-  "CMUX_FREESTYLE_SNAPSHOT_CREATE_TIMEOUT_MS",
+  "MOSAIC_FREESTYLE_SNAPSHOT_CREATE_TIMEOUT_MS",
   20 * 60 * 1000,
 );
 const FREESTYLE_SNAPSHOT_RECOVERY_TIMEOUT_MS = positiveIntFromEnv(
-  "CMUX_FREESTYLE_SNAPSHOT_RECOVERY_TIMEOUT_MS",
+  "MOSAIC_FREESTYLE_SNAPSHOT_RECOVERY_TIMEOUT_MS",
   10 * 60 * 1000,
 );
 const FREESTYLE_SNAPSHOT_RECOVERY_POLL_INTERVAL_MS = positiveIntFromEnv(
-  "CMUX_FREESTYLE_SNAPSHOT_RECOVERY_POLL_INTERVAL_MS",
+  "MOSAIC_FREESTYLE_SNAPSHOT_RECOVERY_POLL_INTERVAL_MS",
   5_000,
 );
 const FREESTYLE_SNAPSHOT_RECOVERY_CLOCK_SKEW_MS = positiveIntFromEnv(
-  "CMUX_FREESTYLE_SNAPSHOT_RECOVERY_CLOCK_SKEW_MS",
+  "MOSAIC_FREESTYLE_SNAPSHOT_RECOVERY_CLOCK_SKEW_MS",
   2 * 60 * 1000,
 );
 const CLOUD_AGENT_TOOLS = [
   {
     name: "claude",
-    envVar: "CMUX_CLOUD_IMAGE_CLAUDE_CODE_NPM_SPEC",
+    envVar: "MOSAIC_CLOUD_IMAGE_CLAUDE_CODE_NPM_SPEC",
     packageSpec: "@anthropic-ai/claude-code@2.1.137",
     binaries: ["claude"],
   },
   {
     name: "opencode",
-    envVar: "CMUX_CLOUD_IMAGE_OPENCODE_NPM_SPEC",
+    envVar: "MOSAIC_CLOUD_IMAGE_OPENCODE_NPM_SPEC",
     packageSpec: "opencode-ai@1.14.41",
     binaries: ["opencode"],
   },
   {
     name: "codex",
-    envVar: "CMUX_CLOUD_IMAGE_CODEX_NPM_SPEC",
+    envVar: "MOSAIC_CLOUD_IMAGE_CODEX_NPM_SPEC",
     packageSpec: "@openai/codex@0.130.0",
     binaries: ["codex"],
   },
   {
     name: "pi",
-    envVar: "CMUX_CLOUD_IMAGE_PI_NPM_SPEC",
+    envVar: "MOSAIC_CLOUD_IMAGE_PI_NPM_SPEC",
     packageSpec: "@earendil-works/pi-coding-agent@0.74.0",
     binaries: ["pi"],
   },
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
   }
   const tag = (argValue("--tag") ?? defaultTag()).trim();
   const skipCache = hasFlag("--skip-cache");
-  const binaryPath = path.join(buildRoot, tag, "cmuxd-remote-linux-amd64");
+  const binaryPath = path.join(buildRoot, tag, "mosaicd-remote-linux-amd64");
 
   mkdirSync(path.dirname(binaryPath), { recursive: true });
 
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
   const agentTools = cloudAgentToolPackageSpecs();
   const imageMetadata = {
     builtAt: new Date().toISOString(),
-    cmuxdRemoteCommit: await gitRevParse(path.join(repoRoot, "daemon/remote")),
+    mosaicdRemoteCommit: await gitRevParse(path.join(repoRoot, "daemon/remote")),
     binarySha256: sha256File(binaryPath),
     builderScriptVersion: sha256File(fileURLToPath(import.meta.url)),
     nodeMajor: NODE_MAJOR,
@@ -154,7 +154,7 @@ async function main(): Promise<void> {
 async function buildRemoteDaemon(outPath: string): Promise<void> {
   await runCommand(
     "go",
-    ["build", "-trimpath", "-ldflags=-s -w", "-o", outPath, "./cmd/cmuxd-remote"],
+    ["build", "-trimpath", "-ldflags=-s -w", "-o", outPath, "./cmd/mosaicd-remote"],
     {
       cwd: path.join(repoRoot, "daemon/remote"),
       env: { GOOS: "linux", GOARCH: "amd64", CGO_ENABLED: "0" },
@@ -176,7 +176,7 @@ async function buildE2BTemplate(
     .fromUbuntuImage("24.04")
     .aptInstall(CLOUD_SHELL_PACKAGES, { noInstallRecommends: true })
     .setEnvs({ LANG: UTF8_LOCALE, LC_ALL: UTF8_LOCALE, LANGUAGE: UTF8_LOCALE })
-    .copy(path.basename(daemonPath), "/usr/local/bin/cmuxd-remote", {
+    .copy(path.basename(daemonPath), "/usr/local/bin/mosaicd-remote", {
       forceUpload: true,
       mode: 0o755,
     })
@@ -184,11 +184,11 @@ async function buildE2BTemplate(
     .runCmd(cloudRootSetupCommands(), { user: "root" })
     .runCmd(cloudImageSmokeTestCommands(), { user: "root" })
     .setStartCmd(
-      "/usr/local/bin/cmuxd-remote serve --ws --listen 0.0.0.0:7777 --auth-lease-file /tmp/cmux/attach-pty-lease.json --rpc-auth-lease-file /tmp/cmux/attach-rpc-lease.json --shell /bin/bash",
+      "/usr/local/bin/mosaicd-remote serve --ws --listen 0.0.0.0:7777 --auth-lease-file /tmp/mosaic/attach-pty-lease.json --rpc-auth-lease-file /tmp/mosaic/attach-rpc-lease.json --shell /bin/bash",
       waitForURL("http://127.0.0.1:7777/healthz", 200),
     );
 
-  const name = `cmuxd-ws:${tag}`;
+  const name = `mosaicd-ws:${tag}`;
   const result = await Template.build(template, name, {
     cpuCount: 2,
     memoryMB: 2048,
@@ -202,9 +202,9 @@ async function buildE2BTemplate(
       provider: "e2b",
       version: `e2b-${tag}`,
       imageId: name,
-      envVar: "E2B_CMUXD_WS_TEMPLATE",
+      envVar: "E2B_MOSAICD_WS_TEMPLATE",
       defaultForLocalDev: false,
-      cmuxdRemoteCommit: metadata.cmuxdRemoteCommit,
+      mosaicdRemoteCommit: metadata.mosaicdRemoteCommit,
       builtAt: metadata.builtAt,
       builderScriptVersion: metadata.builderScriptVersion,
       agentToolResolvedVersions: metadata.agentToolResolvedVersions,
@@ -225,7 +225,7 @@ async function buildFreestyleSnapshot(
   }
   const daemonURL = await remoteDaemonBuildURL(tag, daemonPath);
   const fs = new Freestyle({ fetch: fetchWithTimeout(FREESTYLE_SNAPSHOT_CREATE_TIMEOUT_MS) });
-  const name = `cmuxd-ws-${tag}`;
+  const name = `mosaicd-ws-${tag}`;
   const createStartedAt = new Date();
   let result: unknown;
   try {
@@ -236,7 +236,7 @@ async function buildFreestyleSnapshot(
           dockerfileContent: freestyleBaseDockerfileContent(daemonURL),
         },
         ports: [{ port: 443, targetPort: 7777 }],
-        discriminator: `cmuxd-ws-${tag}`,
+        discriminator: `mosaicd-ws-${tag}`,
         skipCache,
       },
     });
@@ -270,7 +270,7 @@ async function buildFreestyleSnapshot(
       imageId,
       envVar: "FREESTYLE_SANDBOX_SNAPSHOT",
       defaultForLocalDev: false,
-      cmuxdRemoteCommit: metadata.cmuxdRemoteCommit,
+      mosaicdRemoteCommit: metadata.mosaicdRemoteCommit,
       builtAt: metadata.builtAt,
       builderScriptVersion: metadata.builderScriptVersion,
       agentToolResolvedVersions: metadata.agentToolResolvedVersions,
@@ -361,25 +361,25 @@ function cloudRootSetupCommands(): string[] {
     `printf '${PRIMARY_LINUX_USER} ALL=(ALL) NOPASSWD:ALL\\n' > /etc/sudoers.d/90-${PRIMARY_LINUX_USER}-nopasswd`,
     `chmod 0440 /etc/sudoers.d/90-${PRIMARY_LINUX_USER}-nopasswd`,
     "if id -u user >/dev/null 2>&1; then printf 'user ALL=(ALL) NOPASSWD:ALL\\n' > /etc/sudoers.d/91-user-nopasswd && chmod 0440 /etc/sudoers.d/91-user-nopasswd; fi",
-    "mkdir -p /tmp/cmux && chmod 700 /tmp/cmux",
-    "ln -sf /usr/local/bin/cmuxd-remote /usr/local/bin/cmux",
+    "mkdir -p /tmp/mosaic && chmod 700 /tmp/mosaic",
+    "ln -sf /usr/local/bin/mosaicd-remote /usr/local/bin/mosaic",
   ];
 }
 
 export function cloudImageSmokeTestCommands(): string[] {
   const agentToolVersionChecks = cloudAgentToolPackageSpecs().flatMap((tool) =>
-    tool.binaries.map((binary) => `${binary} --version >/tmp/cmux-${tool.name}-version.txt 2>&1`)
+    tool.binaries.map((binary) => `${binary} --version >/tmp/mosaic-${tool.name}-version.txt 2>&1`)
   );
   return [
-    "openssl version -a >/tmp/cmux-openssl-version.txt 2>&1",
+    "openssl version -a >/tmp/mosaic-openssl-version.txt 2>&1",
     "python3 -X faulthandler -c 'import ssl; print(ssl.OPENSSL_VERSION)'",
     "python3 -m http.server --help >/dev/null",
-    "node --version >/tmp/cmux-node-version.txt 2>&1",
-    "npm --version >/tmp/cmux-npm-version.txt 2>&1",
-    "bun --version >/tmp/cmux-bun-version.txt 2>&1",
-    "cmux --help >/tmp/cmux-cli-help.txt 2>&1",
-    "cmux --socket /tmp/cmux-browser-smoke.sock browser >/tmp/cmux-browser-help.txt 2>&1; status=$?; test \"$status\" -eq 2 && grep -q 'requires a subcommand' /tmp/cmux-browser-help.txt",
-    "cmuxd-remote version >/tmp/cmuxd-remote-version.txt 2>&1",
+    "node --version >/tmp/mosaic-node-version.txt 2>&1",
+    "npm --version >/tmp/mosaic-npm-version.txt 2>&1",
+    "bun --version >/tmp/mosaic-bun-version.txt 2>&1",
+    "mosaic --help >/tmp/mosaic-cli-help.txt 2>&1",
+    "mosaic --socket /tmp/mosaic-browser-smoke.sock browser >/tmp/mosaic-browser-help.txt 2>&1; status=$?; test \"$status\" -eq 2 && grep -q 'requires a subcommand' /tmp/mosaic-browser-help.txt",
+    "mosaicd-remote version >/tmp/mosaicd-remote-version.txt 2>&1",
     ...agentToolVersionChecks,
   ];
 }
@@ -430,7 +430,7 @@ export function cloudToolInstallCommands(): string[] {
     bunInstallCommand(),
     "ln -sf /usr/local/bin/bun /usr/local/bin/bunx",
     toolPackages.length > 0
-      ? `npm install -g --omit=dev --no-audit --fund=false ${toolPackages.map((tool) => shellQuote(tool.packageSpec)).join(" ")} >/tmp/cmux-npm-install.txt 2>&1`
+      ? `npm install -g --omit=dev --no-audit --fund=false ${toolPackages.map((tool) => shellQuote(tool.packageSpec)).join(" ")} >/tmp/mosaic-npm-install.txt 2>&1`
       : "true",
     "rm -rf /root/.npm/_cacache /var/lib/apt/lists/*",
   ];
@@ -444,9 +444,9 @@ function bunInstallCommand(): string {
   const tag = `bun-v${BUN_VERSION}`;
   const commands = [
     "set -eu",
-    "rm -rf /tmp/cmux-bun-install",
-    "mkdir -p /tmp/cmux-bun-install",
-    "cd /tmp/cmux-bun-install",
+    "rm -rf /tmp/mosaic-bun-install",
+    "mkdir -p /tmp/mosaic-bun-install",
+    "cd /tmp/mosaic-bun-install",
     "arch=\"$(dpkg --print-architecture)\"",
     "case \"${arch##*-}\" in amd64) build=\"x64-baseline\" ;; arm64) build=\"aarch64\" ;; *) echo \"unsupported architecture: $arch\"; exit 1 ;; esac",
     `tag=${shellQuote(tag)}`,
@@ -458,23 +458,23 @@ function bunInstallCommand(): string {
     "grep \" bun-linux-$build.zip$\" SHASUMS256.txt | sha256sum -c -",
     "unzip -q \"bun-linux-$build.zip\"",
     "install -m 0755 \"bun-linux-$build/bun\" /usr/local/bin/bun",
-    "rm -rf /tmp/cmux-bun-install",
+    "rm -rf /tmp/mosaic-bun-install",
   ];
-  return `{ ${commands.join(" && ")}; } >/tmp/cmux-bun-install.txt 2>&1`;
+  return `{ ${commands.join(" && ")}; } >/tmp/mosaic-bun-install.txt 2>&1`;
 }
 
 function freestylePythonOpenSSLCommands(): string[] {
   return [
     "apt-get update",
-    "mkdir -p /tmp/cmux-libssl /opt/cmux/openssl/lib",
-    "cd /tmp/cmux-libssl && apt-get download libssl3t64",
-    "dpkg-deb -x /tmp/cmux-libssl/libssl3t64_*.deb /tmp/cmux-libssl/root",
-    "cp /tmp/cmux-libssl/root/usr/lib/*-linux-gnu/libssl.so.3 /opt/cmux/openssl/lib/",
-    "cp /tmp/cmux-libssl/root/usr/lib/*-linux-gnu/libcrypto.so.3 /opt/cmux/openssl/lib/",
-    "cat <<'EOF' >/usr/local/bin/python3\n#!/bin/sh\nexport LD_LIBRARY_PATH=\"/opt/cmux/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nexec /usr/bin/python3 \"$@\"\nEOF",
+    "mkdir -p /tmp/mosaic-libssl /opt/mosaic/openssl/lib",
+    "cd /tmp/mosaic-libssl && apt-get download libssl3t64",
+    "dpkg-deb -x /tmp/mosaic-libssl/libssl3t64_*.deb /tmp/mosaic-libssl/root",
+    "cp /tmp/mosaic-libssl/root/usr/lib/*-linux-gnu/libssl.so.3 /opt/mosaic/openssl/lib/",
+    "cp /tmp/mosaic-libssl/root/usr/lib/*-linux-gnu/libcrypto.so.3 /opt/mosaic/openssl/lib/",
+    "cat <<'EOF' >/usr/local/bin/python3\n#!/bin/sh\nexport LD_LIBRARY_PATH=\"/opt/mosaic/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nexec /usr/bin/python3 \"$@\"\nEOF",
     "chmod 0755 /usr/local/bin/python3",
     "ln -sf /usr/local/bin/python3 /usr/local/bin/python",
-    "rm -rf /tmp/cmux-libssl /var/lib/apt/lists/*",
+    "rm -rf /tmp/mosaic-libssl /var/lib/apt/lists/*",
   ];
 }
 
@@ -484,18 +484,18 @@ function freestyleBaseDockerfileContent(daemonURL: string): string {
     `ENV LANG=${UTF8_LOCALE} LC_ALL=${UTF8_LOCALE} LANGUAGE=${UTF8_LOCALE}`,
     `RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ${CLOUD_SHELL_PACKAGES.join(" ")} && rm -rf /var/lib/apt/lists/*`,
     ...freestylePythonOpenSSLCommands().map((command) => `RUN ${command}`),
-    `RUN curl -fsSL ${shellQuote(daemonURL)} -o /usr/local/bin/cmuxd-remote && chmod 0755 /usr/local/bin/cmuxd-remote`,
+    `RUN curl -fsSL ${shellQuote(daemonURL)} -o /usr/local/bin/mosaicd-remote && chmod 0755 /usr/local/bin/mosaicd-remote`,
     ...cloudToolInstallCommands().map((command) => `RUN ${command}`),
     ...cloudRootSetupCommands().map((command) => `RUN ${command}`),
     ...cloudImageSmokeTestCommands().map((command) => `RUN ${command}`),
     "RUN mkdir -p /etc/systemd/system/multi-user.target.wants",
-    "RUN cat <<'EOF' >/etc/systemd/system/cmuxd-ws.service\n[Unit]\nDescription=cmuxd websocket daemon\nAfter=network.target\n\n[Service]\nType=simple\nUser=root\nExecStart=/usr/local/bin/cmuxd-remote serve --ws --listen 0.0.0.0:7777 --auth-lease-file /tmp/cmux/attach-pty-lease.json --rpc-auth-lease-file /tmp/cmux/attach-rpc-lease.json --shell /bin/bash\nRestart=always\nRestartSec=1\n\n[Install]\nWantedBy=multi-user.target\nEOF",
-    "RUN ln -sf /etc/systemd/system/cmuxd-ws.service /etc/systemd/system/multi-user.target.wants/cmuxd-ws.service",
+    "RUN cat <<'EOF' >/etc/systemd/system/mosaicd-ws.service\n[Unit]\nDescription=mosaicd websocket daemon\nAfter=network.target\n\n[Service]\nType=simple\nUser=root\nExecStart=/usr/local/bin/mosaicd-remote serve --ws --listen 0.0.0.0:7777 --auth-lease-file /tmp/mosaic/attach-pty-lease.json --rpc-auth-lease-file /tmp/mosaic/attach-rpc-lease.json --shell /bin/bash\nRestart=always\nRestartSec=1\n\n[Install]\nWantedBy=multi-user.target\nEOF",
+    "RUN ln -sf /etc/systemd/system/mosaicd-ws.service /etc/systemd/system/multi-user.target.wants/mosaicd-ws.service",
   ].join("\n");
 }
 
 async function remoteDaemonBuildURL(tag: string, daemonPath: string): Promise<string> {
-  const explicit = process.env.CMUX_REMOTE_DAEMON_BUILD_URL?.trim();
+  const explicit = process.env.MOSAIC_REMOTE_DAEMON_BUILD_URL?.trim();
   if (explicit) return explicit;
 
   const required = [
@@ -508,11 +508,11 @@ async function remoteDaemonBuildURL(tag: string, daemonPath: string): Promise<st
   const missing = required.filter((key) => !process.env[key]?.trim());
   if (missing.length > 0) {
     throw new Error(
-      `Freestyle snapshot build needs CMUX_REMOTE_DAEMON_BUILD_URL or R2 env vars; missing ${missing.join(", ")}`,
+      `Freestyle snapshot build needs MOSAIC_REMOTE_DAEMON_BUILD_URL or R2 env vars; missing ${missing.join(", ")}`,
     );
   }
 
-  const key = `cmux-build-artifacts/cloud-vm/${tag}/cmuxd-remote-linux-amd64`;
+  const key = `mosaic-build-artifacts/cloud-vm/${tag}/mosaicd-remote-linux-amd64`;
   const env = {
     AWS_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID!,
     AWS_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY!,
@@ -649,7 +649,7 @@ function imageNotes(metadata: ImageBuildMetadata): string {
 
 type ImageBuildMetadata = {
   readonly builtAt: string;
-  readonly cmuxdRemoteCommit: string;
+  readonly mosaicdRemoteCommit: string;
   readonly binarySha256: string;
   readonly builderScriptVersion: string;
   readonly nodeMajor: string;

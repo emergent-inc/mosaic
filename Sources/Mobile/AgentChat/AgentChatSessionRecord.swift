@@ -1,4 +1,4 @@
-import CmuxAgentChat
+import MosaicAgentChat
 import Foundation
 
 /// One chat-capable agent session the Mac knows about: hook-derived
@@ -10,10 +10,10 @@ struct AgentChatSessionRecord: Sendable {
     /// Which agent runtime owns the session.
     let agentKind: ChatAgentKind
 
-    /// Owning cmux workspace UUID string, when known.
+    /// Owning mosaic workspace UUID string, when known.
     var workspaceID: String?
 
-    /// Hosting cmux terminal surface UUID string, when known. Required for
+    /// Hosting mosaic terminal surface UUID string, when known. Required for
     /// the send/interrupt path.
     var surfaceID: String?
 

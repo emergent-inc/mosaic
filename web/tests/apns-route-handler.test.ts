@@ -8,7 +8,7 @@ describe("APNs route handler", () => {
     console.error = mock(() => {}) as unknown as typeof console.error;
     try {
       const response = await withApnsApiRoute(
-        new Request("https://cmux.test/api/notifications/push", { method: "POST" }),
+        new Request("https://mosaic.test/api/notifications/push", { method: "POST" }),
         "/api/notifications/push",
         "send",
         async () => {

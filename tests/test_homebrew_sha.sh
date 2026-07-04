@@ -1,13 +1,13 @@
 #!/bin/bash
 # Regression test: verify the homebrew cask SHA256 matches the actual release DMG.
-# Catches issues like https://github.com/emergent-inc/cmux/issues/110 where a race
+# Catches issues like https://github.com/emergent-inc/mosaic/issues/110 where a race
 # condition caused the cask to contain the SHA of a 404 page instead of the DMG.
 set -euo pipefail
 
-CASK_FILE="$(dirname "$0")/../homebrew-cmux/Casks/cmux.rb"
+CASK_FILE="$(dirname "$0")/../homebrew-mosaic/Casks/mosaic.rb"
 
 if [ ! -f "$CASK_FILE" ]; then
-  echo "SKIP: homebrew-cmux submodule not initialized"
+  echo "SKIP: homebrew-mosaic submodule not initialized"
   exit 0
 fi
 

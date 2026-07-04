@@ -13,7 +13,7 @@ private struct CanvasInlineBrowserHostingKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var cmuxCanvasInlineBrowserHosting: Bool {
+    var mosaicCanvasInlineBrowserHosting: Bool {
         get { self[CanvasInlineBrowserHostingKey.self] }
         set { self[CanvasInlineBrowserHostingKey.self] = newValue }
     }

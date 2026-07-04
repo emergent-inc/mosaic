@@ -9,11 +9,11 @@ enum MenuBarProfilingLauncher {
     static let defaultUsefulTemplateCount = 4
 
     static func bundledScriptURL(bundle: Bundle = .main) -> URL? {
-        bundle.url(forResource: "start-cmux-profiling", withExtension: nil, subdirectory: "bin")
+        bundle.url(forResource: "start-mosaic-profiling", withExtension: nil, subdirectory: "bin")
     }
 
     static func bundledSubmitterURL(bundle: Bundle = .main) -> URL? {
-        bundle.url(forResource: "submit-cmux-profile", withExtension: nil, subdirectory: "bin")
+        bundle.url(forResource: "submit-mosaic-profile", withExtension: nil, subdirectory: "bin")
     }
 
     static func estimatedCaptureSeconds(
@@ -58,10 +58,10 @@ enum MenuBarProfilingLauncher {
 
         do {
             try process.run()
-            menuBarProfilingLogger.notice("Started cmux profiling for pid \(pid)")
+            menuBarProfilingLogger.notice("Started mosaic profiling for pid \(pid)")
             return true
         } catch {
-            menuBarProfilingLogger.error("Failed to start cmux profiling for pid \(pid): \(error.localizedDescription, privacy: .public)")
+            menuBarProfilingLogger.error("Failed to start mosaic profiling for pid \(pid): \(error.localizedDescription, privacy: .public)")
             NSSound.beep()
             return false
         }

@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   apnsHostForEnvironment,
   buildApnsPayload,
-  CMUX_APNS_CATEGORY,
+  MOSAIC_APNS_CATEGORY,
   shouldPruneToken,
 } from "../services/apns/payload";
 import { summarizeApnsSendResults } from "../services/apns/response";
@@ -29,17 +29,17 @@ describe("apns payload", () => {
       workspaceId: "ws-1",
       surfaceId: "sf-2",
       macDeviceId: "mac-3",
-    }) as { aps: Record<string, unknown>; cmux: Record<string, string> };
+    }) as { aps: Record<string, unknown>; mosaic: Record<string, string> };
 
     expect(payload.aps.alert).toEqual({ title: "claude", subtitle: "issue-118", body: "Agent finished" });
     expect(payload.aps["interruption-level"]).toBe("time-sensitive");
     expect(payload.aps.sound).toBe("default");
-    expect(payload.cmux).toEqual({ workspaceId: "ws-1", surfaceId: "sf-2", macDeviceId: "mac-3" });
+    expect(payload.mosaic).toEqual({ workspaceId: "ws-1", surfaceId: "sf-2", macDeviceId: "mac-3" });
   });
 
-  test("omits cmux block when no ids", () => {
+  test("omits mosaic block when no ids", () => {
     const payload = buildApnsPayload({ title: "t", body: "b" }) as Record<string, unknown>;
-    expect("cmux" in payload).toBe(false);
+    expect("mosaic" in payload).toBe(false);
   });
 
   test("carries the stable notification id and dismiss-sync category", () => {
@@ -48,12 +48,12 @@ describe("apns payload", () => {
       body: "Agent finished",
       workspaceId: "ws-1",
       notificationId: "n-42",
-    }) as { aps: Record<string, unknown>; cmux: Record<string, string> };
+    }) as { aps: Record<string, unknown>; mosaic: Record<string, string> };
 
-    // The category is what arms iOS customDismissAction; the cmux key lets an
+    // The category is what arms iOS customDismissAction; the mosaic key lets an
     // iOS swipe tell the Mac which notification was dismissed.
-    expect(payload.aps.category).toBe(CMUX_APNS_CATEGORY);
-    expect(payload.cmux).toEqual({ workspaceId: "ws-1", notificationId: "n-42" });
+    expect(payload.aps.category).toBe(MOSAIC_APNS_CATEGORY);
+    expect(payload.mosaic).toEqual({ workspaceId: "ws-1", notificationId: "n-42" });
   });
 
   test("keeps the notification id even when content is hidden (id is not content)", () => {
@@ -62,11 +62,11 @@ describe("apns payload", () => {
       body: "secret output",
       notificationId: "n-9",
       hideContent: true,
-    }) as { aps: { alert: Record<string, string>; category: string }; cmux: Record<string, string> };
+    }) as { aps: { alert: Record<string, string>; category: string }; mosaic: Record<string, string> };
 
-    expect(payload.aps.alert.title).toBe("cmux");
-    expect(payload.aps.category).toBe(CMUX_APNS_CATEGORY);
-    expect(payload.cmux).toEqual({ notificationId: "n-9" });
+    expect(payload.aps.alert.title).toBe("mosaic");
+    expect(payload.aps.category).toBe(MOSAIC_APNS_CATEGORY);
+    expect(payload.mosaic).toEqual({ notificationId: "n-9" });
   });
 
   test("hideContent redacts terminal content but keeps a generic compatibility body and deep-link", () => {
@@ -76,17 +76,17 @@ describe("apns payload", () => {
       body: "rm -rf secret output",
       workspaceId: "ws-9",
       hideContent: true,
-    }) as { aps: { alert: Record<string, string> }; cmux: Record<string, string> };
+    }) as { aps: { alert: Record<string, string> }; mosaic: Record<string, string> };
 
-    expect(payload.aps.alert.title).toBe("cmux");
+    expect(payload.aps.alert.title).toBe("mosaic");
     expect(payload.aps.alert.body).toBe("An agent needs your attention");
     expect(payload.aps.alert.subtitle).toBeUndefined();
-    expect(payload.cmux).toEqual({ workspaceId: "ws-9" });
+    expect(payload.mosaic).toEqual({ workspaceId: "ws-9" });
   });
 
-  test("empty title falls back to cmux", () => {
+  test("empty title falls back to mosaic", () => {
     const payload = buildApnsPayload({ title: "   ", body: "b" }) as { aps: { alert: { title: string } } };
-    expect(payload.aps.alert.title).toBe("cmux");
+    expect(payload.aps.alert.title).toBe("mosaic");
   });
 
   test("stamps aps.badge with the authoritative unread count on a notify push", () => {
@@ -111,13 +111,13 @@ describe("apns payload", () => {
       body: "",
       dismissedIds: ["n-1", "n-2"],
       badgeCount: 0,
-    }) as { aps: Record<string, unknown>; cmux: Record<string, unknown> };
+    }) as { aps: Record<string, unknown>; mosaic: Record<string, unknown> };
 
     expect(payload.aps).toEqual({ "content-available": 1, badge: 0 });
     // Nothing visible: no alert, no sound, no category.
     expect("alert" in payload.aps).toBe(false);
     expect("sound" in payload.aps).toBe(false);
-    expect(payload.cmux).toEqual({ dismissedIds: ["n-1", "n-2"] });
+    expect(payload.mosaic).toEqual({ dismissedIds: ["n-1", "n-2"] });
   });
 });
 
@@ -157,23 +157,23 @@ describe("apns response", () => {
 });
 
 describe("apns route policy", () => {
-  test("allows only cmux iOS bundle IDs and derives the APNs environment", () => {
+  test("allows only mosaic iOS bundle IDs and derives the APNs environment", () => {
     expect(normalizeApnsBundle("mosaic.com.emergent.app")).toEqual({
       bundleId: "mosaic.com.emergent.app",
       environment: "production",
     });
-    expect(normalizeApnsBundle("dev.cmux.app.beta")).toEqual({
-      bundleId: "dev.cmux.app.beta",
+    expect(normalizeApnsBundle("dev.mosaic.app.beta")).toEqual({
+      bundleId: "dev.mosaic.app.beta",
       environment: "production",
     });
-    expect(normalizeApnsBundle("dev.cmux.ios.push1")).toEqual({
-      bundleId: "dev.cmux.ios.push1",
+    expect(normalizeApnsBundle("dev.mosaic.ios.push1")).toEqual({
+      bundleId: "dev.mosaic.ios.push1",
       environment: "sandbox",
     });
 
     expect(normalizeApnsBundle("com.example.app")).toBeNull();
-    expect(normalizeApnsBundle("dev.cmux.ios.bad_topic")).toBeNull();
-    expect(normalizeApnsBundle("dev.cmux.ios.-bad")).toBeNull();
+    expect(normalizeApnsBundle("dev.mosaic.ios.bad_topic")).toBeNull();
+    expect(normalizeApnsBundle("dev.mosaic.ios.-bad")).toBeNull();
   });
 
   test("bounds and trims push payloads before sending to APNs", () => {
@@ -432,7 +432,7 @@ describe("apns sender transport", () => {
     const resultPromise = sendApnsNotification(
       { keyP8: p8, keyId: "KID-CONCURRENT", teamId: "TEAM456" },
       [
-        { deviceToken: "a".repeat(64), bundleId: "dev.cmux.ios.push1", environment: "sandbox" },
+        { deviceToken: "a".repeat(64), bundleId: "dev.mosaic.ios.push1", environment: "sandbox" },
         { deviceToken: "b".repeat(64), bundleId: "mosaic.com.emergent.app", environment: "production" },
       ],
       { title: "agent", body: "done" },
@@ -510,7 +510,7 @@ describe("apns sender transport", () => {
     const results = await sendApnsNotification(
       { keyP8: p8, keyId: "KID-PARTIAL", teamId: "TEAM456" },
       [
-        { deviceToken: "a".repeat(64), bundleId: "dev.cmux.ios.push1", environment: "sandbox" },
+        { deviceToken: "a".repeat(64), bundleId: "dev.mosaic.ios.push1", environment: "sandbox" },
         { deviceToken: "b".repeat(64), bundleId: "mosaic.com.emergent.app", environment: "production" },
       ],
       { title: "agent", body: "done" },
@@ -575,7 +575,7 @@ describe("apns sender transport", () => {
       { keyP8: p8, keyId: "KID-SAME-HOST-PARTIAL", teamId: "TEAM456" },
       [
         { deviceToken: "a".repeat(64), bundleId: "mosaic.com.emergent.app", environment: "production" },
-        { deviceToken: "b".repeat(64), bundleId: "dev.cmux.app.beta", environment: "production" },
+        { deviceToken: "b".repeat(64), bundleId: "dev.mosaic.app.beta", environment: "production" },
       ],
       { title: "agent", body: "done" },
       1000,

@@ -75,7 +75,7 @@ final class AgentHibernationController {
         let stableSince: TimeInterval
     }
 
-    private let timerQueue = DispatchQueue(label: "com.cmux.agent-hibernation", qos: .utility)
+    private let timerQueue = DispatchQueue(label: "com.mosaic.agent-hibernation", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var settingsObserver: NSObjectProtocol?
     private var activityByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
@@ -374,8 +374,8 @@ final class AgentHibernationController {
             guard rawPID > 0, rawPID <= Int(Int32.max) else { continue }
             let pid = pid_t(rawPID)
             guard pid != currentProcessID else { continue }
-            guard let process = CmuxTopProcessSnapshot.processArgumentsAndEnvironment(for: rawPID),
-                  process.matchesCMUXScope(workspaceId: record.key.workspaceId, surfaceId: record.key.panelId) else {
+            guard let process = MosaicTopProcessSnapshot.processArgumentsAndEnvironment(for: rawPID),
+                  process.matchesMosaicScope(workspaceId: record.key.workspaceId, surfaceId: record.key.panelId) else {
                 continue
             }
             let processGroupID = getpgid(pid)

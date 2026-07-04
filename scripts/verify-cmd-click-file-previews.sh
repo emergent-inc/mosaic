@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-fixture_dir="${1:-${TMPDIR:-/tmp}/cmux-file-preview-fixtures}"
+fixture_dir="${1:-${TMPDIR:-/tmp}/mosaic-file-preview-fixtures}"
 
 mkdir -p "$fixture_dir"
 
@@ -74,10 +74,10 @@ def write_pdf(path: Path) -> None:
         b"BT\n"
         b"/F1 24 Tf\n"
         b"72 720 Td\n"
-        b"(cmux file preview PDF) Tj\n"
+        b"(mosaic file preview PDF) Tj\n"
         b"/F1 12 Tf\n"
         b"0 -36 Td\n"
-        b"(Cmd-click this path in cmux. It should open in a split.) Tj\n"
+        b"(Cmd-click this path in mosaic. It should open in a split.) Tj\n"
         b"ET\n"
     )
     objects.append(
@@ -125,15 +125,15 @@ def write_wav(path: Path) -> None:
 
 write_text(
     "README file preview.md",
-    "# cmux file preview fixture\n\nCmd-click this Markdown path. With Markdown routing on, it opens in the rendered viewer.\n",
+    "# mosaic file preview fixture\n\nCmd-click this Markdown path. With Markdown routing on, it opens in the rendered viewer.\n",
 )
 write_text(
     "Plain Text Fixture.txt",
-    "This is a plain text fixture for cmux cmd-click file preview routing.\n",
+    "This is a plain text fixture for mosaic cmd-click file preview routing.\n",
 )
 write_text(
     "Code Fixture.swift",
-    'import Foundation\n\nprint("cmux file preview")\n',
+    'import Foundation\n\nprint("mosaic file preview")\n',
 )
 write_text(
     "Data Fixture.json",
@@ -162,14 +162,14 @@ copy_fixture() {
   fi
 }
 
-copy_fixture "$repo_root/web/public/blog/cmd-shift-u.mp4" "CMUX Sample Video.mp4"
+copy_fixture "$repo_root/web/public/blog/cmd-shift-u.mp4" "MOSAIC Sample Video.mp4"
 copy_fixture "$repo_root/vendor/bonsplit/www/public/demo-compressed.mov" "Bonsplit Sample Video.mov"
 copy_fixture "$repo_root/web/public/avatars/schrockn.jpg" "Sample JPEG Fixture.jpg"
 
-printf 'cmux cmd-click file preview fixtures\n'
+printf 'mosaic cmd-click file preview fixtures\n'
 printf 'Directory: %s\n\n' "$fixture_dir"
-printf 'Run this inside the tagged cmux build, then Cmd-click each path below.\n'
-printf 'Expected: supported files open in a cmux split. After Cmd Shift P -> Disable Cmd-click File Previews, the same paths should fall back to the external opener.\n\n'
+printf 'Run this inside the tagged mosaic build, then Cmd-click each path below.\n'
+printf 'Expected: supported files open in a mosaic split. After Cmd Shift P -> Disable Cmd-click File Previews, the same paths should fall back to the external opener.\n\n'
 
 paths=()
 for file in \
@@ -182,7 +182,7 @@ for file in \
   "Data Fixture.json" \
   "Table Fixture.csv" \
   "Generated Audio Fixture.wav" \
-  "CMUX Sample Video.mp4" \
+  "MOSAIC Sample Video.mp4" \
   "Bonsplit Sample Video.mov"; do
   path="$fixture_dir/$file"
   if [[ -f "$path" ]]; then
@@ -221,7 +221,7 @@ SWIFT
 fi
 
 printf '\nfile:// URL route checks:\n'
-for file in "Generated PNG Fixture.png" "Generated PDF Fixture.pdf" "CMUX Sample Video.mp4"; do
+for file in "Generated PNG Fixture.png" "Generated PDF Fixture.pdf" "MOSAIC Sample Video.mp4"; do
   path="$fixture_dir/$file"
   if [[ -f "$path" ]]; then
     python3 - "$path" <<'PY'

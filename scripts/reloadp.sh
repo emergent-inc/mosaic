@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release -destination 'platform=macOS' build
+xcodebuild -project mosaic.xcodeproj -scheme mosaic -configuration Release -destination 'platform=macOS' build
 pkill -x Mosaic || true
 sleep 0.2
 APP_PATH="$(
@@ -20,7 +20,7 @@ echo "Release app:"
 echo "  ${APP_PATH}"
 
 # Dev shells (including CI/Codex) often force-disable paging by exporting these.
-# Don't leak that into cmux, otherwise `git diff` won't page even with PAGER=less.
+# Don't leak that into mosaic, otherwise `git diff` won't page even with PAGER=less.
 env -u GIT_PAGER -u GH_PAGER open -g "$APP_PATH"
 
 APP_PROCESS_PATH="${APP_PATH}/Contents/MacOS/Mosaic"

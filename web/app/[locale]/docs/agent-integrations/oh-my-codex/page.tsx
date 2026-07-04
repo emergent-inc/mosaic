@@ -26,9 +26,9 @@ export default function OhMyCodexPage() {
       <p>{t("intro")}</p>
 
       <DocsHeading level={2} id="usage">{t("usage")}</DocsHeading>
-      <CodeBlock lang="bash">{`cmux omx
-cmux omx --madmax --high
-cmux omx team`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic omx
+mosaic omx --madmax --high
+mosaic omx team`}</CodeBlock>
       <p>{t("usageDesc")}</p>
 
       <DocsHeading level={2} id="what-you-get">{t("whatYouGet")}</DocsHeading>
@@ -64,8 +64,8 @@ omx doctor`}</CodeBlock>
           </tr>
         </thead>
         <tbody>
-          <tr><td><code>~/.cmuxterm/omx-bin/</code></td><td>{t("dirShim")}</td></tr>
-          <tr><td><code>~/.cmuxterm/tmux-compat-store.json</code></td><td>{t("dirStore")}</td></tr>
+          <tr><td><code>~/.mosaicterm/omx-bin/</code></td><td>{t("dirShim")}</td></tr>
+          <tr><td><code>~/.mosaicterm/tmux-compat-store.json</code></td><td>{t("dirStore")}</td></tr>
         </tbody>
       </table>
 
@@ -80,7 +80,7 @@ omx doctor`}</CodeBlock>
         <tbody>
           <tr><td><code>TMUX</code></td><td>{t("envTmux")}</td></tr>
           <tr><td><code>TMUX_PANE</code></td><td>{t("envTmuxPane")}</td></tr>
-          <tr><td><code>CMUX_SOCKET_PATH</code></td><td>{t("envSocket")}</td></tr>
+          <tr><td><code>MOSAIC_SOCKET_PATH</code></td><td>{t("envSocket")}</td></tr>
         </tbody>
       </table>
     </>

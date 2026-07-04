@@ -351,7 +351,7 @@ export default async function DeeplinkPage({
           <div className="mb-6 flex flex-wrap gap-3">
             <DeeplinkTrackedLink
               href={href}
-              event="cmuxterm_deeplink_opened"
+              event="mosaicterm_deeplink_opened"
               kind={kind}
               result="open_native"
               className="inline-flex items-center rounded-full bg-foreground px-5 py-2.5 text-[15px] font-medium transition-opacity hover:opacity-85"
@@ -361,7 +361,7 @@ export default async function DeeplinkPage({
             </DeeplinkTrackedLink>
             <DeeplinkTrackedLink
               href={DOWNLOAD_CONFIRMATION_HREF}
-              event="cmuxterm_deeplink_opened"
+              event="mosaicterm_deeplink_opened"
               kind={kind}
               result="download_fallback"
               className="inline-flex items-center rounded-full border border-border px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-code-bg"

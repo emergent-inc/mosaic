@@ -1,12 +1,12 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
-import CMUXMobileCore
-import CmuxAuthRuntime
+import MosaicMobileCore
+import MosaicAuthRuntime
 import SwiftUI
 
 /// The macOS onboarding window for pairing an iPhone with this Mac.
 ///
-/// Walks the user through the two requirements (signed in to cmux, Tailscale
+/// Walks the user through the two requirements (signed in to mosaic, Tailscale
 /// reachable) and then shows a scannable QR code with step-by-step
 /// instructions. Pairing is gated on sign-in because authorization is a Stack
 /// same-account check; Tailscale is what gives the iPhone a route to this Mac.
@@ -54,9 +54,9 @@ struct MobilePairingView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(String(localized: "mobile.pairing.window.heading", defaultValue: "Pair your iPhone"))
-                .cmuxFont(.title2, weight: .semibold)
+                .mosaicFont(.title2, weight: .semibold)
             Text(String(localized: "mobile.pairing.window.subheading", defaultValue: "Scan this code with the mosaic app on your iPhone to sync your terminal workspaces."))
-                .cmuxFont(.callout)
+                .mosaicFont(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -92,7 +92,7 @@ struct MobilePairingView: View {
                     String(localized: "mobile.pairing.req.tailscale.get", defaultValue: "Get Tailscale"),
                     destination: Self.tailscaleDownloadURL
                 )
-                .cmuxFont(.callout)
+                .mosaicFont(.callout)
             }
         }
     }
@@ -125,9 +125,9 @@ struct MobilePairingView: View {
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).cmuxFont(.callout, weight: .medium)
+                Text(title).mosaicFont(.callout, weight: .medium)
                 Text(subtitle)
-                    .cmuxFont(.caption)
+                    .mosaicFont(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -165,7 +165,7 @@ struct MobilePairingView: View {
     private var needsTailscaleContent: some View {
         VStack(spacing: 12) {
             Image(systemName: "network.slash")
-                .cmuxFont(size: 28)
+                .mosaicFont(size: 28)
                 .foregroundStyle(.orange)
             Text(String(localized: "mobile.pairing.needsTailscale.body", defaultValue: "This Mac has no Tailscale address, so your iPhone can't reach it. Install Tailscale on this Mac and your iPhone (same account), then refresh."))
                 .multilineTextAlignment(.center)
@@ -188,7 +188,7 @@ struct MobilePairingView: View {
     private var signedOut: some View {
         VStack(spacing: 12) {
             Image(systemName: "person.crop.circle.badge.plus")
-                .cmuxFont(size: 28)
+                .mosaicFont(size: 28)
                 .foregroundStyle(.tint)
             Text(String(localized: "mobile.pairing.signIn.prompt", defaultValue: "Sign in with your mosaic account to pair your iPhone."))
                 .multilineTextAlignment(.center)
@@ -260,7 +260,7 @@ struct MobilePairingView: View {
     private func failure(message: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
-                .cmuxFont(size: 28)
+                .mosaicFont(size: 28)
                 .foregroundStyle(.orange)
             Text(message)
                 .multilineTextAlignment(.center)
@@ -298,7 +298,7 @@ struct MobilePairingView: View {
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
                 Text(String(localized: "mobile.pairing.waiting", defaultValue: "Waiting for your iPhone…"))
-                    .cmuxFont(.callout)
+                    .mosaicFont(.callout)
                     .foregroundStyle(.secondary)
             }
         }
@@ -320,10 +320,10 @@ struct MobilePairingView: View {
     private func connectedContent(_ ready: MobilePairingModel.Ready) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
-                .cmuxFont(size: 36)
+                .mosaicFont(size: 36)
                 .foregroundStyle(.green)
             Text(String(localized: "mobile.pairing.connected.title", defaultValue: "iPhone connected"))
-                .cmuxFont(.title3, weight: .semibold)
+                .mosaicFont(.title3, weight: .semibold)
             Text(String(localized: "mobile.pairing.connected.subtitle", defaultValue: "Your terminal workspaces are now syncing to your iPhone. You can close this window."))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -338,13 +338,13 @@ struct MobilePairingView: View {
             HStack(spacing: 4) {
                 Spacer(minLength: 30)
                 Text(String(localized: "mobile.pairing.getApp.prompt", defaultValue: "Don't have it yet?"))
-                    .cmuxFont(.caption)
+                    .mosaicFont(.caption)
                     .foregroundStyle(.secondary)
                 Link(
                     String(localized: "mobile.pairing.getApp.link", defaultValue: "Get mosaic for iPhone"),
                     destination: Self.iphoneAppURL
                 )
-                .cmuxFont(.caption)
+                .mosaicFont(.caption)
                 Spacer(minLength: 0)
             }
             step(2, String(localized: "mobile.pairing.step.signIn", defaultValue: "Sign in with the same account you use on this Mac."))
@@ -356,12 +356,12 @@ struct MobilePairingView: View {
     private func step(_ number: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("\(number)")
-                .cmuxFont(.caption, weight: .bold)
+                .mosaicFont(.caption, weight: .bold)
                 .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
                 .background(Color.accentColor, in: Circle())
             Text(text)
-                .cmuxFont(.callout)
+                .mosaicFont(.callout)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
@@ -371,11 +371,11 @@ struct MobilePairingView: View {
     private func manualFallback(_ ready: MobilePairingModel.Ready) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(String(localized: "mobile.pairing.manual.title", defaultValue: "Can't scan? Add this Mac manually:"))
-                .cmuxFont(.caption, weight: .semibold)
+                .mosaicFont(.caption, weight: .semibold)
                 .foregroundStyle(.secondary)
             ForEach(ready.tailscaleLines, id: \.self) { line in
                 Text(line)
-                    .cmuxFont(.caption, design: .monospaced)
+                    .mosaicFont(.caption, design: .monospaced)
                     .textSelection(.enabled)
                     .foregroundStyle(.secondary)
             }
@@ -415,7 +415,7 @@ struct MobilePairingView: View {
                         : label
                 )
             }
-            .cmuxFont(.caption)
+            .mosaicFont(.caption)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)

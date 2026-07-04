@@ -1,5 +1,5 @@
 import Foundation
-import CmuxCore
+import MosaicCore
 
 // User-facing strings stay in the app target so they resolve against the app
 // bundle's localization tables (the package never localizes).

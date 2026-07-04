@@ -5,7 +5,7 @@ usage() {
   cat <<'EOF'
 Usage: skills.sh [options]
 
-Install cmux agent skills into the Codex skills directory.
+Install mosaic agent skills into the Codex skills directory.
 
 Options:
   --dest DIR       Destination directory. Default: ${CODEX_HOME:-$HOME/.codex}/skills
@@ -19,8 +19,8 @@ Options:
 Examples:
   ./skills.sh
   ./skills.sh --list
-  ./skills.sh --skill cmux --skill cmux-browser
-  curl -fsSL https://raw.githubusercontent.com/emergent-inc/cmux/main/skills.sh | bash
+  ./skills.sh --skill mosaic --skill mosaic-browser
+  curl -fsSL https://raw.githubusercontent.com/emergent-inc/mosaic/main/skills.sh | bash
 EOF
 }
 
@@ -43,7 +43,7 @@ normalize_source_dir() {
 
 dest_dir="${CODEX_HOME:-$HOME/.codex}/skills"
 source_dir=""
-ref="${CMUX_SKILLS_REF:-main}"
+ref="${MOSAIC_SKILLS_REF:-main}"
 list_only=0
 dry_run=0
 selected_skills=()
@@ -110,8 +110,8 @@ if [[ -z "$source_dir" ]]; then
   need_cmd tar
   need_cmd mktemp
 
-  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/cmux-skills.XXXXXX")"
-  archive_url="https://codeload.github.com/emergent-inc/cmux/tar.gz/${ref}"
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/mosaic-skills.XXXXXX")"
+  archive_url="https://codeload.github.com/emergent-inc/mosaic/tar.gz/${ref}"
   curl -fsSL "$archive_url" | tar -xz -C "$tmp_dir"
   checkout_dir="$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
   [[ -n "$checkout_dir" ]] || die "downloaded archive was empty"

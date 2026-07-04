@@ -6,7 +6,7 @@ import os
 /// Spawns `ssh -tt <ControlMaster> host tmux -CC attach -t <session>` as a
 /// `Process` with pipes, feeds its stdout through ``RemoteTmuxControlStreamParser``
 /// (in order, via an `AsyncStream`), and exposes the mirrored topology plus a
-/// live output callback. cmux owns the whole protocol here — so it never depends
+/// live output callback. mosaic owns the whole protocol here — so it never depends
 /// on ghostty's (tmux-3.6-fragile) built-in Viewer, and there is no
 /// command-queue desync because we issue and correlate commands ourselves.
 @MainActor
@@ -170,7 +170,7 @@ final class RemoteTmuxControlConnection {
     /// Subscription-name prefix for per-pane `pane_current_path` (`refresh-client -B`).
     /// The tmux pane id is appended so an inbound `%subscription-changed` can be
     /// routed back to its pane; defined once so the writer and reader can't drift.
-    private static let cwdSubscriptionPrefix = "cmux_cwd_"
+    private static let cwdSubscriptionPrefix = "mosaic_cwd_"
 
     /// Subscription-name prefix for per-pane reflow classification
     /// (`refresh-client -B`). The subscribed format is
@@ -178,7 +178,7 @@ final class RemoteTmuxControlConnection {
     /// and on every change, so launching/exiting an app (bash → node when claude
     /// starts) re-classifies the pane live. The tmux pane id is appended for
     /// routing, mirroring ``cwdSubscriptionPrefix``.
-    private static let reflowSubscriptionPrefix = "cmux_reflow_"
+    private static let reflowSubscriptionPrefix = "mosaic_reflow_"
 
     /// `ESC[?1049h` — enter the alternate screen, emitted to a mirror surface when
     /// the remote pane is on the alternate screen (see ``capturePane(paneId:)``).
@@ -340,7 +340,7 @@ final class RemoteTmuxControlConnection {
         proc.standardError = errPipe
         let stdinWriter = RemoteTmuxControlPipeWriter(
             handle: inPipe.fileHandleForWriting,
-            label: "com.cmux.remote-tmux.stdin.\(UUID().uuidString)",
+            label: "com.mosaic.remote-tmux.stdin.\(UUID().uuidString)",
             maxPendingBytes: Self.maxPendingStdinBytes,
             onFailure: { [weak self] in
                 self?.handleStdinWriteFailure()
@@ -430,7 +430,7 @@ final class RemoteTmuxControlConnection {
 
     /// Sizes the tmux control client to `columns`×`rows` cells (tmux
     /// `refresh-client -C`) so the remote windows/panes reflow to the rendered
-    /// cmux grid. Without this a freshly attached session stays at ssh's default
+    /// mosaic grid. Without this a freshly attached session stays at ssh's default
     /// 80×24 and TUIs (claude, claude agents) render mangled. Always records the grid
     /// (re-applied by ``reseedAfterReconnect()``); sends the live `refresh-client`
     /// only while `.connected`. No-ops for a degenerate grid.
@@ -484,7 +484,7 @@ final class RemoteTmuxControlConnection {
     /// get a clean current-width frame is the app's own repaint — which apps do on
     /// SIGWINCH. A real-terminal attach virtually always delivers that SIGWINCH
     /// because its size differs from the detached window's size. The mirror's attach
-    /// usually does NOT: the window still has the size cmux itself left behind, so
+    /// usually does NOT: the window still has the size mosaic itself left behind, so
     /// `refresh-client -C` matches it exactly, no pane resize happens, and the stale
     /// frame stays until the user manually resizes. This kick closes that one gap by
     /// sending the same signal a real attach sends: a genuine size change (rows-1),
@@ -510,12 +510,12 @@ final class RemoteTmuxControlConnection {
         }
         guard windowAlreadyAtTarget else {
             #if DEBUG
-            cmuxDebugLog("remote.size.kick skip=windowSizeDiffers target=\(size.columns)x\(size.rows)")
+            mosaicDebugLog("remote.size.kick skip=windowSizeDiffers target=\(size.columns)x\(size.rows)")
             #endif
             return
         }
         #if DEBUG
-        cmuxDebugLog("remote.size.kick shrink to \(size.columns)x\(size.rows - 1)")
+        mosaicDebugLog("remote.size.kick shrink to \(size.columns)x\(size.rows - 1)")
         #endif
         attachRedrawKickTask?.cancel()
         attachRedrawKickTask = Task { @MainActor [weak self] in
@@ -535,7 +535,7 @@ final class RemoteTmuxControlConnection {
             // Restore the CURRENT size (the user may have resized during the gap).
             let restore = self.lastClientSize ?? size
             #if DEBUG
-            cmuxDebugLog("remote.size.kick restore to \(restore.columns)x\(restore.rows)")
+            mosaicDebugLog("remote.size.kick restore to \(restore.columns)x\(restore.rows)")
             #endif
             self.send("refresh-client -C \(restore.columns)x\(restore.rows)")
         }
@@ -576,17 +576,17 @@ final class RemoteTmuxControlConnection {
     /// remote (the alternate screen does not reflow).
     ///
     /// After the paint it restores terminal state the live `%output` doesn't carry
-    /// (it set before cmux attached): scroll region, DEC private modes, the mouse
+    /// (it set before mosaic attached): scroll region, DEC private modes, the mouse
     /// tracking mode, and the cursor. Restoring the mouse mode means clicks, scroll,
     /// and drag in the mirror are forwarded to the remote app — so drag-to-select
     /// becomes the app's own selection/OSC 52 copy, and **Shift+drag** does a native
-    /// cmux copy (exactly as a local terminal behaves with a mouse-mode app).
+    /// mosaic copy (exactly as a local terminal behaves with a mouse-mode app).
     func capturePane(paneId: Int) {
         // Match the remote pane's screen (primary vs alternate) BEFORE seeding the
         // captured rows. An alt-screen TUI (e.g. claude) must render on the mirror's
         // alternate screen so resize matches the remote (the alternate screen does
         // not reflow; the primary screen reflows/scrolls and offsets rows). The
-        // pane was already on the alt screen before cmux attached, so its 1049h is
+        // pane was already on the alt screen before mosaic attached, so its 1049h is
         // not in the live %output — query `#{alternate_on}` and enter alt ourselves.
         // Ordered first so the enter lands before the capture paint in the FIFO.
         sendInternal(
@@ -663,7 +663,7 @@ final class RemoteTmuxControlConnection {
     /// Subscribes to live `pane_current_path` changes for `paneId` via tmux
     /// control-mode `refresh-client -B`, so a remote `cd` updates the mirrored
     /// tab's folder without polling. tmux emits the value once on subscribe and
-    /// again on every change as `%subscription-changed cmux_cwd_<paneId> … : <path>`.
+    /// again on every change as `%subscription-changed mosaic_cwd_<paneId> … : <path>`.
     /// Best-effort: on tmux builds that don't support subscriptions the command is
     /// a no-op and ``requestPanePath(paneId:)`` still supplies the initial folder.
     func subscribePanePath(paneId: Int) {
@@ -702,7 +702,7 @@ final class RemoteTmuxControlConnection {
         paneForegroundStates[paneId] = state
         let noReflow = state.suppressesReflow
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "remote.reflow.classify pane=\(paneId) src=\(source) raw=\"\(rawValue.trimmingCharacters(in: .whitespacesAndNewlines))\" "
                 + "alt=\(state.alternateOn ? 1 : 0) cmd=\"\(state.command)\" noReflow=\(noReflow ? 1 : 0)"
         )
@@ -874,7 +874,7 @@ final class RemoteTmuxControlConnection {
         -> (setBuffer: String, pasteBuffer: String)?
     {
         guard !text.isEmpty else { return nil }
-        let buffer = "cmux-paste-\(paneId)"
+        let buffer = "mosaic-paste-\(paneId)"
         return (
             setBuffer: "set-buffer -b \(buffer) -- \(RemoteTmuxHost.shellSingleQuoted(text))",
             pasteBuffer: "paste-buffer -p -d -b \(buffer) -t %\(paneId)"
@@ -1179,7 +1179,7 @@ final class RemoteTmuxControlConnection {
         case let .sessionWindowChanged(_, windowId):
             record("session-window-changed @\(windowId)")
         case let .subscriptionChanged(name, value):
-            // cmux subscribes each pane's working directory as "cmux_cwd_<paneId>".
+            // mosaic subscribes each pane's working directory as "mosaic_cwd_<paneId>".
             if name.hasPrefix(Self.cwdSubscriptionPrefix),
                let paneId = Int(name.dropFirst(Self.cwdSubscriptionPrefix.count)) {
                 let path = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1263,7 +1263,7 @@ final class RemoteTmuxControlConnection {
             // an invisible %error has already hidden one real bug — an unquoted
             // refresh-client -B that never subscribed — so leave a trace.
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "remote.tmux.commandError kind=\(kind) error=\"\(lines.joined(separator: " / "))\""
             )
             #endif

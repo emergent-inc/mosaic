@@ -1,7 +1,7 @@
-import CmuxFoundation
+import MosaicFoundation
 import Foundation
 
-struct CmuxExtensionWorktreeCreationResult: Sendable {
+struct MosaicExtensionWorktreeCreationResult: Sendable {
     let worktreePath: String
     let workspaceTitle: String
     /// A convenience command (e.g. a sample dev-server launcher) that should run
@@ -18,7 +18,7 @@ struct CmuxExtensionWorktreeCreationResult: Sendable {
 /// deliberately has **no** primary-command field: the workspace's main process
 /// is structurally always the login shell, so the "setup command became the
 /// main process and the tab died when it exited" bug cannot be expressed here.
-struct CmuxExtensionWorktreeWorkspaceSpawnArgs: Sendable, Equatable {
+struct MosaicExtensionWorktreeWorkspaceSpawnArgs: Sendable, Equatable {
     let title: String
     let workingDirectory: String
     /// Setup command typed into the interactive shell after spawn (with a
@@ -27,16 +27,16 @@ struct CmuxExtensionWorktreeWorkspaceSpawnArgs: Sendable, Equatable {
     let inheritWorkingDirectory: Bool
 }
 
-extension CmuxExtensionWorktreeCreationResult {
+extension MosaicExtensionWorktreeCreationResult {
     /// Builds the workspace spawn arguments for this worktree.
     ///
     /// The returned arguments always leave the workspace's main process as the
     /// login shell and deliver ``setupCommand`` as terminal input.
-    func workspaceSpawnArgs() -> CmuxExtensionWorktreeWorkspaceSpawnArgs {
+    func workspaceSpawnArgs() -> MosaicExtensionWorktreeWorkspaceSpawnArgs {
         // Worktree creation already ran as a pre-spawn step, so the setup
         // command is delivered as interactive shell input (with a trailing
         // newline so it executes) rather than as the surface's primary process.
-        CmuxExtensionWorktreeWorkspaceSpawnArgs(
+        MosaicExtensionWorktreeWorkspaceSpawnArgs(
             title: workspaceTitle,
             workingDirectory: worktreePath,
             initialTerminalInput: setupCommand.isEmpty ? nil : setupCommand + "\n",
@@ -45,7 +45,7 @@ extension CmuxExtensionWorktreeCreationResult {
     }
 }
 
-final class CmuxExtensionProcessTermination: @unchecked Sendable {
+final class MosaicExtensionProcessTermination: @unchecked Sendable {
     private let lock = NSLock()
     private var status: Int32?
     private var continuation: CheckedContinuation<Int32, Never>?
@@ -83,17 +83,17 @@ final class CmuxExtensionProcessTermination: @unchecked Sendable {
     }
 }
 
-enum CmuxExtensionWorktreePrototype {
-    static func createWorktree(projectRootPath: String) async throws -> CmuxExtensionWorktreeCreationResult {
+enum MosaicExtensionWorktreePrototype {
+    static func createWorktree(projectRootPath: String) async throws -> MosaicExtensionWorktreeCreationResult {
         try await Task.detached(priority: .userInitiated) {
             let projectRoot = URL(fileURLWithPath: projectRootPath, isDirectory: true).standardizedFileURL
             try FileManager.default.createDirectory(at: projectRoot, withIntermediateDirectories: true)
             try await ensureGitRepository(at: projectRoot)
-            try await ensureCmuxWorktreeDirectoryIsLocallyIgnored(projectRoot: projectRoot)
+            try await ensureMosaicWorktreeDirectoryIsLocallyIgnored(projectRoot: projectRoot)
 
-            let branchName = "cmux-sidebar-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8).lowercased())"
+            let branchName = "mosaic-sidebar-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8).lowercased())"
             let worktreeRoot = projectRoot
-                .appendingPathComponent(".cmux", isDirectory: true)
+                .appendingPathComponent(".mosaic", isDirectory: true)
                 .appendingPathComponent("worktrees", isDirectory: true)
             try FileManager.default.createDirectory(at: worktreeRoot, withIntermediateDirectories: true)
             let worktree = worktreeRoot.appendingPathComponent(branchName, isDirectory: true)
@@ -101,8 +101,8 @@ enum CmuxExtensionWorktreePrototype {
             try writeSampleDevServerFiles(in: worktree, projectName: projectRoot.lastPathComponent)
 
             let port = 4_100 + abs(branchName.hashValue % 800)
-            let samplePath = shellEscaped(worktree.appendingPathComponent("cmux-sample-dev", isDirectory: true).path)
-            return CmuxExtensionWorktreeCreationResult(
+            let samplePath = shellEscaped(worktree.appendingPathComponent("mosaic-sample-dev", isDirectory: true).path)
+            return MosaicExtensionWorktreeCreationResult(
                 worktreePath: worktree.path,
                 workspaceTitle: branchName,
                 setupCommand: "cd \(samplePath) && python3 -m http.server \(port)"
@@ -115,19 +115,19 @@ enum CmuxExtensionWorktreePrototype {
             return
         }
         throw NSError(
-            domain: "CmuxExtensionWorktreePrototype",
+            domain: "MosaicExtensionWorktreePrototype",
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Project root is not a git repository."]
         )
     }
 
-    private static func ensureCmuxWorktreeDirectoryIsLocallyIgnored(projectRoot: URL) async throws {
+    private static func ensureMosaicWorktreeDirectoryIsLocallyIgnored(projectRoot: URL) async throws {
         let output = try await runCapturingOutput("git", ["-C", projectRoot.path, "rev-parse", "--git-path", "info/exclude"])
         guard let rawPath = String(data: output, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !rawPath.isEmpty else {
             throw NSError(
-                domain: "CmuxExtensionWorktreePrototype",
+                domain: "MosaicExtensionWorktreePrototype",
                 code: 2,
                 userInfo: [NSLocalizedDescriptionKey: "Could not resolve git exclude file."]
             )
@@ -141,16 +141,16 @@ enum CmuxExtensionWorktreePrototype {
         let alreadyIgnored = existing
             .split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .contains { $0 == ".cmux" || $0 == ".cmux/" }
+            .contains { $0 == ".mosaic" || $0 == ".mosaic/" }
         guard !alreadyIgnored else { return }
 
         let separator = existing.isEmpty || existing.hasSuffix("\n") ? "" : "\n"
-        let next = existing + separator + "# cmux extension worktrees\n.cmux/\n"
+        let next = existing + separator + "# mosaic extension worktrees\n.mosaic/\n"
         try next.write(to: excludeURL, atomically: true, encoding: .utf8)
     }
 
     private static func writeSampleDevServerFiles(in worktree: URL, projectName: String) throws {
-        let sample = worktree.appendingPathComponent("cmux-sample-dev", isDirectory: true)
+        let sample = worktree.appendingPathComponent("mosaic-sample-dev", isDirectory: true)
         try FileManager.default.createDirectory(at: sample, withIntermediateDirectories: true)
         let escapedProject = projectName
             .replacingOccurrences(of: "&", with: "&amp;")
@@ -159,10 +159,10 @@ enum CmuxExtensionWorktreePrototype {
         let html = """
         <!doctype html>
         <html>
-          <head><meta charset="utf-8"><title>cmux worktree</title></head>
+          <head><meta charset="utf-8"><title>mosaic worktree</title></head>
           <body style="font: 15px -apple-system; padding: 32px;">
             <h1>\(escapedProject) worktree</h1>
-            <p>This page is served from a git worktree created by CmuxExtensionKit.</p>
+            <p>This page is served from a git worktree created by MosaicExtensionKit.</p>
           </body>
         </html>
         """
@@ -180,22 +180,22 @@ enum CmuxExtensionWorktreePrototype {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        let termination = CmuxExtensionProcessTermination()
+        let termination = MosaicExtensionProcessTermination()
         process.terminationHandler = { process in
             termination.complete(process.terminationStatus)
         }
         try process.run()
-        let outputCollector = CmuxExtensionPipeOutputCollector(fileHandle: pipe.fileHandleForReading)
+        let outputCollector = MosaicExtensionPipeOutputCollector(fileHandle: pipe.fileHandleForReading)
         let terminationStatus = await termination.wait()
         let outputData = await outputCollector.finish()
         guard terminationStatus == 0 else {
             let details = String(data: outputData, encoding: .utf8) ?? "command failed"
             throw NSError(
-                domain: "CmuxExtensionWorktreePrototype",
+                domain: "MosaicExtensionWorktreePrototype",
                 code: Int(terminationStatus),
                 userInfo: [
                     NSLocalizedDescriptionKey: "Could not create worktree.",
-                    "CmuxExtensionWorktreePrototypeDetails": details
+                    "MosaicExtensionWorktreePrototypeDetails": details
                 ]
             )
         }
@@ -207,7 +207,7 @@ enum CmuxExtensionWorktreePrototype {
     }
 }
 
-final class CmuxExtensionPipeOutputCollector: @unchecked Sendable {
+final class MosaicExtensionPipeOutputCollector: @unchecked Sendable {
     private struct ReadHandle: @unchecked Sendable {
         let fileHandle: FileHandle
     }

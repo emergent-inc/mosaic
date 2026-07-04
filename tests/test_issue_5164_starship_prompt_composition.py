@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Regression coverage for https://github.com/emergent-inc/cmux/issues/5164.
+Regression coverage for https://github.com/emergent-inc/mosaic/issues/5164.
 
-Using Starship as the bash prompt inside a cmux session breaks: Starship's
+Using Starship as the bash prompt inside a mosaic session breaks: Starship's
 status line stops updating after the first command. The root cause is the local
-macOS bash bootstrap that cmux injects as ``PROMPT_COMMAND`` (see
-``Resources/shell-integration/cmux-bash-bootstrap.bash``). The user's startup
+macOS bash bootstrap that mosaic injects as ``PROMPT_COMMAND`` (see
+``Resources/shell-integration/mosaic-bash-bootstrap.bash``). The user's startup
 files run ``eval "$(starship init bash)"`` *before* the first prompt, which
 appends ``starship_precmd`` to ``PROMPT_COMMAND``. If the bootstrap then takes
 exclusive ownership of ``PROMPT_COMMAND`` (the old code began with
@@ -29,7 +29,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-BOOTSTRAP = REPO_ROOT / "Resources/shell-integration/cmux-bash-bootstrap.bash"
+BOOTSTRAP = REPO_ROOT / "Resources/shell-integration/mosaic-bash-bootstrap.bash"
 INTEGRATION_DIR = REPO_ROOT / "Resources/shell-integration"
 
 
@@ -88,18 +88,18 @@ esac
 """
 
 # Driver: model bash's prompt loop. Inherit the bootstrap as PROMPT_COMMAND (as
-# cmux does via the environment), let the user's rc append starship_precmd, then
+# mosaic does via the environment), let the user's rc append starship_precmd, then
 # render three prompts (with a cd in between) by evaluating PROMPT_COMMAND the
 # way bash itself does.
 DRIVER = r"""
 set +e
 
-# bash inherits the cmux bootstrap as PROMPT_COMMAND from the environment. The
+# bash inherits the mosaic bootstrap as PROMPT_COMMAND from the environment. The
 # file already has its doc comments stripped (matching the app's injection).
-PROMPT_COMMAND="$(cat "$CMUX_BOOTSTRAP_FILE")"
+PROMPT_COMMAND="$(cat "$MOSAIC_BOOTSTRAP_FILE")"
 
 # The user's startup files run starship init before the first prompt.
-if [[ "${CMUX_WITH_STARSHIP:-1}" == "1" ]]; then
+if [[ "${MOSAIC_WITH_STARSHIP:-1}" == "1" ]]; then
     eval "$(starship init bash)"
 fi
 
@@ -119,7 +119,7 @@ _render() {
 i=0
 while (( i < 3 )); do
     i=$(( i + 1 ))
-    (( i == 3 )) && cd "$CMUX_CD_TARGET"
+    (( i == 3 )) && cd "$MOSAIC_CD_TARGET"
     _render
     _emit "PS1_$i" "$PS1"
     _emit "PC_$i" "$PROMPT_COMMAND"
@@ -149,26 +149,26 @@ def _run_driver(*, with_starship: bool = True) -> dict[str, str]:
         env = {
             key: value
             for key, value in os.environ.items()
-            if not key.startswith("CMUX")
+            if not key.startswith("MOSAIC")
         }
         env.update(
             {
                 "LC_ALL": "C",
                 "LANG": "C",
                 "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
-                "CMUX_BOOTSTRAP_FILE": str(lean_bootstrap),
-                "CMUX_SHELL_INTEGRATION": "1",
-                "CMUX_SHELL_INTEGRATION_DIR": str(INTEGRATION_DIR),
-                "CMUX_LOAD_GHOSTTY_BASH_INTEGRATION": "0",
+                "MOSAIC_BOOTSTRAP_FILE": str(lean_bootstrap),
+                "MOSAIC_SHELL_INTEGRATION": "1",
+                "MOSAIC_SHELL_INTEGRATION_DIR": str(INTEGRATION_DIR),
+                "MOSAIC_LOAD_GHOSTTY_BASH_INTEGRATION": "0",
                 "GHOSTTY_RESOURCES_DIR": "",
-                "CMUX_TAB_ID": "tab-test",
-                "CMUX_PANEL_ID": "panel-test",
-                # No unix socket: _cmux_prompt_command's body early-returns, which
+                "MOSAIC_TAB_ID": "tab-test",
+                "MOSAIC_PANEL_ID": "panel-test",
+                # No unix socket: _mosaic_prompt_command's body early-returns, which
                 # keeps this test focused on PROMPT_COMMAND/PS1 composition.
-                "CMUX_SOCKET_PATH": "",
+                "MOSAIC_SOCKET_PATH": "",
                 "STARSHIP_COUNTER_FILE": str(tmp_path / "counter"),
-                "CMUX_CD_TARGET": str(cd_target),
-                "CMUX_WITH_STARSHIP": "1" if with_starship else "0",
+                "MOSAIC_CD_TARGET": str(cd_target),
+                "MOSAIC_WITH_STARSHIP": "1" if with_starship else "0",
             }
         )
 
@@ -196,7 +196,7 @@ def _run_driver(*, with_starship: bool = True) -> dict[str, str]:
         return fields
 
 
-def test_starship_precmd_survives_under_cmux_bash_bootstrap() -> None:
+def test_starship_precmd_survives_under_mosaic_bash_bootstrap() -> None:
     assert BOOTSTRAP.exists(), f"missing bootstrap file: {BOOTSTRAP}"
     fields = _run_driver()
     debug = (
@@ -209,17 +209,17 @@ def test_starship_precmd_survives_under_cmux_bash_bootstrap() -> None:
         "starship init did not append starship_precmd to PROMPT_COMMAND" + debug
     )
 
-    # cmux must compose, not clobber: after the one-shot bootstrap runs, the
+    # mosaic must compose, not clobber: after the one-shot bootstrap runs, the
     # user's starship hook must still be present in PROMPT_COMMAND...
     for i in (1, 2, 3):
         pc = fields.get(f"PC_{i}", "")
         assert "starship_precmd" in pc, (
             f"starship_precmd was dropped from PROMPT_COMMAND at prompt {i}; "
-            f"cmux took exclusive ownership instead of composing. PROMPT_COMMAND=<{pc}>"
+            f"mosaic took exclusive ownership instead of composing. PROMPT_COMMAND=<{pc}>"
             + debug
         )
-        assert "_cmux_prompt_command" in pc, (
-            f"cmux's own prompt hook missing from PROMPT_COMMAND at prompt {i}: <{pc}>"
+        assert "_mosaic_prompt_command" in pc, (
+            f"mosaic's own prompt hook missing from PROMPT_COMMAND at prompt {i}: <{pc}>"
             + debug
         )
 
@@ -239,9 +239,9 @@ def test_starship_precmd_survives_under_cmux_bash_bootstrap() -> None:
     )
 
 
-def test_plain_bash_bootstrap_installs_cmux_prompt_command() -> None:
+def test_plain_bash_bootstrap_installs_mosaic_prompt_command() -> None:
     """No-regression guard: with no user PROMPT_COMMAND hook, the bootstrap must
-    still install _cmux_prompt_command (and remove its own marker)."""
+    still install _mosaic_prompt_command (and remove its own marker)."""
     assert BOOTSTRAP.exists(), f"missing bootstrap file: {BOOTSTRAP}"
     fields = _run_driver(with_starship=False)
     debug = (
@@ -252,12 +252,12 @@ def test_plain_bash_bootstrap_installs_cmux_prompt_command() -> None:
         pc = fields.get(f"PC_{i}", "")
         # Assert the observable contract (hook installed, bootstrap removed, no
         # phantom hook) rather than the exact integration-internal string, so this
-        # stays green if cmux-bash-integration.bash ever tweaks PROMPT_COMMAND.
-        assert "_cmux_prompt_command" in pc, (
-            f"plain-bash bootstrap did not install _cmux_prompt_command at prompt {i}: <{pc}>"
+        # stays green if mosaic-bash-integration.bash ever tweaks PROMPT_COMMAND.
+        assert "_mosaic_prompt_command" in pc, (
+            f"plain-bash bootstrap did not install _mosaic_prompt_command at prompt {i}: <{pc}>"
             + debug
         )
-        assert "__cmux_bash_bootstrap_marker__" not in pc, (
+        assert "__mosaic_bash_bootstrap_marker__" not in pc, (
             f"bootstrap marker leaked into PROMPT_COMMAND at prompt {i}: <{pc}>" + debug
         )
         assert "starship_precmd" not in pc, (
@@ -267,6 +267,6 @@ def test_plain_bash_bootstrap_installs_cmux_prompt_command() -> None:
 
 
 if __name__ == "__main__":
-    test_starship_precmd_survives_under_cmux_bash_bootstrap()
-    test_plain_bash_bootstrap_installs_cmux_prompt_command()
-    print("PASS: cmux bash bootstrap composes with (and without) user prompt hooks")
+    test_starship_precmd_survives_under_mosaic_bash_bootstrap()
+    test_plain_bash_bootstrap_installs_mosaic_prompt_command()
+    print("PASS: mosaic bash bootstrap composes with (and without) user prompt hooks")

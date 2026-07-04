@@ -17,7 +17,7 @@ export async function POST(
   return withAuthedVmApiRoute(
     request,
     "/api/vm/[id]/exec",
-    { "cmux.vm.operation": "exec" },
+    { "mosaic.vm.operation": "exec" },
     "/api/vm/[id]/exec POST failed",
     async ({ user, span }) => {
       let rawBody: unknown;
@@ -28,7 +28,7 @@ export async function POST(
           error: "vm_invalid_json",
           status: 400,
           message: "Cloud VM exec expected a JSON object body.",
-          action: "Send JSON like `{ \"command\": \"pwd\" }`. From the CLI, use `cmux vm exec <id> -- pwd`.",
+          action: "Send JSON like `{ \"command\": \"pwd\" }`. From the CLI, use `mosaic vm exec <id> -- pwd`.",
         });
       }
       if (rawBody === null || typeof rawBody !== "object" || Array.isArray(rawBody)) {
@@ -36,7 +36,7 @@ export async function POST(
           error: "vm_invalid_request",
           status: 400,
           message: "Cloud VM exec body must be a JSON object.",
-          action: "Send JSON like `{ \"command\": \"pwd\" }`. From the CLI, use `cmux vm exec <id> -- pwd`.",
+          action: "Send JSON like `{ \"command\": \"pwd\" }`. From the CLI, use `mosaic vm exec <id> -- pwd`.",
         });
       }
       const body = rawBody as { command?: unknown; timeoutMs?: unknown };
@@ -46,7 +46,7 @@ export async function POST(
           error: "vm_invalid_command",
           status: 400,
           message: "`command` is required and must be a non-empty string.",
-          action: "Pass a shell command, for example `cmux vm exec <id> -- uname -a`.",
+          action: "Pass a shell command, for example `mosaic vm exec <id> -- uname -a`.",
           details: { field: "command" },
         });
       }
@@ -61,9 +61,9 @@ export async function POST(
 
       const { id } = await params;
       setSpanAttributes(span, {
-        "cmux.vm.id": id,
-        "cmux.command_length": command.length,
-        "cmux.timeout_ms": timeoutMs,
+        "mosaic.vm.id": id,
+        "mosaic.command_length": command.length,
+        "mosaic.timeout_ms": timeoutMs,
       });
       try {
         const result = await runVmWorkflow(execVm({
@@ -72,7 +72,7 @@ export async function POST(
           command,
           timeoutMs,
         }));
-        setSpanAttributes(span, { "cmux.exec.exit_code": result.exitCode });
+        setSpanAttributes(span, { "mosaic.exec.exit_code": result.exitCode });
         return jsonResponse(result);
       } catch (err) {
         if (isVmNotFoundError(err)) return notFoundVm(id);

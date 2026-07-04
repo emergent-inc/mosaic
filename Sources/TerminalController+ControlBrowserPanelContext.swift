@@ -1,5 +1,5 @@
 import AppKit
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
 import WebKit
 

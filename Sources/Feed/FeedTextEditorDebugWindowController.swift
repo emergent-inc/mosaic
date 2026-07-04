@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 #if DEBUG
 import AppKit
 import SwiftUI
@@ -21,7 +21,7 @@ final class FeedTextEditorDebugWindowController: ReleasingWindowController {
             localized: "feed.textEditorDebug.windowTitle",
             defaultValue: "Feed Text Editor Lab"
         )
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.feedTextEditorDebug")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.feedTextEditorDebug")
         window.center()
         window.contentView = NSHostingView(rootView: FeedTextEditorDebugView())
         return window
@@ -87,7 +87,7 @@ private struct FeedTextEditorDebugView: View {
                 header
 
                 Text(String(localized: "feed.textEditorDebug.section.swiftui", defaultValue: "SwiftUI"))
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
                     .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
@@ -100,7 +100,7 @@ private struct FeedTextEditorDebugView: View {
                 }
 
                 Text(String(localized: "feed.textEditorDebug.section.appkit", defaultValue: "AppKit"))
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
                     .foregroundStyle(.secondary)
                     .padding(.top, 2)
 
@@ -127,12 +127,12 @@ private struct FeedTextEditorDebugView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(localized: "feed.textEditorDebug.title", defaultValue: "Feed Text Editors"))
-                    .cmuxFont(size: 18, weight: .semibold)
+                    .mosaicFont(size: 18, weight: .semibold)
                 Text(String(
                     localized: "feed.textEditorDebug.subtitle",
                     defaultValue: "Compare autosizing editors with identical input."
                 ))
-                .cmuxFont(size: 12)
+                .mosaicFont(size: 12)
                 .foregroundStyle(.secondary)
             }
             Spacer()
@@ -146,7 +146,7 @@ private struct FeedTextEditorDebugView: View {
         TextField(placeholder, text: $swiftUITextFieldText, axis: .vertical)
             .textFieldStyle(.plain)
             .lineLimit(1...10)
-            .cmuxFont(size: 13, weight: .semibold)
+            .mosaicFont(size: 13, weight: .semibold)
             .padding(.horizontal, 9)
             .padding(.vertical, 7)
             .background(editorBackground)
@@ -155,7 +155,7 @@ private struct FeedTextEditorDebugView: View {
     private var swiftUIMirrorTextEditor: some View {
         ZStack(alignment: .topLeading) {
             Text(swiftUIMirrorText.isEmpty ? " " : swiftUIMirrorText + " ")
-                .cmuxFont(size: 13, weight: .semibold)
+                .mosaicFont(size: 13, weight: .semibold)
                 .lineSpacing(0)
                 .padding(.horizontal, 9)
                 .padding(.top, 9)
@@ -168,7 +168,7 @@ private struct FeedTextEditorDebugView: View {
                     }
                 )
             TextEditor(text: $swiftUIMirrorText)
-                .cmuxFont(size: 13, weight: .semibold)
+                .mosaicFont(size: 13, weight: .semibold)
                 .scrollContentBackground(.hidden)
                 .padding(.horizontal, 4)
                 .padding(.top, 5)
@@ -213,10 +213,10 @@ private struct FeedTextEditorDebugView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(variant.title)
-                    .cmuxFont(size: 13, weight: .semibold)
+                    .mosaicFont(size: 13, weight: .semibold)
                 Spacer()
                 Text(metrics(for: text))
-                    .cmuxFont(size: 10, monospacedDigit: true)
+                    .mosaicFont(size: 10, monospacedDigit: true)
                     .foregroundStyle(.secondary)
             }
             content()

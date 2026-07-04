@@ -23,7 +23,7 @@ function diffCommentsHandler(): DiffCommentsMessageHandler | null {
   if (typeof window === "undefined") {
     return null;
   }
-  const handler = (window as any).webkit?.messageHandlers?.cmuxDiffComments;
+  const handler = (window as any).webkit?.messageHandlers?.mosaicDiffComments;
   return handler != null && typeof handler.postMessage === "function" ? handler : null;
 }
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Core"
+  short_description: "Control windows/workspaces/panes/surfaces and routing with mosaic CLI."
+  default_prompt: "Use this skill to inspect and manipulate mosaic topology: identify context, target handles, create/focus/move/reorder windows/workspaces/panes/surfaces, and use trigger-flash for visual confirmation."

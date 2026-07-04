@@ -1,5 +1,5 @@
 {
-  "name": "@cmux/webviews",
+  "name": "@mosaic/webviews",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -129,9 +129,9 @@ def main() -> int:
             failures.append(f"{label}.pid {pid} is not live")
             continue
         if label == "mac" and "Mosaic DEV swmob.app/Contents/MacOS/Mosaic DEV" not in command:
-            failures.append(f"{label}.pid {pid} does not look like tagged macOS cmux")
-        if label in {"iphone", "ipad"} and "Mosaic.app/cmux" not in command:
-            failures.append(f"{label}.pid {pid} does not look like cmux")
+            failures.append(f"{label}.pid {pid} does not look like tagged macOS mosaic")
+        if label in {"iphone", "ipad"} and "Mosaic.app/mosaic" not in command:
+            failures.append(f"{label}.pid {pid} does not look like mosaic")
 
     payload = {
         "achieved": not failures,

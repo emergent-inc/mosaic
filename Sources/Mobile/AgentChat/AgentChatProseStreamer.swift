@@ -1,4 +1,4 @@
-import CmuxAgentChat
+import MosaicAgentChat
 import Foundation
 
 /// Drives the live agent-prose streaming preview for in-flight turns.

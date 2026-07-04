@@ -1,23 +1,23 @@
 import AppKit
-import CmuxFoundation
-import CmuxTerminalCore
+import MosaicFoundation
+import MosaicTerminalCore
 import SwiftUI
 import Foundation
 import Bonsplit
-import CmuxBrowser
-import CmuxGit
-import CmuxNotifications
-import CmuxPanes
-import CmuxSettings
-import CmuxSidebar
-import CmuxSidebarGit
-import CmuxWorkspaces
+import MosaicBrowser
+import MosaicGit
+import MosaicNotifications
+import MosaicPanes
+import MosaicSettings
+import MosaicSidebar
+import MosaicSidebarGit
+import MosaicWorkspaces
 import CoreVideo
 import Combine
 import CoreServices
 import Darwin
 import OSLog
-import CmuxTerminal
+import MosaicTerminal
 
 // MARK: - Tab Type Alias for Backwards Compatibility
 // The old Tab class is replaced by Workspace
@@ -95,7 +95,7 @@ fileprivate final class VsyncIOSurfaceTimelineState {
     }
 }
 
-fileprivate func cmuxVsyncIOSurfaceTimelineCallback(
+fileprivate func mosaicVsyncIOSurfaceTimelineCallback(
     _ displayLink: CVDisplayLink,
     _ inNow: UnsafePointer<CVTimeStamp>,
     _ inOutputTime: UnsafePointer<CVTimeStamp>,
@@ -172,7 +172,7 @@ fileprivate func cmuxVsyncIOSurfaceTimelineCallback(
 #endif
 
 // WorkspaceGroup, WorkspaceReorderPlanItem, WorkspaceBatchReorderError, and
-// the pure batch-reorder planning live in CmuxWorkspaces.
+// the pure batch-reorder planning live in MosaicWorkspaces.
 
 @MainActor
 class TabManager: ObservableObject {
@@ -200,7 +200,7 @@ class TabManager: ObservableObject {
 
     // Wave-4 sub-model (TabManager decomposition): the workspace list, the
     // sidebar group sections, and the selected-workspace id storage live in
-    // WorkspacesModel (CmuxWorkspaces). TabManager stays the per-window
+    // WorkspacesModel (MosaicWorkspaces). TabManager stays the per-window
     // composition point: it owns the model, forwards the legacy accessors
     // below, and implements WorkspacesHosting (bottom of this file) to run
     // the legacy @Published property-observer side effects at identical
@@ -245,7 +245,7 @@ class TabManager: ObservableObject {
     @Published private(set) var mountedBackgroundWorkspaceLoadIds: Set<UUID> = []
     @Published private(set) var debugPinnedWorkspaceLoadIds: Set<UUID> = []
 
-    /// Global monotonically increasing counter for CMUX_PORT ordinal assignment.
+    /// Global monotonically increasing counter for MOSAIC_PORT ordinal assignment.
     /// Static so port ranges don't overlap across multiple windows (each window has its own TabManager).
     static var nextPortOrdinal: Int = 0
     var selectedTabId: UUID? {
@@ -337,14 +337,14 @@ class TabManager: ObservableObject {
                     )
                 }
             }
-            publishCmuxWorkspaceSelectedChange(from: previousTabId)
+            publishMosaicWorkspaceSelectedChange(from: previousTabId)
             let notificationDismissalContext = notificationDismissal.takePendingSelectionContext() ?? .activeFocus
 #if DEBUG
             let switchId = debugWorkspaceSwitchId
             let switchDtMs = debugWorkspaceSwitchStartTime > 0
                 ? (CACurrentMediaTime() - debugWorkspaceSwitchStartTime) * 1000
                 : 0
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.select.didSet id=\(switchId) from=\(Self.debugShortWorkspaceId(previousTabId)) " +
                 "to=\(Self.debugShortWorkspaceId(selectedTabId)) dt=\(Self.debugMsText(switchDtMs))"
             )
@@ -377,7 +377,7 @@ class TabManager: ObservableObject {
                 let dtMs = self.debugWorkspaceSwitchStartTime > 0
                     ? (CACurrentMediaTime() - self.debugWorkspaceSwitchStartTime) * 1000
                     : 0
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.select.asyncDone id=\(self.debugWorkspaceSwitchId) dt=\(Self.debugMsText(dtMs)) " +
                     "selected=\(Self.debugShortWorkspaceId(self.selectedTabId))"
                 )
@@ -397,13 +397,13 @@ class TabManager: ObservableObject {
     // Wave-3 sub-models (TabManager decomposition): TabManager is the
     // per-window composition point. It owns the concrete sub-models, hosts
     // their seams, and forwards its legacy entry points.
-    /// Per-panel notification-dismissal flow (CmuxNotifications).
+    /// Per-panel notification-dismissal flow (MosaicNotifications).
     let notificationDismissal: any NotificationDismissing = NotificationDismissalModel()
-    /// Recently-closed browser panel history (CmuxBrowser).
+    /// Recently-closed browser panel history (MosaicBrowser).
     let browserModel = BrowserModel<ClosedBrowserPanelRestoreSnapshot>()
-    /// Sidebar multi-selection state + sync events (CmuxSidebar).
+    /// Sidebar multi-selection state + sync events (MosaicSidebar).
     let sidebarMultiSelection = SidebarMultiSelectionModel()
-    /// Typed synchronous settings access (CmuxSettings).
+    /// Typed synchronous settings access (MosaicSettings).
     private let settings: any SettingsWriting
     private let settingsCatalog = SettingCatalog()
 
@@ -414,18 +414,18 @@ class TabManager: ObservableObject {
         }
     }
     // The focus-history back/forward stack lives in FocusHistoryModel
-    // (CmuxWorkspaceNavigation); this window is its host via
+    // (MosaicWorkspaceNavigation); this window is its host via
     // FocusHistoryHosting and republishes its revision bumps through
     // `focusHistoryRevision` above.
     let focusHistoryNavigation: any FocusHistoryNavigating = FocusHistoryModel()
     // Stateless split-geometry application (equalize/resize divider moves);
-    // the pure planning lives in CmuxPanes' ExternalTreeNode extensions.
+    // the pure planning lives in MosaicPanes' ExternalTreeNode extensions.
     let paneLayout = PaneLayoutService()
-    // Reorder/pin flows over the workspaces model (CmuxWorkspaces); owns
+    // Reorder/pin flows over the workspaces model (MosaicWorkspaces); owns
     // the pure batch-reorder planner.
     let workspaceReordering: WorkspaceReorderCoordinator<Workspace>
     // Workspace-group lifecycle flows over the workspaces model
-    // (CmuxWorkspaces); creation/teardown/selection invert through
+    // (MosaicWorkspaces); creation/teardown/selection invert through
     // WorkspaceGroupHosting.
     let workspaceGrouping: WorkspaceGroupCoordinator<Workspace>
     private var shouldRecordFocusHistory: Bool {
@@ -464,7 +464,7 @@ class TabManager: ObservableObject {
     // the legacy shared limiter; tests inject their own instance.
     private static let sharedWorkspaceGitProbeLimiter = WorkspaceGitMetadataProbeLimiter(limit: 2)
 
-    // The sidebar git/PR subsystem (extracted to CmuxSidebarGit). TabManager
+    // The sidebar git/PR subsystem (extracted to MosaicSidebarGit). TabManager
     // is the per-window composition point: it constructs the concrete
     // services, stores only the seams, implements SidebarGitHosting
     // (see TabManager+SidebarGitHosting.swift), and forwards its legacy
@@ -495,7 +495,7 @@ class TabManager: ObservableObject {
         let isTitleUpdateCoalescingEnabled = PanelTitleUpdateCoalescingSettings.isEnabled(settings: settings)
         let areTitleUpdateDiagnosticsEnabled = PanelTitleUpdateCoalescingSettings.diagnosticsEnabled(settings: settings)
         if isTitleUpdateCoalescingEnabled || areTitleUpdateDiagnosticsEnabled {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "workspace.title.coalescing.config enabled=\(isTitleUpdateCoalescingEnabled ? 1 : 0) " +
                 "delayMs=\(PanelTitleUpdateCoalescingSettings.configuredDelayMilliseconds(settings: settings)) " +
                 "diagnostics=\(areTitleUpdateDiagnosticsEnabled ? 1 : 0)"
@@ -503,7 +503,7 @@ class TabManager: ObservableObject {
         }
 #endif
 #if DEBUG
-        let sidebarGitDebugLog: @Sendable (String) -> Void = { cmuxDebugLog($0) }
+        let sidebarGitDebugLog: @Sendable (String) -> Void = { mosaicDebugLog($0) }
 #else
         let sidebarGitDebugLog: @Sendable (String) -> Void = { _ in }
 #endif
@@ -533,7 +533,7 @@ class TabManager: ObservableObject {
         sidebarGitMetadataService.attach(host: self)
         notificationDismissal.attach(host: self)
         focusHistoryNavigation.attach(host: self)
-        // Workspace-list/group/selection storage (CmuxWorkspaces). Attached
+        // Workspace-list/group/selection storage (MosaicWorkspaces). Attached
         // before the first addWorkspace so the property-observer hooks fire
         // from the very first insertion, matching the legacy @Published
         // observer timing.
@@ -651,7 +651,7 @@ class TabManager: ObservableObject {
         agentPIDSweepTimer = timer
     }
 
-    // MARK: - Sidebar git/PR forwarders (subsystem extracted to CmuxSidebarGit)
+    // MARK: - Sidebar git/PR forwarders (subsystem extracted to MosaicSidebarGit)
 
     private func sidebarMetadataSettingsDidChange() {
         sidebarGitMetadataService.sidebarGitMetadataWatchSettingsDidChange()
@@ -813,7 +813,7 @@ class TabManager: ObservableObject {
                 )
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.startSearch workspace=\(panel.workspaceId.uuidString.prefix(5)) " +
                 "panel=\(panel.id.uuidString.prefix(5)) existing=\(hadExistingSearch ? "yes" : "no") " +
                 "handled=\(handled ? 1 : 0) " +
@@ -833,7 +833,7 @@ class TabManager: ObservableObject {
             panel.searchState = TerminalSurface.SearchState()
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "find.searchSelection workspace=\(panel.workspaceId.uuidString.prefix(5)) " +
             "panel=\(panel.id.uuidString.prefix(5))"
         )
@@ -873,7 +873,7 @@ class TabManager: ObservableObject {
     /// This is the non-keyboard escape hatch for control chords that a focused TUI
     /// reads off the raw tty. The motivating case is Claude Code's force-stop, which
     /// is only exposed as "press Ctrl-F twice"; invoke this action twice to deliver
-    /// it. Delivery bypasses cmux's shortcut/menu/responder layers entirely.
+    /// it. Delivery bypasses mosaic's shortcut/menu/responder layers entirely.
     ///
     /// - Returns: `true` when the chord was sent or queued for the focused terminal,
     ///   `false` when no terminal panel is focused.
@@ -885,7 +885,7 @@ class TabManager: ObservableObject {
             panel.surface.forceRefresh(reason: "tabManager.sendCtrlFToFocusedTerminal")
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "terminal.sendCtrlF workspace=\(panel.workspaceId.uuidString.prefix(5)) " +
             "panel=\(panel.id.uuidString.prefix(5)) result=\(result)"
         )
@@ -963,7 +963,7 @@ class TabManager: ObservableObject {
         title: String,
         workingDirectory: String?,
         portOrdinal: Int,
-        configTemplate: CmuxSurfaceConfigTemplate?,
+        configTemplate: MosaicSurfaceConfigTemplate?,
         initialSurface: NewWorkspaceInitialSurface = .terminal,
         initialTerminalCommand: String?,
         initialTerminalInput: String? = nil,
@@ -1030,10 +1030,10 @@ class TabManager: ObservableObject {
     ) {
         let env = ProcessInfo.processInfo.environment
         let isEnabled: Bool = {
-            if let raw = env["CMUX_DEV_MUTATE_WORKSPACE_SELECTION_DURING_CREATION"] {
+            if let raw = env["MOSAIC_DEV_MUTATE_WORKSPACE_SELECTION_DURING_CREATION"] {
                 return raw == "1" || raw.caseInsensitiveCompare("true") == .orderedSame
             }
-            return UserDefaults.standard.bool(forKey: "cmuxDevMutateWorkspaceSelectionDuringCreation")
+            return UserDefaults.standard.bool(forKey: "mosaicDevMutateWorkspaceSelectionDuringCreation")
         }()
         guard isEnabled,
               let selectedTabId = snapshot.selectedTabId,
@@ -1041,7 +1041,7 @@ class TabManager: ObservableObject {
               tabs.contains(where: { $0.id == targetId }) else {
             return
         }
-        cmuxDebugLog(
+        mosaicDebugLog(
             "workspace.create.devSelectionMutation from=\(selectedTabId.uuidString.prefix(5)) " +
             "to=\(targetId.uuidString.prefix(5))"
         )
@@ -1162,8 +1162,8 @@ class TabManager: ObservableObject {
                     newWorkspace.focusedTerminalPanel?.surface.requestBackgroundSurfaceStartIfNeeded()
                 }
             }
-            publishCmuxWorkspaceCreated(newWorkspace, selected: select)
-            publishCmuxInitialSurfaceCreated(newWorkspace, selected: select)
+            publishMosaicWorkspaceCreated(newWorkspace, selected: select)
+            publishMosaicInitialSurfaceCreated(newWorkspace, selected: select)
             if select {
 #if DEBUG
                 debugPrimeWorkspaceSwitchTrigger("create", to: newWorkspace.id)
@@ -1204,7 +1204,7 @@ class TabManager: ObservableObject {
            terminalPanel.surface.surface != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 UserDefaults.standard.set(true, forKey: AccountCatalogSection().welcomeShown.userDefaultsKey)
-                terminalPanel.sendText("cmux welcome\n")
+                terminalPanel.sendText("mosaic welcome\n")
             }
             return
         }
@@ -1224,7 +1224,7 @@ class TabManager: ObservableObject {
             panelsCancellable?.cancel()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 UserDefaults.standard.set(true, forKey: AccountCatalogSection().welcomeShown.userDefaultsKey)
-                terminalPanel.sendText("cmux welcome\n")
+                terminalPanel.sendText("mosaic welcome\n")
             }
         }
 
@@ -1382,7 +1382,7 @@ class TabManager: ObservableObject {
         for workspace in currentTabs {
             guard let tabSnapshot = snapshotTabsById[workspace.id] else {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "workspace.create.reentrantSnapshotFallback " +
                     "snapshotCount=\(snapshot.tabs.count) liveCount=\(currentTabs.count)"
                 )
@@ -1423,7 +1423,7 @@ class TabManager: ObservableObject {
         return candidates.first
     }
 
-    private func inheritedTerminalConfigForNewWorkspace() -> CmuxSurfaceConfigTemplate? {
+    private func inheritedTerminalConfigForNewWorkspace() -> MosaicSurfaceConfigTemplate? {
         inheritedTerminalConfigForNewWorkspace(workspace: selectedWorkspace)
     }
 
@@ -1446,11 +1446,11 @@ class TabManager: ObservableObject {
 
     func inheritedTerminalConfigForNewWorkspace(
         workspace: Workspace?
-    ) -> CmuxSurfaceConfigTemplate? {
+    ) -> MosaicSurfaceConfigTemplate? {
         guard let fontPoints = cachedInheritedTerminalFontPointsForNewWorkspace(workspace: workspace) else {
             return nil
         }
-        var config = CmuxSurfaceConfigTemplate()
+        var config = MosaicSurfaceConfigTemplate()
         config.fontSize = fontPoints
         return config
     }
@@ -1467,19 +1467,19 @@ class TabManager: ObservableObject {
 
     func workspaceCreationConfigTemplate(
         inheritedTerminalFontPoints: Float?
-    ) -> CmuxSurfaceConfigTemplate? {
+    ) -> MosaicSurfaceConfigTemplate? {
         guard let inheritedTerminalFontPoints, inheritedTerminalFontPoints > 0 else {
             return nil
         }
         // Rebuild a clean Swift-owned template instead of carrying over any pointer-backed
         // inherited config state from the source workspace.
-        var config = CmuxSurfaceConfigTemplate()
+        var config = MosaicSurfaceConfigTemplate()
         config.fontSize = inheritedTerminalFontPoints
         return config
     }
 
     func normalizedWorkingDirectory(_ directory: String?) -> String? {
-        // Single source of truth: the normalization moved to CmuxSidebarGit
+        // Single source of truth: the normalization moved to MosaicSidebarGit
         // with the git subsystem; non-git callers (workspace creation) keep
         // this forwarder.
         directory?.nonEmptyNormalizedGitProbeDirectory
@@ -1552,7 +1552,7 @@ class TabManager: ObservableObject {
         return preferredWorkingDirectoryForNewTab(workspace: sourceWorkspace)
     }
 
-    // MARK: - Reordering (WorkspaceReorderCoordinator, CmuxWorkspaces)
+    // MARK: - Reordering (WorkspaceReorderCoordinator, MosaicWorkspaces)
 
     func moveTabToTop(_ tabId: UUID) {
         workspaceReordering.moveTabToTop(tabId)
@@ -1663,7 +1663,7 @@ class TabManager: ObservableObject {
             object: self,
             userInfo: [WorkspaceOrderChangeNotificationKey.movedWorkspaceIds: movedWorkspaceIds]
         )
-        CmuxEventBus.shared.publishWorkspaceReordered(
+        MosaicEventBus.shared.publishWorkspaceReordered(
             workspaceIds: tabs.map(\.id),
             movedWorkspaceIds: movedWorkspaceIds,
             pinnedWorkspaceIds: tabs.filter(\.isPinned).map(\.id),
@@ -1787,7 +1787,7 @@ class TabManager: ObservableObject {
         workspaceReordering.setPinned(workspaceIds: workspaceIds, pinned: pinned)
     }
 
-    // MARK: - Workspace Groups (WorkspaceGroupCoordinator, CmuxWorkspaces)
+    // MARK: - Workspace Groups (WorkspaceGroupCoordinator, MosaicWorkspaces)
 
     @discardableResult
     func createWorkspaceGroup(
@@ -2145,7 +2145,7 @@ class TabManager: ObservableObject {
                 selectedTabId = tabs[newIndex].id
             }
         }
-        publishCmuxWorkspaceClosed(workspace)
+        publishMosaicWorkspaceClosed(workspace)
     }
 
     /// Detach a workspace from this window without closing its panels.
@@ -2452,11 +2452,11 @@ class TabManager: ObservableObject {
 
     private func runCloseConfirmationAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
         // Presentation (activate + sheet-on-main-window, else app-modal) is
-        // shared with every other cmux dialog via `runCmuxModalAlert`. This
+        // shared with every other mosaic dialog via `runMosaicModalAlert`. This
         // wrapper only adds the close-confirmation-specific UITest telemetry,
         // recorded from the presenter's actual path so the label can never
         // disagree with how the alert was really shown.
-        return runCmuxModalAlert(
+        return runMosaicModalAlert(
             alert,
             presentingWindow: closeConfirmationPresentingWindow()
         ) { presentation in
@@ -2482,7 +2482,7 @@ class TabManager: ObservableObject {
     }
 
     private func closeConfirmationPresentingWindow() -> NSWindow? {
-        cmuxMainWindowForModalPresentation(preferring: window)
+        mosaicMainWindowForModalPresentation(preferring: window)
     }
 
     private struct CloseOtherTabsInFocusedPanePlan {
@@ -2759,7 +2759,7 @@ class TabManager: ObservableObject {
     private func closePanelWithConfirmation(tab: Workspace, panelId: UUID) {
         guard tab.panels[panelId] != nil else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "surface.close.shortcut.skip tab=\(tab.id.uuidString.prefix(5)) " +
                 "panel=\(panelId.uuidString.prefix(5)) reason=missingPanel"
             )
@@ -2778,7 +2778,7 @@ class TabManager: ObservableObject {
         }()
         let closesWorkspaceOnLastSurfaceShortcut = shouldCloseWorkspaceOnLastSurfaceShortcut(tab, panelId: panelId)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.close.shortcut.begin tab=\(tab.id.uuidString.prefix(5)) " +
             "panel=\(panelId.uuidString.prefix(5)) kind=\(panelKind) " +
             "panelCount=\(tab.panels.count) bonsplitTabs=\(bonsplitTabCount) " +
@@ -2793,7 +2793,7 @@ class TabManager: ObservableObject {
         tab.markCloseHistoryEligible(panelId: panelId)
         let closed = tab.closePanel(panelId)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.close.shortcut tab=\(tab.id.uuidString.prefix(5)) " +
             "panel=\(panelId.uuidString.prefix(5)) closed=\(closed ? 1 : 0) " +
             "panelsAfterCall=\(tab.panels.count)"
@@ -2864,7 +2864,7 @@ class TabManager: ObservableObject {
         if tab.panels[surfaceId] == nil { tab.closeDockPanelAndClearNotifications(surfaceId, force: true); return }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.close.runtime tab=\(tabId.uuidString.prefix(5)) " +
             "surface=\(surfaceId.uuidString.prefix(5)) panelsBefore=\(tab.panels.count)"
         )
@@ -2876,7 +2876,7 @@ class TabManager: ObservableObject {
         reconcileFocusedPanelFromFirstResponderForKeyboard()
         let closed = tab.closePanel(surfaceId, force: true)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.close.runtime.done tab=\(tabId.uuidString.prefix(5)) " +
             "surface=\(surfaceId.uuidString.prefix(5)) closed=\(closed ? 1 : 0) panelsAfter=\(tab.panels.count)"
         )
@@ -2911,7 +2911,7 @@ class TabManager: ObservableObject {
             tab.panels.count <= 1 && tab.shouldDemoteWorkspaceAfterChildExit(surfaceId: surfaceId)
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.close.childExited tab=\(tabId.uuidString.prefix(5)) " +
             "surface=\(surfaceId.uuidString.prefix(5)) panels=\(tab.panels.count) workspaces=\(tabs.count) " +
             "remoteWorkspace=\(tab.isRemoteWorkspace ? 1 : 0) keepRemote=\(handlesRemoteExitThroughWorkspace ? 1 : 0) " +
@@ -2956,7 +2956,7 @@ class TabManager: ObservableObject {
 
     private func workspaceNeedsConfirmClose(_ workspace: Workspace) -> Bool {
 #if DEBUG
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_FORCE_CONFIRM_CLOSE_WORKSPACE"] == "1" {
+        if ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_FORCE_CONFIRM_CLOSE_WORKSPACE"] == "1" {
             return true
         }
 #endif
@@ -3065,7 +3065,7 @@ class TabManager: ObservableObject {
     /// are nil this mirrors the keyboard shortcut: it resolves the browser + return terminal from the
     /// focused panel layout. An explicit browser surface (must be a browser) or return terminal
     /// (must be a terminal) overrides that route. Used by both the Cmd+Shift+G shortcut and the
-    /// `cmux browser react-grab toggle` CLI command so both share one action path.
+    /// `mosaic browser react-grab toggle` CLI command so both share one action path.
     /// Returns the resolved browser surface id it acted on, or nil if it could not resolve/act
     /// (so callers can report the actual browser surface rather than the focused panel).
     @discardableResult
@@ -3137,7 +3137,7 @@ class TabManager: ObservableObject {
 
         let didRequestExplicitWebViewFocus = browserPanel.requestExplicitWebViewFocus()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "reactGrab.pasteback h1.focusRequestResult " +
             "workspace=\(workspace.id.uuidString.prefix(5)) " +
             "browser=\(browserPanel.id.uuidString.prefix(5)) " +
@@ -3230,7 +3230,7 @@ class TabManager: ObservableObject {
         ) else {
             pendingWorkspaceUnfocusTarget = nil
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.unfocus.drop tab=\(Self.debugShortWorkspaceId(pending.tabId)) panel=\(String(pending.panelId.uuidString.prefix(5))) reason=selected_again"
             )
 #endif
@@ -3241,12 +3241,12 @@ class TabManager: ObservableObject {
 #if DEBUG
         if let snapshot = debugCurrentWorkspaceSwitchSnapshot() {
             let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.unfocus.complete id=\(snapshot.id) dt=\(Self.debugMsText(dtMs)) " +
                 "tab=\(Self.debugShortWorkspaceId(pending.tabId)) panel=\(String(pending.panelId.uuidString.prefix(5))) reason=\(reason)"
             )
         } else {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.unfocus.complete id=none tab=\(Self.debugShortWorkspaceId(pending.tabId)) " +
                 "panel=\(String(pending.panelId.uuidString.prefix(5))) reason=\(reason)"
             )
@@ -3269,13 +3269,13 @@ class TabManager: ObservableObject {
             ) {
                 unfocusWorkspacePanel(tabId: current.tabId, panelId: current.panelId)
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.unfocus.flush tab=\(Self.debugShortWorkspaceId(current.tabId)) panel=\(String(current.panelId.uuidString.prefix(5))) reason=replaced"
                 )
 #endif
             } else {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.unfocus.drop tab=\(Self.debugShortWorkspaceId(current.tabId)) panel=\(String(current.panelId.uuidString.prefix(5))) reason=replaced_selected"
                 )
 #endif
@@ -3286,12 +3286,12 @@ class TabManager: ObservableObject {
 #if DEBUG
         if let snapshot = debugCurrentWorkspaceSwitchSnapshot() {
             let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.unfocus.defer id=\(snapshot.id) dt=\(Self.debugMsText(dtMs)) " +
                 "tab=\(Self.debugShortWorkspaceId(next.tabId)) panel=\(String(next.panelId.uuidString.prefix(5)))"
             )
         } else {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.unfocus.defer id=none tab=\(Self.debugShortWorkspaceId(next.tabId)) panel=\(String(next.panelId.uuidString.prefix(5)))"
             )
         }
@@ -3308,7 +3308,7 @@ class TabManager: ObservableObject {
         selectedTabId != pendingTabId
     }
 
-    // MARK: Notification dismissal (CmuxNotifications)
+    // MARK: Notification dismissal (MosaicNotifications)
     //
     // The dismissal decision flow lives in NotificationDismissalModel;
     // TabManager hosts its seam (TabManager+NotificationDismissalHosting)
@@ -3363,7 +3363,7 @@ class TabManager: ObservableObject {
         guard workspacesById[change.tabId]?.terminalPanel(for: change.surfaceId)?.surface === sourceSurface else { return }
 #if DEBUG
         if PanelTitleUpdateCoalescingSettings.diagnosticsEnabled(settings: settings) {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "workspace.title.enqueue workspace=\(Self.debugShortWorkspaceId(change.tabId)) " +
                 "panel=\(change.surfaceId.uuidString.prefix(5)) title=\"\(Self.debugTitlePreview(trimmed))\""
             )
@@ -3383,7 +3383,7 @@ class TabManager: ObservableObject {
         pendingPanelTitleUpdates.removeAll(keepingCapacity: true)
 #if DEBUG
         if PanelTitleUpdateCoalescingSettings.diagnosticsEnabled(settings: settings) {
-            cmuxDebugLog("workspace.title.flush pending=\(updates.count)")
+            mosaicDebugLog("workspace.title.flush pending=\(updates.count)")
         }
 #endif
         for (key, update) in updates {
@@ -3479,14 +3479,14 @@ class TabManager: ObservableObject {
     func focusTabFromNotification(_ tabId: UUID, surfaceId: UUID? = nil) -> Bool {
         guard let tab = tabs.first(where: { $0.id == tabId }) else {
 #if DEBUG
-            cmuxDebugLog("notification.focus.fail tab=\(tabId.uuidString.prefix(5)) reason=missingTab")
+            mosaicDebugLog("notification.focus.fail tab=\(tabId.uuidString.prefix(5)) reason=missingTab")
 #endif
             return false
         }
         let requestedPanelId = surfaceId.flatMap { panelId(forSurfaceOrPanelId: $0, in: tab) }
         if let surfaceId, requestedPanelId == nil {
 #if DEBUG
-            cmuxDebugLog("notification.focus.fail tab=\(tabId.uuidString.prefix(5)) panel=\(surfaceId.uuidString.prefix(5)) reason=missingPanel")
+            mosaicDebugLog("notification.focus.fail tab=\(tabId.uuidString.prefix(5)) panel=\(surfaceId.uuidString.prefix(5)) reason=missingPanel")
 #endif
             return false
         }
@@ -3583,7 +3583,7 @@ class TabManager: ObservableObject {
         if !isWorkspaceCycleHot {
             isWorkspaceCycleHot = true
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.hot.on id=\(switchId) gen=\(generation) dt=\(Self.debugMsText(switchDtMs))"
             )
 #endif
@@ -3593,7 +3593,7 @@ class TabManager: ObservableObject {
         workspaceCycleCooldownTask?.cancel()
 #if DEBUG
         if hadPendingCooldown {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.hot.cancelPrev id=\(switchId) gen=\(generation) dt=\(Self.debugMsText(switchDtMs))"
             )
         }
@@ -3608,7 +3608,7 @@ class TabManager: ObservableObject {
                     let dtMs = self.debugWorkspaceSwitchStartTime > 0
                         ? (CACurrentMediaTime() - self.debugWorkspaceSwitchStartTime) * 1000
                         : 0
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "ws.hot.cooldownCanceled id=\(self.debugWorkspaceSwitchId) gen=\(generation) dt=\(Self.debugMsText(dtMs))"
                     )
                 }
@@ -3622,7 +3622,7 @@ class TabManager: ObservableObject {
                 let dtMs = self.debugWorkspaceSwitchStartTime > 0
                     ? (CACurrentMediaTime() - self.debugWorkspaceSwitchStartTime) * 1000
                     : 0
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.hot.off id=\(self.debugWorkspaceSwitchId) gen=\(generation) dt=\(Self.debugMsText(dtMs))"
                 )
 #endif
@@ -3665,7 +3665,7 @@ class TabManager: ObservableObject {
         debugWorkspaceSwitchCounter &+= 1
         debugWorkspaceSwitchId = debugWorkspaceSwitchCounter
         debugWorkspaceSwitchStartTime = CACurrentMediaTime()
-        cmuxDebugLog(
+        mosaicDebugLog(
             "ws.switch.begin id=\(debugWorkspaceSwitchId) trigger=\(trigger) " +
             "from=\(Self.debugShortWorkspaceId(from)) to=\(Self.debugShortWorkspaceId(to)) " +
             "hot=\(isWorkspaceCycleHot ? 1 : 0) tabs=\(tabs.count)"
@@ -3791,11 +3791,11 @@ class TabManager: ObservableObject {
     }
 
     func applySurfaceTabBarButtons(
-        _ buttons: [CmuxSurfaceTabBarButton],
+        _ buttons: [MosaicSurfaceTabBarButton],
         sourcePath: String?,
         globalConfigPath: String,
         terminalCommandSourcePaths: [String: String],
-        workspaceCommands: [String: CmuxResolvedCommand]
+        workspaceCommands: [String: MosaicResolvedCommand]
     ) {
         for workspace in tabs {
             workspace.applySurfaceTabBarButtons(
@@ -3817,7 +3817,7 @@ class TabManager: ObservableObject {
         tab.moveFocus(direction: direction)
     }
 
-    // MARK: - Focus History Navigation (CmuxWorkspaceNavigation)
+    // MARK: - Focus History Navigation (MosaicWorkspaceNavigation)
 
     // The back/forward stack, suppression depth, and navigation logic live
     // in FocusHistoryModel; these forwarders keep every existing entrypoint
@@ -4609,7 +4609,7 @@ class TabManager: ObservableObject {
         didSetupUITestFocusShortcuts = true
 
         let env = ProcessInfo.processInfo.environment
-        guard env["CMUX_UI_TEST_FOCUS_SHORTCUTS"] == "1" else { return }
+        guard env["MOSAIC_UI_TEST_FOCUS_SHORTCUTS"] == "1" else { return }
 
         // UI tests can't record arrow keys via the shortcut recorder. Use letter-based shortcuts
         // so tests can reliably drive pane navigation without mouse clicks.
@@ -4636,14 +4636,14 @@ class TabManager: ObservableObject {
         didSetupSplitCloseRightUITest = true
 
         let env = ProcessInfo.processInfo.environment
-        guard env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_SETUP"] == "1" else { return }
-        guard let path = env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_PATH"], !path.isEmpty else { return }
-        let visualMode = env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_VISUAL"] == "1"
-        let shotsDir = (env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_SHOTS_DIR"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let visualIterations = Int((env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_ITERATIONS"] ?? "20").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 20
-        let burstFrames = Int((env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_BURST_FRAMES"] ?? "6").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 6
-        let closeDelayMs = Int((env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_CLOSE_DELAY_MS"] ?? "70").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 70
-        let pattern = (env["CMUX_UI_TEST_SPLIT_CLOSE_RIGHT_PATTERN"] ?? "close_right")
+        guard env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_SETUP"] == "1" else { return }
+        guard let path = env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_PATH"], !path.isEmpty else { return }
+        let visualMode = env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_VISUAL"] == "1"
+        let shotsDir = (env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_SHOTS_DIR"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let visualIterations = Int((env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_ITERATIONS"] ?? "20").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 20
+        let burstFrames = Int((env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_BURST_FRAMES"] ?? "6").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 6
+        let closeDelayMs = Int((env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_CLOSE_DELAY_MS"] ?? "70").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 70
+        let pattern = (env["MOSAIC_UI_TEST_SPLIT_CLOSE_RIGHT_PATTERN"] ?? "close_right")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
@@ -4920,13 +4920,13 @@ class TabManager: ObservableObject {
             try? await Task.sleep(nanoseconds: 180_000_000)
 
             // Fill left panes with visible content.
-            sendText(topLeftId, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo CMUX_SPLIT_TOPLEFT_\(i); done; printf '\\033[HCMUX_MARKER_TOPLEFT\\n'\r")
-            sendText(topRight.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo CMUX_SPLIT_TOPRIGHT_\(i); done; printf '\\033[HCMUX_MARKER_TOPRIGHT\\n'\r")
+            sendText(topLeftId, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo MOSAIC_SPLIT_TOPLEFT_\(i); done; printf '\\033[HMOSAIC_MARKER_TOPLEFT\\n'\r")
+            sendText(topRight.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo MOSAIC_SPLIT_TOPRIGHT_\(i); done; printf '\\033[HMOSAIC_MARKER_TOPRIGHT\\n'\r")
             if let bottomLeft {
-                sendText(bottomLeft.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo CMUX_SPLIT_BOTTOMLEFT_\(i); done; printf '\\033[HCMUX_MARKER_BOTTOMLEFT\\n'\r")
+                sendText(bottomLeft.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo MOSAIC_SPLIT_BOTTOMLEFT_\(i); done; printf '\\033[HMOSAIC_MARKER_BOTTOMLEFT\\n'\r")
             }
             if let bottomRight {
-                sendText(bottomRight.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo CMUX_SPLIT_BOTTOMRIGHT_\(i); done; printf '\\033[HCMUX_MARKER_BOTTOMRIGHT\\n'\r")
+                sendText(bottomRight.id, "printf '\\033[2J\\033[H'; for i in {1..200}; do echo MOSAIC_SPLIT_BOTTOMRIGHT_\(i); done; printf '\\033[HMOSAIC_MARKER_BOTTOMRIGHT\\n'\r")
             }
             // Give shell output a moment to paint before we start the close timeline.
             try? await Task.sleep(nanoseconds: 180_000_000)
@@ -5118,7 +5118,7 @@ class TabManager: ObservableObject {
 	            }
 	            st.link = link
 
-	            CVDisplayLinkSetOutputCallback(link, cmuxVsyncIOSurfaceTimelineCallback, ctx)
+	            CVDisplayLinkSetOutputCallback(link, mosaicVsyncIOSurfaceTimelineCallback, ctx)
 	            CVDisplayLinkStart(link)
 	        }
 
@@ -5147,9 +5147,9 @@ class TabManager: ObservableObject {
         didSetupChildExitSplitUITest = true
 
         let env = ProcessInfo.processInfo.environment
-        guard env["CMUX_UI_TEST_CHILD_EXIT_SPLIT_SETUP"] == "1" else { return }
-        guard let path = env["CMUX_UI_TEST_CHILD_EXIT_SPLIT_PATH"], !path.isEmpty else { return }
-        let requestedIterations = Int(env["CMUX_UI_TEST_CHILD_EXIT_SPLIT_ITERATIONS"] ?? "1") ?? 1
+        guard env["MOSAIC_UI_TEST_CHILD_EXIT_SPLIT_SETUP"] == "1" else { return }
+        guard let path = env["MOSAIC_UI_TEST_CHILD_EXIT_SPLIT_PATH"], !path.isEmpty else { return }
+        let requestedIterations = Int(env["MOSAIC_UI_TEST_CHILD_EXIT_SPLIT_ITERATIONS"] ?? "1") ?? 1
         let iterations = max(1, min(requestedIterations, 20))
 
         func write(_ updates: [String: String]) {
@@ -5300,21 +5300,21 @@ class TabManager: ObservableObject {
         didSetupChildExitKeyboardUITest = true
 
         let env = ProcessInfo.processInfo.environment
-        guard env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_SETUP"] == "1" else { return }
-        guard let path = env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_PATH"], !path.isEmpty else { return }
-        let autoTrigger = env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_AUTO_TRIGGER"] == "1"
-        let strictKeyOnly = env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_STRICT"] == "1"
-        let triggerMode = (env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_TRIGGER_MODE"] ?? "shell_input")
+        guard env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_SETUP"] == "1" else { return }
+        guard let path = env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_PATH"], !path.isEmpty else { return }
+        let autoTrigger = env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_AUTO_TRIGGER"] == "1"
+        let strictKeyOnly = env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_STRICT"] == "1"
+        let triggerMode = (env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_TRIGGER_MODE"] ?? "shell_input")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let useEarlyCtrlShiftTrigger = triggerMode == "early_ctrl_shift_d"
         let useEarlyCtrlDTrigger = triggerMode == "early_ctrl_d"
         let useEarlyTrigger = useEarlyCtrlShiftTrigger || useEarlyCtrlDTrigger
         let triggerUsesShift = triggerMode == "ctrl_shift_d" || useEarlyCtrlShiftTrigger
-        let layout = (env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_LAYOUT"] ?? "lr")
+        let layout = (env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_LAYOUT"] ?? "lr")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let expectedPanelsAfter = max(
             1,
-            Int((env["CMUX_UI_TEST_CHILD_EXIT_KEYBOARD_EXPECTED_PANELS_AFTER"] ?? "1")
+            Int((env["MOSAIC_UI_TEST_CHILD_EXIT_KEYBOARD_EXPECTED_PANELS_AFTER"] ?? "1")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             ) ?? 1
         )
@@ -6240,25 +6240,25 @@ extension TabManager {
 extension TabManager: WorkspacesHosting {}
 extension TabManager: WorkspaceGroupHosting {}
 
-// Workspace satisfies the CmuxWorkspaces tab seam with its existing
+// Workspace satisfies the MosaicWorkspaces tab seam with its existing
 // id/groupId/isPinned storage.
 extension Workspace: WorkspaceTabRepresenting {}
 
 extension Notification.Name {
-    // The sidebar multi-selection sync events moved to CmuxSidebar as typed
+    // The sidebar multi-selection sync events moved to MosaicSidebar as typed
     // SidebarMultiSelectionShouldCollapseEvent / DidHideEvent (same names).
-    static let commandPaletteToggleRequested = Notification.Name("cmux.commandPaletteToggleRequested")
-    static let commandPaletteRequested = Notification.Name("cmux.commandPaletteRequested")
-    static let commandPaletteSwitcherRequested = Notification.Name("cmux.commandPaletteSwitcherRequested")
-    static let commandPaletteSubmitRequested = Notification.Name("cmux.commandPaletteSubmitRequested")
-    static let commandPaletteDismissRequested = Notification.Name("cmux.commandPaletteDismissRequested")
-    static let commandPaletteRenameTabRequested = Notification.Name("cmux.commandPaletteRenameTabRequested")
-    static let commandPaletteRenameWorkspaceRequested = Notification.Name("cmux.commandPaletteRenameWorkspaceRequested")
-    static let commandPaletteEditWorkspaceDescriptionRequested = Notification.Name("cmux.commandPaletteEditWorkspaceDescriptionRequested")
-    static let commandPaletteMoveSelection = Notification.Name("cmux.commandPaletteMoveSelection")
-    static let commandPaletteRenameInputInteractionRequested = Notification.Name("cmux.commandPaletteRenameInputInteractionRequested")
-    static let commandPaletteRenameInputDeleteBackwardRequested = Notification.Name("cmux.commandPaletteRenameInputDeleteBackwardRequested")
-    static let feedbackComposerRequested = Notification.Name("cmux.feedbackComposerRequested")
+    static let commandPaletteToggleRequested = Notification.Name("mosaic.commandPaletteToggleRequested")
+    static let commandPaletteRequested = Notification.Name("mosaic.commandPaletteRequested")
+    static let commandPaletteSwitcherRequested = Notification.Name("mosaic.commandPaletteSwitcherRequested")
+    static let commandPaletteSubmitRequested = Notification.Name("mosaic.commandPaletteSubmitRequested")
+    static let commandPaletteDismissRequested = Notification.Name("mosaic.commandPaletteDismissRequested")
+    static let commandPaletteRenameTabRequested = Notification.Name("mosaic.commandPaletteRenameTabRequested")
+    static let commandPaletteRenameWorkspaceRequested = Notification.Name("mosaic.commandPaletteRenameWorkspaceRequested")
+    static let commandPaletteEditWorkspaceDescriptionRequested = Notification.Name("mosaic.commandPaletteEditWorkspaceDescriptionRequested")
+    static let commandPaletteMoveSelection = Notification.Name("mosaic.commandPaletteMoveSelection")
+    static let commandPaletteRenameInputInteractionRequested = Notification.Name("mosaic.commandPaletteRenameInputInteractionRequested")
+    static let commandPaletteRenameInputDeleteBackwardRequested = Notification.Name("mosaic.commandPaletteRenameInputDeleteBackwardRequested")
+    static let feedbackComposerRequested = Notification.Name("mosaic.feedbackComposerRequested")
     static let ghosttyDidSetTitle = Notification.Name("ghosttyDidSetTitle")
     static let ghosttyDidFocusTab = Notification.Name("ghosttyDidFocusTab")
     static let ghosttyDidFocusSurface = Notification.Name("ghosttyDidFocusSurface")
@@ -6269,20 +6269,20 @@ extension Notification.Name {
     static let browserDidExitAddressBar = Notification.Name("browserDidExitAddressBar")
     static let browserDidFocusAddressBar = Notification.Name("browserDidFocusAddressBar")
     static let browserDidBlurAddressBar = Notification.Name("browserDidBlurAddressBar")
-    static let browserFocusModeStateDidChange = Notification.Name("cmux.browserFocusModeStateDidChange")
+    static let browserFocusModeStateDidChange = Notification.Name("mosaic.browserFocusModeStateDidChange")
     static let webViewDidReceiveClick = Notification.Name("webViewDidReceiveClick")
-    static let terminalPortalVisibilityDidChange = Notification.Name("cmux.terminalPortalVisibilityDidChange")
-    static let browserPortalRegistryDidChange = Notification.Name("cmux.browserPortalRegistryDidChange")
-    static let workspaceOrderDidChange = Notification.Name("cmux.workspaceOrderDidChange")
+    static let terminalPortalVisibilityDidChange = Notification.Name("mosaic.terminalPortalVisibilityDidChange")
+    static let browserPortalRegistryDidChange = Notification.Name("mosaic.browserPortalRegistryDidChange")
+    static let workspaceOrderDidChange = Notification.Name("mosaic.workspaceOrderDidChange")
     /// Posted when an existing workspace group's `name` changes (rename). The
     /// imperatively-cached window-chrome surfaces (custom title bar in
     /// `ContentView`, toolbar command label in `WindowToolbarController`) read
     /// a grouped anchor's displayed name from `group.name` and refresh on this.
-    static let workspaceGroupNameDidChange = Notification.Name("cmux.workspaceGroupNameDidChange")
+    static let workspaceGroupNameDidChange = Notification.Name("mosaic.workspaceGroupNameDidChange")
     /// Posted after TabManager has applied a terminal title to workspace state.
-    static let workspaceTitleDidChange = Notification.Name("cmux.workspaceTitleDidChange")
-    static let workspaceCurrentDirectoryDidChange = Notification.Name("cmux.workspaceCurrentDirectoryDidChange")
-    static let tabManagerFocusHistoryRevisionDidChange = Notification.Name("cmux.tabManagerFocusHistoryRevisionDidChange")
+    static let workspaceTitleDidChange = Notification.Name("mosaic.workspaceTitleDidChange")
+    static let workspaceCurrentDirectoryDidChange = Notification.Name("mosaic.workspaceCurrentDirectoryDidChange")
+    static let tabManagerFocusHistoryRevisionDidChange = Notification.Name("mosaic.tabManagerFocusHistoryRevisionDidChange")
 }
 
 enum BrowserFirstResponderNotificationUserInfoKey {

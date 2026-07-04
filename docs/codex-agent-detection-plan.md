@@ -4,7 +4,7 @@ Status: IMPLEMENTED + live-verified (macOS/daemon side). Owner: Aziz. Last
 updated: 2026-06-22. Branch `feat-codex-detection`, PR #6655 (do-not-merge
 pending on-device dogfood). Base/return point: tag `agent-session-sot-landmark`.
 
-Done: `cmux-codex-wrapper` (PATH shim, Claude-parity per-invocation `[hooks]`
+Done: `mosaic-codex-wrapper` (PATH shim, Claude-parity per-invocation `[hooks]`
 injection via `--enable hooks --dangerously-bypass-hook-trust -c hooks.<event>=...`),
 codex PATH-shim install sibling to the claude shim, `WorkstreamEvent` +
 `feed.push` + `noteHookEvent` now carry `surface_id`/`transcript_path`. Two
@@ -25,44 +25,44 @@ without silently editing their `~/.codex` config.
 Codex agents are not reliably detected in the GUI. Empirical root cause on a real
 machine (Aziz's, 2026-06-22):
 
-- cmux's Codex hooks (`~/.codex/hooks.json`) are NOT installed.
+- mosaic's Codex hooks (`~/.codex/hooks.json`) are NOT installed.
 - Codex has a single legacy `notify` slot, and it is taken by Computer Use:
-  `notify = [".../SkyComputerUseClient", "turn-ended"]`. cmux's notify-based
+  `notify = [".../SkyComputerUseClient", "turn-ended"]`. mosaic's notify-based
   events cannot fire.
 - Slice D removed the terminal-title / newest-jsonl-by-mtime fallback
   (intentionally — no unreliable fallback), so a hook-less Codex is invisible.
-- The 13 "codex" entries in `~/.cmuxterm/codex-hook-sessions.json` are stale,
+- The 13 "codex" entries in `~/.mosaicterm/codex-hook-sessions.json` are stale,
   not live-updating.
 
-Why Claude works, for contrast: Claude Code has a `SessionStart` hook. cmux's
-`cmux-claude-wrapper` is a PATH shim that injects cmux's hooks per-invocation
+Why Claude works, for contrast: Claude Code has a `SessionStart` hook. mosaic's
+`mosaic-claude-wrapper` is a PATH shim that injects mosaic's hooks per-invocation
 (`--settings`) and execs the real claude, so `SessionStart` fires the instant a
 claude session starts. Transparent, per-launch, nothing written to `~/.claude`,
 works for hand-typed `claude`.
 
 ## Principle
 
-cmux owns the terminal environment, so it can mediate any agent the user launches
+mosaic owns the terminal environment, so it can mediate any agent the user launches
 in its terminal, per-invocation, without touching global config. Detection must
-depend only on what cmux controls — the wrapper, the injected env, the pid it
+depend only on what mosaic controls — the wrapper, the injected env, the pid it
 parents — never on the agent cooperating. This is the same primitive that makes
 Claude reliable, generalized to Codex.
 
 ## Design: PATH-shim wrapper that emits its own session-start
 
-A `cmux-codex-wrapper`, mirroring `cmux-claude-wrapper`:
+A `mosaic-codex-wrapper`, mirroring `mosaic-claude-wrapper`:
 
-1. cmux prepends a shim dir to `PATH` when it spawns its terminal shells (the
+1. mosaic prepends a shim dir to `PATH` when it spawns its terminal shells (the
    same mechanism Claude already uses). Typing `codex` resolves to the shim, not
    the real binary.
 2. Before exec'ing the real codex, the wrapper emits the launch signal itself:
-   `cmux hooks codex session-start` carrying `CMUX_SURFACE_ID`, the cwd, and its
+   `mosaic hooks codex session-start` carrying `MOSAIC_SURFACE_ID`, the cwd, and its
    child pid. THIS is the reliable detection signal, and it needs nothing from
-   Codex — the wrapper, which cmux controls, is the source. (More robust than the
+   Codex — the wrapper, which mosaic controls, is the source. (More robust than the
    Claude path, where the signal comes from Claude's own hook.)
 3. The wrapper execs the real codex (resolved by skipping the shim on `PATH`).
-4. Outside cmux (no `CMUX_SURFACE_ID` / socket), the wrapper no-ops and execs the
-   real codex, so it is invisible to non-cmux usage.
+4. Outside mosaic (no `MOSAIC_SURFACE_ID` / socket), the wrapper no-ops and execs the
+   real codex, so it is invisible to non-mosaic usage.
 
 Session lifecycle, with NO Codex hooks required:
 
@@ -87,7 +87,7 @@ want Codex's own notify events too, do NOT clobber it. Options, simplest first:
 - Skip `notify` entirely and rely on transcript-derived state. If the rollout
   covers the states we need, the wrapper's session-start + transcript tail +
   process-exit are sufficient and `notify` is unnecessary.
-- Chain: read the user's existing `notify` from `config.toml`; cmux's injected
+- Chain: read the user's existing `notify` from `config.toml`; mosaic's injected
   notify handler forwards to the original after handling. Decorator pattern,
   preserves Computer Use.
 - Use Codex's newer multi-hook system if the current CLI accepts a per-invocation
@@ -96,15 +96,15 @@ want Codex's own notify events too, do NOT clobber it. Options, simplest first:
 ## Reliability assessment (honest)
 
 Super reliable:
-- Detection of any Codex that cmux launches OR the user types in a cmux terminal.
-  Anchored to the wrapper-emitted session-start (surface + pid cmux owns).
+- Detection of any Codex that mosaic launches OR the user types in a mosaic terminal.
+  Anchored to the wrapper-emitted session-start (surface + pid mosaic owns).
 - `ended`, via the process-exit watcher.
 
 Bounded edges, acceptable under the no-unreliable-fallback stance (Claude has the
 identical limits):
 - Deliberate bypass is not caught: absolute path (`/usr/local/bin/codex`), an
   alias/function that skips the shim, `env -i`, a PATH reset, or Codex over ssh on
-  a host cmux does not own. Not surfacing a truly-unmediated agent is correct
+  a host mosaic does not own. Not surfacing a truly-unmediated agent is correct
   behavior, not a bug.
 - Fine-grained `needsInput` (Codex paused on an approval/answer) is
   transcript-paced without Codex's own hooks. Reliable IF the rollout records
@@ -112,13 +112,13 @@ identical limits):
 
 ## Open questions to verify before building
 
-1. Does a `cmux-claude-wrapper`-style PATH shim already exist, and where is the
+1. Does a `mosaic-claude-wrapper`-style PATH shim already exist, and where is the
    shim dir injected into terminal `PATH`? (Reuse the same machinery for codex.)
 2. Does the Codex rollout JSONL expose approval / needs-input events, for reliable
    `needsInput` without Codex hooks?
 3. The current Codex CLI per-invocation config surface (`-c` overrides; multi-hook
    support), to decide notify-chaining vs. skip vs. multi-hook.
-4. Does cmux's existing Codex launch path (`codex-teams` /
+4. Does mosaic's existing Codex launch path (`codex-teams` /
    `upsertCodexSessionStartIfFresh`) already register into the iOS chat registry
    (`AgentChatSessionRegistry`), or only write the stale hook store? Determines
    how much is wiring vs. new.
@@ -126,9 +126,9 @@ identical limits):
 ## Implementation steps
 
 1. Verify the four open questions above.
-2. Add `cmux-codex-wrapper` to the same shim dir + PATH injection Claude uses.
-3. Wrapper emits `cmux hooks codex session-start` (surface / pid / cwd) before
-   exec, and no-ops cleanly outside cmux.
+2. Add `mosaic-codex-wrapper` to the same shim dir + PATH injection Claude uses.
+3. Wrapper emits `mosaic hooks codex session-start` (surface / pid / cwd) before
+   exec, and no-ops cleanly outside mosaic.
 4. Wire the Codex session-start into `AgentChatSessionRegistry` (the iOS chat
    registry), if it does not already land there.
 5. pid-anchored Codex transcript resolution (open-fd / launch-bounded), replacing
@@ -136,7 +136,7 @@ identical limits):
 6. Confirm `CodexTranscriptParser` yields working / idle (/ needsInput) from the
    rollout; fill gaps.
 7. `notify` coexistence: skip, chain, or multi-hook per Q3.
-8. Build + dogfood: type `codex` in a cmux terminal, confirm it appears in the
+8. Build + dogfood: type `codex` in a mosaic terminal, confirm it appears in the
    GUI, state tracks, and it ends on exit; confirm Computer Use's `notify` still
    fires.
 

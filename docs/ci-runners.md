@@ -55,15 +55,15 @@ variable to its fallback; revert it once Blacksmith recovers. Use Blacksmith
 (default):
 
 ```bash
-gh variable set LINUX_RUNNER          --repo emergent-inc/cmux -b blacksmith-4vcpu-ubuntu-2404
-gh variable set MACOS_RUNNER_15       --repo emergent-inc/cmux -b blacksmith-6vcpu-macos-15
-gh variable set MACOS_RUNNER_26       --repo emergent-inc/cmux -b blacksmith-6vcpu-macos-26
-gh variable set MACOS_RUNNER_26_RELEASE --repo emergent-inc/cmux -b blacksmith-6vcpu-macos-26
-gh variable set MACOS_RUNNER_IOS      --repo emergent-inc/cmux -b blacksmith-6vcpu-macos-26
+gh variable set LINUX_RUNNER          --repo emergent-inc/mosaic -b blacksmith-4vcpu-ubuntu-2404
+gh variable set MACOS_RUNNER_15       --repo emergent-inc/mosaic -b blacksmith-6vcpu-macos-15
+gh variable set MACOS_RUNNER_26       --repo emergent-inc/mosaic -b blacksmith-6vcpu-macos-26
+gh variable set MACOS_RUNNER_26_RELEASE --repo emergent-inc/mosaic -b blacksmith-6vcpu-macos-26
+gh variable set MACOS_RUNNER_IOS      --repo emergent-inc/mosaic -b blacksmith-6vcpu-macos-26
 ```
 
 Break-glass a type to WarpBuild only when Blacksmith is down or queuing for
-minutes (as happened for macOS in https://github.com/emergent-inc/cmux/pull/4926).
+minutes (as happened for macOS in https://github.com/emergent-inc/mosaic/pull/4926).
 **Set an explicit cloud label.** Do not rely on deleting the variable: the
 baked-in macOS-26 fallbacks are now `blacksmith-6vcpu-macos-26` (not Warp),
 because `warp-macos-26-arm64-6x` collides with the self-hosted fleet, so
@@ -71,17 +71,17 @@ deleting `MACOS_RUNNER_26` just keeps the job on Blacksmith. Never set any
 runner variable to a fleet/self-hosted label.
 
 ```bash
-gh variable set LINUX_RUNNER    --repo emergent-inc/cmux -b warp-ubuntu-latest-x64-4x
-gh variable set MACOS_RUNNER_15 --repo emergent-inc/cmux -b warp-macos-15-arm64-6x
+gh variable set LINUX_RUNNER    --repo emergent-inc/mosaic -b warp-ubuntu-latest-x64-4x
+gh variable set MACOS_RUNNER_15 --repo emergent-inc/mosaic -b warp-macos-15-arm64-6x
 # macOS 26 has no Warp cloud fallback (warp-macos-26 collides with the fleet);
 # break-glass to a GUI-capable cloud runner instead:
-gh variable set MACOS_RUNNER_26 --repo emergent-inc/cmux -b depot-macos-latest
+gh variable set MACOS_RUNNER_26 --repo emergent-inc/mosaic -b depot-macos-latest
 ```
 
 Check current values:
 
 ```bash
-gh variable list --repo emergent-inc/cmux
+gh variable list --repo emergent-inc/mosaic
 ```
 
 ## Manual runs
@@ -106,8 +106,8 @@ fall back to a free runner. Bare paid-provider labels (`blacksmith-*`, `warp-*`,
 
 ## No self-hosted mac-mini fleet in CI
 
-We do not use the self-hosted mac-mini fleet (`cmux-mac-mini`, `studio1`,
-`mac4-cmuxvnc*`, `cmux-austin-mini-*`) for any CI job. Those minis carry labels
+We do not use the self-hosted mac-mini fleet (`mosaic-mac-mini`, `studio1`,
+`mac4-mosaicvnc*`, `mosaic-austin-mini-*`) for any CI job. Those minis carry labels
 that collide with cloud labels (notably `macos-26` and `warp-macos-26-arm64-6x`),
 and GitHub prefers a matching self-hosted runner, so a required job could
 silently land on a mini that cannot foreground a GUI app (it stays

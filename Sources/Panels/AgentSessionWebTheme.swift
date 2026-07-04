@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 
 struct AgentSessionWebTheme: Equatable {
     let isDark: Bool
@@ -67,7 +67,7 @@ struct AgentSessionWebTheme: Equatable {
             .withAlphaComponent(inputAlpha)
             ?? base.withAlphaComponent(inputAlpha)
         let foreground = appearance.foregroundColor
-        let accent = cmuxAccentNSColor()
+        let accent = mosaicAccentNSColor()
         let danger = (NSColor(hex: isDark ? "#FF8D7E" : "#B3261E") ?? .systemRed)
         return AgentSessionWebTheme(
             isDark: isDark,

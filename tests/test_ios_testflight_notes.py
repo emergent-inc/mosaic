@@ -63,19 +63,19 @@ def main():
         base = _git(repo, "rev-parse", "HEAD").stdout.strip()
 
         # iOS-affecting commits (should appear), one per filtered path family.
-        _commit(repo, "ios/cmux/App.swift", "ios: fix the thing (#101)")
+        _commit(repo, "ios/mosaic/App.swift", "ios: fix the thing (#101)")
         _commit(repo, "Packages/iOS/Foo/Bar.swift", "Mobile: add a feature (#102)")
         _commit(repo, "Packages/Shared/Baz/Qux.swift", "Shared: shared change (#103)")
         # Non-iOS commit (should NOT appear).
         _commit(repo, "web/app/page.tsx", "web: unrelated web change (#104)")
         # Noise commits (should NOT appear).
-        _commit(repo, "ios/cmux/Chore.swift", "chore: bump deps (#105)")
-        _commit(repo, "ios/cmux/Ci.swift", "ci: tweak workflow (#106)")
+        _commit(repo, "ios/mosaic/Chore.swift", "chore: bump deps (#105)")
+        _commit(repo, "ios/mosaic/Ci.swift", "ci: tweak workflow (#106)")
 
         # Subjects containing the literal '|' must not corrupt de-duplication
         # (regression: a '|'-delimited seen-set dropped distinct later subjects).
-        _commit(repo, "ios/cmux/Pipe.swift", "ios: support A|B mode (#107)")
-        _commit(repo, "ios/cmux/Pipe2.swift", "ios: support A (#108)")
+        _commit(repo, "ios/mosaic/Pipe.swift", "ios: support A|B mode (#107)")
+        _commit(repo, "ios/mosaic/Pipe2.swift", "ios: support A (#108)")
 
         internal = _gen(repo, base, "internal")
         _check("fix the thing (#101)" in internal, "internal includes iOS PR title + number")
@@ -105,7 +105,7 @@ def main():
         # an unrelated branch) must fail closed to the fallback, not emit notes for
         # a bogus range.
         _git(repo, "checkout", "-q", "-b", "side", base)
-        _commit(repo, "ios/cmux/Side.swift", "ios: side-branch only change (#900)")
+        _commit(repo, "ios/mosaic/Side.swift", "ios: side-branch only change (#900)")
         side = _git(repo, "rev-parse", "HEAD").stdout.strip()
         _git(repo, "checkout", "-q", "main")
         non_ancestor = _gen(repo, side, "internal")

@@ -1,4 +1,4 @@
-import CmuxAgentChat
+import MosaicAgentChat
 import Foundation
 
 /// Resolves the transcript JSONL path for an agent session.

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-CPU usage test for cmux.
+CPU usage test for mosaic.
 
-This test monitors cmux's CPU usage during idle periods to catch
+This test monitors mosaic's CPU usage during idle periods to catch
 performance regressions like runaway animations or continuous view updates.
 
-Run this test after launching cmux:
+Run this test after launching mosaic:
     python3 tests/test_cpu_usage.py
 
 The test will fail if idle CPU is *sustained* above threshold.
@@ -48,10 +48,10 @@ SUSPICIOUS_PATTERNS = [
 ]
 
 
-def get_cmux_pid() -> Optional[int]:
-    """Get the PID of the running cmux process."""
+def get_mosaic_pid() -> Optional[int]:
+    """Get the PID of the running mosaic process."""
     result = subprocess.run(
-        ["pgrep", "-f", r"cmux\.app/Contents/MacOS/Mosaic$"],
+        ["pgrep", "-f", r"mosaic\.app/Contents/MacOS/Mosaic$"],
         capture_output=True,
         text=True,
     )
@@ -131,17 +131,17 @@ def wait_for_idle_precheck(pid: int) -> bool:
 
 def main():
     print("=" * 60)
-    print("cmux CPU Usage Test")
+    print("mosaic CPU Usage Test")
     print("=" * 60)
 
-    # Find cmux process
-    pid = get_cmux_pid()
+    # Find mosaic process
+    pid = get_mosaic_pid()
     if pid is None:
-        print("\n❌ SKIP: cmux is not running")
-        print("Start cmux and run this test again.")
+        print("\n❌ SKIP: mosaic is not running")
+        print("Start mosaic and run this test again.")
         return 0  # Not a failure, just skip
 
-    print(f"\nFound cmux process: PID {pid}")
+    print(f"\nFound mosaic process: PID {pid}")
 
     # Wait for app to settle
     print(f"Waiting {SETTLE_TIME}s for app to settle...")
@@ -196,7 +196,7 @@ def main():
                 print(f"  - {issue}")
 
         # Save sample for debugging
-        sample_file = Path("/tmp/cmux_cpu_test_sample.txt")
+        sample_file = Path("/tmp/mosaic_cpu_test_sample.txt")
         sample_file.write_text(sample_output)
         print(f"\nFull sample saved to: {sample_file}")
 
@@ -205,7 +205,7 @@ def main():
         lines = sample_output.split("\n")
         relevant_lines = [
             l for l in lines
-            if "cmux" in l and ("body" in l or "Animation" in l or "Timer" in l)
+            if "mosaic" in l and ("body" in l or "Animation" in l or "Timer" in l)
         ][:10]
         for line in relevant_lines:
             print(f"  {line.strip()[:100]}")

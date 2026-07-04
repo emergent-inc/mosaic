@@ -22,7 +22,7 @@ extension TerminalController {
                 return v2Error(
                     id: id,
                     code: "invalid_params",
-                    message: "vm.create requires `idempotency_key`. Use `cmux vm new` instead of calling the socket method directly."
+                    message: "vm.create requires `idempotency_key`. Use `mosaic vm new` instead of calling the socket method directly."
                 )
             }
             return v2VmCall(id: id) {
@@ -31,7 +31,7 @@ extension TerminalController {
             }
         case "vm.destroy":
             guard let vmId = Self.socketWorkerString(params["id"]), !vmId.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "vm.destroy requires `id`. Run `cmux vm ls` to find one, then `cmux vm rm <id>`.")
+                return v2Error(id: id, code: "invalid_params", message: "vm.destroy requires `id`. Run `mosaic vm ls` to find one, then `mosaic vm rm <id>`.")
             }
             return v2VmCall(id: id) {
                 try await VMClient.shared.destroy(id: vmId)
@@ -39,10 +39,10 @@ extension TerminalController {
             }
         case "vm.exec":
             guard let vmId = Self.socketWorkerString(params["id"]), !vmId.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "vm.exec requires `id`. Run `cmux vm ls` to find one.")
+                return v2Error(id: id, code: "invalid_params", message: "vm.exec requires `id`. Run `mosaic vm ls` to find one.")
             }
             guard let command = Self.socketWorkerString(params["command"]), !command.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "vm.exec requires `command`. From the CLI, use `cmux vm exec <id> -- <command>`.")
+                return v2Error(id: id, code: "invalid_params", message: "vm.exec requires `command`. From the CLI, use `mosaic vm exec <id> -- <command>`.")
             }
             let timeoutMs = max(1, Self.socketWorkerInt(params["timeout_ms"]) ?? 30_000)
             return v2VmCall(id: id) {
@@ -51,7 +51,7 @@ extension TerminalController {
             }
         case "vm.ssh_info":
             guard let vmId = Self.socketWorkerString(params["id"]), !vmId.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "vm.ssh_info requires `id`. Run `cmux vm ls` to find one.")
+                return v2Error(id: id, code: "invalid_params", message: "vm.ssh_info requires `id`. Run `mosaic vm ls` to find one.")
             }
             return v2VmCall(id: id) {
                 let endpoint = try await VMClient.shared.openSSH(id: vmId)
@@ -59,7 +59,7 @@ extension TerminalController {
             }
         case "vm.attach_info":
             guard let vmId = Self.socketWorkerString(params["id"]), !vmId.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "vm.attach_info requires `id`. Run `cmux vm ls` to find one, then `cmux vm ssh <id>`.")
+                return v2Error(id: id, code: "invalid_params", message: "vm.attach_info requires `id`. Run `mosaic vm ls` to find one, then `mosaic vm ssh <id>`.")
             }
             let requireDaemon = Self.socketWorkerBool(params["require_daemon"])
                 ?? Self.socketWorkerBool(params["requireDaemon"])
@@ -73,7 +73,7 @@ extension TerminalController {
         }
     }
 
-    /// Handles the `remotes.*` socket methods backing `cmux remotes`. Each maps
+    /// Handles the `remotes.*` socket methods backing `mosaic remotes`. Each maps
     /// to a single ``RemotesClient`` operation (the shared registry mutation
     /// path); the CLI does presentation only.
     nonisolated func socketWorkerRemotesResponse(
@@ -89,7 +89,7 @@ extension TerminalController {
             }
         case "remotes.add":
             guard let name = Self.socketWorkerString(params["name"]), !name.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "remotes.add requires `name`. Use `cmux remotes add <name> --route host:port`.")
+                return v2Error(id: id, code: "invalid_params", message: "remotes.add requires `name`. Use `mosaic remotes add <name> --route host:port`.")
             }
             let routes = Self.socketWorkerStringArray(params["routes"])
             guard !routes.isEmpty else {
@@ -102,7 +102,7 @@ extension TerminalController {
             }
         case "remotes.remove":
             guard let target = Self.socketWorkerString(params["target"]), !target.isEmpty else {
-                return v2Error(id: id, code: "invalid_params", message: "remotes.remove requires `target` (a remote name or deviceId). Run `cmux remotes list`.")
+                return v2Error(id: id, code: "invalid_params", message: "remotes.remove requires `target` (a remote name or deviceId). Run `mosaic remotes list`.")
             }
             return v2VmCall(id: id) {
                 let deviceId = try await RemotesClient.shared.remove(target: target)

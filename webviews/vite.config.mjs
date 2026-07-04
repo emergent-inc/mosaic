@@ -2,7 +2,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
-const outDir = process.env.CMUX_WEBVIEWS_OUT_DIR ?? "../Resources/markdown-viewer/webviews-app";
+const outDir = process.env.MOSAIC_WEBVIEWS_OUT_DIR ?? "../Resources/markdown-viewer/webviews-app";
 
 export default defineConfig({
   define: {
@@ -38,7 +38,7 @@ export default defineConfig({
         format: "es",
         entryFileNames: "main.mjs",
         // Stable (un-hashed) chunk names. The diff viewer copies these into its
-        // long-lived `/tmp/cmux-diff-viewer-$uid/assets/cmux-webviews-app`
+        // long-lived `/tmp/mosaic-diff-viewer-$uid/assets/mosaic-webviews-app`
         // cache and overwrites in place via a size+mtime check; content hashes
         // would instead orphan a new ~10MB diff-vendor copy there on every
         // rebuild since nothing prunes that dir. The bundle is served via the

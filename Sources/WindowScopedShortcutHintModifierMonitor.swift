@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import Observation
 
 @MainActor

@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
 import Foundation
 
@@ -35,7 +35,7 @@ final class CloudVMActionLauncher {
         preferredWindow: NSWindow?,
         onCompletion: ((Completion) -> Void)? = nil
     ) -> Bool {
-        let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/cmux")
+        let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/mosaic")
         guard let cliURL,
               FileManager.default.isExecutableFile(atPath: cliURL.path) else {
             presentStartFailure(
@@ -46,7 +46,7 @@ final class CloudVMActionLauncher {
                 output: "",
                 action: String(
                     localized: "command.cloudVM.failed.action.missingCLI",
-                    defaultValue: "Install or reload a fresh mosaic build, then try Start Cloud VM again. You can also run `cmux vm new` in a terminal to see the full error."
+                    defaultValue: "Install or reload a fresh mosaic build, then try Start Cloud VM again. You can also run `mosaic vm new` in a terminal to see the full error."
                 ),
                 preferredWindow: preferredWindow
             )
@@ -57,9 +57,9 @@ final class CloudVMActionLauncher {
         process.executableURL = cliURL
         process.arguments = ["--socket", socketPath, "--id-format", "uuids", "vm", "new"]
         var environment = ProcessInfo.processInfo.environment
-        environment["CMUX_SOCKET_PATH"] = socketPath
-        environment["CMUX_BUNDLED_CLI_PATH"] = cliURL.path
-        environment.removeValue(forKey: "CMUX_SOCKET")
+        environment["MOSAIC_SOCKET_PATH"] = socketPath
+        environment["MOSAIC_BUNDLED_CLI_PATH"] = cliURL.path
+        environment.removeValue(forKey: "MOSAIC_SOCKET")
         process.environment = environment
 
         let outputPipe = Pipe()
@@ -85,14 +85,14 @@ final class CloudVMActionLauncher {
                 guard terminationStatus != 0, !Self.shared.isShuttingDown else { return }
                 let format = String(
                     localized: "command.cloudVM.failed.exit",
-                    defaultValue: "cmux vm new exited with status %d."
+                    defaultValue: "mosaic vm new exited with status %d."
                 )
                 Self.shared.presentStartFailure(
                     summary: String(format: format, Int(terminationStatus)),
                     output: output,
                     action: String(
                         localized: "command.cloudVM.failed.action.exit",
-                        defaultValue: "Open a terminal and run `cmux auth status`, `cmux vm ls`, then `cmux vm new`. If you hit the active VM limit, delete one with `cmux vm rm <id>` and retry."
+                        defaultValue: "Open a terminal and run `mosaic auth status`, `mosaic vm ls`, then `mosaic vm new`. If you hit the active VM limit, delete one with `mosaic vm rm <id>` and retry."
                     ),
                     preferredWindow: launchWindow
                 )
@@ -103,7 +103,7 @@ final class CloudVMActionLauncher {
             try process.run()
             processes[process.processIdentifier] = process
 #if DEBUG
-            cmuxDebugLog("cloudVM.launch pid=\(process.processIdentifier) socket=\(socketPath)")
+            mosaicDebugLog("cloudVM.launch pid=\(process.processIdentifier) socket=\(socketPath)")
 #endif
             return true
         } catch {
@@ -111,12 +111,12 @@ final class CloudVMActionLauncher {
             presentStartFailure(
                 summary: String(
                     localized: "command.cloudVM.failed.launch",
-                    defaultValue: "`cmux vm new` could not be launched."
+                    defaultValue: "`mosaic vm new` could not be launched."
                 ),
                 output: error.localizedDescription,
                 action: String(
                     localized: "command.cloudVM.failed.action.launch",
-                    defaultValue: "Reload mosaic so the bundled CLI is available, then try again. If it still fails, run `cmux vm new` in a terminal and send us the output."
+                    defaultValue: "Reload mosaic so the bundled CLI is available, then try again. If it still fails, run `mosaic vm new` in a terminal and send us the output."
                 ),
                 preferredWindow: preferredWindow
             )
@@ -180,7 +180,7 @@ final class CloudVMActionLauncher {
             "bearer",
             "billingcustomer",
             "billingteam",
-            "cmux_vm_",
+            "mosaic_vm_",
             "cookie",
             "credential",
             "database",
@@ -211,7 +211,7 @@ final class CloudVMActionLauncher {
             "bearer",
             "billingcustomer",
             "billingteam",
-            "cmuxvmapi",
+            "mosaicvmapi",
             "cookie",
             "credential",
             "database",

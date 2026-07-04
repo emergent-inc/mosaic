@@ -1,13 +1,13 @@
 # Cloud VM Backend Rollout Todo
 
-This is the scoped todo list for making the Cloud VM backend production-ready with application logic running in the existing Vercel `emergentinc/cmux` project.
+This is the scoped todo list for making the Cloud VM backend production-ready with application logic running in the existing Vercel `emergentinc/mosaic` project.
 
 ## Current State
 
-- Vercel project exists: `emergentinc/cmux`.
+- Vercel project exists: `emergentinc/mosaic`.
 - Vercel root directory is `web`.
 - Production URL is `https://mosaic.inc`.
-- Vercel custom `staging` environment exists for the `emergentinc/cmux` project and tracks the
+- Vercel custom `staging` environment exists for the `emergentinc/mosaic` project and tracks the
   `staging` git branch.
 - VM application logic already runs in the Vercel Next app:
   - `web/app/api/vm/**`
@@ -18,7 +18,7 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
   - `cloud_vm_usage_events`
 - WebSocket PTY/browser proxy data paths talk to provider VM endpoints after the REST handshake.
 - No separate AWS app server is required for the current version.
-- A separate `emergentinc/cmux-staging` Vercel project exists for staging.
+- A separate `emergentinc/mosaic-staging` Vercel project exists for staging.
 
 ## Current Blockers
 
@@ -29,7 +29,7 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
   - `PGPORT`
   - `PGUSER`
   - `PGDATABASE`
-  - `CMUX_DB_SSL_REJECT_UNAUTHORIZED`
+  - `MOSAIC_DB_SSL_REJECT_UNAUTHORIZED`
 - [x] Copy Stack smoke variables from Vercel into both GitHub Cloud VM environments:
   - `NEXT_PUBLIC_STACK_PROJECT_ID`
   - `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`
@@ -38,7 +38,7 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
   - `OTEL_SERVICE_NAME`
   - `OTEL_EXPORTER_OTLP_ENDPOINT`
   - `OTEL_EXPORTER_OTLP_HEADERS`
-- [ ] Publish a new Freestyle snapshot with cmuxd-remote started with `--rpc-auth-lease-file`.
+- [ ] Publish a new Freestyle snapshot with mosaicd-remote started with `--rpc-auth-lease-file`.
 - [ ] Resolve Freestyle snapshot creation returning provider `INTERNAL_ERROR`.
 - [ ] Promote the new Freestyle snapshot to staging and rerun Freestyle create/attach/browser proxy smoke.
 - [x] Keep Freestyle creates disabled and non-default until the current snapshot supports RPC/browser proxy.
@@ -49,10 +49,10 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
 - [x] GitHub environments `cloud-vm-staging` and `cloud-vm-production` exist.
 - [x] GitHub environment variable `AWS_REGION=us-west-2` is set for both Cloud VM environments.
 - [x] GitHub OIDC provider `token.actions.githubusercontent.com` exists in AWS.
-- [x] Staging migration role is scoped to `repo:emergent-inc/cmux:environment:cloud-vm-staging` and the staging Aurora cluster resource id.
-- [x] Production migration role is scoped to `repo:emergent-inc/cmux:environment:cloud-vm-production` and the production Aurora cluster resource id.
+- [x] Staging migration role is scoped to `repo:emergent-inc/mosaic:environment:cloud-vm-staging` and the staging Aurora cluster resource id.
+- [x] Production migration role is scoped to `repo:emergent-inc/mosaic:environment:cloud-vm-production` and the production Aurora cluster resource id.
 - [x] Staging and production Cloud VM default provider are set to E2B.
-- [x] Freestyle creates are disabled in staging and production with `CMUX_VM_FREESTYLE_ENABLED=0`.
+- [x] Freestyle creates are disabled in staging and production with `MOSAIC_VM_FREESTYLE_ENABLED=0`.
 - [x] Staging E2B create, WebSocket attach, and destroy smoke passed.
 - [x] Production auth/list smoke passed without creating a production VM.
 - [x] Axiom/OpenTelemetry env is set and redeployed in staging and production.
@@ -63,8 +63,8 @@ This is the scoped todo list for making the Cloud VM backend production-ready wi
 These are already configured in Vercel for development, preview, and production:
 
 - `RESEND_API_KEY`
-- `CMUX_FEEDBACK_FROM_EMAIL`
-- `CMUX_FEEDBACK_RATE_LIMIT_ID`
+- `MOSAIC_FEEDBACK_FROM_EMAIL`
+- `MOSAIC_FEEDBACK_RATE_LIMIT_ID`
 - `NEXT_PUBLIC_STACK_PROJECT_ID`
 - `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`
 - `STACK_SECRET_SERVER_KEY`
@@ -72,19 +72,19 @@ These are already configured in Vercel for development, preview, and production:
 ## Phase 1: Finish Current Vercel Backend Setup
 
 - [x] Use a dedicated Vercel staging project instead of sharing preview secrets.
-- [x] Add a global VM create kill switch, `CMUX_VM_CREATE_ENABLED`.
+- [x] Add a global VM create kill switch, `MOSAIC_VM_CREATE_ENABLED`.
 - [x] Add per-provider kill switches:
-  - `CMUX_VM_E2B_ENABLED`
-  - `CMUX_VM_FREESTYLE_ENABLED`
-- [x] Set kill switches to enabled values in `emergentinc/cmux` production and
-  `emergentinc/cmux-staging` production.
+  - `MOSAIC_VM_E2B_ENABLED`
+  - `MOSAIC_VM_FREESTYLE_ENABLED`
+- [x] Set kill switches to enabled values in `emergentinc/mosaic` production and
+  `emergentinc/mosaic-staging` production.
 - [ ] Add a preview allowlist before paid provider calls if preview uses real provider keys:
   - Stack user ids
   - Stack org ids later, if org billing exists
-- [ ] Set `CMUX_VM_DEFAULT_PROVIDER` in Vercel development, preview, and production.
+- [ ] Set `MOSAIC_VM_DEFAULT_PROVIDER` in Vercel development, preview, and production.
 - [ ] Set `E2B_API_KEY` in Vercel preview and production.
 - [ ] Set `FREESTYLE_API_KEY` in Vercel preview and production.
-- [ ] Set `E2B_CMUXD_WS_TEMPLATE` in Vercel preview and production.
+- [ ] Set `E2B_MOSAICD_WS_TEMPLATE` in Vercel preview and production.
 - [ ] Set `FREESTYLE_SANDBOX_SNAPSHOT` in Vercel preview and production.
 - [ ] Set Axiom/OpenTelemetry env in Vercel preview and production:
   - `OTEL_SERVICE_NAME`
@@ -96,31 +96,31 @@ These are already configured in Vercel for development, preview, and production:
 - [ ] Confirm Stack Auth callback and trusted domains include:
   - `https://mosaic.inc`
   - the Vercel preview domain pattern used by this project
-  - local `CMUX_PORT` development callback URLs
+  - local `MOSAIC_PORT` development callback URLs
 - [ ] Redeploy Vercel preview after env injection.
 - [ ] Smoke test preview:
-  - `cmux auth login`
-  - `cmux vm new --provider freestyle`
-  - `cmux vm new --provider e2b`
-  - `cmux vm attach <id>`
+  - `mosaic auth login`
+  - `mosaic vm new --provider freestyle`
+  - `mosaic vm new --provider e2b`
+  - `mosaic vm attach <id>`
   - browser proxy against a simple HTTP server inside each provider VM
 - [ ] Redeploy production only after preview smoke tests pass.
 
 ## Phase 2: Local Secret Parity
 
-- [ ] Keep local Stack/web runtime secrets in `~/.secrets/cmuxterm-dev.env`.
-- [ ] Keep production Stack/web runtime secrets in `~/.secrets/cmuxterm.env`.
-- [ ] Keep provider image-build secrets in `~/.secrets/cmux.env`.
-- [ ] Add runtime VM vars to the relevant `~/.secrets/cmuxterm*.env` file:
-  - `CMUX_VM_DEFAULT_PROVIDER`
-  - `CMUX_VM_CREATE_ENABLED`
-  - `CMUX_VM_E2B_ENABLED`
-  - `CMUX_VM_FREESTYLE_ENABLED`
-  - `E2B_CMUXD_WS_TEMPLATE`
+- [ ] Keep local Stack/web runtime secrets in `~/.secrets/mosaicterm-dev.env`.
+- [ ] Keep production Stack/web runtime secrets in `~/.secrets/mosaicterm.env`.
+- [ ] Keep provider image-build secrets in `~/.secrets/mosaic.env`.
+- [ ] Add runtime VM vars to the relevant `~/.secrets/mosaicterm*.env` file:
+  - `MOSAIC_VM_DEFAULT_PROVIDER`
+  - `MOSAIC_VM_CREATE_ENABLED`
+  - `MOSAIC_VM_E2B_ENABLED`
+  - `MOSAIC_VM_FREESTYLE_ENABLED`
+  - `E2B_MOSAICD_WS_TEMPLATE`
   - `FREESTYLE_SANDBOX_SNAPSHOT`
   - Axiom/OpenTelemetry vars
-- [x] Document the split between `~/.secrets/cmuxterm-dev.env`, `~/.secrets/cmuxterm.env`, and
-  `~/.secrets/cmux.env` in `AGENTS.md`.
+- [x] Document the split between `~/.secrets/mosaicterm-dev.env`, `~/.secrets/mosaicterm.env`, and
+  `~/.secrets/mosaic.env` in `AGENTS.md`.
 - [x] Replace `web/.env.local` local development with the committed `web/.envrc` and `bun dev`
   loader.
 - [ ] Make the script print missing keys by name only, never values.
@@ -137,13 +137,13 @@ Phase 1 should keep exact image IDs in Vercel env vars. This gives simple rollba
   - image version
   - E2B template id
   - Freestyle snapshot id
-  - cmuxd-remote commit
+  - mosaicd-remote commit
   - build timestamp
   - builder script version
   - validation status
   - notes for known limitations
 - [x] Add docs for the active env selectors:
-  - `E2B_CMUXD_WS_TEMPLATE`
+  - `E2B_MOSAICD_WS_TEMPLATE`
   - `FREESTYLE_SANDBOX_SNAPSHOT`
 - [x] Add docs for rollback:
   - choose previous known-good manifest entry
@@ -164,10 +164,10 @@ Phase 1 should keep exact image IDs in Vercel env vars. This gives simple rollba
 ## Phase 4: Image Build and Promotion Workflow
 
 - [x] Make image build script output a manifest entry instead of relying on chat notes.
-- [x] Build E2B template and Freestyle snapshot from the same cmuxd-remote commit.
+- [x] Build E2B template and Freestyle snapshot from the same mosaicd-remote commit.
 - [x] Record artifact provenance:
-  - cmuxd-remote git commit
-  - cmuxd-remote build command
+  - mosaicd-remote git commit
+  - mosaicd-remote build command
   - binary SHA256
   - R2 object key or build artifact URL used by Freestyle snapshot creation
 - [ ] Run provider smoke tests after image build:
@@ -267,13 +267,13 @@ after the Vercel REST handshake. Rivet is only a temporary stateful control-plan
 
 - [x] Add Postgres as the durable control plane foundation for Cloud VMs.
 - [x] Use Drizzle for TypeScript schema and migrations.
-- [x] Add CMUX_PORT-derived local Postgres so parallel worktrees do not collide.
+- [x] Add MOSAIC_PORT-derived local Postgres so parallel worktrees do not collide.
 - [x] Add CI migration verification against a real Postgres service.
 - [x] Add the first internal DB-backed VM read model and real Postgres test.
 - [x] Add a Vercel Marketplace Aurora OIDC/RDS IAM runtime DB adapter.
 - [x] Add a dedicated `bun db:migrate:aws-rds-iam` migration command for production/staging.
 - [x] Seed Vercel staging and production with app/provider DB driver env names.
-- [ ] Connect the Vercel Marketplace Aurora resource to `emergentinc/cmux` for both `staging` and production so these env names are present:
+- [ ] Connect the Vercel Marketplace Aurora resource to `emergentinc/mosaic` for both `staging` and production so these env names are present:
   - `AWS_ROLE_ARN`
   - `AWS_REGION`
   - `PGHOST`
@@ -323,7 +323,7 @@ after the Vercel REST handshake. Rivet is only a temporary stateful control-plan
   - `RIVET_RUNNER_VERSION`
   - `RIVET_TOKEN`
   - `RIVET_NAMESPACE`
-  - `CMUX_RIVET_INTERNAL_SECRET`
+  - `MOSAIC_RIVET_INTERNAL_SECRET`
 - [x] Remove `/api/rivet/**` routes after no VM code path depends on Rivet.
 - [x] Remove `rivetkit` dependency after the route migration and state migration are complete.
 
@@ -374,7 +374,7 @@ after the Vercel REST handshake. Rivet is only a temporary stateful control-plan
 - [ ] Add local env setup instructions.
 - [ ] Add production promotion instructions.
 - [ ] Add Vercel environment variable audit instructions.
-- [ ] Add `CMUX_VM_CREATE_ENABLED` and provider kill-switch docs.
+- [ ] Add `MOSAIC_VM_CREATE_ENABLED` and provider kill-switch docs.
 - [ ] Add security notes for:
   - Stack Auth bearer plus refresh tokens
   - internal Rivet header
@@ -382,4 +382,4 @@ after the Vercel REST handshake. Rivet is only a temporary stateful control-plan
   - provider attach lease handling
 - [ ] Add a license/package-boundary note if future backend-only code is intended to use a different
   license from the rest of the repo.
-- [ ] Add a future `cmux-infra` or `backend-rollout` skill so agents follow this workflow consistently.
+- [ ] Add a future `mosaic-infra` or `backend-rollout` skill so agents follow this workflow consistently.

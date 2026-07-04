@@ -6,7 +6,7 @@ Symptom: a chat bubble for a prompt the user just sent renders at an over-wide w
 
 Environment-value resolution timing gap. The user bubble caps its width with `.frame(maxWidth: bubbleMaxWidth, alignment:)` where `bubbleMaxWidth` comes from the `\.chatBubbleMaxWidth` environment, computed as `tableWidth * theme.bubbleMaxWidthFraction` (0.78).
 
-- Bubble view: `Packages/iOS/CmuxAgentChatUI/Sources/CmuxAgentChatUI/Transcript/Rows/ChatProseBubbleView.swift:41-71` (HStack with `Spacer(minLength: 64)` on the user side + `.frame(maxWidth: bubbleMaxWidth)`).
+- Bubble view: `Packages/iOS/MosaicAgentChatUI/Sources/MosaicAgentChatUI/Transcript/Rows/ChatProseBubbleView.swift:41-71` (HStack with `Spacer(minLength: 64)` on the user side + `.frame(maxWidth: bubbleMaxWidth)`).
 - Width injection: `Packages/iOS/.../Transcript/ChatTranscriptTableView.swift:430-431` sets `\.chatBubbleMaxWidth` to `tableWidth > 0 ? tableWidth * fraction : .infinity`.
 
 On the first render of a freshly-inserted pending row, `tableWidth` is not yet resolved, so the environment value is `.infinity`. The bubble then measures against the text's intrinsic width with no cap; the `Spacer(minLength: 64)` distributes the leftover width and pushes the bubble to the trailing edge, so it looks full-width. On the next layout pass `tableWidth` resolves, the env updates to `tableWidth * 0.78`, and the bubble snaps to the narrower cap. There is no insert animation; the snap is the two-pass relayout.

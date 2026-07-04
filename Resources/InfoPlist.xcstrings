@@ -8,7 +8,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A program running within cmux would like to use Bluetooth to discover passkeys and security keys."
+            "value": "A program running within mosaic would like to use Bluetooth to discover passkeys and security keys."
           }
         }
       }
@@ -19,7 +19,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A program running within cmux would like to use your camera."
+            "value": "A program running within mosaic would like to use your camera."
           }
         }
       }
@@ -30,7 +30,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A program running within cmux would like to use your microphone."
+            "value": "A program running within mosaic would like to use your microphone."
           }
         }
       }

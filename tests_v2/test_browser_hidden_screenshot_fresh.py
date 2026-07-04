@@ -12,15 +12,15 @@ from pathlib import Path
 from typing import Iterable
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _data_url(html: str) -> str:
@@ -38,16 +38,16 @@ def _wait_until(pred, timeout_s: float, label: str) -> None:
             last_exc = exc
         time.sleep(0.05)
     if last_exc is not None:
-        raise cmuxError(f"Timed out waiting for {label}: {last_exc}")
-    raise cmuxError(f"Timed out waiting for {label}")
+        raise mosaicError(f"Timed out waiting for {label}: {last_exc}")
+    raise mosaicError(f"Timed out waiting for {label}")
 
 
-def _focused_workspace_id(c: cmux) -> str:
+def _focused_workspace_id(c: mosaic) -> str:
     focused = (c.identify().get("focused") or {})
     return str(focused.get("workspace_id") or "")
 
 
-def _focused_surface_id(c: cmux) -> str:
+def _focused_surface_id(c: mosaic) -> str:
     focused = (c.identify().get("focused") or {})
     return str(focused.get("surface_id") or "")
 
@@ -58,7 +58,7 @@ def _value(res: dict):
 
 def _decode_png_rgb(png: bytes) -> tuple[int, int, Iterable[tuple[int, int, int]]]:
     if not png.startswith(b"\x89PNG\r\n\x1a\n"):
-        raise cmuxError("Screenshot payload is not a PNG")
+        raise mosaicError("Screenshot payload is not a PNG")
 
     width = 0
     height = 0
@@ -119,7 +119,7 @@ def _decode_png_rgb(png: bytes) -> tuple[int, int, Iterable[tuple[int, int, int]
                 predictor = left if pa <= pb and pa <= pc else up if pb <= pc else up_left
                 restored = val + predictor
             else:
-                raise cmuxError(f"Unsupported PNG filter type: {filter_type}")
+                raise mosaicError(f"Unsupported PNG filter type: {filter_type}")
             scanline[i] = restored & 0xFF
 
         for x in range(width):
@@ -152,7 +152,7 @@ def _dominant_channel_counts(png_base64: str) -> tuple[int, int, int, int, int]:
     return sampled, red, green, blue, step
 
 
-def _screenshot_color_counts(c: cmux, surface_id: str) -> tuple[int, int, int, int, int]:
+def _screenshot_color_counts(c: mosaic, surface_id: str) -> tuple[int, int, int, int, int]:
     shot = c._call("browser.screenshot", {"surface_id": surface_id}, timeout_s=20.0) or {}
     payload = str(shot.get("png_base64") or "")
     _must(len(payload) > 100, f"Expected screenshot payload: {shot}")
@@ -164,7 +164,7 @@ def main() -> int:
 <!doctype html>
 <html>
   <head>
-    <title>cmux-hidden-screenshot-fresh</title>
+    <title>mosaic-hidden-screenshot-fresh</title>
     <style>
       html, body, #app {
         width: 100%;
@@ -182,7 +182,7 @@ def main() -> int:
 </html>
 """.strip()
 
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         browser_ws = c.current_workspace()
         opened = c._call("browser.open_split", {"url": "about:blank"}) or {}
         surface_id = str(opened.get("surface_id") or "")
@@ -212,15 +212,15 @@ def main() -> int:
   document.body.style.background = 'rgb(0, 255, 0)';
   const app = document.querySelector('#app');
   if (app) app.setAttribute('data-state', 'green');
-  window.__cmuxHiddenScreenshotState = 'green';
-  return window.__cmuxHiddenScreenshotState;
+  window.__mosaicHiddenScreenshotState = 'green';
+  return window.__mosaicHiddenScreenshotState;
 })()
 """.strip()
         mutated = c._call("browser.eval", {"surface_id": surface_id, "script": mutation}) or {}
         _must(str(_value(mutated)) == "green", f"Hidden DOM mutation did not apply: {mutated}")
         _wait_until(
             lambda: str(
-                _value(c._call("browser.eval", {"surface_id": surface_id, "script": "window.__cmuxHiddenScreenshotState || ''"}))
+                _value(c._call("browser.eval", {"surface_id": surface_id, "script": "window.__mosaicHiddenScreenshotState || ''"}))
                 or ""
             )
             == "green",

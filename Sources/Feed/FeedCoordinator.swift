@@ -1,10 +1,10 @@
 import AppKit
 import Bonsplit
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import Foundation
 @preconcurrency import UserNotifications
-import CmuxSettings
-import CmuxSidebar
+import MosaicSettings
+import MosaicSidebar
 
 /// App-level coordinator that owns the shared `WorkstreamStore` and
 /// mediates between the socket thread (which processes `feed.*` V2
@@ -17,7 +17,7 @@ import CmuxSidebar
 /// Hooks then receive the decision inline in the `feed.push` response.
 final class FeedCoordinator: @unchecked Sendable {
     static let shared = FeedCoordinator()
-    static let storeInstalledNotification = Notification.Name("cmux.feed.storeInstalled")
+    static let storeInstalledNotification = Notification.Name("mosaic.feed.storeInstalled")
 
     // The store runs on the main actor. The coordinator is not isolated,
     // so it hops to main explicitly when touching the store.
@@ -37,7 +37,7 @@ final class FeedCoordinator: @unchecked Sendable {
     /// multiple prompts only installs one watcher.
     @MainActor private var pidWatchers: [Int: DispatchSourceProcess] = [:]
     private let pidWatcherQueue = DispatchQueue(
-        label: "cmux.feed.pidWatcher", qos: .utility
+        label: "mosaic.feed.pidWatcher", qos: .utility
     )
 
     /// In-flight blocking decisions whose needs-input overlay is currently lit,
@@ -341,7 +341,7 @@ extension FeedCoordinator {
     /// This is the convergence point the PreToolUse→PermissionRequest
     /// migration left behind: the `feed.push` bridge ingested the card and
     /// (when inactive) posted a banner, but never drove the same in-app
-    /// attention path the `cmux hooks <agent> notification` hook uses. Doing
+    /// attention path the `mosaic hooks <agent> notification` hook uses. Doing
     /// it here — once, for every blocking decision — keeps a new event type
     /// from silently swallowing.
     ///
@@ -370,7 +370,7 @@ extension FeedCoordinator {
 
         guard let resolved else {
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "feed.attention.skip reason=unresolved-target session=\(event.sessionId) request=\(event.requestId ?? "nil") hook=\(event.hookEventName.rawValue) source=\(event.source) workspace=\(event.workspaceId ?? "nil") receivedAt=\(event.receivedAt.timeIntervalSince1970)"
             )
             #endif
@@ -381,7 +381,7 @@ extension FeedCoordinator {
               let tab = tabManager.tabs.first(where: { $0.id == resolved.workspaceId })
         else {
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "feed.attention.skip reason=missing-workspace session=\(event.sessionId) request=\(event.requestId ?? "nil") hook=\(event.hookEventName.rawValue) source=\(event.source) workspace=\(resolved.workspaceId.uuidString) receivedAt=\(event.receivedAt.timeIntervalSince1970)"
             )
             #endif
@@ -462,7 +462,7 @@ extension FeedCoordinator {
 
     /// Resolves the `(workspace, surface)` an attention overlay should target.
     /// The workspace prefers the event's live `workspace_id` (the running
-    /// terminal's CMUX_WORKSPACE_ID, a raw UUID) so a stale hook-session map
+    /// terminal's MOSAIC_WORKSPACE_ID, a raw UUID) so a stale hook-session map
     /// can't redirect attention to the wrong workspace; it falls back to the
     /// session store when the event omits a parseable id. The surface comes
     /// from the session store only when its workspace matches the resolved
@@ -574,8 +574,8 @@ extension FeedCoordinator {
 
     /// Parses `workstreamId` in the form `<agent>-<sessionId>` and
     /// looks up the matching hook-session entry in
-    /// `~/.cmuxterm/<agent>-hook-sessions.json` (written by
-    /// `cmux <agent>-hook session-start`). Returns `true` if a match
+    /// `~/.mosaicterm/<agent>-hook-sessions.json` (written by
+    /// `mosaic <agent>-hook session-start`). Returns `true` if a match
     /// was found so the UI can gate the jump gesture.
     ///
     /// Actual focus (workspace.select + surface.focus) is scheduled via
@@ -623,9 +623,9 @@ extension FeedCoordinator {
     }
 }
 
-/// Reads the per-agent hook session stores (`~/.cmuxterm/<agent>-hook-sessions.json`)
-/// to map a feed `workstream_id` back to a cmux `(workspaceId, surfaceId)` pair.
-/// The schema is the same one written by `cmux <agent>-hook session-start`.
+/// Reads the per-agent hook session stores (`~/.mosaicterm/<agent>-hook-sessions.json`)
+/// to map a feed `workstream_id` back to a mosaic `(workspaceId, surfaceId)` pair.
+/// The schema is the same one written by `mosaic <agent>-hook session-start`.
 enum FeedJumpResolver {
     struct Target: Equatable {
         let workspaceId: String
@@ -643,7 +643,7 @@ enum FeedJumpResolver {
     static func lookup(agent: String, sessionId: String) -> Target? {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let file = home
-            .appendingPathComponent(".cmuxterm", isDirectory: true)
+            .appendingPathComponent(".mosaicterm", isDirectory: true)
             .appendingPathComponent("\(agent)-hook-sessions.json", isDirectory: false)
         guard let data = try? Data(contentsOf: file),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -665,7 +665,7 @@ enum FeedJumpResolver {
     }
 
     /// Dispatches a workspace-select + surface-focus intent. Posts
-    /// through the existing cmux notification pathway so we don't need
+    /// through the existing mosaic notification pathway so we don't need
     /// to bind directly to the TerminalController V2 handlers from the
     /// Feed layer.
     @MainActor
@@ -698,8 +698,8 @@ enum FeedJumpResolver {
 }
 
 extension Notification.Name {
-    static let feedRequestFocus = Notification.Name("cmux.feedRequestFocus")
-    static let feedRequestSendText = Notification.Name("cmux.feedRequestSendText")
+    static let feedRequestFocus = Notification.Name("mosaic.feedRequestFocus")
+    static let feedRequestSendText = Notification.Name("mosaic.feedRequestSendText")
 }
 
 // MARK: - Native notification banner
@@ -754,7 +754,7 @@ private extension FeedCoordinator {
                     defaultValue: "Decision needed"
                 )
             case .exitPlanMode:
-                categoryId = "CMUXFeedExitPlan"
+                categoryId = "MosaicFeedExitPlan"
                 title = String(
                     localized: "feed.notification.exitPlan.title",
                     defaultValue: "\(event.source.capitalized) plan ready"
@@ -764,7 +764,7 @@ private extension FeedCoordinator {
                     defaultValue: "Review and approve the plan"
                 )
             case .askUserQuestion:
-                categoryId = "CMUXFeedQuestion"
+                categoryId = "MosaicFeedQuestion"
                 title = String(
                     localized: "feed.notification.question.title",
                     defaultValue: "\(event.source.capitalized) question"
@@ -851,7 +851,7 @@ private extension FeedCoordinator {
         if supportsOnce { suffix += "Once" }
         if supportsAlways { suffix += "Always" }
         if supportsAll { suffix += "All" }
-        return suffix.isEmpty ? "CMUXFeedPermissionDeny" : "CMUXFeedPermission\(suffix)"
+        return suffix.isEmpty ? "MosaicFeedPermissionDeny" : "MosaicFeedPermission\(suffix)"
     }
 
     @MainActor
@@ -1030,7 +1030,7 @@ private extension FeedCoordinator {
 
 private struct FeedNotificationPolicyContext {
     let envelope: TerminalNotificationPolicyEnvelope
-    let hooks: [CmuxResolvedNotificationHook]
+    let hooks: [MosaicResolvedNotificationHook]
     let globalConfigPath: String?
 }
 
@@ -1043,7 +1043,7 @@ private func makeFeedNotificationPolicyContext(
     let appDelegate = AppDelegate.shared
     let workspaceID = event.workspaceId.flatMap(UUID.init(uuidString:))
     let context = workspaceID.flatMap { appDelegate?.contextContainingTabId($0) }
-        ?? appDelegate?.mainWindowContexts.values.first(where: { $0.cmuxConfigStore != nil })
+        ?? appDelegate?.mainWindowContexts.values.first(where: { $0.mosaicConfigStore != nil })
     let workspace = workspaceID.flatMap { id in
         context?.tabManager.tabs.first(where: { $0.id == id })
     }
@@ -1078,8 +1078,8 @@ private func makeFeedNotificationPolicyContext(
             ),
             effects: effects
         ),
-        hooks: context?.cmuxConfigStore?.notificationHooks(startingFrom: workspace?.isRemoteWorkspace == true ? nil : (normalizedFeedNotificationCWD(event.cwd) ?? workspace?.surfaceTabBarDirectory)) ?? [],
-        globalConfigPath: context?.cmuxConfigStore?.globalConfigPath
+        hooks: context?.mosaicConfigStore?.notificationHooks(startingFrom: workspace?.isRemoteWorkspace == true ? nil : (normalizedFeedNotificationCWD(event.cwd) ?? workspace?.surfaceTabBarDirectory)) ?? [],
+        globalConfigPath: context?.mosaicConfigStore?.globalConfigPath
     )
 }
 

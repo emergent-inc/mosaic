@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-import CmuxTerminal
+import MosaicTerminal
 
 @MainActor
 final class BackgroundWorkspacePrimeCoordinator {
@@ -153,7 +153,7 @@ final class BackgroundWorkspacePrimeCoordinator {
 
 #if DEBUG
         let startedAt = ProcessInfo.processInfo.systemUptime
-        cmuxDebugLog("workspace.backgroundPrime.start workspace=\(workspaceId.uuidString.prefix(5))")
+        mosaicDebugLog("workspace.backgroundPrime.start workspace=\(workspaceId.uuidString.prefix(5))")
 #endif
 
         let completionReason: PrimeCompletionReason
@@ -170,7 +170,7 @@ final class BackgroundWorkspacePrimeCoordinator {
 
 #if DEBUG
         let elapsedMs = (ProcessInfo.processInfo.systemUptime - startedAt) * 1000
-        cmuxDebugLog(
+        mosaicDebugLog(
             "workspace.backgroundPrime.finish workspace=\(workspaceId.uuidString.prefix(5)) " +
             "reason=\(completionReason.rawValue) ms=\(String(format: "%.2f", elapsedMs))"
         )

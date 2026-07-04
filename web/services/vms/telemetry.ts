@@ -17,11 +17,11 @@ export async function withVmSpan<T>(
   fn: SpanCallback<T>,
 ): Promise<T> {
   return withSpan(
-    "cmux-vm",
+    "mosaic-vm",
     name,
     {
-      "cmux.subsystem": VM_SUBSYSTEM,
-      "cmux.runtime": "provider-driver",
+      "mosaic.subsystem": VM_SUBSYSTEM,
+      "mosaic.runtime": "provider-driver",
       ...attributes,
     },
     fn,

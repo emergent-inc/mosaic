@@ -2,6 +2,6 @@
 	path = ghostty
 	url = https://github.com/manaflow-ai/ghostty.git
 	branch = main
-[submodule "homebrew-cmux"]
-	path = homebrew-cmux
-	url = https://github.com/manaflow-ai/homebrew-cmux.git
+[submodule "homebrew-mosaic"]
+	path = homebrew-mosaic
+	url = https://github.com/manaflow-ai/homebrew-mosaic.git

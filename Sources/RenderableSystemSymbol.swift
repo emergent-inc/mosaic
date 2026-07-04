@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 
 enum RenderableSystemSymbol {
@@ -173,8 +173,8 @@ enum RenderableSystemSymbol {
     #endif
 }
 
-struct CmuxSystemSymbolImage: View {
-    @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+struct MosaicSystemSymbolImage: View {
+    @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
 
     let systemName: String
     let pointSize: CGFloat

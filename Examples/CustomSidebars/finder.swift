@@ -50,7 +50,7 @@ func tabSubtitle(_ t) -> String {
 }
 
 func finderRow(_ w) -> some View {
-  Button(action: { cmux("workspace.select", workspace_id: w.id) }) {
+  Button(action: { mosaic("workspace.select", workspace_id: w.id) }) {
     HStack(spacing: 7) {
       Image(systemName: workspaceIcon(w))
         .font(.system(size: 12))
@@ -85,7 +85,7 @@ func finderRow(_ w) -> some View {
 }
 
 func tabRow(_ tab) -> some View {
-  Button(action: { cmux("surface.focus", surface_id: tab.id) }) {
+  Button(action: { mosaic("surface.focus", surface_id: tab.id) }) {
     HStack(spacing: 8) {
       Image(systemName: tabIcon(tab))
         .foregroundColor(tab.focused ? "#0A84FF" : .secondary)
@@ -164,7 +164,7 @@ func workspaceDetails(_ w) -> some View {
 HSplitView {
   VStack(alignment: .leading, spacing: 6) {
     HStack {
-      Text("Cmux").font(.system(size: 13)).fontWeight(.semibold)
+      Text("Mosaic").font(.system(size: 13)).fontWeight(.semibold)
       Spacer()
       Text("\(workspaceCount)").font(.system(size: 10, design: .monospaced)).foregroundColor(.tertiary)
     }

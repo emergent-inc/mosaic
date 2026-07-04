@@ -57,14 +57,14 @@ export function codeViewUnsafeCSS(): string {
     :host {
       --diffs-light-bg: transparent;
       --diffs-dark-bg: transparent;
-      --diffs-bg-buffer-override: color-mix(in srgb, var(--cmux-diff-fg) 12%, transparent);
+      --diffs-bg-buffer-override: color-mix(in srgb, var(--mosaic-diff-fg) 12%, transparent);
       --diffs-bg-context-override: transparent;
       --diffs-bg-context-gutter-override: transparent;
-      --cmux-diff-surface-bg: transparent;
-      --cmux-diff-header-bg: color-mix(in srgb, var(--cmux-diff-bg) 42%, transparent);
-      --diffs-bg-separator-override: var(--cmux-diff-surface-bg);
-      --diffs-addition-color-override: light-dark(var(--cmux-diff-addition-fg-light), var(--cmux-diff-addition-fg-dark));
-      --diffs-deletion-color-override: light-dark(var(--cmux-diff-deletion-fg-light), var(--cmux-diff-deletion-fg-dark));
+      --mosaic-diff-surface-bg: transparent;
+      --mosaic-diff-header-bg: color-mix(in srgb, var(--mosaic-diff-bg) 42%, transparent);
+      --diffs-bg-separator-override: var(--mosaic-diff-surface-bg);
+      --diffs-addition-color-override: light-dark(var(--mosaic-diff-addition-fg-light), var(--mosaic-diff-addition-fg-dark));
+      --diffs-deletion-color-override: light-dark(var(--mosaic-diff-deletion-fg-light), var(--mosaic-diff-deletion-fg-dark));
       --diffs-fg-number-addition-override: var(--diffs-addition-base);
       --diffs-fg-number-deletion-override: var(--diffs-deletion-base);
       --diffs-bg-addition-override: color-mix(in srgb, var(--diffs-addition-base) 34%, transparent);
@@ -81,7 +81,7 @@ export function codeViewUnsafeCSS(): string {
       container-type: scroll-state;
       container-name: sticky-header;
       min-height: 30px;
-      background-color: var(--cmux-diff-header-bg) !important;
+      background-color: var(--mosaic-diff-header-bg) !important;
       -webkit-backdrop-filter: blur(8px) saturate(1.08);
       backdrop-filter: blur(8px) saturate(1.08);
     }
@@ -115,7 +115,7 @@ export function codeViewUnsafeCSS(): string {
       padding: 0;
       border: 0;
       border-radius: 4px;
-      background: var(--cmux-diff-accent, light-dark(#0a84ff, #7ab7ff));
+      background: var(--mosaic-diff-accent, light-dark(#0a84ff, #7ab7ff));
       color: light-dark(#fff, #08233f);
       cursor: pointer;
       transform: scale(0.9);
@@ -151,8 +151,8 @@ export function fileTreeUnsafeCSS(): string {
       display: block;
       height: 100%;
       min-height: 0;
-      --cmux-diff-tree-sticky-bg: var(--cmux-diff-bg);
-      background-color: var(--cmux-diff-sidebar-bg);
+      --mosaic-diff-tree-sticky-bg: var(--mosaic-diff-bg);
+      background-color: var(--mosaic-diff-sidebar-bg);
     }
     [data-file-tree-search-container][data-open='false'] {
       display: none;
@@ -166,7 +166,7 @@ export function fileTreeUnsafeCSS(): string {
       height: 100%;
       min-height: 0;
       overflow: auto;
-      background-color: var(--cmux-diff-sidebar-bg);
+      background-color: var(--mosaic-diff-sidebar-bg);
       padding-inline-start: 0;
       padding-inline-end: 2px;
       margin-inline-end: 2px;
@@ -184,7 +184,7 @@ export function fileTreeUnsafeCSS(): string {
       font-weight: 500;
     }
     [data-file-tree-sticky-overlay-content] {
-      background-color: var(--cmux-diff-tree-sticky-bg) !important;
+      background-color: var(--mosaic-diff-tree-sticky-bg) !important;
       box-shadow: 0 1px 0 var(--trees-border-color);
     }
   `;

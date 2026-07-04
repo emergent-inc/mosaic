@@ -1,5 +1,5 @@
 import Darwin
-import CmuxTerminal
+import MosaicTerminal
 import Foundation
 import Sentry
 
@@ -104,7 +104,7 @@ private func sentryScheduleMemoryContextRefresh(
 func sentryRefreshMemoryContext(reason: String) async {
     guard TelemetrySettings.enabledForCurrentLaunch else { return }
 
-    let processSnapshot = CmuxTopProcessSnapshot.captureCached(
+    let processSnapshot = MosaicTopProcessSnapshot.captureCached(
         includeProcessDetails: false,
         maximumAge: 2
     )
@@ -115,8 +115,8 @@ func sentryRefreshMemoryContext(reason: String) async {
     let residentBytes = appProcess?.residentBytes ?? 0
     let virtualBytes = appProcess?.virtualBytes ?? 0
     let threadCount = appProcess?.threadCount ?? 0
-    let memorySource = appProcess?.memorySource.rawValue ?? CmuxTopProcessMemorySource.unavailable.rawValue
-    let residentMemorySource = appProcess?.residentMemorySource.rawValue ?? CmuxTopProcessMemorySource.unavailable.rawValue
+    let memorySource = appProcess?.memorySource.rawValue ?? MosaicTopProcessMemorySource.unavailable.rawValue
+    let residentMemorySource = appProcess?.residentMemorySource.rawValue ?? MosaicTopProcessMemorySource.unavailable.rawValue
     let surfaceSnapshot = GhosttyApp.terminalSurfaceRegistry.diagnosticSnapshot()
     guard !Task.isCancelled else { return }
 
@@ -135,7 +135,7 @@ func sentryRefreshMemoryContext(reason: String) async {
                     "resident_memory_source": residentMemorySource
                 ],
                 "terminal_surfaces": surfaceSnapshot.payload()
-            ], key: "cmux.memory")
+            ], key: "mosaic.memory")
         }
     }
 }
