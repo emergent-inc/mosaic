@@ -53,7 +53,7 @@ function signInRequest(nativeReturnTo: string, handoffNonce: string): NextReques
 }
 
 function returnHref(html: string): string {
-  const match = html.match(/<a href="([^"]+)">Return to cmux<\/a>/);
+  const match = html.match(/<a href="([^"]+)">Open Mosaic again<\/a>/);
   expect(match).toBeTruthy();
   return match![1].replaceAll("&amp;", "&");
 }
@@ -73,8 +73,8 @@ describe("after sign-in native handoff", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     const html = await response.text();
-    expect(html).toContain("Signed in to cmux");
-    expect(html).toContain("Return to cmux");
+    expect(html).toContain("Mosaic opened, you may close this tab");
+    expect(html).toContain("Open Mosaic again");
     expect(html).toContain("window.location.replace");
     expect(html).not.toContain("http-equiv=\"refresh\"");
 
@@ -115,8 +115,8 @@ describe("after sign-in native handoff", () => {
 
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain("Signed in to cmux");
-    expect(html).toContain("Return to cmux");
+    expect(html).toContain("Mosaic opened, you may close this tab");
+    expect(html).toContain("Open Mosaic again");
     expect(html).not.toContain("window.location.replace");
     expect(returnHref(html)).toContain("mosaic://auth-callback");
   });

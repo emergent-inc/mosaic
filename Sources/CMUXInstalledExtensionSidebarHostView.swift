@@ -800,6 +800,7 @@ struct CMUXInstalledExtensionSidebarHostView: View {
                     grantRequestedAccess(identity: identity, effectiveGrant: effectiveGrant)
                     isShowingAccessReview = false
                 }
+                .buttonStyle(.mosaicAccent)
                 .keyboardShortcut(.defaultAction)
             }
         }

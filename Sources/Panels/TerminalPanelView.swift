@@ -376,7 +376,7 @@ struct TerminalPanelView: View {
         guard state.isHosted else {
             return "arrow.up"            // Share: send/publish this terminal
         }
-        return "record.circle"          // Sharing: live "recording"-style indicator
+        return "stop.circle.fill"       // Sharing: filled stop-square-in-a-circle indicator
     }
 
     private func terminalShareButtonLabel(state: CollaborationTerminalHeaderState) -> String {
@@ -471,6 +471,15 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                         }
                     }
                 }
+
+                // Ends only *your* participation: stops sharing every terminal you host in
+                // this session and disconnects you. Other people's shared terminals are
+                // untouched. The pill reverts to "Start session" once this clears the binding.
+                TrackedButton("session_end", CollaborationStrings.endSession) {
+                    onLeave()
+                }
+                .buttonStyle(.mosaicSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             } else {
                 VStack(alignment: .leading, spacing: 6) {
@@ -914,8 +923,7 @@ private struct AgentHibernationPlaceholderView: View {
             TrackedButton("terminalpanelview_button_859", String(localized: "terminal.agentHibernation.resume", defaultValue: "Resume")) {
                 onResume()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            .buttonStyle(.mosaicAccent)
             .accessibilityIdentifier("AgentHibernationResumeButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

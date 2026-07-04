@@ -175,7 +175,7 @@ struct MobilePairingView: View {
                 String(localized: "mobile.pairing.req.tailscale.get", defaultValue: "Get Tailscale"),
                 destination: Self.tailscaleDownloadURL
             )
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.mosaicAccent)
             TrackedButton("mobilepairingview_button_179", String(localized: "mobile.pairing.refresh", defaultValue: "Refresh Code")) {
                 Task { await model.refresh() }
             }
@@ -204,7 +204,7 @@ struct MobilePairingView: View {
             TrackedButton("mobilepairingview_button_204", String(localized: "mobile.pairing.signIn.button", defaultValue: "Sign In")) {
                 model.signIn()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.mosaicAccent)
         }
         .frame(maxWidth: .infinity, minHeight: 200)
     }
@@ -268,7 +268,7 @@ struct MobilePairingView: View {
             TrackedButton("mobilepairingview_button_268", String(localized: "mobile.pairing.retry", defaultValue: "Try Again")) {
                 Task { await model.refresh() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.mosaicAccent)
         }
         .frame(maxWidth: .infinity, minHeight: 200)
     }
