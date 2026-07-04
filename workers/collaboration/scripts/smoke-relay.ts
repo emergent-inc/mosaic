@@ -1,7 +1,7 @@
 type JsonObject = Record<string, unknown>;
 
-const relayURL = normalizeRelayURL(process.env.CMUX_COLLABORATION_RELAY_URL ?? process.argv[2] ?? "https://collaboration.cmux.dev");
-const timeoutMs = Number(process.env.CMUX_COLLABORATION_SMOKE_TIMEOUT_MS ?? "15000");
+const relayURL = normalizeRelayURL(process.env.MOSAIC_COLLABORATION_RELAY_URL ?? process.argv[2] ?? "https://collaboration.mosaic.dev");
+const timeoutMs = Number(process.env.MOSAIC_COLLABORATION_SMOKE_TIMEOUT_MS ?? "15000");
 
 function normalizeRelayURL(value: string): URL {
   const url = new URL(value);
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
     fail(`healthz failed: ${healthResponse.status} ${await healthResponse.text()}`);
   }
   const health = await healthResponse.json() as JsonObject;
-  if (health.ok !== true || health.service !== "cmux-collaboration") {
+  if (health.ok !== true || health.service !== "mosaic-collaboration") {
     fail(`unexpected healthz body: ${JSON.stringify(health)}`);
   }
 

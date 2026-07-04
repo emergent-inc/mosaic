@@ -14,16 +14,16 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux.sock")
-SSH_HOST = os.environ.get("CMUX_SSH_TEST_HOST", "").strip()
-SSH_PORT = os.environ.get("CMUX_SSH_TEST_PORT", "").strip()
-SSH_IDENTITY = os.environ.get("CMUX_SSH_TEST_IDENTITY", "").strip()
-SSH_OPTIONS_RAW = os.environ.get("CMUX_SSH_TEST_OPTIONS", "").strip()
-LS_ENTRY_COUNT = int(os.environ.get("CMUX_SSH_TEST_LS_COUNT", "320"))
-RESIZE_ITERATIONS = int(os.environ.get("CMUX_SSH_TEST_RESIZE_ITERATIONS", "48"))
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic.sock")
+SSH_HOST = os.environ.get("MOSAIC_SSH_TEST_HOST", "").strip()
+SSH_PORT = os.environ.get("MOSAIC_SSH_TEST_PORT", "").strip()
+SSH_IDENTITY = os.environ.get("MOSAIC_SSH_TEST_IDENTITY", "").strip()
+SSH_OPTIONS_RAW = os.environ.get("MOSAIC_SSH_TEST_OPTIONS", "").strip()
+LS_ENTRY_COUNT = int(os.environ.get("MOSAIC_SSH_TEST_LS_COUNT", "320"))
+RESIZE_ITERATIONS = int(os.environ.get("MOSAIC_SSH_TEST_RESIZE_ITERATIONS", "48"))
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 OSC_ESCAPE_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
@@ -31,46 +31,46 @@ OSC_ESCAPE_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if check and proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
 
 def _run_cli_json(cli: str, args: list[str]) -> dict:
     env = dict(os.environ)
-    env.pop("CMUX_WORKSPACE_ID", None)
-    env.pop("CMUX_SURFACE_ID", None)
-    env.pop("CMUX_TAB_ID", None)
+    env.pop("MOSAIC_WORKSPACE_ID", None)
+    env.pop("MOSAIC_SURFACE_ID", None)
+    env.pop("MOSAIC_TAB_ID", None)
 
     proc = _run([cli, "--socket", SOCKET_PATH, "--json", *args], env=env)
     try:
         return json.loads(proc.stdout or "{}")
     except Exception as exc:  # noqa: BLE001
-        raise cmuxError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
+        raise mosaicError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
 
 
 def _wait_for(pred, timeout_s: float = 8.0, step_s: float = 0.1) -> None:
@@ -79,10 +79,10 @@ def _wait_for(pred, timeout_s: float = 8.0, step_s: float = 0.1) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
-def _wait_remote_connected(client: cmux, workspace_id: str, timeout_s: float = 45.0) -> None:
+def _wait_remote_connected(client: mosaic, workspace_id: str, timeout_s: float = 45.0) -> None:
     deadline = time.time() + timeout_s
     last = {}
     while time.time() < deadline:
@@ -92,10 +92,10 @@ def _wait_remote_connected(client: cmux, workspace_id: str, timeout_s: float = 4
         if str(remote.get("state") or "") == "connected" and str(daemon.get("state") or "") == "ready":
             return
         time.sleep(0.25)
-    raise cmuxError(f"Remote did not reach connected+ready state: {last}")
+    raise mosaicError(f"Remote did not reach connected+ready state: {last}")
 
 
-def _resolve_workspace_id(client: cmux, payload: dict, *, before_workspace_ids: set[str]) -> str:
+def _resolve_workspace_id(client: mosaic, payload: dict, *, before_workspace_ids: set[str]) -> str:
     workspace_id = str(payload.get("workspace_id") or "")
     if workspace_id:
         return workspace_id
@@ -114,7 +114,7 @@ def _resolve_workspace_id(client: cmux, payload: dict, *, before_workspace_ids: 
     if len(new_ids) == 1:
         return new_ids[0]
 
-    raise cmuxError(f"Unable to resolve workspace_id from payload: {payload}")
+    raise mosaicError(f"Unable to resolve workspace_id from payload: {payload}")
 
 
 def _clean_line(raw: str) -> str:
@@ -124,7 +124,7 @@ def _clean_line(raw: str) -> str:
     return line.strip()
 
 
-def _surface_scrollback_text(client: cmux, workspace_id: str, surface_id: str) -> str:
+def _surface_scrollback_text(client: mosaic, workspace_id: str, surface_id: str) -> str:
     payload = client._call(
         "surface.read_text",
         {"workspace_id": workspace_id, "surface_id": surface_id, "scrollback": True},
@@ -132,12 +132,12 @@ def _surface_scrollback_text(client: cmux, workspace_id: str, surface_id: str) -
     return str(payload.get("text") or "")
 
 
-def _surface_scrollback_lines(client: cmux, workspace_id: str, surface_id: str) -> list[str]:
+def _surface_scrollback_lines(client: mosaic, workspace_id: str, surface_id: str) -> list[str]:
     return [_clean_line(raw) for raw in _surface_scrollback_text(client, workspace_id, surface_id).splitlines()]
 
 
 def _wait_surface_contains(
-    client: cmux,
+    client: mosaic,
     workspace_id: str,
     surface_id: str,
     token: str,
@@ -153,24 +153,24 @@ def _wait_surface_contains(
         elif token in _surface_scrollback_text(client, workspace_id, surface_id):
             return
         time.sleep(0.2)
-    raise cmuxError(f"Timed out waiting for terminal token: {token}")
+    raise mosaicError(f"Timed out waiting for terminal token: {token}")
 
 
-def _pane_for_surface(client: cmux, surface_id: str) -> str:
+def _pane_for_surface(client: mosaic, surface_id: str) -> str:
     target_id = str(client._resolve_surface_id(surface_id))
     for _idx, pane_id, _count, _focused in client.list_panes():
         rows = client.list_pane_surfaces(pane_id)
         for _row_idx, sid, _title, _selected in rows:
             try:
                 candidate_id = str(client._resolve_surface_id(sid))
-            except cmuxError:
+            except mosaicError:
                 continue
             if candidate_id == target_id:
                 return pane_id
-    raise cmuxError(f"Surface {surface_id} is not present in current workspace panes")
+    raise mosaicError(f"Surface {surface_id} is not present in current workspace panes")
 
 
-def _valid_resize_directions(client: cmux, workspace_id: str, pane_id: str) -> list[str]:
+def _valid_resize_directions(client: mosaic, workspace_id: str, pane_id: str) -> list[str]:
     valid: list[str] = []
     for direction in ("left", "right", "up", "down"):
         try:
@@ -184,12 +184,12 @@ def _valid_resize_directions(client: cmux, workspace_id: str, pane_id: str) -> l
                 },
             )
             valid.append(direction)
-        except cmuxError:
+        except mosaicError:
             pass
     return valid
 
 
-def _choose_resize_pair(client: cmux, workspace_id: str, pane_ids: list[str]) -> list[tuple[str, str]]:
+def _choose_resize_pair(client: mosaic, workspace_id: str, pane_ids: list[str]) -> list[tuple[str, str]]:
     by_pane: dict[str, list[str]] = {}
     for pane_id in pane_ids:
         by_pane[pane_id] = _valid_resize_directions(client, workspace_id, pane_id)
@@ -212,22 +212,22 @@ def _choose_resize_pair(client: cmux, workspace_id: str, pane_ids: list[str]) ->
             if "up" in directions_b:
                 return [(pane_a, "down"), (pane_b, "up")]
 
-    raise cmuxError(f"Could not find oscillating resize pair across panes: {by_pane}")
+    raise mosaicError(f"Could not find oscillating resize pair across panes: {by_pane}")
 
 
 def main() -> int:
     if not SSH_HOST:
-        print("SKIP: set CMUX_SSH_TEST_HOST to run remote resize scrollback regression")
+        print("SKIP: set MOSAIC_SSH_TEST_HOST to run remote resize scrollback regression")
         return 0
     if LS_ENTRY_COUNT < 64:
-        print("SKIP: CMUX_SSH_TEST_LS_COUNT must be >= 64 for meaningful scrollback coverage")
+        print("SKIP: MOSAIC_SSH_TEST_LS_COUNT must be >= 64 for meaningful scrollback coverage")
         return 0
 
     cli = _find_cli_binary()
     workspace_id = ""
 
     try:
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             before_workspace_ids = {wid for _index, wid, _title, _focused in client.list_workspaces()}
 
             ssh_args = ["ssh", SSH_HOST, "--name", f"ssh-resize-regression-{secrets.token_hex(4)}"]
@@ -250,11 +250,11 @@ def main() -> int:
             surface_id = surfaces[0][1]
 
             stamp = secrets.token_hex(4)
-            ls_entries = [f"CMUX_REMOTE_RESIZE_LS_{stamp}_{index:04d}.txt" for index in range(1, LS_ENTRY_COUNT + 1)]
-            ls_start = f"CMUX_REMOTE_RESIZE_LS_START_{stamp}"
-            ls_end = f"CMUX_REMOTE_RESIZE_LS_END_{stamp}"
+            ls_entries = [f"MOSAIC_REMOTE_RESIZE_LS_{stamp}_{index:04d}.txt" for index in range(1, LS_ENTRY_COUNT + 1)]
+            ls_start = f"MOSAIC_REMOTE_RESIZE_LS_START_{stamp}"
+            ls_end = f"MOSAIC_REMOTE_RESIZE_LS_END_{stamp}"
 
-            ls_prefix = f"CMUX_REMOTE_RESIZE_LS_{stamp}_"
+            ls_prefix = f"MOSAIC_REMOTE_RESIZE_LS_{stamp}_"
             ls_script = (
                 "tmpdir=$(mktemp -d); "
                 f"echo {ls_start}; "
@@ -314,7 +314,7 @@ def main() -> int:
                         f"resize iteration {iteration} lost pre-resize anchor lines in ssh workspace",
                     )
 
-            post_token = f"CMUX_REMOTE_RESIZE_POST_{secrets.token_hex(6)}"
+            post_token = f"MOSAIC_REMOTE_RESIZE_POST_{secrets.token_hex(6)}"
             client.send_surface(surface_id, f"echo {post_token}\n")
             _wait_surface_contains(
                 client,
@@ -339,7 +339,7 @@ def main() -> int:
             workspace_id = ""
 
         print(
-            "PASS: cmux ssh split+resize churn preserved large pre-resize scrollback "
+            "PASS: mosaic ssh split+resize churn preserved large pre-resize scrollback "
             f"(entries={LS_ENTRY_COUNT}, iterations={RESIZE_ITERATIONS})"
         )
         return 0
@@ -347,7 +347,7 @@ def main() -> int:
     finally:
         if workspace_id:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id)
             except Exception:
                 pass

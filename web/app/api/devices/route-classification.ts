@@ -257,7 +257,7 @@ export function routesContainNonAttachableHost(routes: unknown[]): boolean {
  * Whether `routes` is a valid set of manual attach routes: a non-empty array
  * where every entry is a `tailscale` host:port route with a 1-65535 port and a
  * Tailscale-attachable host. The full server-side schema check for the manual
- * (`cmux remotes add`) path, mirroring the CLI's `RemoteRouteSpec`. Without it a
+ * (`mosaic remotes add`) path, mirroring the CLI's `RemoteRouteSpec`. Without it a
  * direct API caller could POST `manual: true` with an empty array or a `port: 0`
  * / wrong-kind route that stores but cannot be used, reintroducing the
  * "lists but cannot attach" failure. The Mac's own self-registration is not

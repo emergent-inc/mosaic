@@ -1,4 +1,4 @@
-import CmuxAuthRuntime
+import MosaicAuthRuntime
 import Foundation
 
 enum VMClientError: Error, CustomStringConvertible {
@@ -11,19 +11,19 @@ enum VMClientError: Error, CustomStringConvertible {
         switch self {
         case .notSignedIn:
             return """
-                You are not signed in to cmux.
+                You are not signed in to mosaic.
 
                 What to do:
-                  cmux auth login
-                  cmux auth status
+                  mosaic auth login
+                  mosaic auth status
                 """
         case .backendUnreachable(let url, let detail):
             return """
-                Cannot reach the cmux Cloud VM service at \(url).
+                Cannot reach the mosaic Cloud VM service at \(url).
 
                 What to do:
-                  Start the cmux web server, then retry.
-                  If you are using a local development build, check its Cloud VM service URL before launching cmux.
+                  Start the mosaic web server, then retry.
+                  If you are using a local development build, check its Cloud VM service URL before launching mosaic.
 
                 Details:
                   \(detail)
@@ -32,10 +32,10 @@ enum VMClientError: Error, CustomStringConvertible {
             return formattedCloudVMHTTPError(status: code, body: body)
         case .malformedResponse(let message):
             return """
-                The cmux Cloud VM backend returned a response this client could not read.
+                The mosaic Cloud VM backend returned a response this client could not read.
 
                 What to do:
-                  Update cmux to the latest build and retry.
+                  Update mosaic to the latest build and retry.
                   If this keeps happening, copy the details below and contact support.
 
                 Details:
@@ -90,7 +90,7 @@ private func defaultCloudVMMessage(status: Int) -> String {
     case 400:
         return "The Cloud VM request was not valid."
     case 401:
-        return "cmux could not authenticate this Cloud VM request."
+        return "mosaic could not authenticate this Cloud VM request."
     case 402:
         return "This team cannot create another Cloud VM with the current billing state."
     case 403:
@@ -109,19 +109,19 @@ private func defaultCloudVMMessage(status: Int) -> String {
 private func defaultCloudVMAction(status: Int, errorCode: String) -> String {
     switch errorCode {
     case "vm_active_limit_exceeded":
-        return "Run `cmux vm ls`, then stop or delete an active VM with `cmux vm rm <id>` before retrying."
+        return "Run `mosaic vm ls`, then stop or delete an active VM with `mosaic vm rm <id>` before retrying."
     case "vm_not_found":
-        return "Run `cmux vm ls` to see available Cloud VMs. If the VM was paused or destroyed, start a fresh one with `cmux vm new`."
+        return "Run `mosaic vm ls` to see available Cloud VMs. If the VM was paused or destroyed, start a fresh one with `mosaic vm new`."
     case "vm_billing_team_required":
-        return "Select a team in cmux, then retry. You can also run `cmux auth status` to check the signed-in account."
+        return "Select a team in mosaic, then retry. You can also run `mosaic auth status` to check the signed-in account."
     case "vm_create_credits_insufficient":
         return "Ask a team admin to upgrade the plan or grant more Cloud VM create credits, then retry."
     default:
         if status == 401 {
-            return "Run `cmux auth login`, then retry."
+            return "Run `mosaic auth login`, then retry."
         }
         if status == 403 {
-            return "Run `cmux auth status` and confirm you are using the expected team."
+            return "Run `mosaic auth status` and confirm you are using the expected team."
         }
         return "Retry the command. If it keeps failing, copy this error and contact support."
     }
@@ -225,7 +225,7 @@ struct VMExecResult {
 }
 
 /// Short-lived SSH endpoint the backend mints on demand. Mac client dials this with the
-/// existing `cmux ssh` transport.
+/// existing `mosaic ssh` transport.
 struct VMSSHEndpoint {
     let transport: String
     let host: String
@@ -452,9 +452,9 @@ actor VMClient {
             req.timeoutInterval = timeoutSeconds
         }
         req.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
+        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Mosaic-Refresh-Token")
         if let teamID, !teamID.isEmpty {
-            req.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
+            req.setValue(teamID, forHTTPHeaderField: "X-Mosaic-Team-Id")
         }
         if let jsonBody {
             req.setValue("application/json", forHTTPHeaderField: "content-type")

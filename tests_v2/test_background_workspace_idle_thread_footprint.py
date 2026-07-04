@@ -12,10 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET", "/tmp/mosaic-debug.sock")
 WORKSPACE_COUNT = 10
 SURFACES_PER_WORKSPACE = 4
 SETTLE_SECONDS = 2.0
@@ -35,7 +35,7 @@ class ProcessMetrics:
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _run(cmd: list[str]) -> str:
@@ -56,10 +56,10 @@ def _run(cmd: list[str]) -> str:
             stderr = stderr.decode(errors="replace")
         merged = f"{stdout}\n{stderr}".strip()
         detail = f": {merged}" if merged else ""
-        raise cmuxError(f"Command timed out after 10s ({' '.join(cmd)}){detail}") from exc
+        raise mosaicError(f"Command timed out after 10s ({' '.join(cmd)}){detail}") from exc
     if proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc.stdout
 
 
@@ -72,14 +72,14 @@ def _socket_owner_pid(socket_path: str) -> int:
         pid = int(line)
         if pid != os.getpid():
             return pid
-    raise cmuxError(f"Could not resolve cmux PID from socket owner list: {output!r}")
+    raise mosaicError(f"Could not resolve mosaic PID from socket owner list: {output!r}")
 
 
 def _thread_count(pid: int) -> int:
     output = _run(["ps", "-M", "-p", str(pid)])
     lines = [line for line in output.splitlines() if line.strip()]
     if len(lines) < 2:
-        raise cmuxError(f"Unexpected ps -M output for PID {pid}: {output!r}")
+        raise mosaicError(f"Unexpected ps -M output for PID {pid}: {output!r}")
     return len(lines) - 1
 
 
@@ -96,7 +96,7 @@ def _physical_footprint_bytes(pid: int) -> int:
     output = _run(["vmmap", "--summary", str(pid)])
     match = re.search(r"Physical footprint:\s*([0-9.]+)([KMGT])", output)
     if not match:
-        raise cmuxError(f"Could not parse physical footprint from vmmap output: {output[:400]!r}")
+        raise mosaicError(f"Could not parse physical footprint from vmmap output: {output[:400]!r}")
     value = float(match.group(1))
     unit = match.group(2)
     return int(value * _unit_multiplier(unit))
@@ -109,14 +109,14 @@ def _capture_metrics(pid: int) -> ProcessMetrics:
     )
 
 
-def _debug_terminals(client: cmux) -> list[dict]:
+def _debug_terminals(client: mosaic) -> list[dict]:
     payload = client._call("debug.terminals") or {}
     terminals = payload.get("terminals") or []
     _must(isinstance(terminals, list), f"debug.terminals returned invalid payload: {payload!r}")
     return terminals
 
 
-def _ready_background_terminals_for_workspaces(client: cmux, workspace_ids: list[str]) -> list[dict]:
+def _ready_background_terminals_for_workspaces(client: mosaic, workspace_ids: list[str]) -> list[dict]:
     workspace_id_set = set(workspace_ids)
     return [
         terminal
@@ -148,7 +148,7 @@ def _mb(value: int) -> float:
 def main() -> int:
     created_workspaces: list[str] = []
 
-    with cmux(SOCKET_PATH) as client:
+    with mosaic(SOCKET_PATH) as client:
         baseline_workspace = client.current_workspace()
         pid = _socket_owner_pid(client.socket_path)
         before = _capture_metrics(pid)

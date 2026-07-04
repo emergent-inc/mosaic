@@ -3,7 +3,7 @@ name: reload-build
 # Dispatchable tagged dev-build for the cloud reload scripts' Blacksmith builder.
 #
 # scripts/reload-cloud.sh --builder blacksmith and scripts/reload-cloud-ios.sh
-# --builder blacksmith (in the cmuxterm-hq control repo) dispatch this workflow
+# --builder blacksmith (in the mosaicterm-hq control repo) dispatch this workflow
 # against an ephemeral branch holding the caller's working tree, then download the
 # produced artifact and install it locally. This is the Blacksmith alternative to
 # SSH-leasing a fleet Mac. It is workflow_dispatch ONLY: nothing here runs on push
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Dev build tag (becomes Mosaic DEV <tag> / dev.cmux.ios.<tag>)
+        description: Dev build tag (becomes Mosaic DEV <tag> / dev.mosaic.ios.<tag>)
         required: true
         type: string
       ref:
@@ -32,7 +32,7 @@ on:
       runner:
         description: >-
           macOS runner label to build on. Blacksmith (blacksmith-6vcpu-macos-26),
-          our self-hosted fleet (cmux-macos-26 / cmux-aws-macos-15), warp, or depot.
+          our self-hosted fleet (mosaic-macos-26 / mosaic-aws-macos-15), warp, or depot.
           This is the dev-build offload path (reload-cloud), not required CI, so
           targeting the fleet for a build is intentional.
         required: false
@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 60
     env:
       # The ghostty CLI helper zig build is skipped; GhosttyKit comes prebuilt.
-      CMUX_SKIP_ZIG_BUILD: "1"
+      MOSAIC_SKIP_ZIG_BUILD: "1"
       SWIFT_BACKTRACE: "interactive=no,timeout=0s,symbolicate=off,color=no"
     steps:
       - name: Checkout source ref
@@ -107,24 +107,24 @@ jobs:
           mkdir -p artifact
           ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )
 
-      # iOS links the CmuxIrohFFI xcframework (gitignored, built from the Rust
-      # crate under Native/cmux-iroh). The macOS path builds it via
-      # reload.sh -> ensure-cmux-iroh.sh; the iOS archive below runs xcodebuild
+      # iOS links the MosaicIrohFFI xcframework (gitignored, built from the Rust
+      # crate under Native/mosaic-iroh). The macOS path builds it via
+      # reload.sh -> ensure-mosaic-iroh.sh; the iOS archive below runs xcodebuild
       # directly, so provision it here or SwiftPM fails with "local binary target
-      # 'CmuxIrohFFIBinary' ... does not contain a binary artifact". Guarded so
+      # 'MosaicIrohFFIBinary' ... does not contain a binary artifact". Guarded so
       # source refs that predate the crate are a no-op (scripts come from
       # inputs.ref, not this workflow's ref). install-rust-ci.sh is idempotent.
-      - name: Provision cmux-iroh FFI (iOS)
+      - name: Provision mosaic-iroh FFI (iOS)
         if: ${{ inputs.platform == 'ios' }}
         run: |
           set -euo pipefail
-          if [ -f scripts/ensure-cmux-iroh.sh ]; then
+          if [ -f scripts/ensure-mosaic-iroh.sh ]; then
             export PATH="$HOME/.cargo/bin:$PATH"
             [ -f scripts/install-rust-ci.sh ] && ./scripts/install-rust-ci.sh
             export PATH="$HOME/.cargo/bin:$PATH"
-            ./scripts/ensure-cmux-iroh.sh
+            ./scripts/ensure-mosaic-iroh.sh
           else
-            echo "scripts/ensure-cmux-iroh.sh absent in source ref; skipping iroh FFI provisioning"
+            echo "scripts/ensure-mosaic-iroh.sh absent in source ref; skipping iroh FFI provisioning"
           fi
 
       # --- iOS: build an UNSIGNED debug archive (signed locally by the caller) ---
@@ -136,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           slug="$(printf '%s' "$BUILD_TAG" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')"
-          bundle_id="dev.cmux.ios.$slug"
+          bundle_id="dev.mosaic.ios.$slug"
           display_name="Mosaic DEV $BUILD_TAG"
 
           # Register the iOS platform if the runner only has macOS provisioned.
@@ -150,19 +150,19 @@ jobs:
           ./scripts/ensure-ghosttykit.sh
           out="$GITHUB_WORKSPACE/build"
           mkdir -p "$out"
-          archive="$out/cmux-ios-$slug.xcarchive"
+          archive="$out/mosaic-ios-$slug.xcarchive"
           rm -rf "$archive"
           xcodebuild archive \
-            -workspace ios/cmux.xcworkspace \
-            -scheme cmux-ios \
+            -workspace ios/mosaic.xcworkspace \
+            -scheme mosaic-ios \
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -archivePath "$archive" \
-            -derivedDataPath "$RUNNER_TEMP/cmux-ios-dd" \
+            -derivedDataPath "$RUNNER_TEMP/mosaic-ios-dd" \
             PRODUCT_BUNDLE_IDENTIFIER="$bundle_id" \
             PRODUCT_DISPLAY_NAME="$display_name" \
-            CMUX_GIT_SHA="$(git rev-parse --short HEAD)" \
-            CMUX_DEV_TAG="$BUILD_TAG" \
+            MOSAIC_GIT_SHA="$(git rev-parse --short HEAD)" \
+            MOSAIC_DEV_TAG="$BUILD_TAG" \
             EXCLUDED_SOURCE_FILE_NAMES=Info.plist \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \

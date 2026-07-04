@@ -54,9 +54,9 @@ describe("resolveTeamId", () => {
 });
 
 describe("requestedTeamIdFromRequest", () => {
-  it("prefers the X-Cmux-Team-Id header", () => {
+  it("prefers the X-Mosaic-Team-Id header", () => {
     const request = new Request("https://presence.example/v1/presence/snapshot?teamId=query-team", {
-      headers: { "x-cmux-team-id": "header-team" },
+      headers: { "x-mosaic-team-id": "header-team" },
     });
     expect(requestedTeamIdFromRequest(request)).toBe("header-team");
   });

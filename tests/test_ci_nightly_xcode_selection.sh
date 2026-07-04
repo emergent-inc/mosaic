@@ -35,8 +35,8 @@ make_xcode() {
 run_selector() {
   local out="$1" env_file="$2"
   PATH="$BIN_DIR:$PATH" \
-    CMUX_XCODE_APPLICATIONS_DIR="$APPS_DIR" \
-    CMUX_SELECT_XCODE_PRINT_VERSION=0 \
+    MOSAIC_XCODE_APPLICATIONS_DIR="$APPS_DIR" \
+    MOSAIC_SELECT_XCODE_PRINT_VERSION=0 \
     GITHUB_ENV="$env_file" \
     "$SCRIPT" > "$out" 2>&1
 }

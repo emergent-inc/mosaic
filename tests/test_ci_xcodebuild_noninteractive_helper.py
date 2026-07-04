@@ -67,7 +67,7 @@ def main() -> int:
     )
     timeout_env = {
         **os.environ,
-        "CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS": "0.2",
+        "MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS": "0.2",
     }
     timeout_result = subprocess.run(
         [sys.executable, str(HELPER), sys.executable, "-c", timeout_child],
@@ -91,7 +91,7 @@ def main() -> int:
 
     post_test_env = {
         **os.environ,
-        "CMUX_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS": "0.2",
+        "MOSAIC_XCODEBUILD_NONINTERACTIVE_POST_TEST_TIMEOUT_SECONDS": "0.2",
     }
     passing_post_test_child = textwrap.dedent(
         """
@@ -215,7 +215,7 @@ def main() -> int:
             check=False,
             env={
                 **os.environ,
-                "CMUX_XCODEBUILD_NONINTERACTIVE_LOG_PATH": str(log_path),
+                "MOSAIC_XCODEBUILD_NONINTERACTIVE_LOG_PATH": str(log_path),
             },
         )
         if log_result.returncode != 0:

@@ -4,7 +4,7 @@
 # manual sign-in. Wraps the P1 macOS auto-sign-in path and the P2 iOS auto-pair.
 #
 # Everything here is DEBUG-only and targets the TAGGED app/socket/bundle id, so
-# it never touches the user's stable cmux instance.
+# it never touches the user's stable mosaic instance.
 #
 # Flow (--surface both):
 #   1. Load dev sign-in creds (dogfood account wins; --agent forces agent).
@@ -14,10 +14,10 @@
 #      first launch. NOTE: the first bind per bundle id triggers a one-time macOS
 #      "Local Network" permission prompt; click Allow.
 #   3. Build + launch the macOS dev app via reload.sh --tag <t> --launch. It
-#      auto-signs-in from ~/.secrets/cmuxterm-dev.env (DebugDogfoodCredentialResolver).
+#      auto-signs-in from ~/.secrets/mosaicterm-dev.env (DebugDogfoodCredentialResolver).
 #   4. Headlessly mint a short-TTL attach URL against the tagged socket via the
 #      local automation path (no Stack auth needed for the mint).
-#   5. Build + launch the iOS dev build, passing the URL as CMUX_DOGFOOD_ATTACH_URL
+#   5. Build + launch the iOS dev build, passing the URL as MOSAIC_DOGFOOD_ATTACH_URL
 #      so the phone auto-attaches.
 #
 # Usage:
@@ -106,7 +106,7 @@ fi
 # --- credentials: validate only, do NOT export into this process -------------
 # The macOS app reads dogfood creds from disk (DebugDogfoodCredentialResolver),
 # and mobile-dev-launch.sh loads its own creds for the iOS launch. So this script
-# must NOT export CMUX_UITEST_STACK_PASSWORD: reload.sh launches the long-lived
+# must NOT export MOSAIC_UITEST_STACK_PASSWORD: reload.sh launches the long-lived
 # GUI process inheriting this environment (it only scrubs a denylist, and the
 # Stack vars are not on it), which would leak the password to every child
 # terminal/CLI the app spawns. Validate in a subshell to surface a clear early
@@ -114,14 +114,14 @@ fi
 DEV_SECRETS_ARGS=()
 [[ "$AGENT" -eq 1 ]] && DEV_SECRETS_ARGS+=(--agent)
 # shellcheck source=scripts/lib/dev-secrets.sh
-if ! ( source "$SCRIPT_DIR/lib/dev-secrets.sh"; cmux_dev_secrets_load "${DEV_SECRETS_ARGS[@]}" ); then
+if ! ( source "$SCRIPT_DIR/lib/dev-secrets.sh"; mosaic_dev_secrets_load "${DEV_SECRETS_ARGS[@]}" ); then
   exit 2
 fi
 
 # --- tag identity (delegated to scripts/lib/mobile-attach.sh) ----------------
 # slug -> socket path + DerivedData; tag-id -> bundle id. The shared lib owns the
-# exact derivation so it stays in sync with reload.sh / cmux-debug-cli.sh.
-dev_setup__sanitize_path() { cmux_attach__slug "$1"; }
+# exact derivation so it stays in sync with reload.sh / mosaic-debug-cli.sh.
+dev_setup__sanitize_path() { mosaic_attach__slug "$1"; }
 dev_setup__sanitize_bundle() {
   local cleaned
   cleaned="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/./g; s/^\.+//; s/\.+$//; s/\.+/./g')"
@@ -132,7 +132,7 @@ dev_setup__sanitize_bundle() {
 TAG_SLUG="$(dev_setup__sanitize_path "$TAG")"
 TAG_ID="$(dev_setup__sanitize_bundle "$TAG")"
 BUNDLE_ID="mosaic.com.emergent.app.debug.${TAG_ID}"
-SOCKET_PATH="/tmp/cmux-debug-${TAG_SLUG}.sock"
+SOCKET_PATH="/tmp/mosaic-debug-${TAG_SLUG}.sock"
 
 # --- enable the iOS pairing host (must precede the macOS launch) -------------
 enable_pairing_host() {
@@ -142,7 +142,7 @@ enable_pairing_host() {
   # the NWListener is bound. MobileHostService.start() reads this default at app
   # launch (applicationDidFinishLaunching), so it must be written BEFORE the
   # macOS launch below. The tagged bundle id is targeted, never the stable app.
-  cmux_attach_enable_pairing_host "$TAG"
+  mosaic_attach_enable_pairing_host "$TAG"
 }
 
 # --- macOS build + launch (P1 auto-sign-in) ---------------------------------
@@ -151,7 +151,7 @@ enable_pairing_host() {
 build_and_launch_mac() {
   echo "==> building + launching macOS dev app (tag: $TAG)"
   # reload.sh --launch builds the tagged Debug app and opens it. The macOS app
-  # auto-signs-in from ~/.secrets/cmuxterm-dev.env via DebugDogfoodCredentialResolver.
+  # auto-signs-in from ~/.secrets/mosaicterm-dev.env via DebugDogfoodCredentialResolver.
   "$REPO_ROOT/scripts/reload.sh" --tag "$TAG" --launch
 }
 
@@ -159,9 +159,9 @@ build_and_launch_mac() {
 # Echoes the URL on stdout. The URL is a bearer credential: callers must NOT
 # print it. Polls the mint RPC (real readiness signal) until routes are ready,
 # bounded so a never-binding listener fails instead of hanging.
-mint_attach_url() { cmux_attach_mint_url "$TAG" "$TTL_SECONDS" "$REPO_ROOT"; }
+mint_attach_url() { mosaic_attach_mint_url "$TAG" "$TTL_SECONDS" "$REPO_ROOT"; }
 
-# --- iOS build + launch (auto-pair via CMUX_DOGFOOD_ATTACH_URL) -------------
+# --- iOS build + launch (auto-pair via MOSAIC_DOGFOOD_ATTACH_URL) -------------
 build_and_launch_ios() {
   local attach_url="${1:-}"
   echo "==> building iOS dev app (tag: $TAG)"
@@ -183,7 +183,7 @@ build_and_launch_ios() {
   echo "==> launching iOS dev app${attach_url:+ (auto-pairing)}"
   local launch_args=(--tag "$TAG")
   # Express attach intent so mobile-dev-launch.sh honors the pre-minted URL we
-  # pass via CMUX_DOGFOOD_ATTACH_URL (it ignores an ambient URL without --attach).
+  # pass via MOSAIC_DOGFOOD_ATTACH_URL (it ignores an ambient URL without --attach).
   if [[ -n "$attach_url" ]]; then
     launch_args+=(--attach)
   fi
@@ -195,15 +195,15 @@ build_and_launch_ios() {
   else
     launch_args+=(--simulator "$SIMULATOR_NAME")
   fi
-  # Pass the URL via env (CMUX_DOGFOOD_ATTACH_URL), never on the command line, so
+  # Pass the URL via env (MOSAIC_DOGFOOD_ATTACH_URL), never on the command line, so
   # it is not visible in `ps`. mobile-dev-launch.sh injects it into the app env.
-  CMUX_DOGFOOD_ATTACH_URL="$attach_url" "$REPO_ROOT/scripts/mobile-dev-launch.sh" "${launch_args[@]}"
+  MOSAIC_DOGFOOD_ATTACH_URL="$attach_url" "$REPO_ROOT/scripts/mobile-dev-launch.sh" "${launch_args[@]}"
 }
 
 # --- apply environment profile(s) (P3) --------------------------------------
 # Profiles provision a realistic test environment against the TAGGED Mac socket
-# via scripts/cmux-debug-cli.sh. The replay engine spawns the debug CLI, which
-# refuses without CMUX_TAG and never touches the stable app.
+# via scripts/mosaic-debug-cli.sh. The replay engine spawns the debug CLI, which
+# refuses without MOSAIC_TAG and never touches the stable app.
 #
 # This must run BEFORE build_and_launch_ios: the simulator launch path
 # (mobile-dev-launch.sh -> `simctl launch --console-pty`) attaches to the app

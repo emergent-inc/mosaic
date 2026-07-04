@@ -104,7 +104,7 @@ def main() -> int:
     with open(args.file, "rb") as file:
         body = file.read()
 
-    amz_date = os.environ.get("CMUX_R2_UPLOAD_AMZ_DATE")
+    amz_date = os.environ.get("MOSAIC_R2_UPLOAD_AMZ_DATE")
     if not amz_date:
         amz_date = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 

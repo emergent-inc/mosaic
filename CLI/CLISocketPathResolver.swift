@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import CmuxSettings
+import MosaicSettings
 
 enum CLIExecutableLocator {
     static func currentExecutableURL() -> URL? {
@@ -87,11 +87,11 @@ enum CLISocketPathResolver {
         case inaccessible(errnoCode: Int32)
     }
 
-    private static let stableSocketFileName = "cmux.sock"
-    static let legacyDefaultSocketPath = "/tmp/cmux.sock"
-    private static let fallbackSocketPath = "/tmp/cmux-debug.sock"
-    private static let nightlySocketPath = "/tmp/cmux-nightly.sock"
-    private static let stagingSocketPath = "/tmp/cmux-staging.sock"
+    private static let stableSocketFileName = "mosaic.sock"
+    static let legacyDefaultSocketPath = "/tmp/mosaic.sock"
+    private static let fallbackSocketPath = "/tmp/mosaic-debug.sock"
+    private static let nightlySocketPath = "/tmp/mosaic-nightly.sock"
+    private static let stagingSocketPath = "/tmp/mosaic-staging.sock"
 
     static func defaultSocketPath(
         bundleIdentifier: String?,
@@ -117,12 +117,12 @@ enum CLISocketPathResolver {
 
     private static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
         stableSocketDirectoryURL()?
-            .appendingPathComponent("cmux-\(currentUserID).sock", isDirectory: false)
+            .appendingPathComponent("mosaic-\(currentUserID).sock", isDirectory: false)
             .path ?? legacyUserScopedStableSocketPath(currentUserID: currentUserID)
     }
 
     private static func legacyUserScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
-        "/tmp/cmux-\(currentUserID).sock"
+        "/tmp/mosaic-\(currentUserID).sock"
     }
 
     static func isImplicitDefaultPath(
@@ -246,7 +246,7 @@ enum CLISocketPathResolver {
         case .dev(slug: .some):
             let bundleId = bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return bundleId == SocketPathMarkerFiles.defaultBaseDebugBundleIdentifier
-                && normalized(environment["CMUX_TAG"]) != nil
+                && normalized(environment["MOSAIC_TAG"]) != nil
         case .stable, .nightly, .staging:
             return false
         }
@@ -275,7 +275,7 @@ enum CLISocketPathResolver {
                 continue
             }
             discovered.reserveCapacity(min(limit, discovered.count + entries.count))
-            for name in entries where name.hasPrefix("cmux-debug-") && name.hasSuffix(".sock") {
+            for name in entries where name.hasPrefix("mosaic-debug-") && name.hasSuffix(".sock") {
                 let path = URL(fileURLWithPath: directory)
                     .appendingPathComponent(name, isDirectory: false)
                     .path
@@ -496,13 +496,13 @@ enum CLISocketPathResolver {
 
     /// The directory holding the control socket and its marker files.
     ///
-    /// Resolves to ``CmuxStateDirectory`` (`~/.local/state/cmux`), matching the
+    /// Resolves to ``MosaicStateDirectory`` (`~/.local/state/mosaic`), matching the
     /// app's `SocketControlSettings.stableSocketDirectoryURL()`. This keeps the
     /// CLI off the app's TCC-protected Application Support data on the agent hook
-    /// path (https://github.com/emergent-inc/cmux/issues/5146). The CLI is a
+    /// path (https://github.com/emergent-inc/mosaic/issues/5146). The CLI is a
     /// composition root, so it names the concrete `FileManager.default` here.
     private static func stableSocketDirectoryURL() -> URL? {
-        CmuxStateDirectory.url(homeDirectory: FileManager.default.homeDirectoryForCurrentUser)
+        MosaicStateDirectory.url(homeDirectory: FileManager.default.homeDirectoryForCurrentUser)
     }
 
     private static func socketDiscoveryDirectories() -> [String] {

@@ -1,8 +1,8 @@
 import AppKit
 import Bonsplit
-import CmuxCommandPalette
+import MosaicCommandPalette
 import Foundation
-import CmuxTerminal
+import MosaicTerminal
 
 func browserOmnibarSelectionDeltaForControlNavigation(
     hasFocusedAddressBar: Bool,
@@ -132,7 +132,7 @@ func shouldDispatchBrowserArrowViaFirstResponderKeyDown(
         return true
     }
 
-    // Keep modified arrow routing narrow to avoid stealing cmux shortcuts such
+    // Keep modified arrow routing narrow to avoid stealing mosaic shortcuts such
     // as Cmd+Option+Arrow pane focus. Browser document editors own Cmd+Up/Down
     // as trusted keyDown navigation to the start/end of the document.
     return normalizedFlags == [.command] && (keyCode == 125 || keyCode == 126)
@@ -215,7 +215,7 @@ func shouldDispatchCommandPaletteHorizontalArrowViaFirstResponderKeyDown(
 /// Owns the four arrows (keyCodes 123–126) for the modifier combos a text
 /// editor handles itself: plain (move), Shift (extend selection), Option
 /// (word/paragraph), and Command (line/document boundary) plus their Shift
-/// combos. Cmd+Option+Arrow is excluded so it still reaches cmux's pane-focus
+/// combos. Cmd+Option+Arrow is excluded so it still reaches mosaic's pane-focus
 /// shortcuts. Marked text (IME composition) is left to the input method.
 private func standaloneTextResponderOwnsArrowKeyDown(
     keyCode: UInt16,
@@ -255,7 +255,7 @@ func shouldDispatchTextBoxInputArrowViaFirstResponderKeyDown(
 ///
 /// This generalizes the per-surface arrow-forwarding seam (browser, omnibar,
 /// command palette, text-box input) to cover the whole class of standalone
-/// editable `NSTextView`s cmux hosts, the file-preview editor today, any
+/// editable `NSTextView`s mosaic hosts, the file-preview editor today, any
 /// future one tomorrow. Field editors (the omnibar / command-palette / find
 /// field editors) are excluded by the caller because they have their own
 /// dedicated routing or work through the normal field-editor path. Shares the
@@ -526,7 +526,7 @@ func shouldRouteTerminalFontZoomShortcutToGhostty(
 }
 // Main-actor isolated: TerminalSurface.searchState carries the legacy
 // main-thread-only contract as compiler-enforced isolation after the
-// CmuxTerminal lift; both callers (TabManager, overlay tests) are @MainActor.
+// MosaicTerminal lift; both callers (TabManager, overlay tests) are @MainActor.
 @MainActor
 @discardableResult
 func startOrFocusTerminalSearch(
@@ -592,7 +592,7 @@ private enum BrowserFindCommandEquivalent: CaseIterable {
         }
     }
 
-    var keepsCmuxBrowserFindBarOwnershipWhenVisible: Bool {
+    var keepsMosaicBrowserFindBarOwnershipWhenVisible: Bool {
         switch self {
         case .find, .findNext, .findPrevious, .hideFind:
             return true
@@ -602,13 +602,13 @@ private enum BrowserFindCommandEquivalent: CaseIterable {
     }
 }
 
-func cmuxIsWebInspectorClassName(_ className: String) -> Bool {
+func mosaicIsWebInspectorClassName(_ className: String) -> Bool {
     className.contains("WKInspector") || className.contains("WebInspector")
 }
 
-func cmuxIsWebInspectorObject(_ object: NSObject) -> Bool {
-    cmuxIsWebInspectorClassName(String(describing: type(of: object))) ||
-        cmuxIsWebInspectorClassName(NSStringFromClass(type(of: object)))
+func mosaicIsWebInspectorObject(_ object: NSObject) -> Bool {
+    mosaicIsWebInspectorClassName(String(describing: type(of: object))) ||
+        mosaicIsWebInspectorClassName(NSStringFromClass(type(of: object)))
 }
 
 private enum BrowserDocumentEditingCommandEquivalent: CaseIterable {
@@ -663,16 +663,16 @@ private enum BrowserDocumentEditingCommandEquivalent: CaseIterable {
     }
 }
 
-func cmuxIsLikelyWebInspectorResponder(_ responder: NSResponder?) -> Bool {
+func mosaicIsLikelyWebInspectorResponder(_ responder: NSResponder?) -> Bool {
     guard let responder else { return false }
-    if cmuxIsWebInspectorObject(responder) {
+    if mosaicIsWebInspectorObject(responder) {
         return true
     }
     guard let view = responder as? NSView else { return false }
     var node: NSView? = view
     var hops = 0
     while let current = node, hops < 64 {
-        if cmuxIsWebInspectorObject(current) {
+        if mosaicIsWebInspectorObject(current) {
             return true
         }
         node = current.superview
@@ -697,7 +697,7 @@ private func browserDocumentEditingCommandEquivalent(for event: NSEvent) -> Brow
 }
 
 /// For browser content, let the focused document/editor try native editing commands
-/// before cmux's menu fallback. Rich web apps often implement copy/cut/select-all
+/// before mosaic's menu fallback. Rich web apps often implement copy/cut/select-all
 /// in contentEditable handlers that AppKit's Edit menu path cannot reproduce.
 func shouldRouteBrowserDocumentEditingCommandEquivalentThroughWebContentFirst(
     _ event: NSEvent,
@@ -707,20 +707,20 @@ func shouldRouteBrowserDocumentEditingCommandEquivalentThroughWebContentFirst(
         return false
     }
 
-    if cmuxIsLikelyWebInspectorResponder(responder) {
+    if mosaicIsLikelyWebInspectorResponder(responder) {
         return false
     }
 
     return true
 }
 
-/// For browser content, let the page try browser-local Find-family commands before cmux's menu fallback.
-/// Cmd+F is excluded because cmux chooses terminal, browser, or right-sidebar
+/// For browser content, let the page try browser-local Find-family commands before mosaic's menu fallback.
+/// Cmd+F is excluded because mosaic chooses terminal, browser, or right-sidebar
 /// find from the current focus owner.
 func shouldRouteBrowserFindCommandEquivalentThroughWebContentFirst(
     _ event: NSEvent,
     responder: NSResponder? = nil,
-    owningWebView: CmuxWebView? = nil
+    owningWebView: MosaicWebView? = nil
 ) -> Bool {
     guard let shortcut = browserFindCommandEquivalent(for: event) else {
         return false
@@ -734,11 +734,11 @@ func shouldRouteBrowserFindCommandEquivalentThroughWebContentFirst(
         return false
     }
 
-    if cmuxIsLikelyWebInspectorResponder(responder) {
+    if mosaicIsLikelyWebInspectorResponder(responder) {
         return false
     }
 
-    if shortcut.keepsCmuxBrowserFindBarOwnershipWhenVisible,
+    if shortcut.keepsMosaicBrowserFindBarOwnershipWhenVisible,
        let owningWebView {
         let browserFindBarIsVisible = MainActor.assumeIsolated {
             AppDelegate.shared?.browserFindBarIsVisible(for: owningWebView) == true
@@ -761,21 +761,21 @@ func shouldRouteInlineVSCodeCommandPaletteShortcutThroughWebContentFirst(
     return shortcutForAction(.commandPalette).matches(event: event)
 }
 
-func cmuxOwningGhosttyView(for responder: NSResponder?) -> GhosttyNSView? {
+func mosaicOwningGhosttyView(for responder: NSResponder?) -> GhosttyNSView? {
     guard let responder else { return nil }
     if let ghosttyView = responder as? GhosttyNSView {
         return ghosttyView
     }
 
     if let view = responder as? NSView,
-       let ghosttyView = cmuxOwningGhosttyView(for: view) {
+       let ghosttyView = mosaicOwningGhosttyView(for: view) {
         return ghosttyView
     }
 
     if let textView = responder as? NSTextView {
         if textView.isFieldEditor,
-           let ownerView = cmuxFieldEditorOwnerView(textView),
-           let ghosttyView = cmuxOwningGhosttyView(for: ownerView) {
+           let ownerView = mosaicFieldEditorOwnerView(textView),
+           let ghosttyView = mosaicOwningGhosttyView(for: ownerView) {
             return ghosttyView
         }
     }
@@ -786,7 +786,7 @@ func cmuxOwningGhosttyView(for responder: NSResponder?) -> GhosttyNSView? {
             return ghosttyView
         }
         if let view = next as? NSView,
-           let ghosttyView = cmuxOwningGhosttyView(for: view) {
+           let ghosttyView = mosaicOwningGhosttyView(for: view) {
             return ghosttyView
         }
         current = next.nextResponder
@@ -795,9 +795,9 @@ func cmuxOwningGhosttyView(for responder: NSResponder?) -> GhosttyNSView? {
     return nil
 }
 
-func cmuxFieldEditorOwnerView(_ editor: NSTextView) -> NSView? {
+func mosaicFieldEditorOwnerView(_ editor: NSTextView) -> NSView? {
     guard editor.isFieldEditor else { return nil }
-    if let owner = cmuxTrackedFindFieldEditorOwner(editor) { return owner }
+    if let owner = mosaicTrackedFindFieldEditorOwner(editor) { return owner }
     var current = editor.nextResponder
     while let next = current {
         if let view = next as? NSView {
@@ -809,7 +809,7 @@ func cmuxFieldEditorOwnerView(_ editor: NSTextView) -> NSView? {
     return editor.superview
 }
 
-private func cmuxOwningGhosttyView(for view: NSView) -> GhosttyNSView? {
+private func mosaicOwningGhosttyView(for view: NSView) -> GhosttyNSView? {
     if let ghosttyView = view as? GhosttyNSView {
         return ghosttyView
     }

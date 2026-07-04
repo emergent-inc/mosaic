@@ -23,7 +23,7 @@ const CANONICAL_FETCH_TIMEOUT_MS = 5_000;
 
 export async function GET(request: NextRequest) {
   const variant = resolveAgentPageVariant(
-    request.headers.get("x-cmux-agent-page-path") ??
+    request.headers.get("x-mosaic-agent-page-path") ??
       request.nextUrl.searchParams.get("path"),
   );
   if (!variant) {

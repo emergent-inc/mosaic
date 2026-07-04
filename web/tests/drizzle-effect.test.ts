@@ -9,7 +9,7 @@ import postgres, { type Sql } from "postgres";
 import * as schema from "../db/schema";
 import { cloudVms } from "../db/schema";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 let sql: Sql | null = null;
@@ -17,7 +17,7 @@ let sql: Sql | null = null;
 function databaseURL() {
   const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   return url;
 }
@@ -50,7 +50,7 @@ describe("Drizzle Effect integration", () => {
         'user-drizzle-effect',
         'e2b',
         'effect-provider-vm-1',
-        'cmuxd-ws:test',
+        'mosaicd-ws:test',
         '2026-04-25.1',
         'running',
         'effect-idem-1'

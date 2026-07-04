@@ -25,7 +25,7 @@ final class SystemCommandRunner: SleepyCommandRunning, @unchecked Sendable {
         return unsafeBitCast(symbol, to: AuthExecFn.self)
     }()
 
-    private let privilegedQueue = DispatchQueue(label: "com.cmux.sleepyMode.privileged")
+    private let privilegedQueue = DispatchQueue(label: "com.mosaic.sleepyMode.privileged")
     private var authorization: AuthorizationRef?  // accessed only on privilegedQueue
 
     func run(_ tool: String, _ args: [String]) async {

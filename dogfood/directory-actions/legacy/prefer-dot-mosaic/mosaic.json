@@ -1,0 +1,27 @@
+{
+  "actions": {
+    "mosaic.newTerminal": {
+      "type": "command",
+      "title": "Losing mosaic.json",
+      "subtitle": "You should not see this in prefer-dot-mosaic",
+      "command": "echo 'LOSING MOSAIC.JSON'; echo 'THIS SHOULD NOT WIN'; pwd",
+      "target": "newTabInCurrentPane",
+      "icon": { "type": "emoji", "value": "❌" }
+    },
+    "legacy.loser": {
+      "type": "command",
+      "title": "Losing Action",
+      "command": "echo 'LOSING ACTION'; pwd",
+      "target": "newTabInCurrentPane",
+      "icon": { "type": "emoji", "value": "❌" }
+    }
+  },
+  "ui": {
+    "surfaceTabBar": {
+      "buttons": [
+        "mosaic.newTerminal",
+        "legacy.loser"
+      ]
+    }
+  }
+}

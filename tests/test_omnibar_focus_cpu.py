@@ -13,7 +13,7 @@ This test opens a browser panel, triggers Cmd+L, and asserts that CPU stays
 below threshold for a few seconds afterward.
 
 Requires:
-  - cmux running (debug build)
+  - mosaic running (debug build)
 """
 
 import os
@@ -23,7 +23,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 MAX_CPU_PERCENT = 30.0
 SETTLE_AFTER_FOCUS_S = 1.5
@@ -31,11 +31,11 @@ MONITOR_DURATION_S = 3.0
 SAMPLE_INTERVAL_S = 0.5
 
 
-def get_cmux_pid() -> int | None:
-    socket_path = os.environ.get("CMUX_SOCKET_PATH")
+def get_mosaic_pid() -> int | None:
+    socket_path = os.environ.get("MOSAIC_SOCKET_PATH")
     if not socket_path:
         try:
-            socket_path = cmux().socket_path
+            socket_path = mosaic().socket_path
         except Exception:
             socket_path = None
 
@@ -57,7 +57,7 @@ def get_cmux_pid() -> int | None:
                     return pid
 
     result = subprocess.run(
-        ["pgrep", "-f", r"cmux\.app/Contents/MacOS/Mosaic$"],
+        ["pgrep", "-f", r"mosaic\.app/Contents/MacOS/Mosaic$"],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
@@ -98,12 +98,12 @@ def main() -> int:
     print("Omnibar Cmd+L Focus CPU Regression Test")
     print("=" * 60)
 
-    pid = get_cmux_pid()
+    pid = get_mosaic_pid()
     if pid is None:
-        print("\nSKIP: cmux is not running")
+        print("\nSKIP: mosaic is not running")
         return 0
 
-    client = cmux()
+    client = mosaic()
     client.connect()
 
     try:
@@ -164,7 +164,7 @@ def main() -> int:
             sample_text = sample.stdout + sample.stderr
             if "updateNSView" in sample_text or "makeFirstResponder" in sample_text:
                 print("  Confirmed: sample shows updateNSView / makeFirstResponder loop")
-            sample_path = f"/tmp/cmux_omnibar_focus_cpu_{pid}.txt"
+            sample_path = f"/tmp/mosaic_omnibar_focus_cpu_{pid}.txt"
             with open(sample_path, "w") as f:
                 f.write(sample_text)
             print(f"  Sample saved to {sample_path}")

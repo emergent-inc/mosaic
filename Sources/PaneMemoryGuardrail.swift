@@ -1,4 +1,4 @@
-import CmuxSettings
+import MosaicSettings
 import Foundation
 import Observation
 
@@ -33,7 +33,7 @@ final class PaneMemoryGuardrail {
     @ObservationIgnored
     private var engine = PaneMemoryGuardrailEngine()
     @ObservationIgnored
-    private let timerQueue = DispatchQueue(label: "com.cmux.pane-memory-guardrail", qos: .utility)
+    private let timerQueue = DispatchQueue(label: "com.mosaic.pane-memory-guardrail", qos: .utility)
     @ObservationIgnored
     private var timer: DispatchSourceTimer?
     @ObservationIgnored
@@ -83,7 +83,7 @@ final class PaneMemoryGuardrail {
 
     private func handleSystemMemoryPressure() {
 #if DEBUG
-        cmuxDebugLog("paneMemGuard.systemMemoryPressure")
+        mosaicDebugLog("paneMemGuard.systemMemoryPressure")
 #endif
         onSystemMemoryPressure?()
     }
@@ -114,13 +114,13 @@ final class PaneMemoryGuardrail {
             return
         }
         let thresholdBytes = thresholdBytes()
-        let includeCMUXScope = consumeScopedScanIfDue(now: Date())
+        let includeMosaicScope = consumeScopedScanIfDue(now: Date())
         isScanning = true
         let sampleTask = Task.detached(priority: .utility) {
             Self.computeCachedSamples(
                 descriptors: descriptors,
                 thresholdBytes: thresholdBytes,
-                includeCMUXScope: includeCMUXScope
+                includeMosaicScope: includeMosaicScope
             )
         }
         scanApplyTask = Task { @MainActor [weak self] in
@@ -136,17 +136,17 @@ final class PaneMemoryGuardrail {
     nonisolated static func computeCachedSamples(
         descriptors: [PaneMemoryDescriptor],
         thresholdBytes: Int64,
-        includeCMUXScope: Bool = false
+        includeMosaicScope: Bool = false
     ) -> PaneMemoryGuardrailSampleBatch {
-        let snapshot = includeCMUXScope
-            ? CmuxTopProcessSnapshot.capture(includeCMUXScope: true)
-            : CmuxTopProcessSnapshot.captureCached(includeCMUXScope: false, maximumAge: 2)
+        let snapshot = includeMosaicScope
+            ? MosaicTopProcessSnapshot.capture(includeMosaicScope: true)
+            : MosaicTopProcessSnapshot.captureCached(includeMosaicScope: false, maximumAge: 2)
         let samples = computeSamples(
             descriptors: descriptors,
             thresholdBytes: thresholdBytes,
             snapshot: snapshot
         )
-        let scopedOnlySamples = snapshot.hasCMUXScope
+        let scopedOnlySamples = snapshot.hasMosaicScope
             ? computeScopedOnlySamples(
                 descriptors: descriptors,
                 thresholdBytes: thresholdBytes,
@@ -159,18 +159,18 @@ final class PaneMemoryGuardrail {
                 scopedOnlySamples.map { ($0.key, $0) },
                 uniquingKeysWith: { _, last in last }
             ),
-            includesCMUXScope: snapshot.hasCMUXScope
+            includesMosaicScope: snapshot.hasMosaicScope
         )
     }
 
     nonisolated static func computeSamples(
         descriptors: [PaneMemoryDescriptor],
         thresholdBytes: Int64,
-        snapshot: CmuxTopProcessSnapshot
+        snapshot: MosaicTopProcessSnapshot
     ) -> [PaneMemorySample] {
         let clearBytes = Int64(Double(thresholdBytes) * PaneMemoryGuardrailEngine.clearFraction)
         return descriptors.map { descriptor in
-            var rootPIDs = snapshot.pids(forCMUXSurfaceID: descriptor.panelId)
+            var rootPIDs = snapshot.pids(forMosaicSurfaceID: descriptor.panelId)
             if let foregroundPID = descriptor.foregroundPID {
                 rootPIDs.insert(foregroundPID)
             }
@@ -199,12 +199,12 @@ final class PaneMemoryGuardrail {
     nonisolated static func computeScopedOnlySamples(
         descriptors: [PaneMemoryDescriptor],
         thresholdBytes: Int64,
-        snapshot: CmuxTopProcessSnapshot
+        snapshot: MosaicTopProcessSnapshot
     ) -> [PaneMemorySample] {
         let clearBytes = Int64(Double(thresholdBytes) * PaneMemoryGuardrailEngine.clearFraction)
         return descriptors.map { descriptor in
             let cheapPIDs = snapshot.expandedPIDs(rootPIDs: cheapRootPIDs(for: descriptor, in: snapshot))
-            let scopedPIDs = snapshot.expandedPIDs(rootPIDs: snapshot.pids(forCMUXSurfaceID: descriptor.panelId))
+            let scopedPIDs = snapshot.expandedPIDs(rootPIDs: snapshot.pids(forMosaicSurfaceID: descriptor.panelId))
             let scopedOnlyPIDs = scopedPIDs.subtracting(cheapPIDs)
             let summary = snapshot.summary(for: scopedOnlyPIDs)
             let pgids = memoryPressureProcessGroupIDs(
@@ -226,7 +226,7 @@ final class PaneMemoryGuardrail {
 
     nonisolated static func cheapRootPIDs(
         for descriptor: PaneMemoryDescriptor,
-        in snapshot: CmuxTopProcessSnapshot
+        in snapshot: MosaicTopProcessSnapshot
     ) -> Set<Int> {
         var rootPIDs: Set<Int> = []
         if let foregroundPID = descriptor.foregroundPID {
@@ -250,7 +250,7 @@ final class PaneMemoryGuardrail {
         samples: [PaneMemorySample],
         currentScopedOnlySamplesByKey: [PaneMemoryPaneKey: PaneMemorySample],
         previousScopedOnlySamplesByKey: [PaneMemoryPaneKey: PaneMemorySample],
-        includesCMUXScope: Bool,
+        includesMosaicScope: Bool,
         clearBytes: Int64
     ) -> (
         samples: [PaneMemorySample],
@@ -259,7 +259,7 @@ final class PaneMemoryGuardrail {
         let liveKeys = Set(samples.map(\.key))
         let previousScopedOnlySamplesByKey = previousScopedOnlySamplesByKey.filter { liveKeys.contains($0.key) }
 
-        if includesCMUXScope {
+        if includesMosaicScope {
             let scopedOnlySamplesByKey = currentScopedOnlySamplesByKey.filter {
                 liveKeys.contains($0.key) && $0.value.memoryBytes > 0
             }
@@ -299,7 +299,7 @@ final class PaneMemoryGuardrail {
     }
 
     nonisolated static func memoryPressureProcessGroupIDs(
-        in snapshot: CmuxTopProcessSnapshot,
+        in snapshot: MosaicTopProcessSnapshot,
         pids: Set<Int>,
         clearBytes: Int64
     ) -> [Int] {
@@ -343,7 +343,7 @@ final class PaneMemoryGuardrail {
             samples: batch.samples,
             currentScopedOnlySamplesByKey: batch.scopedOnlySamplesByKey,
             previousScopedOnlySamplesByKey: lastScopedOnlySamplesByKey,
-            includesCMUXScope: batch.includesCMUXScope,
+            includesMosaicScope: batch.includesMosaicScope,
             clearBytes: clearBytes
         )
         lastScopedOnlySamplesByKey = reconciled.scopedOnlySamplesByKey
@@ -355,21 +355,21 @@ final class PaneMemoryGuardrail {
         // output no longer drives any UI (the badge + banner were removed in
         // issue #6614); it is retained for the DEBUG scan log below.
         let output = engine.ingest(samples: samples, thresholdBytes: thresholdBytes)
-        emitScanDebugLog(samples: samples, output: output, thresholdBytes: thresholdBytes, includesCMUXScope: batch.includesCMUXScope)
+        emitScanDebugLog(samples: samples, output: output, thresholdBytes: thresholdBytes, includesMosaicScope: batch.includesMosaicScope)
     }
 
     private func emitScanDebugLog(
         samples: [PaneMemorySample],
         output: PaneMemoryGuardrailEngineOutput,
         thresholdBytes: Int64,
-        includesCMUXScope: Bool
+        includesMosaicScope: Bool
     ) {
 #if DEBUG
         let maxBytes = samples.map(\.memoryBytes).max() ?? 0
-        cmuxDebugLog(
+        mosaicDebugLog(
             "paneMemGuard.scan panes=\(samples.count) maxMB=\(maxBytes / 1_048_576) " +
             "thresholdMB=\(thresholdBytes / 1_048_576) warned=\(output.warnedWorkspaceIds.count) " +
-            "scope=\(includesCMUXScope ? 1 : 0)"
+            "scope=\(includesMosaicScope ? 1 : 0)"
         )
 #endif
     }

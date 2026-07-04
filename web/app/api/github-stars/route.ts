@@ -7,17 +7,17 @@ export async function GET(request: Request) {
   return withApiRouteSpan(
     request,
     "/api/github-stars",
-    { "cmux.subsystem": "website", "cmux.upstream.service": "github" },
+    { "mosaic.subsystem": "website", "mosaic.upstream.service": "github" },
     async (span) => {
       try {
         const res = await fetch(
-          "https://api.github.com/repos/emergent-inc/cmux",
+          "https://api.github.com/repos/emergent-inc/mosaic",
           {
             headers: { Accept: "application/vnd.github.v3+json" },
             next: { revalidate: 300 },
           }
         );
-        setSpanAttributes(span, { "cmux.upstream.status_code": res.status });
+        setSpanAttributes(span, { "mosaic.upstream.status_code": res.status });
 
         if (!res.ok) {
           return NextResponse.json({ stars: null }, { status: 502 });
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
         const data = await res.json();
         const stars: number = data.stargazers_count;
-        setSpanAttributes(span, { "cmux.github.stars": stars });
+        setSpanAttributes(span, { "mosaic.github.stars": stars });
 
         return NextResponse.json(
           { stars },

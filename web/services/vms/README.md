@@ -1,6 +1,6 @@
 # Cloud VMs service
 
-Backend for `cmux vm new/ls/rm/exec/attach` and the sidebar Cloud VM surface. Stack Auth gates every public route. Provider API keys stay server-side. Freestyle and E2B prefer `cmuxd-remote` WebSocket PTY with short-lived leases; older Freestyle VMs can fall back to its SSH gateway.
+Backend for `mosaic vm new/ls/rm/exec/attach` and the sidebar Cloud VM surface. Stack Auth gates every public route. Provider API keys stay server-side. Freestyle and E2B prefer `mosaicd-remote` WebSocket PTY with short-lived leases; older Freestyle VMs can fall back to its SSH gateway.
 
 ## Layout
 
@@ -44,7 +44,7 @@ For cookie calls, `POST`/`DELETE` routes reject cross-site `Origin` or `Sec-Fetc
 before any VM workflow runs.
 
 Cloud VM billing is team-scoped. The native client sends the selected Stack team in
-`X-Cmux-Team-Id`; browser callers may send that header or `teamId`/`billingTeamId` in the request.
+`X-Mosaic-Team-Id`; browser callers may send that header or `teamId`/`billingTeamId` in the request.
 The backend validates membership before create or team-filtered list. If Stack returns one team,
 the backend treats it as the personal team created on sign-up. If Stack returns no team, or multiple
 teams without a selected/requested team, create fails before providers or billing are called.
@@ -64,36 +64,36 @@ Active VM limits are enforced inside the same Postgres transaction that inserts 
 ## Image manifest and rollback
 
 Known-good provider images are recorded in `services/vms/images/manifest.json`. Each entry records
-the provider, provider image id, cmux image version, build metadata, and validation status.
+the provider, provider image id, mosaic image version, build metadata, and validation status.
 
 Default image policy:
 
-- Production and staging select images with `E2B_CMUXD_WS_TEMPLATE` and
+- Production and staging select images with `E2B_MOSAICD_WS_TEMPLATE` and
   `FREESTYLE_SANDBOX_SNAPSHOT`.
 - Local development uses the manifest entry marked `defaultForLocalDev` when the provider env var
   is unset.
-- The current intended default provider is Freestyle when `CMUX_VM_DEFAULT_PROVIDER=freestyle`; keep
+- The current intended default provider is Freestyle when `MOSAIC_VM_DEFAULT_PROVIDER=freestyle`; keep
   E2B enabled as rollback.
 - Baked agent tools are installed at image-build time. They are not auto-updated on VM startup, so
   startup latency stays bounded and the active image manifest remains the source of truth.
 - To update tool versions, rebuild the provider images and record the new template/snapshot IDs in
-  the manifest. `CMUX_CLOUD_IMAGE_<TOOL>_NPM_SPEC` overrides must be exact npm package version
+  the manifest. `MOSAIC_CLOUD_IMAGE_<TOOL>_NPM_SPEC` overrides must be exact npm package version
   pins, for example `@openai/codex@0.130.0`, or `none` to disable a tool. The image builder
   rejects ranges and tags such as `latest`.
 
 Vercel production, staging, and preview deployments fail closed for VM create if the selected image
 env var is missing or is not listed in the manifest. Local development can use the manifest default
-without setting provider image env vars. Set `CMUX_VM_ALLOW_UNMANIFESTED_IMAGES=1` only for local
+without setting provider image env vars. Set `MOSAIC_VM_ALLOW_UNMANIFESTED_IMAGES=1` only for local
 image experiments.
 
 Rollback is an env-only operation:
 
 1. Choose a previous manifest entry with `validationStatus: "passed"`.
-2. Set `E2B_CMUXD_WS_TEMPLATE` or `FREESTYLE_SANDBOX_SNAPSHOT` back to that entry's `imageId`.
+2. Set `E2B_MOSAICD_WS_TEMPLATE` or `FREESTYLE_SANDBOX_SNAPSHOT` back to that entry's `imageId`.
 3. Redeploy staging, smoke test, then repeat for production.
 4. Keep old provider templates/snapshots until all VMs using them are gone.
 
-## Baked tools and VM-local cmux CLI
+## Baked tools and VM-local mosaic CLI
 
 `web/scripts/build-cloud-vm-images.ts` installs the shared Cloud VM base layer for both E2B and
 Freestyle:
@@ -104,44 +104,44 @@ Freestyle:
 - OpenCode from `opencode-ai@1.14.41`.
 - Codex CLI from `@openai/codex@0.130.0`.
 - Pi from `@earendil-works/pi-coding-agent@0.74.0`.
-- `cmuxd-remote` as `/usr/local/bin/cmuxd-remote`.
-- `/usr/local/bin/cmux` symlinked to `cmuxd-remote` so the Linux relay CLI is on `PATH`.
+- `mosaicd-remote` as `/usr/local/bin/mosaicd-remote`.
+- `/usr/local/bin/mosaic` symlinked to `mosaicd-remote` so the Linux relay CLI is on `PATH`.
 
 The image smoke checks run `node --version`, `npm --version`, `bun --version`, `claude --version`,
-`opencode --version`, `codex --version`, `pi --version`, `cmux --help`, and `cmuxd-remote version`.
+`opencode --version`, `codex --version`, `pi --version`, `mosaic --help`, and `mosaicd-remote version`.
 They also keep the existing Python/OpenSSL checks for provider browser proxy support.
 
 Agent package override env vars:
 
-- `CMUX_CLOUD_IMAGE_CLAUDE_CODE_NPM_SPEC`
-- `CMUX_CLOUD_IMAGE_OPENCODE_NPM_SPEC`
-- `CMUX_CLOUD_IMAGE_CODEX_NPM_SPEC`
-- `CMUX_CLOUD_IMAGE_PI_NPM_SPEC`
+- `MOSAIC_CLOUD_IMAGE_CLAUDE_CODE_NPM_SPEC`
+- `MOSAIC_CLOUD_IMAGE_OPENCODE_NPM_SPEC`
+- `MOSAIC_CLOUD_IMAGE_CODEX_NPM_SPEC`
+- `MOSAIC_CLOUD_IMAGE_PI_NPM_SPEC`
 
 Set an override to a package spec such as `@openai/codex@0.130.0`. Set it to `none` only for local
 image experiments that intentionally skip a tool.
 
 ## Browser automation from Cloud VM SSH
 
-`cmux browser ...` inside a `cmux ssh` or Cloud VM SSH session controls the local cmux browser
+`mosaic browser ...` inside a `mosaic ssh` or Cloud VM SSH session controls the local mosaic browser
 through the authenticated relay. It does not start Chrome inside the VM. This keeps browser UI,
 cookies, profiles, and screenshots on the local Mac while agent computation runs remotely.
 
 The Linux relay CLI supports the common browser automation subcommands: `open`, `navigate`, `back`,
 `forward`, `reload`, `get-url`, `snapshot`, `eval`, `wait`, `click`, `dblclick`, `hover`, `focus`,
 `check`, `uncheck`, `fill`, `type`, `press`, `select`, and `screenshot`. Existing-browser commands
-default to `CMUX_SURFACE_ID`; `open` defaults to `CMUX_WORKSPACE_ID`.
+default to `MOSAIC_SURFACE_ID`; `open` defaults to `MOSAIC_WORKSPACE_ID`.
 
 ## SSH session lifecycle
 
-`cmux vm ssh <id>` and `cmux vm attach <id>` open a cmux-managed remote workspace. For providers
+`mosaic vm ssh <id>` and `mosaic vm attach <id>` open a mosaic-managed remote workspace. For providers
 that return SSH attach info, the CLI resolves the VM endpoint and then uses the same workspace,
-relay, startup, and session-state path as `cmux ssh`. `cmux vm ssh-info <id>` is the print-only
+relay, startup, and session-state path as `mosaic ssh`. `mosaic vm ssh-info <id>` is the print-only
 debugging command.
 
-Plain `cmux ssh` uses OpenSSH control sockets and `ControlPersist` by default. If the foreground
+Plain `mosaic ssh` uses OpenSSH control sockets and `ControlPersist` by default. If the foreground
 SSH process exits after sleep or a network transition, the startup wrapper retries the same command
-before reporting the session ended. `cmux ssh` and `cmux vm ssh` share this wrapper, so both paths
+before reporting the session ended. `mosaic ssh` and `mosaic vm ssh` share this wrapper, so both paths
 surface reconnect progress in the terminal and keep workspace remote state visible while the daemon
 or proxy controller reconnects. Cloud VM provider sessions that expose only short-lived gateway
 credentials may still require a fresh attach lease; after the retry limit is exhausted, the terminal
@@ -149,7 +149,7 @@ prints the existing disconnect banner instead of falling back silently to a loca
 
 Manual sleep/network smoke:
 
-1. Start a Cloud VM, then attach with `cmux vm ssh <id>`.
+1. Start a Cloud VM, then attach with `mosaic vm ssh <id>`.
 2. Confirm the terminal reaches a remote prompt and the sidebar shows the workspace as connected.
 3. Disable Wi-Fi or sleep the Mac long enough for OpenSSH to exit.
 4. Restore the network and confirm the terminal prints a reconnect attempt and either lands back in
@@ -175,38 +175,38 @@ Production and staging use Vercel Marketplace AWS Aurora PostgreSQL with OIDC fe
 
 Set these Vercel environment variables per production/staging environment:
 
-- `CMUX_DB_DRIVER=aws-rds-iam`.
+- `MOSAIC_DB_DRIVER=aws-rds-iam`.
 - `AWS_ROLE_ARN`, IAM role Vercel assumes.
 - `AWS_REGION`, Aurora region.
 - `PGHOST`, Aurora cluster endpoint.
 - `PGPORT`, usually `5432`.
 - `PGUSER`, IAM-enabled Postgres role.
 - `PGDATABASE`, app database name.
-- `CMUX_DB_POOL_MAX`, small pool size for Vercel Functions. Start with `5`.
-- `CMUX_DB_SSL_REJECT_UNAUTHORIZED`, optional. Leave unset for the current Vercel Marketplace Aurora databases so Node uses its default trust store.
-- `CMUX_VM_CREATE_ENABLED`, global create kill switch. Set `0` to block new paid creates while
+- `MOSAIC_DB_POOL_MAX`, small pool size for Vercel Functions. Start with `5`.
+- `MOSAIC_DB_SSL_REJECT_UNAUTHORIZED`, optional. Leave unset for the current Vercel Marketplace Aurora databases so Node uses its default trust store.
+- `MOSAIC_VM_CREATE_ENABLED`, global create kill switch. Set `0` to block new paid creates while
   keeping list, attach, and delete available.
-- `CMUX_VM_E2B_ENABLED`, per-provider E2B create kill switch.
-- `CMUX_VM_FREESTYLE_ENABLED`, per-provider Freestyle create kill switch.
-- `CMUX_VM_ALLOWED_ORIGINS`, optional comma-separated extra origins allowed for cookie mutations.
+- `MOSAIC_VM_E2B_ENABLED`, per-provider E2B create kill switch.
+- `MOSAIC_VM_FREESTYLE_ENABLED`, per-provider Freestyle create kill switch.
+- `MOSAIC_VM_ALLOWED_ORIGINS`, optional comma-separated extra origins allowed for cookie mutations.
 - `E2B_API_KEY`, E2B provider key.
 - `FREESTYLE_API_KEY`, Freestyle provider key.
-- `E2B_CMUXD_WS_TEMPLATE`, E2B template alias/name for WebSocket PTY sandboxes.
+- `E2B_MOSAICD_WS_TEMPLATE`, E2B template alias/name for WebSocket PTY sandboxes.
 - `FREESTYLE_SANDBOX_SNAPSHOT`, Freestyle snapshot id.
-- `CMUX_VM_DEFAULT_PROVIDER`, `freestyle` or `e2b`.
-- `CMUX_VM_PLAN_FREE_CREATE_CREDIT_ITEM_ID`, optional Stack Auth team item used as the free-plan create-credit bucket. Leave unset to skip free-plan create-credit accounting; set to `none`, `disabled`, `off`, or `false` to explicitly opt out.
-- `CMUX_VM_PLAN_FREE_CREATE_CREDIT_COST`, optional free-plan per-create cost. Defaults to `1`.
-- `CMUX_VM_PLAN_FREE_INITIAL_CREATE_CREDITS`, optional first-use seed for the free-plan Stack Auth create-credit item. Defaults to `20`.
-- `CMUX_VM_CREATE_CREDIT_ITEM_ID`, optional global Stack Auth item used as a prepaid create-credit bucket for every plan without a plan-specific item. Set to `none`, `disabled`, `off`, or `false` to opt out of create credits for plans without a plan-specific value.
-- `CMUX_VM_CREATE_CREDIT_COST`, default `1`.
-- `CMUX_VM_CREATE_CREDIT_COST_E2B`, optional provider-specific override.
-- `CMUX_VM_CREATE_CREDIT_COST_FREESTYLE`, optional provider-specific override.
-- `CMUX_VM_FREE_MAX_ACTIVE_VMS`, default `5`.
-- `CMUX_VM_PAID_MAX_ACTIVE_VMS`, default `10`.
+- `MOSAIC_VM_DEFAULT_PROVIDER`, `freestyle` or `e2b`.
+- `MOSAIC_VM_PLAN_FREE_CREATE_CREDIT_ITEM_ID`, optional Stack Auth team item used as the free-plan create-credit bucket. Leave unset to skip free-plan create-credit accounting; set to `none`, `disabled`, `off`, or `false` to explicitly opt out.
+- `MOSAIC_VM_PLAN_FREE_CREATE_CREDIT_COST`, optional free-plan per-create cost. Defaults to `1`.
+- `MOSAIC_VM_PLAN_FREE_INITIAL_CREATE_CREDITS`, optional first-use seed for the free-plan Stack Auth create-credit item. Defaults to `20`.
+- `MOSAIC_VM_CREATE_CREDIT_ITEM_ID`, optional global Stack Auth item used as a prepaid create-credit bucket for every plan without a plan-specific item. Set to `none`, `disabled`, `off`, or `false` to opt out of create credits for plans without a plan-specific value.
+- `MOSAIC_VM_CREATE_CREDIT_COST`, default `1`.
+- `MOSAIC_VM_CREATE_CREDIT_COST_E2B`, optional provider-specific override.
+- `MOSAIC_VM_CREATE_CREDIT_COST_FREESTYLE`, optional provider-specific override.
+- `MOSAIC_VM_FREE_MAX_ACTIVE_VMS`, default `5`.
+- `MOSAIC_VM_PAID_MAX_ACTIVE_VMS`, default `10`.
 - Stack Auth environment variables.
 - Axiom/OpenTelemetry exporter variables.
 
-Local development keeps using Docker Postgres through `DATABASE_URL`, derived from `CMUX_PORT`.
+Local development keeps using Docker Postgres through `DATABASE_URL`, derived from `MOSAIC_PORT`.
 
 Run production/staging migrations explicitly, never during Vercel build or route startup. The local operator path pulls deployed Vercel env. The GitHub Actions path uses the minimal DB metadata copied into protected GitHub environments, generates an RDS IAM auth token, and applies Drizzle migrations:
 
@@ -273,7 +273,7 @@ Each environment needs:
 
 - variable `AWS_REGION`, usually `us-west-2`
 - variables `PGHOST`, `PGPORT`, `PGUSER`, and `PGDATABASE`
-- variable `CMUX_DB_SSL_REJECT_UNAUTHORIZED`, usually `true`
+- variable `MOSAIC_DB_SSL_REJECT_UNAUTHORIZED`, usually `true`
 - variables `NEXT_PUBLIC_STACK_PROJECT_ID` and `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`
 - secret `STACK_SECRET_SERVER_KEY` for smoke workflows
 - secret `AWS_MIGRATION_ROLE_ARN` for migration workflows
@@ -282,38 +282,38 @@ Production migration runs staging migration first on the same commit, then waits
 
 ## Local database development
 
-Use `CMUX_PORT` to run multiple isolated web and database environments on one machine:
+Use `MOSAIC_PORT` to run multiple isolated web and database environments on one machine:
 
 ```bash
-CMUX_PORT=10180 bun dev
+MOSAIC_PORT=10180 bun dev
 ```
 
-`bun dev` sources `~/.secrets/cmuxterm-dev.env` (falling back to the legacy secret files), derives the local database URL from `CMUX_PORT`, starts this worktree's Docker Postgres, applies Drizzle migrations, then starts Next.js. When it exits or is interrupted, it stops the matching Docker container and network while preserving the Postgres volume.
+`bun dev` sources `~/.secrets/mosaicterm-dev.env` (falling back to the legacy secret files), derives the local database URL from `MOSAIC_PORT`, starts this worktree's Docker Postgres, applies Drizzle migrations, then starts Next.js. When it exits or is interrupted, it stops the matching Docker container and network while preserving the Postgres volume.
 
-The dev Postgres port is `CMUX_PORT + 10000`, so `CMUX_PORT=10180` maps to `localhost:20180`. `bun db:test` starts a separate test DB on `CMUX_PORT + 30000`, applies migrations twice, and runs behavior tests against a real Postgres container.
+The dev Postgres port is `MOSAIC_PORT + 10000`, so `MOSAIC_PORT=10180` maps to `localhost:20180`. `bun db:test` starts a separate test DB on `MOSAIC_PORT + 30000`, applies migrations twice, and runs behavior tests against a real Postgres container.
 
 ## Provider matrix
 
 | Verb                        | Freestyle | E2B |
 |-----------------------------|-----------|-----|
-| `cmux vm new`               | yes       | yes |
-| `cmux vm new --workspace`   | yes       | yes |
-| `cmux vm new --detach`      | yes       | yes |
-| `cmux vm attach <id>`       | yes       | yes |
-| `cmux vm ssh <id>`          | yes       | yes |
-| `cmux vm ssh-info <id>`     | legacy SSH info only | legacy SSH info only |
-| `cmux vm exec <id> -- ...`  | yes       | yes |
-| `cmux vm ls / rm`           | yes       | yes |
+| `mosaic vm new`               | yes       | yes |
+| `mosaic vm new --workspace`   | yes       | yes |
+| `mosaic vm new --detach`      | yes       | yes |
+| `mosaic vm attach <id>`       | yes       | yes |
+| `mosaic vm ssh <id>`          | yes       | yes |
+| `mosaic vm ssh-info <id>`     | legacy SSH info only | legacy SSH info only |
+| `mosaic vm exec <id> -- ...`  | yes       | yes |
+| `mosaic vm ls / rm`           | yes       | yes |
 
-`cmux vm ssh <id>` is the user-facing interactive alias and opens the same managed workspace path
-as `cmux vm attach <id>`. `cmux vm ssh-info <id>` is print-only for provider SSH debugging.
+`mosaic vm ssh <id>` is the user-facing interactive alias and opens the same managed workspace path
+as `mosaic vm attach <id>`. `mosaic vm ssh-info <id>` is print-only for provider SSH debugging.
 
-E2B interactive paths require a cmuxd WebSocket PTY image. The backend writes only a hash of attach tokens to Postgres; raw tokens are returned once to the Mac client.
+E2B interactive paths require a mosaicd WebSocket PTY image. The backend writes only a hash of attach tokens to Postgres; raw tokens are returned once to the Mac client.
 
-Operational note: Freestyle is the intended default when `CMUX_VM_DEFAULT_PROVIDER=freestyle`. Before rollout or rollback, verify the deployed `CMUX_VM_DEFAULT_PROVIDER`, `CMUX_VM_FREESTYLE_ENABLED`, and `FREESTYLE_SANDBOX_SNAPSHOT` env values with `bun run cloud-vm:env:audit -- <target> --strict`, then confirm WebSocket PTY, reusable daemon RPC lease, and browser proxy health with `bun run cloud-vm:stress -- <target> --provider default`. Keep E2B enabled as the rollback provider.
+Operational note: Freestyle is the intended default when `MOSAIC_VM_DEFAULT_PROVIDER=freestyle`. Before rollout or rollback, verify the deployed `MOSAIC_VM_DEFAULT_PROVIDER`, `MOSAIC_VM_FREESTYLE_ENABLED`, and `FREESTYLE_SANDBOX_SNAPSHOT` env values with `bun run cloud-vm:env:audit -- <target> --strict`, then confirm WebSocket PTY, reusable daemon RPC lease, and browser proxy health with `bun run cloud-vm:stress -- <target> --provider default`. Keep E2B enabled as the rollback provider.
 
 ## Usage, limits, and pricing
 
-The usage ledger is in Postgres. VM create pricing gates can use Stack Auth payment items, but free-plan create credits are opt-in. Configure `CMUX_VM_PLAN_FREE_CREATE_CREDIT_ITEM_ID` only when the free plan should consume a prepaid create-credit bucket. When enabled, the create workflow records a one-time local grant row, seeds the configured Stack Auth item credits once per billing team, reserves one create credit only for a newly inserted row, calls the provider, and refunds the credit if provisioning fails before a usable VM exists.
+The usage ledger is in Postgres. VM create pricing gates can use Stack Auth payment items, but free-plan create credits are opt-in. Configure `MOSAIC_VM_PLAN_FREE_CREATE_CREDIT_ITEM_ID` only when the free plan should consume a prepaid create-credit bucket. When enabled, the create workflow records a one-time local grant row, seeds the configured Stack Auth item credits once per billing team, reserves one create credit only for a newly inserted row, calls the provider, and refunds the credit if provisioning fails before a usable VM exists.
 
-Plan limits are team-based. Stack Auth personal teams should stay enabled for both dev/staging and production projects (`createTeamOnSignUp` / `teams.createPersonalTeamOnSignUp`). New VM rows store `billing_team_id` and `billing_plan_id`; the free plan allows five active VMs at a time by default. Paused and destroyed VMs do not count against the active limit. Paid plan activation should write a readable plan id such as `pro` into Stack Auth team read-only metadata (`cmuxVmPlan`) or equivalent billing sync metadata, then configure the matching `CMUX_VM_PLAN_<PLAN>_MAX_ACTIVE_VMS` env var. Paid plans only consume Stack Auth create credits when `CMUX_VM_PLAN_<PLAN>_CREATE_CREDIT_ITEM_ID` or the global `CMUX_VM_CREATE_CREDIT_ITEM_ID` is configured.
+Plan limits are team-based. Stack Auth personal teams should stay enabled for both dev/staging and production projects (`createTeamOnSignUp` / `teams.createPersonalTeamOnSignUp`). New VM rows store `billing_team_id` and `billing_plan_id`; the free plan allows five active VMs at a time by default. Paused and destroyed VMs do not count against the active limit. Paid plan activation should write a readable plan id such as `pro` into Stack Auth team read-only metadata (`mosaicVmPlan`) or equivalent billing sync metadata, then configure the matching `MOSAIC_VM_PLAN_<PLAN>_MAX_ACTIVE_VMS` env var. Paid plans only consume Stack Auth create credits when `MOSAIC_VM_PLAN_<PLAN>_CREATE_CREDIT_ITEM_ID` or the global `MOSAIC_VM_CREATE_CREDIT_ITEM_ID` is configured.

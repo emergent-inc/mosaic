@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: `cmux claude-teams` preserves fallback provider dirs in PATH.
+Regression test: `mosaic claude-teams` preserves fallback provider dirs in PATH.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -20,12 +20,12 @@ def make_executable(path: Path, content: str) -> None:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-teams-fallback-path-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-teams-fallback-path-") as td:
         tmp = Path(td)
         home = tmp / "home"
         fallback_bin = home / ".bun" / "bin"
@@ -50,7 +50,7 @@ claude-node-helper
         env = os.environ.copy()
         env["HOME"] = str(home)
         env["PATH"] = "/usr/bin:/bin"
-        env.pop("CMUX_CUSTOM_CLAUDE_PATH", None)
+        env.pop("MOSAIC_CUSTOM_CLAUDE_PATH", None)
 
         proc = subprocess.run(
             [cli_path, "claude-teams", "--version"],
@@ -62,7 +62,7 @@ claude-node-helper
         )
 
         if proc.returncode != 0:
-            print("FAIL: `cmux claude-teams --version` failed with Claude in a fallback dir")
+            print("FAIL: `mosaic claude-teams --version` failed with Claude in a fallback dir")
             print(f"exit={proc.returncode}")
             print(f"stdout={proc.stdout.strip()}")
             print(f"stderr={proc.stderr.strip()}")
@@ -74,7 +74,7 @@ claude-node-helper
             print(f"FAIL: expected fallback helper to remain on PATH, got {lines!r}")
             return 1
 
-    print("PASS: cmux claude-teams preserves fallback provider dirs in PATH")
+    print("PASS: mosaic claude-teams preserves fallback provider dirs in PATH")
     return 0
 
 

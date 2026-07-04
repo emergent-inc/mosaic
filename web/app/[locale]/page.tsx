@@ -167,7 +167,7 @@ function HomeContent() {
               <span>
                 <strong className="font-medium">
                   <a
-                    href="https://github.com/emergent-inc/cmux#founders-edition"
+                    href="https://github.com/emergent-inc/mosaic#founders-edition"
                     className={linkClass}
                   >
                     {t("feature.ios")}
@@ -226,7 +226,7 @@ function HomeContent() {
                 {t.rich("faqIosA", {
                   foundersLink: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux#founders-edition"
+                      href="https://github.com/emergent-inc/mosaic#founders-edition"
                       className={linkClass}
                     >
                       {chunks}
@@ -326,7 +326,7 @@ function HomeContent() {
                 {t.rich("faqSkillsA", {
                   skillsLink: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux-skills"
+                      href="https://github.com/emergent-inc/mosaic-skills"
                       className={linkClass}
                     >
                       {chunks}
@@ -409,7 +409,7 @@ function HomeContent() {
                 {t.rich("faqFreeA", {
                   link: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux"
+                      href="https://github.com/emergent-inc/mosaic"
                       className={linkClass}
                     >
                       {chunks}
@@ -424,7 +424,7 @@ function HomeContent() {
                 {t.rich("faqSupportA", {
                   foundersLink: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux#founders-edition"
+                      href="https://github.com/emergent-inc/mosaic#founders-edition"
                       className={linkClass}
                     >
                       {chunks}
@@ -439,7 +439,7 @@ function HomeContent() {
                 {t.rich("faqFeatureA", {
                   issuesLink: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux/issues"
+                      href="https://github.com/emergent-inc/mosaic/issues"
                       className={linkClass}
                     >
                       {chunks}
@@ -447,7 +447,7 @@ function HomeContent() {
                   ),
                   prLink: (chunks) => (
                     <a
-                      href="https://github.com/emergent-inc/cmux/pulls"
+                      href="https://github.com/emergent-inc/mosaic/pulls"
                       className={linkClass}
                     >
                       {chunks}

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Build, sign, notarize, create DMG, generate appcast, and upload to GitHub release.
 # Usage: ./scripts/build-sign-upload.sh <tag> [--allow-overwrite]
-# Requires: source ~/.secrets/cmuxterm.env && export SPARKLE_PRIVATE_KEY
+# Requires: source ~/.secrets/mosaicterm.env && export SPARKLE_PRIVATE_KEY
 
 usage() {
   cat <<'EOF'
@@ -47,15 +47,15 @@ fi
 
 TAG="$1"
 SIGN_HASH="A050CC7E193C8221BDBA204E731B046CDCCC1B30"
-ENTITLEMENTS_TEMPLATE="cmux.entitlements"
+ENTITLEMENTS_TEMPLATE="mosaic.entitlements"
 APP_PATH="build/Build/Products/Release/Mosaic.app"
-GHOSTTYKIT_CRASH_REPORT_SUBDIR="cmux/crash"
+GHOSTTYKIT_CRASH_REPORT_SUBDIR="mosaic/crash"
 STABLE_APPCAST_URL="${MOSAIC_STABLE_APPCAST_URL:-https://updates.mosaic.inc/stable/appcast.xml}"
 RELEASE_DOWNLOAD_URL_BASE="${MOSAIC_RELEASE_DOWNLOAD_URL_BASE:-https://download.mosaic.inc/releases}"
 DMG_RELEASE="mosaic-macos.dmg"
 
 # --- Pre-flight ---
-source ~/.secrets/cmuxterm.env
+source ~/.secrets/mosaicterm.env
 export SPARKLE_PRIVATE_KEY
 for tool in zig xcodebuild create-dmg xcrun codesign ditto gh; do
   command -v "$tool" >/dev/null || { echo "MISSING: $tool" >&2; exit 1; }
@@ -74,7 +74,7 @@ cp -R ghostty/macos/GhosttyKit.xcframework GhosttyKit.xcframework
 # --- Build app (Release, unsigned) ---
 echo "Building app..."
 rm -rf build/
-xcodebuild -scheme cmux -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
+xcodebuild -scheme mosaic -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
 echo "Build succeeded"
 
 HELPER_PATH="$APP_PATH/Contents/Resources/bin/ghostty"
@@ -93,7 +93,7 @@ APP_PLIST="$APP_PATH/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $STABLE_APPCAST_URL" "$APP_PLIST"
 echo "Sparkle keys injected"
 
-# cmux is a non-sandboxed app. Sparkle's sandbox-only XPC services make the
+# mosaic is a non-sandboxed app. Sparkle's sandbox-only XPC services make the
 # installer handoff wait for an agent connection that never arrives.
 ./scripts/remove-sparkle-sandbox-xpc-services.sh "$APP_PATH"
 
@@ -104,17 +104,17 @@ ENTITLEMENTS="$(mktemp /tmp/mosaic-release-entitlements.XXXXXX)"
   "$ENTITLEMENTS_TEMPLATE" \
   "$ENTITLEMENTS" \
   "mosaic.com.emergent.app"
-./scripts/sign-cmux-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$SIGN_HASH"
+./scripts/sign-mosaic-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$SIGN_HASH"
 echo "Codesign verified"
 
 # --- Notarize app ---
 echo "Notarizing app..."
-ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" cmux-notary.zip
-xcrun notarytool submit cmux-notary.zip \
+ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" mosaic-notary.zip
+xcrun notarytool submit mosaic-notary.zip \
   --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
-rm -f cmux-notary.zip
+rm -f mosaic-notary.zip
 echo "App notarized"
 
 # --- Create and notarize DMG ---
@@ -171,10 +171,10 @@ if [[ "$TAG" != *"-nightly"* ]]; then
   VERSION="${TAG#v}"
   DMG_SHA256=$(shasum -a 256 "$DMG_RELEASE" | cut -d' ' -f1)
   echo "Updating homebrew cask to $VERSION (SHA: $DMG_SHA256)..."
-  CASK_FILE="homebrew-cmux/Casks/cmux.rb"
+  CASK_FILE="homebrew-mosaic/Casks/mosaic.rb"
   if [ -f "$CASK_FILE" ]; then
     cat > "$CASK_FILE" << CASKEOF
-cask "cmux" do
+cask "mosaic" do
   version "${VERSION}"
   sha256 "${DMG_SHA256}"
 
@@ -191,17 +191,17 @@ cask "cmux" do
   depends_on macos: ">= :ventura"
 
   app "Mosaic.app"
-  binary "#{appdir}/Mosaic.app/Contents/Resources/bin/cmux"
+  binary "#{appdir}/Mosaic.app/Contents/Resources/bin/mosaic"
 
   zap trash: [
-    "~/Library/Application Support/cmux",
-    "~/Library/Caches/cmux",
-    "~/Library/Preferences/ai.emergent.inc.cmuxterm.plist",
+    "~/Library/Application Support/mosaic",
+    "~/Library/Caches/mosaic",
+    "~/Library/Preferences/ai.emergent.inc.mosaicterm.plist",
   ]
 end
 CASKEOF
-    cd homebrew-cmux
-    git add Casks/cmux.rb
+    cd homebrew-mosaic
+    git add Casks/mosaic.rb
     if git diff --staged --quiet; then
       echo "Homebrew cask already up to date"
     else
@@ -211,7 +211,7 @@ CASKEOF
     fi
     cd ..
   else
-    echo "WARNING: homebrew-cmux submodule not found, skipping cask update"
+    echo "WARNING: homebrew-mosaic submodule not found, skipping cask update"
   fi
 fi
 
@@ -219,4 +219,4 @@ fi
 rm -rf build/ "$DMG_RELEASE" appcast.xml
 echo ""
 echo "=== Release $TAG complete ==="
-say "cmux release complete"
+say "mosaic release complete"

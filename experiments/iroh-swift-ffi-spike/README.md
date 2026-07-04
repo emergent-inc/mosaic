@@ -1,7 +1,7 @@
 # iroh Swift FFI spike
 
 Gating-risk spike for making [iroh](https://www.iroh.computer/) the default
-cmux iOS-to-Mac transport: prove a Swift process can bind an iroh endpoint,
+mosaic iOS-to-Mac transport: prove a Swift process can bind an iroh endpoint,
 dial another endpoint by EndpointId through the default n0 relays, and
 exchange bytes over one bidirectional QUIC stream (the byte-stream substrate
 the existing length-prefixed `CmxByteTransport` mobile protocol rides on).
@@ -18,7 +18,7 @@ languages is to write a small Rust wrapper that exposes only what the app
 needs. That is what this spike does: `rust/src/lib.rs` is a ~400-line
 staticlib exposing a blocking C API (bind, id, route JSON, online, accept,
 connect, recv, send, close) over iroh 1.0.0-rc.1, consumed from Swift via a
-plain bridging header (`include/cmux_iroh_ffi.h`).
+plain bridging header (`include/mosaic_iroh_ffi.h`).
 
 ## Versions
 
@@ -73,7 +73,7 @@ on n0's canary relay fleet; pin/verify before shipping).
 
 ## Binary size
 
-- staticlib `libcmux_iroh_ffi.a`: 15 MB per target (`opt-level = "s"`, fat
+- staticlib `libmosaic_iroh_ffi.a`: 15 MB per target (`opt-level = "s"`, fat
   LTO, `codegen-units = 1`, debuginfo stripped)
 - linked, dead-stripped Swift harness: 7.8 MB (macOS), 7.7 MB (iOS sim);
   a trivial Swift CLI baseline with the same flags is 51 KB, so the

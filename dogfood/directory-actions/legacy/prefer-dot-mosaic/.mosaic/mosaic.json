@@ -1,0 +1,31 @@
+{
+  "actions": {
+    "mosaic.newTerminal": {
+      "type": "command",
+      "title": "Dot MOSAIC Wins",
+      "subtitle": "Same-directory .mosaic/mosaic.json should beat mosaic.json",
+      "command": "echo 'DOT MOSAIC WINS'; echo 'SOURCE=legacy/prefer-dot-mosaic/.mosaic/mosaic.json'; pwd",
+      "target": "newTabInCurrentPane",
+      "shortcut": "cmd+shift+4",
+      "icon": { "type": "image", "path": "./icons/winner-terminal.svg" }
+    },
+    "winner.echo": {
+      "type": "command",
+      "title": "Winner Echo",
+      "subtitle": "If you see this, .mosaic precedence is working",
+      "command": "echo 'WINNER ECHO'; echo 'SOURCE=legacy/prefer-dot-mosaic/.mosaic/mosaic.json'; pwd",
+      "target": "newTabInCurrentPane",
+      "shortcut": "cmd+shift+p",
+      "icon": { "type": "emoji", "value": "🏆" }
+    }
+  },
+  "ui": {
+    "surfaceTabBar": {
+      "buttons": [
+        "mosaic.newTerminal",
+        "winner.echo",
+        "mosaic.newBrowser"
+      ]
+    }
+  }
+}

@@ -49,7 +49,7 @@ async function fetchWithTimeout(url, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) 
 
 function vercelCurlFetch(url, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const parsed = new URL(url);
-  const scratch = mkdtempSync(path.join(tmpdir(), "cmux-vercel-curl-"));
+  const scratch = mkdtempSync(path.join(tmpdir(), "mosaic-vercel-curl-"));
   const responsePath = path.join(scratch, "response.txt");
   const bodyPath = path.join(scratch, "body.txt");
   const configPath = path.join(scratch, "curl.conf");
@@ -115,11 +115,11 @@ try {
   const app = new StackServerApp({ projectId, publishableClientKey, secretServerKey });
   const suffix = `${Date.now()}-${randomBytes(3).toString("hex")}`;
   user = await app.createUser({
-    primaryEmail: `cmux-${project.stackLabel}-smoke+${suffix}@emergent.inc.dev`,
+    primaryEmail: `mosaic-${project.stackLabel}-smoke+${suffix}@emergent.inc.dev`,
     primaryEmailVerified: true,
     primaryEmailAuthEnabled: true,
     password: randomBytes(24).toString("base64url"),
-    displayName: `cmux ${project.stackLabel} smoke`,
+    displayName: `mosaic ${project.stackLabel} smoke`,
   });
 
   const session = await user.createSession({ expiresInMillis: 20 * 60 * 1000, isImpersonation: true });

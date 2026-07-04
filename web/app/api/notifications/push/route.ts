@@ -25,9 +25,9 @@ export const runtime = "nodejs"; // http2 + node:crypto, not edge
 export const dynamic = "force-dynamic";
 
 function apnsConfig(): ApnsConfig | null {
-  const keyP8 = env.CMUX_APNS_KEY_P8;
-  const keyId = env.CMUX_APNS_KEY_ID;
-  const teamId = env.CMUX_APNS_TEAM_ID;
+  const keyP8 = env.MOSAIC_APNS_KEY_P8;
+  const keyId = env.MOSAIC_APNS_KEY_ID;
+  const teamId = env.MOSAIC_APNS_TEAM_ID;
   if (!keyP8 || !keyId || !teamId) return null;
   return { keyP8, keyId, teamId };
 }
@@ -53,8 +53,8 @@ async function sendPush(request: Request): Promise<Response> {
   const user = await verifyRequest(request, { allowCookie: false });
   if (!user) return unauthorized();
 
-  if (process.env.VERCEL === "1" && env.CMUX_PUSH_RATE_LIMIT_ID) {
-    const { error, rateLimited } = await checkRateLimit(env.CMUX_PUSH_RATE_LIMIT_ID, {
+  if (process.env.VERCEL === "1" && env.MOSAIC_PUSH_RATE_LIMIT_ID) {
+    const { error, rateLimited } = await checkRateLimit(env.MOSAIC_PUSH_RATE_LIMIT_ID, {
       request,
       rateLimitKey: user.id,
     });
@@ -65,7 +65,7 @@ async function sendPush(request: Request): Promise<Response> {
       });
     }
     if (error === "not-found") {
-      console.error("notifications.push.rate_limit_not_found", env.CMUX_PUSH_RATE_LIMIT_ID);
+      console.error("notifications.push.rate_limit_not_found", env.MOSAIC_PUSH_RATE_LIMIT_ID);
     }
   }
 

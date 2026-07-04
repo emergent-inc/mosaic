@@ -21,8 +21,8 @@ describe("docs search utilities", () => {
   test("prefers section-level Pagefind matches", () => {
     const result = normalizeDocsSearchResult({
       url: "/docs/configuration/",
-      excerpt: "Configure <mark>cmux</mark>.",
-      plain_excerpt: "Configure cmux.",
+      excerpt: "Configure <mark>mosaic</mark>.",
+      plain_excerpt: "Configure mosaic.",
       meta: {
         title: "Configuration",
         section: "Docs",
@@ -31,15 +31,15 @@ describe("docs search utilities", () => {
         {
           title: "Configuration",
           url: "/docs/configuration/#title",
-          excerpt: "Configure <mark>cmux</mark>.",
-          plain_excerpt: "Configure cmux.",
+          excerpt: "Configure <mark>mosaic</mark>.",
+          plain_excerpt: "Configure mosaic.",
           weighted_locations: [{ balanced_score: 100 }],
         },
         {
           title: "Keyboard shortcuts",
           url: "/docs/configuration/#keyboard-shortcuts",
-          excerpt: "Set <mark>shortcuts</mark> in cmux.json.",
-          plain_excerpt: "Set shortcuts in cmux.json.",
+          excerpt: "Set <mark>shortcuts</mark> in mosaic.json.",
+          plain_excerpt: "Set shortcuts in mosaic.json.",
           weighted_locations: [{ balanced_score: 1000 }],
         },
       ],
@@ -49,8 +49,8 @@ describe("docs search utilities", () => {
       href: "/docs/configuration#keyboard-shortcuts",
       title: "Keyboard shortcuts",
       section: "Docs",
-      excerptHtml: "Set <mark>shortcuts</mark> in cmux.json.",
-      plainExcerpt: "Set shortcuts in cmux.json.",
+      excerptHtml: "Set <mark>shortcuts</mark> in mosaic.json.",
+      plainExcerpt: "Set shortcuts in mosaic.json.",
     });
   });
 

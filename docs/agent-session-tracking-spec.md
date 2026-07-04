@@ -2,12 +2,12 @@
 
 Status: DRAFT, living doc. Owner: Aziz. Last updated: 2026-06-22.
 
-Tracks the redesign of how cmux tracks whether a terminal surface has a coding
+Tracks the redesign of how mosaic tracks whether a terminal surface has a coding
 agent (Claude Code / Codex) session, for the iOS GUI ("coding agent") mode.
 
 ## Goal
 
-The iOS GUI must reliably know, for any cmux surface: is there an agent session,
+The iOS GUI must reliably know, for any mosaic surface: is there an agent session,
 what is its live state, and where is its transcript. "Reliably" is the whole
 point. No heuristic that can show the wrong conversation or none.
 
@@ -16,7 +16,7 @@ point. No heuristic that can show the wrong conversation or none.
 1. **Single source of truth.** One authoritative `AgentSession` record per
    surface, on the Mac. Everything else derives from it.
 2. **Deterministic binding, no heuristics.** Surface to session binding is
-   established by construction at terminal/agent start, keyed by a cmux-minted
+   established by construction at terminal/agent start, keyed by a mosaic-minted
    token. Never from terminal-title string matching. Never from newest-file-by-
    mtime scans. Never from any signal that can mis-attribute.
 3. **No unreliable fallback.** If the reliable path has a gap, close the gap in
@@ -43,38 +43,38 @@ point. No heuristic that can show the wrong conversation or none.
 The reliable binding mechanism ALREADY EXISTS; the heuristic layer was redundant.
 
 Env token, unconditional. Every local terminal surface injects
-`CMUX_SURFACE_ID` / `CMUX_WORKSPACE_ID` / `CMUX_PANEL_ID` / `CMUX_TAB_ID` as
+`MOSAIC_SURFACE_ID` / `MOSAIC_WORKSPACE_ID` / `MOSAIC_PANEL_ID` / `MOSAIC_TAB_ID` as
 PROTECTED env keys at spawn (`TerminalSurface+StartupEnvironment.swift:45-62`,
-`applyManagedCmuxContextEnvironment`). Remote shells inject the same via
+`applyManagedMosaicContextEnvironment`). Remote shells inject the same via
 placeholder substitution (`RemoteInteractiveShellBootstrapBuilder.swift:191-196`).
-So a hand-typed `claude`/`codex` in any cmux terminal already inherits the
+So a hand-typed `claude`/`codex` in any mosaic terminal already inherits the
 surface token.
 
-Hook surface resolution is multi-signal and cmux-owned
-(`CLI/cmux.swift:22901-22935`, `resolveCallerTerminalBindingByTTY:24336`,
+Hook surface resolution is multi-signal and mosaic-owned
+(`CLI/mosaic.swift:22901-22935`, `resolveCallerTerminalBindingByTTY:24336`,
 `resolveAgentProcessTerminalBinding:24343`, `resolveTerminalBinding:24419`).
 A fired hook resolves its surface by, in order:
 1. explicit `--workspace` / `--surface` flags,
-2. inherited env `CMUX_SURFACE_ID` / `CMUX_WORKSPACE_ID`,
+2. inherited env `MOSAIC_SURFACE_ID` / `MOSAIC_WORKSPACE_ID`,
 3. tty -> surface: the agent's controlling tty matched against the app's
    `debug.terminals` table (`tty` -> `surface_id`),
 4. process-tree: the agent pid found under a surface's `top_level_pids` /
    process tree via `system.top`.
 Signals 3 and 4 need no env at all; they map the agent's real tty/pid to the
-surface cmux owns. This is the deterministic binding the redesign blesses.
+surface mosaic owns. This is the deterministic binding the redesign blesses.
 
 Entrypoint coverage (each ends with a hook whose surface resolves by the above):
-- `cmux claude-teams` / hand-typed `claude`: COVERED. Hooks injected via
-  `--settings` by `cmux-claude-wrapper`; env inherited; tty/pid backstop.
-- `cmux new-surface --type agent-session` (UI/CLI): COVERED. App injects
-  `CMUX_SURFACE_ID` into the launch env (`AppDelegate.swift:6256`).
+- `mosaic claude-teams` / hand-typed `claude`: COVERED. Hooks injected via
+  `--settings` by `mosaic-claude-wrapper`; env inherited; tty/pid backstop.
+- `mosaic new-surface --type agent-session` (UI/CLI): COVERED. App injects
+  `MOSAIC_SURFACE_ID` into the launch env (`AppDelegate.swift:6256`).
 - Session restore, fork-session, remote/ssh: COVERED (env + tty/pid).
 - `codex` (bare or `codex-teams`): PARTIAL. No `--settings`-style auto-inject
-  wrapper; relies on `cmux hooks setup codex` having installed `~/.codex` hooks.
+  wrapper; relies on `mosaic hooks setup codex` having installed `~/.codex` hooks.
   Once installed, the fired hook resolves the surface identically. GAP = ensure
   setup ran; not a per-launch binding gap.
-- Degraded mode: `cmux-claude-wrapper` execs claude WITHOUT hook injection when
-  the socket ping fails (`cmux-claude-wrapper:414`). Acceptable: the agent still
+- Degraded mode: `mosaic-claude-wrapper` execs claude WITHOUT hook injection when
+  the socket ping fails (`mosaic-claude-wrapper:414`). Acceptable: the agent still
   runs; we simply do not track it until the socket returns and the next
   hook/pull reconciles. Never a correctness hole, only staleness.
 
@@ -85,43 +85,43 @@ genuine launch-path gap.
 
 ## The binding: surface resolution at hook time (already reliable)
 
-cmux owns every cmux terminal's environment. When it spawns a surface's shell,
+mosaic owns every mosaic terminal's environment. When it spawns a surface's shell,
 it injects:
 
-- `CMUX_SURFACE_ID` — stable, cmux-owned, the binding key.
-- `CMUX_WORKSPACE_ID`.
-- the agent hook config, so `cmux hooks <agent> <event>` fires for any agent
+- `MOSAIC_SURFACE_ID` — stable, mosaic-owned, the binding key.
+- `MOSAIC_WORKSPACE_ID`.
+- the agent hook config, so `mosaic hooks <agent> <event>` fires for any agent
   started in that shell and carries the surface token.
 
-Because the token lives at the shell/env layer (which cmux always controls for
+Because the token lives at the shell/env layer (which mosaic always controls for
 its own terminals), even a hand-typed `claude`/`codex` inherits it and its hooks
 bind to the correct surface. This is what lets us delete the title/mtime
-fallback: there is no gap for a cmux-owned surface. An agent in a terminal cmux
-does NOT own (ssh/remote/external) is not a cmux surface and has nothing to show
+fallback: there is no gap for a mosaic-owned surface. An agent in a terminal mosaic
+does NOT own (ssh/remote/external) is not a mosaic surface and has nothing to show
 in GUI mode, so no fallback is needed.
 
-Open task: enumerate every way an agent can start in a cmux surface (new-agent
+Open task: enumerate every way an agent can start in a mosaic surface (new-agent
 action, CLI, fork-agent, restored session, hand-typed in shell) and confirm each
 inherits the surface env token + hook config. This audit is the prerequisite for
 deleting the heuristics. See "First PR" below.
 
-## Identity and the binding key (durability of cmux IDs)
+## Identity and the binding key (durability of mosaic IDs)
 
 Reality today (evidence: `Sources/Workspace.swift`, `Sources/TabManager.swift`):
 
-- **Surface id** (`CMUX_SURFACE_ID` / `CMUX_PANEL_ID`; == panel id == ghostty
+- **Surface id** (`MOSAIC_SURFACE_ID` / `MOSAIC_PANEL_ID`; == panel id == ghostty
   surface id): persisted in the session snapshot and, since a recent fix
   (commit `44dc053e`, 2026-06-12), REUSED verbatim on restore so agent bindings
   survive relaunch (`Workspace.swift:1340`). Regenerated ONLY on collision: when
   a live surface already holds that id (restore-into-a-running-instance,
   duplicate-workspace). On a normal quit-then-reopen there is no collision, so
   it is stable.
-- **Workspace id** (`CMUX_WORKSPACE_ID` / `CMUX_TAB_ID`): ALWAYS regenerated on
+- **Workspace id** (`MOSAIC_WORKSPACE_ID` / `MOSAIC_TAB_ID`): ALWAYS regenerated on
   restore. Restore builds a brand-new Workspace via the normal initializer
   (`UUID()`); the saved id is kept only to remap closed-panel history
   (`TabManager.swift:5963`), never rehydrated as the live id.
 - **Pane id**: internal, layout-only, not persisted, not an env var.
-- **Window**: OS-managed (`NSWindow`), not a cmux model identity.
+- **Window**: OS-managed (`NSWindow`), not a mosaic model identity.
 
 Why they change: session restore reconstructs the object graph through standard
 initializers, each minting a fresh `UUID()`. Only the surface id was
@@ -138,7 +138,7 @@ Consequence for this design:
   restore, never re-minted. The recent reuse fix is the right direction; this
   design depends on it AND requires closing the collision-regeneration hole
   (handle restore-into-live by not duplicating the surface rather than by
-  re-id'ing it), so `CMUX_SURFACE_ID` is invariant for a terminal's whole life.
+  re-id'ing it), so `MOSAIC_SURFACE_ID` is invariant for a terminal's whole life.
 - Do NOT key the binding on workspace id. It is volatile across relaunch.
   `workspaceID` is a mutable ATTRIBUTE of the AgentSession (for filtering /
   display), refreshed from hook events, never the identity.
@@ -153,13 +153,13 @@ with a single authoritative record, keyed by surface:
 
 ```
 AgentSession {
-  surfaceID        // binding key, stable, cmux-owned
+  surfaceID        // binding key, stable, mosaic-owned
   workspaceID
   agentKind        // claude | codex
   sessionID        // from the first hook event for this surface token
   transcriptPath   // recorded from the hook; never guessed
   state            // launching | idle | working | needsInput | ended
-  pid              // process cmux spawned (or adopted via the env token)
+  pid              // process mosaic spawned (or adopted via the env token)
   version          // monotonically increasing; bumped on every change
   lastActivityAt
 }
@@ -173,7 +173,7 @@ AgentSession {
 ## State source: hook events tied to the token
 
 State transitions come from exactly one channel: agent hook events over the
-socket, each carrying `CMUX_SURFACE_ID`, so each event maps unambiguously to one
+socket, each carrying `MOSAIC_SURFACE_ID`, so each event maps unambiguously to one
 AgentSession. No reconciliation across same-cwd sessions, no "which one is this."
 
 State machine (from the existing `nextState`):
@@ -197,7 +197,7 @@ This is the core of "super reliable" and "voluntarily readable."
   source of truth.
 - `version` increments on every state or binding change.
 - Backstops that do NOT depend on hook delivery:
-  - **Owned-process exit.** cmux spawned (or adopted) the agent pid, so a child
+  - **Owned-process exit.** mosaic spawned (or adopted) the agent pid, so a child
     `terminationHandler` / `waitpid` gives `ended` deterministically even if the
     `sessionEnd` hook never arrives. This replaces the `kill(pid,0)` polling
     sweep.
@@ -262,7 +262,7 @@ panel UUIDs and re-consults the JSON store to re-bind):
 
 - Persist the per-surface AgentSession keyed by the stable surface token.
 - On restore, re-attach by token (the live agent process still carries
-  `CMUX_SURFACE_ID`; cmux can re-adopt the pid it owns), or mark `ended` if the
+  `MOSAIC_SURFACE_ID`; mosaic can re-adopt the pid it owns), or mark `ended` if the
   process is gone. Deterministic either way.
 
 ## What gets deleted
@@ -272,7 +272,7 @@ panel UUIDs and re-consults the JSON store to re-bind):
 - `newestClaudeTranscript` + the `excludingSessionIDs` / forced-retry / claim
   machinery, the `$HOME` junk-drawer guard, the `/tmp` vs `/private/tmp`
   cwd-encoding gymnastics.
-- `~/.cmuxterm/<agent>-hook-sessions.json` as a read-side source of truth (it may
+- `~/.mosaicterm/<agent>-hook-sessions.json` as a read-side source of truth (it may
   remain a CLI-side scratch artifact, but the app stops reading it on the hot
   path).
 - the 30s store-read throttle (no store reads on the hot path; state was always
@@ -319,11 +319,11 @@ reviewable slices. Each runtime slice ends in a tagged build + dogfood handoff
   the composer when `agentState == .ended`). That feature only needed `ended`
   set RELIABLY, which this watcher now guarantees. So the user's "track ended to
   disable the input bar" requirement is satisfied by existing UI + Slice B; no
-  new iOS UI needed. Design: cmux does NOT own a
+  new iOS UI needed. Design: mosaic does NOT own a
   `Process` handle for a terminal agent (the agent is a child in the pty), so
   there is no `terminationHandler` to hook. The deterministic signal is a
   `DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)` watcher
-  on the agent pid cmux already knows (from hook events / the store). On `.exit`,
+  on the agent pid mosaic already knows (from hook events / the store). On `.exit`,
   hop to the main actor and flip to `.ended` ONLY if the exited pid is still the
   record's current pid (so a `claude --resume` under a new pid is not ended by
   its predecessor's exit). Register/refresh the watcher wherever a record's pid
@@ -357,7 +357,7 @@ reviewable slices. Each runtime slice ends in a tagged build + dogfood handoff
     `~/.codex/config.toml` trust entries + `hooks.json` at launch — a standing
     modification to external tooling config that should not be done silently and
     warrants its own PR. Codex is tracked today for anyone who ran
-    `cmux hooks setup` (the existing onboarding step). Safe future options: an
+    `mosaic hooks setup` (the existing onboarding step). Safe future options: an
     explicit "install codex hooks" affordance, or a one-line launch hint when a
     codex agent starts without hooks installed.
 - **Slice C — Off-main parsing.** Move the hook-store JSON read off `@MainActor`
@@ -366,25 +366,25 @@ reviewable slices. Each runtime slice ends in a tagged build + dogfood handoff
 - **Slice D — Delete the unreliable heuristics. IN PROGRESS.** Remove
   `AgentChatTranscriptService+TitleDetection.swift`, `newestClaudeTranscript` +
   the claim/forced-retry machinery, provisional surface-keyed sessions, and the
-  title-key helpers. REVISED SCOPE: the hook-store stays — it is cmux-written,
+  title-key helpers. REVISED SCOPE: the hook-store stays — it is mosaic-written,
   deterministic binding data (the registry's persistence/seed layer), not an
   unreliable guess like titles/mtime; its main-actor read is a threading concern
   (Slice C: move off-main), not a deletion. The `kill(pid,0)` sweep was already
   removed in Slice B. Transcript resolution by recorded path / exact session id
   stays (reliable). Gated for MERGE on the A-B dogfood; implemented on-branch.
 - **Slice E — Surface-id invariance (only if needed).** Close the collision
-  regeneration (restore-into-live / duplicate-workspace) so `CMUX_SURFACE_ID` is
+  regeneration (restore-into-live / duplicate-workspace) so `MOSAIC_SURFACE_ID` is
   invariant; extend verbatim-rehydrate to non-terminal panels if the GUI uses an
   `agent-session` panel surface. Touch points:
   `Workspace.swift:1347-1348,1421,1435,1446,1470`, `*Panel.swift` inits.
   Deferred unless a concrete relaunch-rebinding bug demands it; the
   terminal-agent model rehydrates verbatim on normal relaunch already.
-- **Slice F — Codex parity.** Guarantee `cmux hooks setup codex` is in effect so
+- **Slice F — Codex parity.** Guarantee `mosaic hooks setup codex` is in effect so
   codex hooks fire and resolve the surface like claude.
 
 ## Verification
 
-- Build/compile via tagged `-derivedDataPath /tmp/cmux-<tag>` (never untagged).
+- Build/compile via tagged `-derivedDataPath /tmp/mosaic-<tag>` (never untagged).
 - Tests run on AWS M4 Pro or GitHub Actions, never locally (test host launches a
   `Mosaic DEV` app).
 - Each runtime slice: tagged reload + dogfood handoff with prior-bad vs expected

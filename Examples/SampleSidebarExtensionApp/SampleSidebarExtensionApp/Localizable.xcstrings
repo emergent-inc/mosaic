@@ -6,7 +6,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep this app installed. In cmux, open Sidebar Extensions, enable CMUX Sample Sidebar Extension, choose it from the sidebar picker, and confirm Workspace Signals shows your real workspaces."
+            "value": "Keep this app installed. In mosaic, open Sidebar Extensions, enable MOSAIC Sample Sidebar Extension, choose it from the sidebar picker, and confirm Workspace Signals shows your real workspaces."
           }
         }
       }
@@ -16,7 +16,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Extension ID: co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension"
+            "value": "Extension ID: co.emergent.inc.MosaicExtKitSampleSidebarApp.Extension"
           }
         }
       }
@@ -36,7 +36,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX Sample Sidebar Extension"
+            "value": "MOSAIC Sample Sidebar Extension"
           }
         }
       }

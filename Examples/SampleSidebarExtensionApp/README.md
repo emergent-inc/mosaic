@@ -1,6 +1,6 @@
-# CMUX Sample Sidebar Extension
+# MOSAIC Sample Sidebar Extension
 
-This is a standalone macOS app that embeds a CMUX sidebar ExtensionKit app extension. It is the reference project for third-party sidebar authors.
+This is a standalone macOS app that embeds a MOSAIC sidebar ExtensionKit app extension. It is the reference project for third-party sidebar authors.
 
 ## Build and Enable
 
@@ -8,17 +8,17 @@ This is a standalone macOS app that embeds a CMUX sidebar ExtensionKit app exten
 2. Select the app and extension targets.
 3. Replace the emergent.inc signing team with your own team.
 4. Replace the app and extension bundle identifiers with your own reverse-DNS identifiers.
-5. Keep the extension point identifier as `mosaic.com.emergent.app.cmux.sidebar`.
+5. Keep the extension point identifier as `mosaic.com.emergent.app.mosaic.sidebar`.
 6. Build and launch the containing app once.
-7. In CMUX, click the puzzle button next to the sidebar help button, open Sidebar Extensions, and enable the sample.
+7. In MOSAIC, click the puzzle button next to the sidebar help button, open Sidebar Extensions, and enable the sample.
 8. In the same puzzle menu, choose the extension sidebar provider.
-9. In the extension sidebar header, choose `CMUX ExtKit Sample Sidebar` if more than one sidebar extension is enabled.
+9. In the extension sidebar header, choose `MOSAIC ExtKit Sample Sidebar` if more than one sidebar extension is enabled.
 
-The sample targets macOS 14+, matching CMUX.
+The sample targets macOS 14+, matching MOSAIC.
 
 ## What It Shows
 
-The extension renders real workspace data supplied by CMUX:
+The extension renders real workspace data supplied by MOSAIC:
 
 - workspace count
 - unread total
@@ -34,15 +34,15 @@ It does not use fake workspaces. The sample requests workspace metadata, surface
 ## Authoring Pattern
 
 The sample's `@main` ExtensionKit entrypoint conforms directly to
-`CmuxSidebarExtension`. App-specific state lives in `SidebarConnectionModel`. CMUX
+`MosaicSidebarExtension`. App-specific state lives in `SidebarConnectionModel`. MOSAIC
 delivers workspace updates through `update(context:)`, and the model uses the typed
 host helpers for actions:
 
 ```swift
 @main
 @MainActor
-final class SampleSidebarExtension: CmuxSidebarExtension {
-    static let manifest = CmuxExtensionManifest(...)
+final class SampleSidebarExtension: MosaicSidebarExtension {
+    static let manifest = MosaicExtensionManifest(...)
     private let model = SidebarConnectionModel()
 
     required init() {}
@@ -51,7 +51,7 @@ final class SampleSidebarExtension: CmuxSidebarExtension {
         SampleSidebarView(model: model)
     }
 
-    func update(context: CmuxSidebarContext) {
+    func update(context: MosaicSidebarContext) {
         model.update(context: context)
     }
 }
@@ -59,10 +59,10 @@ final class SampleSidebarExtension: CmuxSidebarExtension {
 @Observable
 @MainActor
 final class SidebarConnectionModel {
-    private(set) var snapshot: CmuxSidebarSnapshot?
-    private var host: CmuxSidebarHost?
+    private(set) var snapshot: MosaicSidebarSnapshot?
+    private var host: MosaicSidebarHost?
 
-    func update(context: CmuxSidebarContext) {
+    func update(context: MosaicSidebarContext) {
         snapshot = context.snapshot
         host = context.host
     }
@@ -81,19 +81,19 @@ final class SidebarConnectionModel {
 }
 ```
 
-`CmuxSidebarExtension` owns the ExtensionKit scene and XPC connection, so extension
+`MosaicSidebarExtension` owns the ExtensionKit scene and XPC connection, so extension
 authors do not define `configuration`, bind an extension point in Swift, or touch
 `NSXPCConnection`.
 
-`CmuxSidebarContext` exposes one typed host channel through `context.host`.
+`MosaicSidebarContext` exposes one typed host channel through `context.host`.
 
-The manifest is the permission request CMUX shows to users. Request only the scopes
+The manifest is the permission request MOSAIC shows to users. Request only the scopes
 your sidebar actually needs.
 
 ## Troubleshooting
 
-If the extension does not appear in CMUX, launch the containing app once, then reopen CMUX's Sidebar Extensions browser.
+If the extension does not appear in MOSAIC, launch the containing app once, then reopen MOSAIC's Sidebar Extensions browser.
 
 If it appears but cannot be enabled, check signing on both the containing app and the embedded appex.
 
-If it loads but row clicks do not select workspaces, open the CMUX extension details popover and grant the requested action.
+If it loads but row clicks do not select workspaces, open the MOSAIC extension details popover and grant the requested action.

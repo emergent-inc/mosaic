@@ -64,8 +64,8 @@ enum RightSidebarChromeUITestRecorder {
 #if DEBUG
     private static func dataPath() -> String? {
         let env = ProcessInfo.processInfo.environment
-        guard env["CMUX_UI_TEST_BONSPLIT_TAB_DRAG_SETUP"] == "1",
-              let path = env["CMUX_UI_TEST_BONSPLIT_TAB_DRAG_PATH"],
+        guard env["MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_SETUP"] == "1",
+              let path = env["MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_PATH"],
               !path.isEmpty else {
             return nil
         }

@@ -13,24 +13,24 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
-DOCKER_SSH_HOST = os.environ.get("CMUX_SSH_TEST_DOCKER_HOST", "127.0.0.1")
-DOCKER_PUBLISH_ADDR = os.environ.get("CMUX_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
+DOCKER_SSH_HOST = os.environ.get("MOSAIC_SSH_TEST_DOCKER_HOST", "127.0.0.1")
+DOCKER_PUBLISH_ADDR = os.environ.get("MOSAIC_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if check and proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc
 
 
@@ -44,7 +44,7 @@ def _docker_available() -> bool:
 def _parse_host_port(docker_port_output: str) -> int:
     text = docker_port_output.strip()
     if not text:
-        raise cmuxError("docker port output was empty")
+        raise mosaicError("docker port output was empty")
     return int(text.split(":")[-1])
 
 
@@ -80,10 +80,10 @@ def _wait_for_ssh(host: str, host_port: int, key_path: Path, timeout: float = 20
         if probe.returncode == 0 and "ready" in probe.stdout:
             return
         time.sleep(0.5)
-    raise cmuxError("Timed out waiting for SSH server in docker fixture to become ready")
+    raise mosaicError("Timed out waiting for SSH server in docker fixture to become ready")
 
 
-def _wait_for_remote_connected(client: cmux, workspace_id: str, timeout: float = 45.0) -> dict:
+def _wait_for_remote_connected(client: mosaic, workspace_id: str, timeout: float = 45.0) -> dict:
     deadline = time.time() + timeout
     last_status: dict = {}
     while time.time() < deadline:
@@ -98,7 +98,7 @@ def _wait_for_remote_connected(client: cmux, workspace_id: str, timeout: float =
         ):
             return last_status
         time.sleep(0.5)
-    raise cmuxError(f"Remote did not converge to connected/ready under slow login profile: {last_status}")
+    raise mosaicError(f"Remote did not converge to connected/ready under slow login profile: {last_status}")
 
 
 def _heartbeat_count(status: dict) -> int:
@@ -111,7 +111,7 @@ def _heartbeat_count(status: dict) -> int:
         return 0
 
 
-def _wait_for_heartbeat_advance(client: cmux, workspace_id: str, minimum_count: int, timeout: float = 20.0) -> dict:
+def _wait_for_heartbeat_advance(client: mosaic, workspace_id: str, minimum_count: int, timeout: float = 20.0) -> dict:
     deadline = time.time() + timeout
     last_status: dict = {}
     while time.time() < deadline:
@@ -119,7 +119,7 @@ def _wait_for_heartbeat_advance(client: cmux, workspace_id: str, minimum_count: 
         if _heartbeat_count(last_status) >= minimum_count:
             return last_status
         time.sleep(0.5)
-    raise cmuxError(
+    raise mosaicError(
         f"Remote heartbeat did not advance to >= {minimum_count} within {timeout:.1f}s: {last_status}"
     )
 
@@ -133,9 +133,9 @@ def main() -> int:
     fixture_dir = repo_root / "tests" / "fixtures" / "ssh-remote"
     _must(fixture_dir.is_dir(), f"Missing docker fixture directory: {fixture_dir}")
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="cmux-ssh-bootstrap-nonlogin-"))
-    image_tag = f"cmux-ssh-test:{secrets.token_hex(4)}"
-    container_name = f"cmux-ssh-bootstrap-nonlogin-{secrets.token_hex(4)}"
+    temp_dir = Path(tempfile.mkdtemp(prefix="mosaic-ssh-bootstrap-nonlogin-"))
+    image_tag = f"mosaic-ssh-test:{secrets.token_hex(4)}"
+    container_name = f"mosaic-ssh-bootstrap-nonlogin-{secrets.token_hex(4)}"
     workspace_id = ""
 
     try:
@@ -181,7 +181,7 @@ chmod 0644 "$HOME/.profile"
             check=True,
         )
 
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             created = client._call("workspace.create", {"initial_command": "echo ssh-bootstrap-nonlogin"})
             workspace_id = str((created or {}).get("workspace_id") or "")
             _must(bool(workspace_id), f"workspace.create did not return workspace_id: {created}")
@@ -245,7 +245,7 @@ chmod 0644 "$HOME/.profile"
     finally:
         if workspace_id:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id)
             except Exception:
                 pass

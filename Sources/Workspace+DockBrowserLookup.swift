@@ -1,5 +1,5 @@
 import AppKit
-import CmuxCore
+import MosaicCore
 
 extension Workspace {
     func browserPanelIncludingDock(for panelId: UUID) -> BrowserPanel? {
@@ -116,7 +116,7 @@ extension DockSplitStore {
             guard let self, let panel else { return }
             guard self.browserPanel(for: panel.id) === panel else { return }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "dock.browser.close.requestedByPage ws=\(self.workspaceId.uuidString.prefix(5)) " +
                 "panel=\(panel.id.uuidString.prefix(5))"
             )

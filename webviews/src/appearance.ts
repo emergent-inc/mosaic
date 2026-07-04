@@ -39,7 +39,7 @@ const defaultLightTheme: DiffViewerTheme = {
   background: "#ffffff",
   foreground: "#000000",
   ghosttyName: "Apple System Colors Light",
-  name: "cmux-ghostty-light",
+  name: "mosaic-ghostty-light",
   palette: {},
   selectionBackground: "#abd8ff",
   selectionForeground: "#000000",
@@ -50,7 +50,7 @@ const defaultDarkTheme: DiffViewerTheme = {
   background: "#000000",
   foreground: "#ffffff",
   ghosttyName: "Apple System Colors",
-  name: "cmux-ghostty-dark",
+  name: "mosaic-ghostty-dark",
   palette: {},
   selectionBackground: "#3f638b",
   selectionForeground: "#ffffff",
@@ -70,8 +70,8 @@ export function resolveDiffViewerAppearance(appearance?: DiffViewerAppearance): 
     fontSize: metric(appearance?.fontSize, 10),
     lineHeight: metric(appearance?.lineHeight, 20),
     theme: {
-      light: appearance?.theme?.light ?? lightTheme.name ?? "cmux-ghostty-light",
-      dark: appearance?.theme?.dark ?? darkTheme.name ?? "cmux-ghostty-dark",
+      light: appearance?.theme?.light ?? lightTheme.name ?? "mosaic-ghostty-light",
+      dark: appearance?.theme?.dark ?? darkTheme.name ?? "mosaic-ghostty-dark",
     },
     themes: {
       light: lightTheme,
@@ -89,26 +89,26 @@ export function applyDiffViewerAppearance(appearance?: DiffViewerAppearance) {
   const darkTheme = appearance.themes?.dark ?? {};
   const rootStyle = document.documentElement.style;
 
-  // `--cmux-diff-bg` stays opaque: it is the base color the page blends against
+  // `--mosaic-diff-bg` stays opaque: it is the base color the page blends against
   // for text, borders, and floating overlays (menus).
-  rootStyle.setProperty("--cmux-diff-bg-light", colorString(lightTheme.background, "#ffffff"));
-  rootStyle.setProperty("--cmux-diff-bg-dark", colorString(darkTheme.background, "#000000"));
+  rootStyle.setProperty("--mosaic-diff-bg-light", colorString(lightTheme.background, "#ffffff"));
+  rootStyle.setProperty("--mosaic-diff-bg-dark", colorString(darkTheme.background, "#000000"));
   // The diff viewer page stays transparent. The native browser panel behind
   // the WebView owns the themed fill for opaque terminal themes, while clear
   // terminal themes can show the window backdrop through the same path.
-  rootStyle.setProperty("--cmux-diff-surface-fill-light", "transparent");
-  rootStyle.setProperty("--cmux-diff-surface-fill-dark", "transparent");
-  rootStyle.setProperty("--cmux-diff-fg-light", colorString(lightTheme.foreground, "#000000"));
-  rootStyle.setProperty("--cmux-diff-fg-dark", colorString(darkTheme.foreground, "#ffffff"));
-  rootStyle.setProperty("--cmux-diff-addition-fg-light", semanticPaletteColor(lightTheme, ["10", "2"], "#257a3e"));
-  rootStyle.setProperty("--cmux-diff-addition-fg-dark", semanticPaletteColor(darkTheme, ["10", "2"], "#8fd88f"));
-  rootStyle.setProperty("--cmux-diff-deletion-fg-light", semanticPaletteColor(lightTheme, ["9", "1"], "#b42318"));
-  rootStyle.setProperty("--cmux-diff-deletion-fg-dark", semanticPaletteColor(darkTheme, ["9", "1"], "#ff8a80"));
-  rootStyle.setProperty("--cmux-diff-selection-bg-light", colorString(lightTheme.selectionBackground, "#abd8ff"));
-  rootStyle.setProperty("--cmux-diff-selection-bg-dark", colorString(darkTheme.selectionBackground, "#3f638b"));
-  rootStyle.setProperty("--cmux-diff-code-font-family", codeFontFamily(appearance.fontFamily));
-  rootStyle.setProperty("--cmux-diff-font-size", `${metric(appearance.fontSize, 10)}px`);
-  rootStyle.setProperty("--cmux-diff-line-height", `${metric(appearance.lineHeight, 20)}px`);
+  rootStyle.setProperty("--mosaic-diff-surface-fill-light", "transparent");
+  rootStyle.setProperty("--mosaic-diff-surface-fill-dark", "transparent");
+  rootStyle.setProperty("--mosaic-diff-fg-light", colorString(lightTheme.foreground, "#000000"));
+  rootStyle.setProperty("--mosaic-diff-fg-dark", colorString(darkTheme.foreground, "#ffffff"));
+  rootStyle.setProperty("--mosaic-diff-addition-fg-light", semanticPaletteColor(lightTheme, ["10", "2"], "#257a3e"));
+  rootStyle.setProperty("--mosaic-diff-addition-fg-dark", semanticPaletteColor(darkTheme, ["10", "2"], "#8fd88f"));
+  rootStyle.setProperty("--mosaic-diff-deletion-fg-light", semanticPaletteColor(lightTheme, ["9", "1"], "#b42318"));
+  rootStyle.setProperty("--mosaic-diff-deletion-fg-dark", semanticPaletteColor(darkTheme, ["9", "1"], "#ff8a80"));
+  rootStyle.setProperty("--mosaic-diff-selection-bg-light", colorString(lightTheme.selectionBackground, "#abd8ff"));
+  rootStyle.setProperty("--mosaic-diff-selection-bg-dark", colorString(darkTheme.selectionBackground, "#3f638b"));
+  rootStyle.setProperty("--mosaic-diff-code-font-family", codeFontFamily(appearance.fontFamily));
+  rootStyle.setProperty("--mosaic-diff-font-size", `${metric(appearance.fontSize, 10)}px`);
+  rootStyle.setProperty("--mosaic-diff-line-height", `${metric(appearance.lineHeight, 20)}px`);
 }
 
 export function appearanceBackgroundColor(_color: unknown, _appearance?: DiffViewerAppearance) {

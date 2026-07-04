@@ -1,5 +1,5 @@
 import AppKit
-import CmuxWorkspaces
+import MosaicWorkspaces
 import Foundation
 
 // MARK: - Mobile workspace list (iOS-facing payloads)

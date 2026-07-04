@@ -1,8 +1,8 @@
-import CMUXMobileCore
-import CmuxAuthRuntime
+import MosaicMobileCore
+import MosaicAuthRuntime
 import Foundation
 
-/// Announces this Mac's running cmux app instance to the team-scoped presence
+/// Announces this Mac's running mosaic app instance to the team-scoped presence
 /// service (`POST /v1/presence/heartbeat` on `workers/presence`), so phones and
 /// other team devices can see it flip online/offline live.
 ///
@@ -122,7 +122,7 @@ final class PresenceHeartbeatClient {
             raw = PresenceSettings.debugDefaultServiceURL
             #else
             // Release builds talk to the production presence worker, so stable
-            // cmux announces presence once mobile is enabled (gated by isEnabled).
+            // mosaic announces presence once mobile is enabled (gated by isEnabled).
             raw = PresenceSettings.productionServiceURL
             #endif
         }
@@ -196,7 +196,7 @@ final class PresenceHeartbeatClient {
         req.timeoutInterval = 10
         req.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
         if let teamID, !teamID.isEmpty {
-            req.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
+            req.setValue(teamID, forHTTPHeaderField: "X-Mosaic-Team-Id")
         }
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.httpBody = try? JSONSerialization.data(withJSONObject: bodyDict, options: [])
@@ -239,7 +239,7 @@ final class PresenceHeartbeatClient {
         ]
         // The app's bundle id lets the phone label the build channel on the
         // Computers screen (mosaic.com.emergent.app = Stable, .nightly/.rc/.staging
-        // suffixes, dev.cmux.* = a DEV build — paired with `tag` for the dev tag).
+        // suffixes, dev.mosaic.* = a DEV build — paired with `tag` for the dev tag).
         if let bundleID, !bundleID.isEmpty {
             bodyDict["bundleId"] = bundleID
         }
@@ -252,10 +252,10 @@ final class PresenceHeartbeatClient {
         return bodyDict
     }
 
-    /// The build tag for this cmux instance, matching the registry's instance
+    /// The build tag for this mosaic instance, matching the registry's instance
     /// key so presence rows line up with `device_app_instances.tag`.
     private static func buildTag() -> String {
-        let tag = ProcessInfo.processInfo.environment["CMUX_TAG"]?
+        let tag = ProcessInfo.processInfo.environment["MOSAIC_TAG"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (tag?.isEmpty == false) ? tag! : "default"
     }

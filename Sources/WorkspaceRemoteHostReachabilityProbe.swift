@@ -6,7 +6,7 @@ import Network
 /// The auto-reconnect loop uses this to distinguish "the host is temporarily
 /// failing" (keep retrying with backoff) from "the host cannot be reached at
 /// all" (suspend the loop and wait for a manual reconnect, see
-/// https://github.com/emergent-inc/cmux/issues/5734).
+/// https://github.com/emergent-inc/mosaic/issues/5734).
 ///
 /// The probe resolves the effective endpoint with `ssh -G` so ~/.ssh/config
 /// aliases, `HostName` overrides, and `ProxyJump` hops are honored. Transports
@@ -22,7 +22,7 @@ enum WorkspaceRemoteHostReachabilityProbe {
     static let defaultTimeout: TimeInterval = 2.5
     private static let sshResolveTimeout: TimeInterval = 3.0
     private static let probeQueue = DispatchQueue(
-        label: "com.cmux.remote-host-reachability",
+        label: "com.mosaic.remote-host-reachability",
         qos: .utility
     )
 

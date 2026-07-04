@@ -1,5 +1,5 @@
 import Foundation
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 
 enum FeedPermissionActionPolicy {
     private typealias CodexPermissionCapabilities = (supportsOnce: Bool, supportsAlways: Bool, supportsAll: Bool)

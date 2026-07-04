@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 from pane_resize_test_support import (
     focused_pane_id as _focused_pane_id,
     pane_extent as _pane_extent,
@@ -24,13 +24,13 @@ from pane_resize_test_support import (
 )
 
 
-DEFAULT_SOCKET_PATHS = ["/tmp/cmux-debug.sock", "/tmp/cmux.sock"]
+DEFAULT_SOCKET_PATHS = ["/tmp/mosaic-debug.sock", "/tmp/mosaic.sock"]
 
 
 def _run_once(socket_path: str) -> int:
     workspace_id = ""
     try:
-        with cmux(socket_path) as client:
+        with mosaic(socket_path) as client:
             workspace_id = client.new_workspace()
             client.select_workspace(workspace_id)
 
@@ -40,12 +40,12 @@ def _run_once(socket_path: str) -> int:
             _wait_for_surface_command_roundtrip(client, workspace_id, surface_id)
 
             stamp = secrets.token_hex(4)
-            resize_lines = [f"CMUX_LOCAL_RESIZE_LINE_{stamp}_{index:02d}" for index in range(1, 33)]
+            resize_lines = [f"MOSAIC_LOCAL_RESIZE_LINE_{stamp}_{index:02d}" for index in range(1, 33)]
             clear_and_draw = (
                 "clear; "
                 f"for i in $(seq 1 {len(resize_lines)}); do "
                 "n=$(printf '%02d' \"$i\"); "
-                f"echo CMUX_LOCAL_RESIZE_LINE_{stamp}_$n; "
+                f"echo MOSAIC_LOCAL_RESIZE_LINE_{stamp}_$n; "
                 "done"
             )
             client.send_surface(surface_id, f"{clear_and_draw}\n")
@@ -101,7 +101,7 @@ def _run_once(socket_path: str) -> int:
                 f"resize lost all pre-resize visible lines from viewport: {pre_visible_lines}",
             )
 
-            post_token = f"CMUX_LOCAL_RESIZE_POST_{stamp}"
+            post_token = f"MOSAIC_LOCAL_RESIZE_POST_{stamp}"
             client.send_surface(surface_id, f"echo {post_token}\n")
             _wait_for(lambda: _scrollback_has_exact_line(client, workspace_id, surface_id, post_token), timeout_s=8.0)
 
@@ -123,14 +123,14 @@ def _run_once(socket_path: str) -> int:
     finally:
         if workspace_id:
             try:
-                with cmux(socket_path) as cleanup_client:
+                with mosaic(socket_path) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id)
             except Exception:
                 pass
 
 
 def main() -> int:
-    env_socket = os.environ.get("CMUX_SOCKET_PATH")
+    env_socket = os.environ.get("MOSAIC_SOCKET_PATH")
     if env_socket:
         return _run_once(env_socket)
 
@@ -138,7 +138,7 @@ def main() -> int:
     for socket_path in DEFAULT_SOCKET_PATHS:
         try:
             return _run_once(socket_path)
-        except cmuxError as exc:
+        except mosaicError as exc:
             text = str(exc)
             recoverable = (
                 "Failed to connect",
@@ -151,7 +151,7 @@ def main() -> int:
 
     if last_error is not None:
         raise last_error
-    raise cmuxError("No socket candidates configured")
+    raise mosaicError("No socket candidates configured")
 
 
 if __name__ == "__main__":

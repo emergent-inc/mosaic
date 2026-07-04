@@ -11,7 +11,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 WORKSPACE_ID = "11111111-1111-4111-8111-111111111111"
 PANE_ID = "22222222-2222-4222-8222-222222222222"
@@ -22,7 +22,7 @@ WINDOW_ID = "66666666-6666-4666-8666-666666666666"
 WINDOW_REF = "window:7"
 
 
-class FakeCmuxState:
+class FakeMosaicState:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
 
@@ -79,10 +79,10 @@ class FakeCmuxState:
                 "surface_id": SURFACE_ID,
                 "surface_ref": "surface:1",
             }
-        raise RuntimeError(f"Unsupported fake cmux method: {method}")
+        raise RuntimeError(f"Unsupported fake mosaic method: {method}")
 
 
-class FakeCmuxHandler(socketserver.StreamRequestHandler):
+class FakeMosaicHandler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         while True:
             line = self.rfile.readline()
@@ -107,7 +107,7 @@ class FakeCmuxHandler(socketserver.StreamRequestHandler):
 
 class ThreadedUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     daemon_threads = True
-    state: FakeCmuxState
+    state: FakeMosaicState
 
 
 def run_cli(
@@ -118,7 +118,7 @@ def run_cli(
     cwd: str | None = None,
 ) -> str:
     env = dict(os.environ)
-    for key in ["CMUX_WORKSPACE_ID", "CMUX_SURFACE_ID", "CMUX_TAB_ID"]:
+    for key in ["MOSAIC_WORKSPACE_ID", "MOSAIC_SURFACE_ID", "MOSAIC_TAB_ID"]:
         env.pop(key, None)
     if env_overrides:
         env.update(env_overrides)
@@ -139,7 +139,7 @@ def run_cli(
 
 def assert_cli_fails(cli: str, socket_path: str, args: list[str], expected: str) -> None:
     env = dict(os.environ)
-    for key in ["CMUX_WORKSPACE_ID", "CMUX_SURFACE_ID", "CMUX_TAB_ID"]:
+    for key in ["MOSAIC_WORKSPACE_ID", "MOSAIC_SURFACE_ID", "MOSAIC_TAB_ID"]:
         env.pop(key, None)
     proc = subprocess.run(
         [cli, "--socket", socket_path, *args],
@@ -157,7 +157,7 @@ def assert_cli_fails(cli: str, socket_path: str, args: list[str], expected: str)
 
 
 def assert_last_call(
-    state: FakeCmuxState,
+    state: FakeMosaicState,
     method: str,
     expected_params: dict[str, object],
 ) -> None:
@@ -173,11 +173,11 @@ def assert_last_call(
 
 
 def main() -> int:
-    cli = resolve_cmux_cli()
-    with tempfile.TemporaryDirectory(prefix="cmux-layout-focus-") as tmp:
-        socket_path = str(Path(tmp) / "cmux.sock")
-        state = FakeCmuxState()
-        server = ThreadedUnixServer(socket_path, FakeCmuxHandler)
+    cli = resolve_mosaic_cli()
+    with tempfile.TemporaryDirectory(prefix="mosaic-layout-focus-") as tmp:
+        socket_path = str(Path(tmp) / "mosaic.sock")
+        state = FakeMosaicState()
+        server = ThreadedUnixServer(socket_path, FakeMosaicHandler)
         server.state = state
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -190,8 +190,8 @@ def main() -> int:
                 socket_path,
                 ["new-workspace", "--name", "caller-target"],
                 env_overrides={
-                    "CMUX_WORKSPACE_ID": WORKSPACE_ID,
-                    "CMUX_SURFACE_ID": SURFACE_ID,
+                    "MOSAIC_WORKSPACE_ID": WORKSPACE_ID,
+                    "MOSAIC_SURFACE_ID": SURFACE_ID,
                 },
             )
             assert_last_call(
@@ -210,8 +210,8 @@ def main() -> int:
                 socket_path,
                 ["new-workspace", "--window", WINDOW_REF, "--name", "explicit-window"],
                 env_overrides={
-                    "CMUX_WORKSPACE_ID": WORKSPACE_ID,
-                    "CMUX_SURFACE_ID": SURFACE_ID,
+                    "MOSAIC_WORKSPACE_ID": WORKSPACE_ID,
+                    "MOSAIC_SURFACE_ID": SURFACE_ID,
                 },
             )
             assert_last_call(

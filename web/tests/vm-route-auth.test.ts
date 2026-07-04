@@ -11,16 +11,16 @@ const execVm = mock(() => ({ workflow: "exec" }));
 const openAttachEndpoint = mock(() => ({ workflow: "attach" }));
 const openSshEndpoint = mock(() => ({ workflow: "ssh" }));
 const VM_ENV_KEYS = [
-  "CMUX_VM_CREATE_ENABLED",
-  "CMUX_VM_E2B_ENABLED",
-  "CMUX_VM_FREESTYLE_ENABLED",
-  "CMUX_VM_ALLOWED_ORIGINS",
-  "CMUX_VM_ALLOW_UNMANIFESTED_IMAGES",
-  "E2B_CMUXD_WS_TEMPLATE",
+  "MOSAIC_VM_CREATE_ENABLED",
+  "MOSAIC_VM_E2B_ENABLED",
+  "MOSAIC_VM_FREESTYLE_ENABLED",
+  "MOSAIC_VM_ALLOWED_ORIGINS",
+  "MOSAIC_VM_ALLOW_UNMANIFESTED_IMAGES",
+  "E2B_MOSAICD_WS_TEMPLATE",
   "FREESTYLE_SANDBOX_SNAPSHOT",
-  "CMUX_VM_FREE_MAX_ACTIVE_VMS",
-  "CMUX_VM_PAID_MAX_ACTIVE_VMS",
-  "CMUX_VM_PLAN_PRO_MAX_ACTIVE_VMS",
+  "MOSAIC_VM_FREE_MAX_ACTIVE_VMS",
+  "MOSAIC_VM_PAID_MAX_ACTIVE_VMS",
+  "MOSAIC_VM_PLAN_PRO_MAX_ACTIVE_VMS",
   "VERCEL",
   "VERCEL_ENV",
 ] as const;
@@ -73,7 +73,7 @@ afterEach(() => {
 describe("VM REST auth", () => {
   test("rejects unauthenticated provisioning before reaching Postgres or providers", async () => {
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         body: JSON.stringify({ provider: "freestyle" }),
       }),
@@ -86,7 +86,7 @@ describe("VM REST auth", () => {
   });
 
   test("rejects unauthenticated VM listing before reaching Postgres", async () => {
-    const response = await GET(new Request("https://cmux.test/api/vm"));
+    const response = await GET(new Request("https://mosaic.test/api/vm"));
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: "unauthorized" });
@@ -96,11 +96,11 @@ describe("VM REST auth", () => {
   test("rejects unauthenticated VM mutations before reaching workflows", async () => {
     const context = { params: Promise.resolve({ id: "provider-vm-1" }) };
     const responses = await Promise.all([
-      DELETE(new Request("https://cmux.test/api/vm/provider-vm-1", { method: "DELETE" }), context),
-      attachRoute.POST(new Request("https://cmux.test/api/vm/provider-vm-1/attach-endpoint", { method: "POST" }), context),
-      sshRoute.POST(new Request("https://cmux.test/api/vm/provider-vm-1/ssh-endpoint", { method: "POST" }), context),
+      DELETE(new Request("https://mosaic.test/api/vm/provider-vm-1", { method: "DELETE" }), context),
+      attachRoute.POST(new Request("https://mosaic.test/api/vm/provider-vm-1/attach-endpoint", { method: "POST" }), context),
+      sshRoute.POST(new Request("https://mosaic.test/api/vm/provider-vm-1/ssh-endpoint", { method: "POST" }), context),
       execRoute.POST(
-        new Request("https://cmux.test/api/vm/provider-vm-1/exec", {
+        new Request("https://mosaic.test/api/vm/provider-vm-1/exec", {
           method: "POST",
           body: JSON.stringify({ command: "true" }),
         }),
@@ -118,7 +118,7 @@ describe("VM REST auth", () => {
   test("authenticated provisioning runs the Effect VM workflow", async () => {
     const listTeams = mock(async () => [{
       id: "team-1",
-      clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+      clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
     }]);
     getUser.mockResolvedValue({
       id: "user-1",
@@ -126,7 +126,7 @@ describe("VM REST auth", () => {
       primaryEmail: "user@example.com",
       selectedTeam: {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
       },
       listTeams,
     });
@@ -138,9 +138,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { "idempotency-key": "idem-1", origin: "https://cmux.test" },
+        headers: { "idempotency-key": "idem-1", origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -168,7 +168,7 @@ describe("VM REST auth", () => {
   });
 
   test("passes configured plan active VM limits into the create workflow", async () => {
-    process.env.CMUX_VM_PLAN_PRO_MAX_ACTIVE_VMS = "25";
+    process.env.MOSAIC_VM_PLAN_PRO_MAX_ACTIVE_VMS = "25";
     getUser.mockResolvedValue(authedStackUser());
     runVmWorkflow.mockResolvedValue({
       providerVmId: "provider-vm-plan-limit",
@@ -179,9 +179,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -218,9 +218,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -257,9 +257,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -276,11 +276,11 @@ describe("VM REST auth", () => {
     const listTeams = mock(async () => [
       {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
       },
       {
         id: "team-2",
-        clientReadOnlyMetadata: { cmuxVmPlan: "free" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "free" },
       },
     ]);
     getUser.mockResolvedValue({
@@ -289,7 +289,7 @@ describe("VM REST auth", () => {
       primaryEmail: "user@example.com",
       selectedTeam: {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
       },
       listTeams,
     });
@@ -302,12 +302,12 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: {
           authorization: "Bearer access-token",
           "x-stack-refresh-token": "refresh-token",
-          "x-cmux-team-id": "team-2",
+          "x-mosaic-team-id": "team-2",
         },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
@@ -327,11 +327,11 @@ describe("VM REST auth", () => {
     const listTeams = mock(async () => [
       {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
       },
       {
         id: "team-2",
-        clientReadOnlyMetadata: { cmuxVmPlan: "free" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "free" },
       },
     ]);
     getUser.mockResolvedValue({
@@ -340,7 +340,7 @@ describe("VM REST auth", () => {
       primaryEmail: "user@example.com",
       selectedTeam: {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
       },
       listTeams,
     });
@@ -353,7 +353,7 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: {
           authorization: "Bearer access-token",
@@ -381,19 +381,19 @@ describe("VM REST auth", () => {
   test("rejects blank team ids before reaching workflows", async () => {
     getUser.mockResolvedValue(authedStackUser());
     const requests = [
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test", teamId: "   " }),
       }),
-      new Request("https://cmux.test/api/vm?teamId=%20%20", {
+      new Request("https://mosaic.test/api/vm?teamId=%20%20", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test", "x-cmux-team-id": "  " },
+        headers: { origin: "https://mosaic.test", "x-mosaic-team-id": "  " },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     ];
@@ -416,12 +416,12 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: {
           authorization: "Bearer access-token",
           "x-stack-refresh-token": "refresh-token",
-          "x-cmux-team-id": "team-other",
+          "x-mosaic-team-id": "team-other",
         },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
@@ -434,14 +434,14 @@ describe("VM REST auth", () => {
     });
     expectNoCloudVmImplementationLeaks(payload);
     expect(payload.message).toContain("team");
-    expect(payload.action).toContain("cmux auth login");
+    expect(payload.action).toContain("mosaic auth login");
     expect(runVmWorkflow).not.toHaveBeenCalled();
   });
 
   test("uses the single Stack team when personal team auto-create populated listTeams", async () => {
     const listTeams = mock(async () => [{
       id: "team-personal",
-      clientReadOnlyMetadata: { cmuxVmPlan: "free" },
+      clientReadOnlyMetadata: { mosaicVmPlan: "free" },
     }]);
     getUser.mockResolvedValue({
       id: "user-1",
@@ -459,9 +459,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -485,9 +485,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -510,15 +510,15 @@ describe("VM REST auth", () => {
       primaryEmail: "user@example.com",
       selectedTeam: null,
       listTeams: async () => [
-        { id: "team-1", clientReadOnlyMetadata: { cmuxVmPlan: "free" } },
-        { id: "team-2", clientReadOnlyMetadata: { cmuxVmPlan: "pro" } },
+        { id: "team-1", clientReadOnlyMetadata: { mosaicVmPlan: "free" } },
+        { id: "team-2", clientReadOnlyMetadata: { mosaicVmPlan: "pro" } },
       ],
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -536,8 +536,8 @@ describe("VM REST auth", () => {
 
   test("filters VM list to the requested Stack team", async () => {
     const listTeams = mock(async () => [
-      { id: "team-1", clientReadOnlyMetadata: { cmuxVmPlan: "free" } },
-      { id: "team-2", clientReadOnlyMetadata: { cmuxVmPlan: "pro" } },
+      { id: "team-1", clientReadOnlyMetadata: { mosaicVmPlan: "free" } },
+      { id: "team-2", clientReadOnlyMetadata: { mosaicVmPlan: "pro" } },
     ]);
     getUser.mockResolvedValue({
       id: "user-1",
@@ -545,24 +545,24 @@ describe("VM REST auth", () => {
       primaryEmail: "user@example.com",
       selectedTeam: {
         id: "team-1",
-        clientReadOnlyMetadata: { cmuxVmPlan: "free" },
+        clientReadOnlyMetadata: { mosaicVmPlan: "free" },
       },
       listTeams,
     });
     runVmWorkflow.mockResolvedValue([{
       providerVmId: "provider-vm-team-2",
       provider: "e2b",
-      image: "cmuxd-ws:test",
+      image: "mosaicd-ws:test",
       imageVersion: "test-version",
       createdAt: 1_777_000_000_000,
     }]);
 
     const response = await GET(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         headers: {
           authorization: "Bearer access-token",
           "x-stack-refresh-token": "refresh-token",
-          "x-cmux-team-id": "team-2",
+          "x-mosaic-team-id": "team-2",
         },
       }),
     );
@@ -579,7 +579,7 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: {
           origin: "https://evil.example",
@@ -601,13 +601,13 @@ describe("VM REST auth", () => {
     console.error = mock(() => {}) as unknown as typeof console.error;
     try {
       const response = await withAuthedVmApiRoute(
-        new Request("https://cmux.test/api/vm", {
+        new Request("https://mosaic.test/api/vm", {
           method: "POST",
-          headers: { origin: "https://cmux.test" },
+          headers: { origin: "https://mosaic.test" },
           body: "{}",
         }),
         "/api/vm",
-        { "cmux.vm.operation": "create" },
+        { "mosaic.vm.operation": "create" },
         "/api/vm POST failed",
         async ({ setResponseFinalizer }) => {
           setResponseFinalizer((mappedResponse) => {
@@ -632,7 +632,7 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: { "sec-fetch-site": "same-origin" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
@@ -653,11 +653,11 @@ describe("VM REST auth", () => {
     };
 
     const responses = await Promise.all([
-      DELETE(new Request("https://cmux.test/api/vm/provider-vm-1", { method: "DELETE", headers }), context),
-      attachRoute.POST(new Request("https://cmux.test/api/vm/provider-vm-1/attach-endpoint", { method: "POST", headers }), context),
-      sshRoute.POST(new Request("https://cmux.test/api/vm/provider-vm-1/ssh-endpoint", { method: "POST", headers }), context),
+      DELETE(new Request("https://mosaic.test/api/vm/provider-vm-1", { method: "DELETE", headers }), context),
+      attachRoute.POST(new Request("https://mosaic.test/api/vm/provider-vm-1/attach-endpoint", { method: "POST", headers }), context),
+      sshRoute.POST(new Request("https://mosaic.test/api/vm/provider-vm-1/ssh-endpoint", { method: "POST", headers }), context),
       execRoute.POST(
-        new Request("https://cmux.test/api/vm/provider-vm-1/exec", {
+        new Request("https://mosaic.test/api/vm/provider-vm-1/exec", {
           method: "POST",
           headers,
           body: JSON.stringify({ command: "true" }),
@@ -678,9 +678,9 @@ describe("VM REST auth", () => {
     const context = { params: Promise.resolve({ id: "provider-vm-1" }) };
 
     const response = await execRoute.POST(
-      new Request("https://cmux.test/api/vm/provider-vm-1/exec", {
+      new Request("https://mosaic.test/api/vm/provider-vm-1/exec", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ command: "   " }),
       }),
       context,
@@ -693,7 +693,7 @@ describe("VM REST auth", () => {
       details: { field: "command" },
     });
     expect(payload.message).toContain("command");
-    expect(payload.action).toContain("cmux vm exec");
+    expect(payload.action).toContain("mosaic vm exec");
     expect(runVmWorkflow).not.toHaveBeenCalled();
   });
 
@@ -701,9 +701,9 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "aws" }),
       }),
     );
@@ -731,7 +731,7 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
         headers: {
           authorization: "Bearer access-token",
@@ -751,7 +751,7 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const nativeOnlyUser = await verifyRequest(
-      new Request("https://cmux.test/api/notifications/push", {
+      new Request("https://mosaic.test/api/notifications/push", {
         method: "POST",
         headers: { cookie: "stack-auth-cookie=present" },
         body: "{}",
@@ -763,7 +763,7 @@ describe("VM REST auth", () => {
     expect(getUser).not.toHaveBeenCalled();
 
     const cookieUser = await verifyRequest(
-      new Request("https://cmux.test/api/notifications/push", {
+      new Request("https://mosaic.test/api/notifications/push", {
         method: "POST",
         headers: { cookie: "stack-auth-cookie=present" },
         body: "{}",
@@ -775,13 +775,13 @@ describe("VM REST auth", () => {
   });
 
   test("blocks VM create kill switch before workflow", async () => {
-    process.env.CMUX_VM_CREATE_ENABLED = "0";
+    process.env.MOSAIC_VM_CREATE_ENABLED = "0";
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
       }),
     );
@@ -798,14 +798,14 @@ describe("VM REST auth", () => {
   });
 
   test("blocks provider kill switch before workflow", async () => {
-    process.env.CMUX_VM_E2B_ENABLED = "false";
+    process.env.MOSAIC_VM_E2B_ENABLED = "false";
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
-        body: JSON.stringify({ provider: "e2b", image: "cmuxd-ws:proxy-20260424a" }),
+        headers: { origin: "https://mosaic.test" },
+        body: JSON.stringify({ provider: "e2b", image: "mosaicd-ws:proxy-20260424a" }),
       }),
     );
 
@@ -825,9 +825,9 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle", image: "unknown-snapshot" }),
       }),
     );
@@ -851,9 +851,9 @@ describe("VM REST auth", () => {
     getUser.mockResolvedValue(authedStackUser());
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle" }),
       }),
     );
@@ -886,9 +886,9 @@ describe("VM REST auth", () => {
     });
 
     const response = await POST(
-      new Request("https://cmux.test/api/vm", {
+      new Request("https://mosaic.test/api/vm", {
         method: "POST",
-        headers: { origin: "https://cmux.test" },
+        headers: { origin: "https://mosaic.test" },
         body: JSON.stringify({ provider: "freestyle" }),
       }),
     );
@@ -919,17 +919,17 @@ function authedStackUser() {
     primaryEmail: "user@example.com",
     selectedTeam: {
       id: "team-1",
-      clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+      clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
     },
     listTeams: async () => [{
       id: "team-1",
-      clientReadOnlyMetadata: { cmuxVmPlan: "pro" },
+      clientReadOnlyMetadata: { mosaicVmPlan: "pro" },
     }],
   };
 }
 
 function expectNoCloudVmImplementationLeaks(payload: unknown): void {
   expect(JSON.stringify(payload)).not.toMatch(
-    /Stack Auth|Freestyle|E2B|freestyle|e2b|CMUX_VM_|FREESTYLE_|E2B_|billingTeamId|itemId|billingCustomerId|manifest|snapshot|database|migration|\bsh-[a-z0-9]{8,24}\b|\bteam-[a-z0-9-]+\b/,
+    /Stack Auth|Freestyle|E2B|freestyle|e2b|MOSAIC_VM_|FREESTYLE_|E2B_|billingTeamId|itemId|billingCustomerId|manifest|snapshot|database|migration|\bsh-[a-z0-9]{8,24}\b|\bteam-[a-z0-9-]+\b/,
   );
 }

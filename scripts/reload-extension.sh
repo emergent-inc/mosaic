@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# reload-extension.sh — build a CMUX sample sidebar extension scoped to a dev build tag.
+# reload-extension.sh — build a MOSAIC sample sidebar extension scoped to a dev build tag.
 #
-# A tagged cmux dev app (built by reload.sh --tag <t>) declares a host-scoped
-# extension point <host-bundle-id>.cmux.sidebar (baked at build time via the
-# CMUX_SIDEBAR_EXTENSION_POINT_ID build setting; see CMUXSidebarExtensionPoint).
+# A tagged mosaic dev app (built by reload.sh --tag <t>) declares a host-scoped
+# extension point <host-bundle-id>.mosaic.sidebar (baked at build time via the
+# MOSAIC_SIDEBAR_EXTENSION_POINT_ID build setting; see MosaicSidebarExtensionPoint).
 # For that host to have something to host, the sample extension must register
 # against the SAME tagged point and carry per-tag bundle ids so it can coexist
 # with other tags' extensions.
 #
-# This script passes the tagged point id (CMUX_SIDEBAR_EXTENSION_POINT_ID) and a per-tag
-# bundle-id suffix (CMUX_BUNDLE_ID_SUFFIX=.<TAG_ID>) to xcodebuild as build settings, so
+# This script passes the tagged point id (MOSAIC_SIDEBAR_EXTENSION_POINT_ID) and a per-tag
+# bundle-id suffix (MOSAIC_BUNDLE_ID_SUFFIX=.<TAG_ID>) to xcodebuild as build settings, so
 # Xcode bakes EXExtensionPointIdentifier (via Info.plist variable substitution) and
 # distinct app+appex bundle ids into an ad-hoc-signed bundle whose Info.plist is bound.
 # pkd only records a bundle whose Info.plist is sealed AND whose appex id it has not
@@ -26,7 +26,7 @@ set -euo pipefail
 # and extension always agree on the point id.
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SIDEBAR_POINT_NAME="cmux.sidebar"
+SIDEBAR_POINT_NAME="mosaic.sidebar"
 
 TAG=""
 EXAMPLE="both"
@@ -42,7 +42,7 @@ Usage: scripts/reload-extension.sh --tag <tag> [--host-bundle-id <id>] [--exampl
   --host-bundle-id   Host app bundle id when reload.sh used --bundle-id.
                      Defaults to mosaic.com.emergent.app.debug.<sanitized-tag>.
   --bundle-id        Alias for --host-bundle-id.
-  --example <which>  sample (CMUX ExtKit Sample Sidebar), tabs (TabsVisibleSidebar),
+  --example <which>  sample (MOSAIC ExtKit Sample Sidebar), tabs (TabsVisibleSidebar),
                      or both (default).
   --no-launch        Build and install but do not launch to register.
   -h, --help         Show this help.
@@ -96,7 +96,7 @@ TAGGED_POINT_ID="${HOST_BUNDLE_ID}.${SIDEBAR_POINT_NAME}"
 example_specs() {
   case "$1" in
     sample)
-      echo "Examples/SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj|CMUXExtKitSampleSidebarApp|CMUX ExtKit Sample Sidebar|co.emergent.inc.CMUXExtKitSampleSidebarApp|Contents/Extensions/CMUX ExtKit Sample Sidebar Extension.appex|co.emergent.inc.CMUXExtKitSampleSidebarApp.Extension" ;;
+      echo "Examples/SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj|MosaicExtKitSampleSidebarApp|MOSAIC ExtKit Sample Sidebar|co.emergent.inc.MosaicExtKitSampleSidebarApp|Contents/Extensions/MOSAIC ExtKit Sample Sidebar Extension.appex|co.emergent.inc.MosaicExtKitSampleSidebarApp.Extension" ;;
     tabs)
       echo "Examples/TabsVisibleSidebar/TabsVisibleSidebar.xcodeproj|TabsVisibleSidebar|TabsVisibleSidebar|co.emergent.inc.TabsVisibleSidebar|Contents/Extensions/Tabs Visible Sidebar Extension.appex|co.emergent.inc.TabsVisibleSidebar.Extension" ;;
   esac
@@ -110,36 +110,36 @@ build_install_example() {
 
   local tagged_app_name="${app_name} ${TAG}"
 
-  local derived="/tmp/cmux-ext-${which}-${TAG_ID}"
+  local derived="/tmp/mosaic-ext-${which}-${TAG_ID}"
   echo "==> building ${app_name} for tag ${TAG} (point ${TAGGED_POINT_ID})"
   rm -rf "$derived"
 
-  # Bake the tagged point id at build time: CMUX_SIDEBAR_EXTENSION_POINT_ID feeds the
+  # Bake the tagged point id at build time: MOSAIC_SIDEBAR_EXTENSION_POINT_ID feeds the
   # appex Info.plist EXExtensionPointIdentifier via Xcode's $(VAR) substitution, so the
   # extension registers against the tagged host's point.
   #
-  # Scope the bundle ids per tag via CMUX_BUNDLE_ID_SUFFIX (a default-empty build
+  # Scope the bundle ids per tag via MOSAIC_BUNDLE_ID_SUFFIX (a default-empty build
   # setting the example projects insert into PRODUCT_BUNDLE_IDENTIFIER: app
-  # <appBase>$(CMUX_BUNDLE_ID_SUFFIX), appex <appBase>$(CMUX_BUNDLE_ID_SUFFIX).Extension).
+  # <appBase>$(MOSAIC_BUNDLE_ID_SUFFIX), appex <appBase>$(MOSAIC_BUNDLE_ID_SUFFIX).Extension).
   # The suffix sits before the appex leaf so the appex id stays app-prefixed. Without
   # distinct bundle ids every tag's install shares one appex id and pkd keeps the first
   # one it saw, so the tagged copy never registers.
   #
-  # Scope the visible name per tag via CMUX_DISPLAY_NAME_SUFFIX (default empty), appended
+  # Scope the visible name per tag via MOSAIC_DISPLAY_NAME_SUFFIX (default empty), appended
   # to the appex CFBundleDisplayName. The OS groups extensions by display name for the
   # enable/disable + availability counts the host reads, so two same-named appexes (a base
   # and a tagged copy installed side by side) are treated as one logical extension and
   # toggling one perturbs the other. A per-tag display name keeps them distinct. Leading
-  # space so it reads "CMUX ExtKit Sample Sidebar <tag>".
+  # space so it reads "MOSAIC ExtKit Sample Sidebar <tag>".
   #
   # Ad-hoc sign (CODE_SIGN_IDENTITY="-") so resources and Info.plist are bound.
   # CODE_SIGNING_ALLOWED=NO produces a bundle whose Info.plist is "not bound", which
   # pkd refuses to ingest.
   xcodebuild -project "$REPO_ROOT/$project" -scheme "$scheme" -configuration Debug \
     -derivedDataPath "$derived" \
-    CMUX_SIDEBAR_EXTENSION_POINT_ID="$TAGGED_POINT_ID" \
-    CMUX_BUNDLE_ID_SUFFIX=".${TAG_ID}" \
-    CMUX_DISPLAY_NAME_SUFFIX=" ${TAG}" \
+    MOSAIC_SIDEBAR_EXTENSION_POINT_ID="$TAGGED_POINT_ID" \
+    MOSAIC_BUNDLE_ID_SUFFIX=".${TAG_ID}" \
+    MOSAIC_DISPLAY_NAME_SUFFIX=" ${TAG}" \
     CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES \
     CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER="" \
     build > "$derived.log" 2>&1 || { echo "error: build failed; see $derived.log" >&2; tail -20 "$derived.log" >&2; return 1; }
@@ -163,12 +163,12 @@ build_install_example() {
   rm -rf "$derived" "$derived.log"
 
   # Do NOT re-sign. xcodebuild already ad-hoc signs with the appex's entitlements
-  # (App Sandbox + the co.emergent.inc.cmux.sidebar app group) bound in. Those entitlements
+  # (App Sandbox + the co.emergent.inc.mosaic.sidebar app group) bound in. Those entitlements
   # are required for the extension's XPC connection to the host; a bare
   # `codesign --force --sign -` re-sign strips them, and the extension then connects and
   # immediately drops ("Extension Blocked / lost the connection") with no recovery.
   # pkd ingests the as-built bundle fine because its bundle id is per-tag distinct
-  # (CMUX_BUNDLE_ID_SUFFIX); resealing the Info.plist is unnecessary.
+  # (MOSAIC_BUNDLE_ID_SUFFIX); resealing the Info.plist is unnecessary.
   local appex
   appex="$(find "$dest/Contents/Extensions" -maxdepth 1 -name "*.appex" | head -1)"
   if [[ -n "$appex" ]]; then

@@ -10,7 +10,7 @@ Tests that CPU usage stays reasonable when:
 Usage:
     python3 tests/test_cpu_notifications.py
 
-Requires cmux to be running with socket control enabled.
+Requires mosaic to be running with socket control enabled.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from typing import List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 # Maximum acceptable CPU usage during idle (after notifications)
@@ -39,13 +39,13 @@ SETTLE_TIME = 2.0
 MONITOR_DURATION = 3.0
 
 
-def get_cmux_pid() -> Optional[int]:
-    """Get the PID of the running cmux process."""
-    socket_path = os.environ.get("CMUX_SOCKET_PATH")
+def get_mosaic_pid() -> Optional[int]:
+    """Get the PID of the running mosaic process."""
+    socket_path = os.environ.get("MOSAIC_SOCKET_PATH")
     if not socket_path:
-        # Ask cmux.py to resolve default socket path (supports CMUX_TAG and last-socket file).
+        # Ask mosaic.py to resolve default socket path (supports MOSAIC_TAG and last-socket file).
         try:
-            socket_path = cmux().socket_path
+            socket_path = mosaic().socket_path
         except Exception:
             socket_path = None
 
@@ -68,7 +68,7 @@ def get_cmux_pid() -> Optional[int]:
                     return pid
 
     result = subprocess.run(
-        ["pgrep", "-f", r"cmux\.app/Contents/MacOS/Mosaic$"],
+        ["pgrep", "-f", r"mosaic\.app/Contents/MacOS/Mosaic$"],
         capture_output=True,
         text=True,
     )
@@ -110,14 +110,14 @@ def monitor_cpu(pid: int, duration: float, interval: float = 0.5) -> List[float]
     return readings
 
 
-def test_cpu_after_notification_burst(client: cmux, pid: int) -> tuple[bool, str]:
+def test_cpu_after_notification_burst(client: mosaic, pid: int) -> tuple[bool, str]:
     """
     Test that CPU returns to normal after a burst of notifications.
     """
     # Clear any existing notifications
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
     time.sleep(0.5)
 
@@ -125,7 +125,7 @@ def test_cpu_after_notification_burst(client: cmux, pid: int) -> tuple[bool, str
     for i in range(5):
         try:
             client.notify(f"Test notification {i+1}")
-        except cmuxError:
+        except mosaicError:
             pass
         time.sleep(0.1)
 
@@ -139,7 +139,7 @@ def test_cpu_after_notification_burst(client: cmux, pid: int) -> tuple[bool, str
     # Clean up
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
 
     if avg_cpu > MAX_POST_NOTIFICATION_CPU_PERCENT:
@@ -148,7 +148,7 @@ def test_cpu_after_notification_burst(client: cmux, pid: int) -> tuple[bool, str
     return True, f"CPU {avg_cpu:.1f}% is acceptable after notification burst"
 
 
-def test_cpu_after_popover_close(client: cmux, pid: int) -> tuple[bool, str]:
+def test_cpu_after_popover_close(client: mosaic, pid: int) -> tuple[bool, str]:
     """
     Test that CPU returns to normal after opening and closing the notifications popover.
 
@@ -157,18 +157,18 @@ def test_cpu_after_popover_close(client: cmux, pid: int) -> tuple[bool, str]:
     # Create some notifications first
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
     for i in range(3):
         try:
             client.notify(f"Popover test {i+1}")
-        except cmuxError:
+        except mosaicError:
             pass
         time.sleep(0.1)
     time.sleep(0.5)
 
-    # Ensure the correct cmux instance is frontmost (tag-safe).
-    bundle_id = cmux.default_bundle_id()
+    # Ensure the correct mosaic instance is frontmost (tag-safe).
+    bundle_id = mosaic.default_bundle_id()
     subprocess.run(
         ["osascript", "-e", f'tell application id "{bundle_id}" to activate'],
         capture_output=True,
@@ -197,7 +197,7 @@ def test_cpu_after_popover_close(client: cmux, pid: int) -> tuple[bool, str]:
     # Clean up
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
 
     if avg_cpu > MAX_IDLE_CPU_PERCENT:
@@ -206,19 +206,19 @@ def test_cpu_after_popover_close(client: cmux, pid: int) -> tuple[bool, str]:
     return True, f"CPU {avg_cpu:.1f}% is acceptable after closing popover"
 
 
-def test_cpu_idle_with_notifications(client: cmux, pid: int) -> tuple[bool, str]:
+def test_cpu_idle_with_notifications(client: mosaic, pid: int) -> tuple[bool, str]:
     """
     Test that CPU stays low when notifications exist but popover is closed.
     """
     # Create notifications
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
     for i in range(3):
         try:
             client.notify(f"Idle test {i+1}")
-        except cmuxError:
+        except mosaicError:
             pass
         time.sleep(0.2)
 
@@ -232,7 +232,7 @@ def test_cpu_idle_with_notifications(client: cmux, pid: int) -> tuple[bool, str]
     # Clean up
     try:
         client.clear_notifications()
-    except cmuxError:
+    except mosaicError:
         pass
 
     if avg_cpu > MAX_IDLE_CPU_PERCENT:
@@ -243,26 +243,26 @@ def test_cpu_idle_with_notifications(client: cmux, pid: int) -> tuple[bool, str]
 
 def main():
     print("=" * 60)
-    print("cmux Notification CPU Tests")
+    print("mosaic Notification CPU Tests")
     print("=" * 60)
 
-    socket_path = cmux().socket_path
+    socket_path = mosaic().socket_path
 
-    pid = get_cmux_pid()
+    pid = get_mosaic_pid()
     if pid is None:
-        print("\n❌ SKIP: cmux is not running")
+        print("\n❌ SKIP: mosaic is not running")
         return 0
 
-    print(f"\nFound cmux process: PID {pid}")
+    print(f"\nFound mosaic process: PID {pid}")
 
     # Try to connect to the socket
-    client = cmux(socket_path)
+    client = mosaic(socket_path)
     try:
         client.connect()
         print(f"Connected to {socket_path}")
-    except cmuxError:
-        print("\n❌ SKIP: Could not connect to cmux socket")
-        print("Tip: set CMUX_TAG=<tag> or CMUX_SOCKET_PATH=<path> to target a tagged instance.")
+    except mosaicError:
+        print("\n❌ SKIP: Could not connect to mosaic socket")
+        print("Tip: set MOSAIC_TAG=<tag> or MOSAIC_SOCKET_PATH=<path> to target a tagged instance.")
         return 0
 
     results = []

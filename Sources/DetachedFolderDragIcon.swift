@@ -36,7 +36,7 @@ final class DraggableFolderNSView: NSView, NSDraggingSource {
     init(directory: String) {
         self.directory = directory
         super.init(frame: .zero)
-        identifier = NSUserInterfaceItemIdentifier("cmux.folderDragIcon")
+        identifier = NSUserInterfaceItemIdentifier("mosaic.folderDragIcon")
         setupImageView()
     }
 
@@ -111,7 +111,7 @@ final class DraggableFolderNSView: NSView, NSDraggingSource {
         #if DEBUG
         let nowMovable = window.map { String($0.isMovable) } ?? "nil"
         let windowOrigin = window.map { formatPoint($0.frame.origin) } ?? "nil"
-        cmuxDebugLog("folder.dragEnd dirBytes=\(directory.utf8.count) operation=\(operation.rawValue) screen=\(formatPoint(screenPoint)) nowMovable=\(nowMovable) windowOrigin=\(windowOrigin)")
+        mosaicDebugLog("folder.dragEnd dirBytes=\(directory.utf8.count) operation=\(operation.rawValue) screen=\(formatPoint(screenPoint)) nowMovable=\(nowMovable) windowOrigin=\(windowOrigin)")
         #endif
     }
 
@@ -122,7 +122,7 @@ final class DraggableFolderNSView: NSView, NSDraggingSource {
         let hitDesc = hit.map { String(describing: type(of: $0)) } ?? "nil"
         let imageHit = (hit === imageView)
         let nowMovable = window.map { String($0.isMovable) } ?? "nil"
-        cmuxDebugLog("folder.hitTest point=\(formatPoint(point)) hit=\(hitDesc) imageViewHit=\(imageHit) returning=DraggableFolderNSView nowMovable=\(nowMovable)")
+        mosaicDebugLog("folder.hitTest point=\(formatPoint(point)) hit=\(hitDesc) imageViewHit=\(imageHit) returning=DraggableFolderNSView nowMovable=\(nowMovable)")
         #endif
         return self
     }
@@ -145,7 +145,7 @@ final class DraggableFolderNSView: NSView, NSDraggingSource {
         let responderDesc = window?.firstResponder.map { String(describing: type(of: $0)) } ?? "nil"
         let nowMovable = window.map { String($0.isMovable) } ?? "nil"
         let windowOrigin = window.map { formatPoint($0.frame.origin) } ?? "nil"
-        cmuxDebugLog("folder.mouseDown dirBytes=\(directory.utf8.count) point=\(formatPoint(localPoint)) firstResponder=\(responderDesc) nowMovable=\(nowMovable) windowOrigin=\(windowOrigin)")
+        mosaicDebugLog("folder.mouseDown dirBytes=\(directory.utf8.count) point=\(formatPoint(localPoint)) firstResponder=\(responderDesc) nowMovable=\(nowMovable) windowOrigin=\(windowOrigin)")
         #endif
 
         pendingDragEvent = event
@@ -187,7 +187,7 @@ final class DraggableFolderNSView: NSView, NSDraggingSource {
         let session = beginDraggingSession(with: [draggingItem], event: event, source: self)
         #if DEBUG
         let itemCount = session.draggingPasteboard.pasteboardItems?.count ?? 0
-        cmuxDebugLog("folder.dragStart dirBytes=\(directory.utf8.count) pasteboardItems=\(itemCount)")
+        mosaicDebugLog("folder.dragStart dirBytes=\(directory.utf8.count) pasteboardItems=\(itemCount)")
         #endif
     }
 

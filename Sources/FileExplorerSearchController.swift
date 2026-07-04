@@ -391,7 +391,7 @@ private enum FileSearchPipeReadResult: Sendable {
 
 private enum FileSearchPipeReader {
     private static let queue = DispatchQueue(
-        label: "com.cmux.file-search.pipe-read",
+        label: "com.mosaic.file-search.pipe-read",
         qos: .userInitiated,
         attributes: .concurrent
     )

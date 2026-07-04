@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Tiny HTTP server that regenerates the mobile attach QR on every page hit
 # so the QR you see is always linked to the currently-running Mac instance.
-# Defaults to 127.0.0.1:17321 to match the existing tools/cmux-tag-opener
+# Defaults to 127.0.0.1:17321 to match the existing tools/mosaic-tag-opener
 # pattern. Stop with Ctrl-C.
 
 set -euo pipefail
 
 PORT="${PORT:-17321}"
-TAG="${CMUX_TAG:-mobile}"
-IOS_TAG="${CMUX_IOS_TAG:-$TAG}"
+TAG="${MOSAIC_TAG:-mobile}"
+IOS_TAG="${MOSAIC_IOS_TAG:-$TAG}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -41,7 +41,7 @@ PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 # the connected iPhone. The Open button shells out to it so a stale (or
 # missing) device build is brought current before launch — no manual reload.
 IOS_RELOAD = os.path.join(PROJECT_DIR, "ios", "scripts", "reload.sh")
-IOS_TEAM = os.environ.get("CMUX_IOS_TEAM", "7WLXT3NR37")
+IOS_TEAM = os.environ.get("MOSAIC_IOS_TEAM", "7WLXT3NR37")
 # Build can take a couple minutes (xcodebuild incremental + install over the
 # tunnel); give it generous headroom.
 IOS_BUILD_TIMEOUT_SECONDS = 600
@@ -55,7 +55,7 @@ TMP_ROOT = os.environ.get("TMPDIR", "/tmp").rstrip("/") or "/tmp"
 # FIXED `/tmp` path (not TMPDIR-derived): the reload script and this server run
 # in different shells/sessions whose per-session `TMPDIR` differ, so the
 # rendezvous file must live at a machine-shared location both can find.
-TAG_MARKER_PATH = "/tmp/cmux-mobile-attach-qr-tags.json"
+TAG_MARKER_PATH = "/tmp/mosaic-mobile-attach-qr-tags.json"
 
 # Live tags + their derived paths. `refresh_tags` keeps these in sync with the
 # marker; everything downstream reads these globals, never the INITIAL_* ones.
@@ -75,9 +75,9 @@ def _apply_tags(mac_tag: str, ios_tag: str) -> None:
     global TAG, IOS_TAG, OUT_DIR, IOS_TAG_SLUG, IOS_BUNDLE_ID
     TAG = mac_tag
     IOS_TAG = ios_tag
-    OUT_DIR = os.path.join(TMP_ROOT, f"cmux-mobile-attach-qr-{TAG}")
+    OUT_DIR = os.path.join(TMP_ROOT, f"mosaic-mobile-attach-qr-{TAG}")
     IOS_TAG_SLUG = _ios_slug(IOS_TAG)
-    IOS_BUNDLE_ID = f"dev.cmux.ios.{IOS_TAG_SLUG}"
+    IOS_BUNDLE_ID = f"dev.mosaic.ios.{IOS_TAG_SLUG}"
 
 
 def refresh_tags() -> None:
@@ -117,11 +117,11 @@ DERIVED_DATA_ROOT = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
 
 def tagged_app_path() -> str:
     """The exact .app bundle that the launch path will open. Keep this in
-    lockstep with the CMUX Tag Opener's `appURL(for:)` resolution so the
+    lockstep with the MOSAIC Tag Opener's `appURL(for:)` resolution so the
     button label and the click handler can't drift apart."""
     return os.path.join(
         DERIVED_DATA_ROOT,
-        f"cmux-{TAG}",
+        f"mosaic-{TAG}",
         "Build",
         "Products",
         "Debug",
@@ -176,7 +176,7 @@ def regenerate(force: bool = False) -> tuple[bool, str]:
         if not force and now - _LAST_GEN_TS < MIN_REGEN_INTERVAL_SECONDS:
             return True, "cached"
         env = os.environ.copy()
-        env["CMUX_TAG"] = TAG
+        env["MOSAIC_TAG"] = TAG
         try:
             subprocess.run(
                 [QR_SCRIPT, "--tag", TAG, "--out-dir", OUT_DIR],
@@ -196,7 +196,7 @@ def regenerate(force: bool = False) -> tuple[bool, str]:
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:
-        # Stay quiet, the cmux helper pane is the visible signal.
+        # Stay quiet, the mosaic helper pane is the visible signal.
         return
 
     def do_GET(self):
@@ -234,7 +234,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # near no-op when nothing changed. This is the "auto build then open"
         # behavior — no separate manual reload.
         ios_result = self._build_and_launch_ios()
-        # macOS: launch the tagged `.app` via the CMUX Tag Opener at :17320 if
+        # macOS: launch the tagged `.app` via the MOSAIC Tag Opener at :17320 if
         # it is already built (it must be, to be serving this QR). We do not
         # auto-build the Mac app here — that is a heavier macOS reload that
         # would restart this very server's host app.
@@ -257,7 +257,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return f"no-reload-script ({IOS_RELOAD})"
         cmd = [IOS_RELOAD, "--tag", IOS_TAG, "--device-only", "--team", IOS_TEAM]
         env = os.environ.copy()
-        env["CMUX_TAG"] = IOS_TAG
+        env["MOSAIC_TAG"] = IOS_TAG
         try:
             proc = subprocess.run(
                 cmd,
@@ -356,7 +356,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with open(html_path, "rb") as fh:
             html = fh.read()
         # Inject a meta refresh + a small banner + an "Open Mosaic DEV <tag>"
-        # button that hits the CMUX Tag Opener at 127.0.0.1:17320.
+        # button that hits the MOSAIC Tag Opener at 127.0.0.1:17320.
         marker = b"</head>"
         injection = (
             b'<meta http-equiv="refresh" content="45">\n'
@@ -380,12 +380,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # from `/app-info`. That endpoint shares its truth with `_open_tag`
         # so the label can't claim a build the launch path can't deliver.
         banner = (
-            b'<button class="qr-open-tag" type="button" id="cmux-open-btn" disabled '
+            b'<button class="qr-open-tag" type="button" id="mosaic-open-btn" disabled '
             b'title="resolving build..." '
-            b'onclick="cmuxOpenTag(this)">resolving...</button>'
+            b'onclick="mosaicOpenTag(this)">resolving...</button>'
             + b'<div class="qr-fresh-banner">live, regenerates every 45s</div>'
             + b'<script>(function(){\n'
-            + b'var cmuxBuilding=false;\n'
+            + b'var mosaicBuilding=false;\n'
             + b'function fmtMtime(epoch){if(!epoch)return"never";\n'
             + b'  var ageS=Math.max(0,(Date.now()/1000)-epoch);\n'
             + b'  if(ageS<60)return Math.floor(ageS)+"s ago";\n'
@@ -394,8 +394,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             + b'  return Math.floor(ageS/86400)+"d ago";}\n'
             + b'function refresh(){fetch("/app-info",{cache:"no-store"})\n'
             + b'  .then(function(r){return r.json();}).then(function(info){\n'
-            + b'    var btn=document.getElementById("cmux-open-btn");\n'
-            + b'    if(!btn||cmuxBuilding)return;\n'
+            + b'    var btn=document.getElementById("mosaic-open-btn");\n'
+            + b'    if(!btn||mosaicBuilding)return;\n'
             + b'    var built=fmtMtime(info.mtime);\n'
             + b'    var running=info.running_pid?(" \\u00b7 running pid "+info.running_pid):"";\n'
             + b'    if(info.exists){\n'
@@ -408,14 +408,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             + b'      btn.title="missing on disk: "+info.app_path;\n'
             + b'    }\n'
             + b'  }).catch(function(){});}\n'
-            + b'window.cmuxOpenTag=function(btn){\n'
+            + b'window.mosaicOpenTag=function(btn){\n'
             + b'  if(btn.disabled)return;\n'
-            + b'  cmuxBuilding=true;btn.disabled=true;\n'
+            + b'  mosaicBuilding=true;btn.disabled=true;\n'
             + b'  btn.innerHTML="building \\u0026 opening\\u2026 (~1 min)";\n'
             + b'  fetch("/open-tag",{method:"POST"}).then(function(r){return r.text();})\n'
             + b'   .then(function(t){btn.innerHTML="opened \\u00b7 "+t.replace(/\\n/g," ").trim();})\n'
             + b'   .catch(function(){btn.innerHTML="open failed (see helper pane)";})\n'
-            + b'   .finally(function(){cmuxBuilding=false;btn.disabled=false;refresh();});};\n'
+            + b'   .finally(function(){mosaicBuilding=false;btn.disabled=false;refresh();});};\n'
             + b'refresh();setInterval(refresh,2000);}());</script>\n'
         )
         if body_marker in html:

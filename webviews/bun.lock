@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@cmux/webviews",
+      "name": "@mosaic/webviews",
       "dependencies": {
         "@pierre/diffs": "1.2.7",
         "@pierre/trees": "1.0.0-beta.4",

@@ -9,7 +9,7 @@ REQUIRED_PATTERNS=(
   "run_unit_tests()"
   "Could not resolve package dependencies"
   "rm -rf ~/Library/Caches/org.swift.swiftpm"
-  'TEST_OUTPUT="$RUNNER_TEMP/cmux-unit-output-shard-${{ matrix.shard }}.txt"'
+  'TEST_OUTPUT="$RUNNER_TEMP/mosaic-unit-output-shard-${{ matrix.shard }}.txt"'
   'run_unit_tests | tee "$TEST_OUTPUT"'
   'OUTPUT=$(cat "$TEST_OUTPUT")'
 )

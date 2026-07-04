@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: the generated Pi extension is importable and emits cmux hook calls.
+Regression test: the generated Pi extension is importable and emits mosaic hook calls.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -55,12 +55,12 @@ def main() -> int:
         return 0
 
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-pi-extension-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-pi-extension-") as td:
         root = Path(td)
         config_dir = root / "pi-agent"
         env = os.environ.copy()
@@ -81,13 +81,13 @@ def main() -> int:
             print(f"stderr={install.stderr.strip()}")
             return 1
 
-        extension_path = config_dir / "extensions" / "cmux-session.ts"
+        extension_path = config_dir / "extensions" / "mosaic-session.ts"
         if not extension_path.exists():
             print(f"FAIL: expected extension at {extension_path}")
             return 1
         extension_text = extension_path.read_text(encoding="utf-8")
-        if "cmux-pi-session-extension-marker" not in extension_text:
-            print(f"FAIL: expected cmux marker in {extension_path}")
+        if "mosaic-pi-session-extension-marker" not in extension_text:
+            print(f"FAIL: expected mosaic marker in {extension_path}")
             return 1
 
         if "@earendil-works/pi-coding-agent" not in extension_text:
@@ -99,28 +99,28 @@ def main() -> int:
         fake_pi = bin_dir / "pi"
         make_executable(fake_pi, "#!/usr/bin/env bash\nexit 0\n")
 
-        fake_cmux = root / "fake-cmux"
-        fake_args_log = root / "fake-cmux-args.log"
-        fake_stdin_log = root / "fake-cmux-stdin.log"
-        fake_env_log = root / "fake-cmux-env.log"
+        fake_mosaic = root / "fake-mosaic"
+        fake_args_log = root / "fake-mosaic-args.log"
+        fake_stdin_log = root / "fake-mosaic-stdin.log"
+        fake_env_log = root / "fake-mosaic-env.log"
         fake_binding = root / "fake-surface-binding.json"
         make_executable(
-            fake_cmux,
+            fake_mosaic,
             """#!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$*" >> "$CMUX_TEST_PI_ARGS_LOG"
+printf '%s\n' "$*" >> "$MOSAIC_TEST_PI_ARGS_LOG"
 payload="$(cat)"
-printf '%s' "$payload" >> "$CMUX_TEST_PI_STDIN_LOG"
-printf '\n---\n' >> "$CMUX_TEST_PI_STDIN_LOG"
+printf '%s' "$payload" >> "$MOSAIC_TEST_PI_STDIN_LOG"
+printf '\n---\n' >> "$MOSAIC_TEST_PI_STDIN_LOG"
 {
-  printf 'kind=%s\n' "${CMUX_AGENT_LAUNCH_KIND-}"
-  printf 'cwd=%s\n' "${CMUX_AGENT_LAUNCH_CWD-}"
-  printf 'argv=%s\n' "${CMUX_AGENT_LAUNCH_ARGV_B64-}"
+  printf 'kind=%s\n' "${MOSAIC_AGENT_LAUNCH_KIND-}"
+  printf 'cwd=%s\n' "${MOSAIC_AGENT_LAUNCH_CWD-}"
+  printf 'argv=%s\n' "${MOSAIC_AGENT_LAUNCH_ARGV_B64-}"
   if [ -n "${OPENAI_API_KEY-}" ]; then printf 'OPENAI_API_KEY=present\n'; fi
   if [ -n "${ANTHROPIC_AUTH_TOKEN-}" ]; then printf 'ANTHROPIC_AUTH_TOKEN=present\n'; fi
   if [ -n "${CUSTOM_PASSWORD-}" ]; then printf 'CUSTOM_PASSWORD=present\n'; fi
   if [ -n "${AMP_API_KEY-}" ]; then printf 'AMP_API_KEY=present\n'; fi
-  if [ -n "${CMUX_LEAK_TOKEN-}" ]; then printf 'CMUX_LEAK_TOKEN=present\n'; fi
+  if [ -n "${MOSAIC_LEAK_TOKEN-}" ]; then printf 'MOSAIC_LEAK_TOKEN=present\n'; fi
   if [ -n "${DATABASE_URL-}" ]; then printf 'DATABASE_URL=present\n'; fi
   if [ -n "${DB_PASS-}" ]; then printf 'DB_PASS=present\n'; fi
   if [ -n "${SENTRY_DSN-}" ]; then printf 'SENTRY_DSN=present\n'; fi
@@ -128,8 +128,8 @@ printf '\n---\n' >> "$CMUX_TEST_PI_STDIN_LOG"
   if [ -n "${CLOUDFLARE_AUTH_KEY-}" ]; then printf 'CLOUDFLARE_AUTH_KEY=present\n'; fi
   if [ -n "${STRIPE_SK-}" ]; then printf 'STRIPE_SK=present\n'; fi
   if [ -n "${SLACK_WEBHOOK_URL-}" ]; then printf 'SLACK_WEBHOOK_URL=present\n'; fi
-  if [ -n "${CMUX_TEST_PI_TOKEN-}" ]; then printf 'CMUX_TEST_PI_TOKEN=present\n'; fi
-} >> "$CMUX_TEST_PI_ENV_LOG"
+  if [ -n "${MOSAIC_TEST_PI_TOKEN-}" ]; then printf 'MOSAIC_TEST_PI_TOKEN=present\n'; fi
+} >> "$MOSAIC_TEST_PI_ENV_LOG"
 case "$*" in
   *"hooks pi notification"*)
     if printf '%s' "$payload" | grep -q 'pi-session-notification-fails'; then
@@ -139,8 +139,8 @@ case "$*" in
     printf '{}\n'
     ;;
   *"surface resume get"*)
-    if [ -f "$CMUX_TEST_PI_BINDING_FILE" ]; then
-      cat "$CMUX_TEST_PI_BINDING_FILE"
+    if [ -f "$MOSAIC_TEST_PI_BINDING_FILE" ]; then
+      cat "$MOSAIC_TEST_PI_BINDING_FILE"
     else
       printf '{"resume_binding":null}\n'
     fi
@@ -155,11 +155,11 @@ case "$*" in
       fi
       previous="$token"
     done
-    printf '{"resume_binding":{"kind":"pi","checkpoint_id":"%s","source":"agent-hook","command":"pi --session %s"}}\n' "$checkpoint_id" "$checkpoint_id" > "$CMUX_TEST_PI_BINDING_FILE"
+    printf '{"resume_binding":{"kind":"pi","checkpoint_id":"%s","source":"agent-hook","command":"pi --session %s"}}\n' "$checkpoint_id" "$checkpoint_id" > "$MOSAIC_TEST_PI_BINDING_FILE"
     printf '{"ok":true}\n'
     ;;
   *"surface resume clear"*)
-    rm -f "$CMUX_TEST_PI_BINDING_FILE"
+    rm -f "$MOSAIC_TEST_PI_BINDING_FILE"
     printf '{"ok":true}\n'
     ;;
   *)
@@ -171,19 +171,19 @@ esac
 
         check_env = env.copy()
         check_env["PATH"] = str(bin_dir) + os.pathsep + check_env.get("PATH", "")
-        check_env["CMUX_TEST_PI_EXTENSION_PATH"] = str(extension_path)
-        check_env["CMUX_SURFACE_ID"] = "surface-pi-test"
-        check_env["CMUX_WORKSPACE_ID"] = "workspace-pi-test"
-        check_env["CMUX_PI_CMUX_BIN"] = str(fake_cmux)
-        check_env["CMUX_TEST_PI_ARGS_LOG"] = str(fake_args_log)
-        check_env["CMUX_TEST_PI_STDIN_LOG"] = str(fake_stdin_log)
-        check_env["CMUX_TEST_PI_ENV_LOG"] = str(fake_env_log)
-        check_env["CMUX_TEST_PI_BINDING_FILE"] = str(fake_binding)
+        check_env["MOSAIC_TEST_PI_EXTENSION_PATH"] = str(extension_path)
+        check_env["MOSAIC_SURFACE_ID"] = "surface-pi-test"
+        check_env["MOSAIC_WORKSPACE_ID"] = "workspace-pi-test"
+        check_env["MOSAIC_PI_MOSAIC_BIN"] = str(fake_mosaic)
+        check_env["MOSAIC_TEST_PI_ARGS_LOG"] = str(fake_args_log)
+        check_env["MOSAIC_TEST_PI_STDIN_LOG"] = str(fake_stdin_log)
+        check_env["MOSAIC_TEST_PI_ENV_LOG"] = str(fake_env_log)
+        check_env["MOSAIC_TEST_PI_BINDING_FILE"] = str(fake_binding)
         check_env["OPENAI_API_KEY"] = "openai-secret-should-not-leak"
         check_env["ANTHROPIC_AUTH_TOKEN"] = "anthropic-secret-should-not-leak"
         check_env["CUSTOM_PASSWORD"] = "password-should-not-leak"
         check_env["AMP_API_KEY"] = "amp-secret-should-not-leak"
-        check_env["CMUX_LEAK_TOKEN"] = "cmux-secret-should-not-leak"
+        check_env["MOSAIC_LEAK_TOKEN"] = "mosaic-secret-should-not-leak"
         check_env["DATABASE_URL"] = "postgres://user:password@example.invalid/db"
         check_env["DB_PASS"] = "db-pass-should-not-leak"
         check_env["SENTRY_DSN"] = "https://public:private@example.invalid/1"
@@ -191,9 +191,9 @@ esac
         check_env["CLOUDFLARE_AUTH_KEY"] = "cloudflare-key-should-not-leak"
         check_env["STRIPE_SK"] = "stripe-secret-should-not-leak"
         check_env["SLACK_WEBHOOK_URL"] = "https://hooks.slack.invalid/secret"
-        check_env["CMUX_TEST_PI_TOKEN"] = "test-token-should-not-leak"
+        check_env["MOSAIC_TEST_PI_TOKEN"] = "test-token-should-not-leak"
         check_source = """
-const extensionPath = process.env.CMUX_TEST_PI_EXTENSION_PATH;
+const extensionPath = process.env.MOSAIC_TEST_PI_EXTENSION_PATH;
 const mod = await import(extensionPath);
 if (typeof mod.default !== "function") throw new Error("missing default export");
 const handlers = new Map();
@@ -258,7 +258,7 @@ const interruptedCtx = {
 await handlers.get("session_start")({}, interruptedCtx);
 await handlers.get("before_agent_start")({ prompt: "interrupt me" }, interruptedCtx);
 await handlers.get("session_shutdown")({ reason: "terminated" }, interruptedCtx);
-process.env.CMUX_PI_HOOKS_DISABLED = "1";
+process.env.MOSAIC_PI_HOOKS_DISABLED = "1";
 const disabledCtx = {
   cwd: "/tmp/pi-project",
   sessionManager: {
@@ -267,7 +267,7 @@ const disabledCtx = {
 };
 await handlers.get("session_start")({}, disabledCtx);
 await handlers.get("session_shutdown")({ reason: "disabled" }, disabledCtx);
-delete process.env.CMUX_PI_HOOKS_DISABLED;
+delete process.env.MOSAIC_PI_HOOKS_DISABLED;
 const notificationFailureCtx = {
   cwd: "/tmp/pi-project",
   sessionManager: {
@@ -366,7 +366,7 @@ await handlers.get("agent_end")({
         if stop_payload.get("turn_id") != prompt_turn_id:
             print(f"FAIL: stop payload did not reuse prompt turn_id, prompt={prompt_payload!r}, stop={stop_payload!r}")
             return 1
-        if stop_payload.get("cmux_notification_routed") is not True:
+        if stop_payload.get("mosaic_notification_routed") is not True:
             print(f"FAIL: successful Pi completion notification did not mark stop as routed: {stop_payload!r}")
             return 1
         fallback_stop_payload = next(
@@ -381,7 +381,7 @@ await handlers.get("agent_end")({
         if fallback_stop_payload is None:
             print(f"FAIL: notification failure session did not send a stop payload, got {payloads!r}")
             return 1
-        if fallback_stop_payload.get("cmux_notification_routed") is True:
+        if fallback_stop_payload.get("mosaic_notification_routed") is True:
             print(
                 "FAIL: failed Pi completion notification still suppressed native notification fallback, "
                 f"got {fallback_stop_payload!r}"
@@ -394,7 +394,7 @@ await handlers.get("agent_end")({
         if interrupted_stop_payload is None:
             print(f"FAIL: interrupted session shutdown did not send stop payload, got {payloads!r}")
             return 1
-        if interrupted_stop_payload.get("cmux_notification_routed") is True:
+        if interrupted_stop_payload.get("mosaic_notification_routed") is True:
             print(
                 "FAIL: interrupted session shutdown suppressed native notification fallback, "
                 f"got {interrupted_stop_payload!r}"
@@ -424,7 +424,7 @@ await handlers.get("agent_end")({
                 "ANTHROPIC_AUTH_TOKEN",
                 "CUSTOM_PASSWORD",
                 "AMP_API_KEY",
-                "CMUX_LEAK_TOKEN",
+                "MOSAIC_LEAK_TOKEN",
                 "DATABASE_URL",
                 "DB_PASS",
                 "SENTRY_DSN",
@@ -432,7 +432,7 @@ await handlers.get("agent_end")({
                 "CLOUDFLARE_AUTH_KEY",
                 "STRIPE_SK",
                 "SLACK_WEBHOOK_URL",
-                "CMUX_TEST_PI_TOKEN",
+                "MOSAIC_TEST_PI_TOKEN",
             ]
             if f"{name}=present" in env_log
         ]
@@ -458,7 +458,7 @@ await handlers.get("agent_end")({
             print(f"FAIL: extension captured wrong Pi launch argv; expected {expected_argv!r}, got {decoded_argv!r}")
             return 1
 
-    print("PASS: generated Pi extension installs and emits cmux hooks")
+    print("PASS: generated Pi extension installs and emits mosaic hooks")
     return 0
 
 

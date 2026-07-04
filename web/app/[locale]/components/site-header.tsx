@@ -41,7 +41,7 @@ export function SiteHeader({
                     className="rounded-md"
                   />
                   <span className="text-sm font-semibold tracking-tight">
-                    cmux
+                    mosaic
                   </span>
                 </BrandLogoLink>
                 {section && (

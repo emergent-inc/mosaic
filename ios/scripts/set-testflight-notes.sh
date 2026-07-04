@@ -17,7 +17,7 @@ set -euo pipefail
 #
 # Usage:
 #   ios/scripts/set-testflight-notes.sh --build-number 20260613120501 \
-#       [--audience internal|external] [--bundle-id dev.cmux.app.beta] \
+#       [--audience internal|external] [--bundle-id dev.mosaic.app.beta] \
 #       [--changelog <path>] [--locale en-US] \
 #       [--expect-marketing-version X.Y.Z] \
 #       [--notes "literal override text"] [--timeout-seconds 900]
@@ -41,7 +41,7 @@ usage() { sed -n '3,35p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 BUILD_NUMBER=""
 AUDIENCE="internal"
-BUNDLE_ID="${IOS_BETA_BUNDLE_ID:-dev.cmux.app.beta}"
+BUNDLE_ID="${IOS_BETA_BUNDLE_ID:-dev.mosaic.app.beta}"
 CHANGELOG="$IOS_DIR/CHANGELOG.md"
 LOCALE="en-US"
 NOTES_OVERRIDE=""
@@ -98,7 +98,7 @@ if [[ "$VALIDATE_ONLY" -ne 1 ]]; then
   fi
 fi
 
-NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/cmux-testflight-notes.XXXXXX")"
+NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/mosaic-testflight-notes.XXXXXX")"
 trap 'rm -f "$NOTES_FILE"' EXIT
 
 if [[ -n "$NOTES_OVERRIDE" ]]; then

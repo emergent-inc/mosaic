@@ -6,10 +6,10 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 log_dir="${RUNNER_TEMP:-/tmp}"
-log_stem="${log_dir%/}/cmux-app-host-xcodebuild-${CMUX_TAG:-untagged}"
-max_attempts="${CMUX_APP_HOST_XCODEBUILD_ATTEMPTS:-3}"
-export CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS="${CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS:-${CMUX_XCODEBUILD_NONINTERACTIVE_TIMEOUT_SECONDS:-300}}"
-echo "App-host xcodebuild idle timeout: ${CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS}s, attempts: ${max_attempts}"
+log_stem="${log_dir%/}/mosaic-app-host-xcodebuild-${MOSAIC_TAG:-untagged}"
+max_attempts="${MOSAIC_APP_HOST_XCODEBUILD_ATTEMPTS:-3}"
+export MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS="${MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS:-${MOSAIC_XCODEBUILD_NONINTERACTIVE_TIMEOUT_SECONDS:-300}}"
+echo "App-host xcodebuild idle timeout: ${MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS}s, attempts: ${max_attempts}"
 
 # Principled serialization (the actual fix; the retry below is only a backstop).
 # Invariant: a GUI test host owns the Mac's single login session + testmanagerd
@@ -21,10 +21,10 @@ echo "App-host xcodebuild idle timeout: ${CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TI
 # lock holder, which inherits the held lock fd across exec and keeps it for this
 # script's whole lifetime. Different machines use different local lock files, so
 # cross-machine parallelism is preserved.
-if [ -z "${CMUX_APP_HOST_TEST_LOCK_ACTIVE:-}" ]; then
-  lock_file="${CMUX_APP_HOST_TEST_LOCK_FILE:-${TMPDIR:-/tmp}/cmux-app-host-test.lock}"
-  lock_wait_seconds="${CMUX_APP_HOST_TEST_LOCK_WAIT_SECONDS:-3600}"
-  export CMUX_APP_HOST_TEST_LOCK_ACTIVE=1
+if [ -z "${MOSAIC_APP_HOST_TEST_LOCK_ACTIVE:-}" ]; then
+  lock_file="${MOSAIC_APP_HOST_TEST_LOCK_FILE:-${TMPDIR:-/tmp}/mosaic-app-host-test.lock}"
+  lock_wait_seconds="${MOSAIC_APP_HOST_TEST_LOCK_WAIT_SECONDS:-3600}"
+  export MOSAIC_APP_HOST_TEST_LOCK_ACTIVE=1
   exec python3 "$(dirname "$0")/app_host_test_lock.py" \
     "$lock_file" "$lock_wait_seconds" "$0" "$@"
 fi
@@ -62,17 +62,17 @@ while [ "$attempt" -le "$max_attempts" ]; do
   # a clean slate.
   kill_stale_app_host
   set +e
-  CMUX_XCODEBUILD_NONINTERACTIVE_LOG_PATH="$log_path" \
+  MOSAIC_XCODEBUILD_NONINTERACTIVE_LOG_PATH="$log_path" \
     scripts/ci/xcodebuild_noninteractive.py xcodebuild "$@"
   status=$?
   set -e
 
-  if grep -Fq 'path = "/tmp/cmux-debug.sock"' "$log_path"; then
+  if grep -Fq 'path = "/tmp/mosaic-debug.sock"' "$log_path"; then
     echo "FAIL: app-host used default debug socket instead of an XCTest-scoped socket" >&2
     exit 1
   fi
 
-  if grep -Fq 'SocketControlServer: Listening on /tmp/cmux-debug.sock' "$log_path"; then
+  if grep -Fq 'SocketControlServer: Listening on /tmp/mosaic-debug.sock' "$log_path"; then
     echo "FAIL: app-host listener used default debug socket instead of an XCTest-scoped socket" >&2
     exit 1
   fi
@@ -80,7 +80,7 @@ while [ "$attempt" -le "$max_attempts" ]; do
   if [ "$status" -ne 0 ]; then
     retry_reason=""
     if [ "$status" -eq 124 ]; then
-      retry_reason="${CMUX_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS}s idle timeout"
+      retry_reason="${MOSAIC_XCODEBUILD_NONINTERACTIVE_IDLE_TIMEOUT_SECONDS}s idle timeout"
     elif grep -Fq 'The test runner hung before establishing connection.' "$log_path"; then
       retry_reason="XCTest startup hang"
     elif grep -Fq 'Failed to establish communication with the test runner' "$log_path"; then

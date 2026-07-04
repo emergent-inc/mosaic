@@ -20,7 +20,7 @@ type CloudDbState = {
 };
 
 const globalForDb = globalThis as typeof globalThis & {
-  __cmuxCloudDb?: CloudDbState;
+  __mosaicCloudDb?: CloudDbState;
 };
 
 export function createAwsRdsIamPool(config: CloudDbAwsRdsIamConfig): Pool {
@@ -53,15 +53,15 @@ export function cloudDb(): CloudDb {
   const config = cloudDbConfig();
   const key = cloudDbConfigKey(config);
 
-  if (globalForDb.__cmuxCloudDb?.key === key) {
-    return globalForDb.__cmuxCloudDb.db;
+  if (globalForDb.__mosaicCloudDb?.key === key) {
+    return globalForDb.__mosaicCloudDb.db;
   }
 
   if (config.driver === "aws-rds-iam") {
     const pool = createAwsRdsIamPool(config);
     attachDatabasePool(pool);
     const db = drizzleNodePg({ client: pool, schema }) as unknown as CloudDb;
-    globalForDb.__cmuxCloudDb = { db, close: () => pool.end(), key };
+    globalForDb.__mosaicCloudDb = { db, close: () => pool.end(), key };
     return db;
   }
 
@@ -70,12 +70,12 @@ export function cloudDb(): CloudDb {
     prepare: false,
   });
   const db = createPostgresJsDb(sql);
-  globalForDb.__cmuxCloudDb = { db, close: () => sql.end(), key };
+  globalForDb.__mosaicCloudDb = { db, close: () => sql.end(), key };
   return db;
 }
 
 export async function closeCloudDbForTests(): Promise<void> {
-  const state = globalForDb.__cmuxCloudDb;
-  globalForDb.__cmuxCloudDb = undefined;
+  const state = globalForDb.__mosaicCloudDb;
+  globalForDb.__mosaicCloudDb = undefined;
   await state?.close();
 }

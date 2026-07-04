@@ -1,34 +1,34 @@
-import CmuxSettingsUI
+import MosaicSettingsUI
 import AppKit
-import CmuxRemoteSession
-import CmuxCore
-import CmuxAuthRuntime
-import CmuxFeedback
-import CmuxBrowser
-import CmuxControlSocket
-import CmuxFoundation
-import CmuxPanes
-import CmuxRemoteDaemon
-import CmuxRemoteWorkspace
-import CmuxTerminal
-import CmuxSettings
-import CmuxSwiftRenderUI
+import MosaicRemoteSession
+import MosaicCore
+import MosaicAuthRuntime
+import MosaicFeedback
+import MosaicBrowser
+import MosaicControlSocket
+import MosaicFoundation
+import MosaicPanes
+import MosaicRemoteDaemon
+import MosaicRemoteWorkspace
+import MosaicTerminal
+import MosaicSettings
+import MosaicSwiftRenderUI
 import Carbon.HIToolbox
-import CMUXMobileCore
-import CMUXAgentLaunch
+import MosaicMobileCore
+import MosaicAgentLaunch
 import Foundation
 import Bonsplit
 import WebKit
-import CmuxSidebar
-import CmuxWorkspaces
+import MosaicSidebar
+import MosaicWorkspaces
 
 extension Notification.Name {
-    static let socketListenerDidStart = Notification.Name("cmux.socketListenerDidStart")
-    // terminalSurfaceDidBecomeReady moved to CmuxTerminal (posted by TerminalSurface).
-    static let terminalSurfaceHostedViewDidMoveToWindow = Notification.Name("cmux.terminalSurfaceHostedViewDidMoveToWindow")
-    static let mainWindowContextsDidChange = Notification.Name("cmux.mainWindowContextsDidChange")
-    static let browserDownloadEventDidArrive = Notification.Name("cmux.browserDownloadEventDidArrive")
-    static let reactGrabDidCopySelection = Notification.Name("cmux.reactGrabDidCopySelection")
+    static let socketListenerDidStart = Notification.Name("mosaic.socketListenerDidStart")
+    // terminalSurfaceDidBecomeReady moved to MosaicTerminal (posted by TerminalSurface).
+    static let terminalSurfaceHostedViewDidMoveToWindow = Notification.Name("mosaic.terminalSurfaceHostedViewDidMoveToWindow")
+    static let mainWindowContextsDidChange = Notification.Name("mosaic.mainWindowContextsDidChange")
+    static let browserDownloadEventDidArrive = Notification.Name("mosaic.browserDownloadEventDidArrive")
+    static let reactGrabDidCopySelection = Notification.Name("mosaic.reactGrabDidCopySelection")
 }
 
 nonisolated private struct SocketLineProcessingResult: Sendable {
@@ -47,7 +47,7 @@ nonisolated private struct RemotePTYSocketTarget {
 
 nonisolated func remotePTYSessionListErrorIsUnsupportedDaemon(_ error: Error) -> Bool {
     let nsError = error as NSError
-    guard nsError.domain == "cmux.remote.daemon.rpc", nsError.code == 14 else {
+    guard nsError.domain == "mosaic.remote.daemon.rpc", nsError.code == 14 else {
         return false
     }
     return error.localizedDescription
@@ -65,7 +65,7 @@ nonisolated private func v2RemotePTYUserFacingErrorMessage(_ message: String) ->
     if lowered.contains("missing required capability") ||
         lowered.contains("pty.session") ||
         lowered.contains("method_not_found") {
-        return "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+        return "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update mosaic"
     }
     if lowered.contains("pty_session_not_found") ||
         (lowered.contains("persistent ssh pty session") && lowered.contains("not running")) ||
@@ -115,8 +115,8 @@ class TerminalController {
     /// `WorkspaceRemoteSessionController`; ownership moves to the composition root with the
     /// planned `RemoteSessionCoordinator` wiring.
     nonisolated let remoteProxyBroker: any RemoteProxyBrokering
-    // Stateless Sendable structs from CmuxControlSocket; injected at construction.
-    // `transport` is internal so sibling-file extensions (CmuxEventStream) can write through it.
+    // Stateless Sendable structs from MosaicControlSocket; injected at construction.
+    // `transport` is internal so sibling-file extensions (MosaicEventStream) can write through it.
     nonisolated let transport: SocketTransport
     // The package-owned listener: path/bind/lock lifecycle, accept source,
     // backoff/rearm recovery, and the generation-counted state machine.
@@ -129,12 +129,12 @@ class TerminalController {
     // with the legacy dispatcher), so the former `nonisolated` is gone. The
     // package type keeps its internal lock for its own tested contract.
     let socketFastPathState = SocketFastPathState()
-    // Stateless sidebar-metadata/command argument parser (CmuxSidebar).
+    // Stateless sidebar-metadata/command argument parser (MosaicSidebar).
     // Pure transforms over the raw arg string; holds no state and reaches no
     // app singletons, so the `report_*`/sidebar-mutation handlers forward to it.
     private nonisolated let sidebarMetadataArgumentParser = SidebarMetadataArgumentParser()
     private nonisolated let myPid = getpid()
-    private nonisolated static let socketCommandFocusAllowanceStackKey = "cmux.socketCommandFocusAllowanceStack"
+    private nonisolated static let socketCommandFocusAllowanceStackKey = "mosaic.socketCommandFocusAllowanceStack"
     private nonisolated static let socketListenerFailureCaptureCooldown: TimeInterval = 60
     private nonisolated static let v2BrowserDownloadWaitDefaultTimeoutMs = 10_000
     private nonisolated static let v2BrowserDownloadWaitMaxTimeoutMs = 120_000
@@ -157,7 +157,7 @@ class TerminalController {
     private var mobileViewportReportsBySurfaceID: [UUID: [String: MobileViewportReport]] = [:]
     private var mobileViewportReportCleanupTimersBySurfaceID: [UUID: DispatchSourceTimer] = [:]
 #if DEBUG
-    private nonisolated static let socketCommandDebugLogEnvironmentKey = "CMUX_DEBUG_SOCKET_COMMAND_LOG"
+    private nonisolated static let socketCommandDebugLogEnvironmentKey = "MOSAIC_DEBUG_SOCKET_COMMAND_LOG"
     private nonisolated static let socketCommandSlowThresholdMs: Double = 500
 #endif
     static var terminalProcessExitedMessage: String {
@@ -228,7 +228,7 @@ class TerminalController {
         "feed.jump"
     ]
 
-    /// The main-actor RPC dispatch coordinator (CmuxControlSocket). Owns the
+    /// The main-actor RPC dispatch coordinator (MosaicControlSocket). Owns the
     /// `kind:N` handle registry and the moved command domains (window so far,
     /// growing per stage-3c sub-stage); this controller is its interim
     /// composition owner and ``ControlCommandContext`` conformer. Constructed in
@@ -249,8 +249,8 @@ class TerminalController {
 
     private final class V2BrowserUndefinedSentinel: Sendable {}
 
-    private nonisolated static let v2BrowserEvalEnvelopeTypeKey = "__cmux_t"
-    private nonisolated static let v2BrowserEvalEnvelopeValueKey = "__cmux_v"
+    private nonisolated static let v2BrowserEvalEnvelopeTypeKey = "__mosaic_t"
+    private nonisolated static let v2BrowserEvalEnvelopeValueKey = "__mosaic_v"
     private nonisolated static let v2BrowserEvalEnvelopeTypeUndefined = "undefined"
     private nonisolated static let v2BrowserEvalEnvelopeTypeValue = "value"
 
@@ -265,7 +265,7 @@ class TerminalController {
     private var v2BrowserUnsupportedNetworkRequestsBySurface: [UUID: [[String: Any]]] = [:]
     private nonisolated let v2BrowserUndefinedSentinel = V2BrowserUndefinedSentinel()
     /// Stateless browser-control logic (JS builders, value normalization,
-    /// diagnostics, failure classification) extracted to `CmuxBrowser`.
+    /// diagnostics, failure classification) extracted to `MosaicBrowser`.
     /// The per-surface mutable state and WebKit evaluation seam stay here.
     private nonisolated let v2BrowserControl = BrowserControlService(
         evalEnvelope: BrowserEvalEnvelope(
@@ -1343,16 +1343,16 @@ class TerminalController {
     private nonisolated func handleClient(_ socket: Int32, peerPid: pid_t? = nil) {
         defer { close(socket) }
 
-        // In cmuxOnly mode, verify the connecting process is a descendant of cmux.
+        // In mosaicOnly mode, verify the connecting process is a descendant of mosaic.
         // In allowAll mode (env-var only), skip the ancestry check.
-        if socketServer.accessMode == .cmuxOnly {
+        if socketServer.accessMode == .mosaicOnly {
             // Use pre-captured peer PID if available (captured in accept loop before
             // the peer can disconnect), falling back to live lookup.
             let pid = peerPid ?? transport.peerProcessID(of: socket)
             if let pid {
                 guard isDescendant(pid) else {
                     _ = writeSocketResponse(
-                        "ERROR: Access denied — only processes started inside cmux can connect",
+                        "ERROR: Access denied — only processes started inside mosaic can connect",
                         to: socket
                     )
                     return
@@ -1660,7 +1660,7 @@ class TerminalController {
     }
 
     private nonisolated static func debugLogSocketCommand(_ message: @autoclosure () -> String) {
-        cmuxDebugLog(message())
+        mosaicDebugLog(message())
     }
 #endif
 
@@ -1719,7 +1719,7 @@ class TerminalController {
 
         let policyParams = cmd == "right_sidebar" ? ["args": args] : [:]
         return withSocketCommandPolicy(commandKey: cmd, isV2: false, params: policyParams) {
-            // V1 domains migrated into CmuxControlSocket's ControlCommandCoordinator
+            // V1 domains migrated into MosaicControlSocket's ControlCommandCoordinator
             // (the sidebar metadata/pane/surface commands and the browser panel
             // commands) answer here; everything else falls through to the legacy
             // switch below.
@@ -1944,7 +1944,7 @@ class TerminalController {
 
             v2MainSync { self.v2RefreshKnownRefs() }
 
-            // Domains migrated into CmuxControlSocket's ControlCommandCoordinator
+            // Domains migrated into MosaicControlSocket's ControlCommandCoordinator
             // (window so far) answer here, on the main actor, and encode through
             // the same encoder/id; everything else falls through to the legacy
             // switch below. processV2Command already runs on main, so the
@@ -2454,7 +2454,7 @@ class TerminalController {
 #endif
 
         return [
-            "protocol": "cmux-socket",
+            "protocol": "mosaic-socket",
             "version": 2,
             "socket_path": socketServer.currentSocketPath,
             "access_mode": socketServer.accessMode.rawValue,
@@ -2555,7 +2555,7 @@ class TerminalController {
         }
         if let cliPath = Bundle.main.resourceURL?
             .appendingPathComponent("bin", isDirectory: true)
-            .appendingPathComponent("cmux", isDirectory: false)
+            .appendingPathComponent("mosaic", isDirectory: false)
             .path {
             result["app_cli_path"] = cliPath
         }
@@ -2597,7 +2597,7 @@ class TerminalController {
                 nil,
                 .err(
                     code: "invalid_params",
-                    message: "Invalid window selector. Use --window <id|ref|index> to target one window, or run `cmux list-windows` to see available windows and retry.",
+                    message: "Invalid window selector. Use --window <id|ref|index> to target one window, or run `mosaic list-windows` to see available windows and retry.",
                     data: v2WindowSelectorDetails(params: params)
                 )
             )
@@ -2607,7 +2607,7 @@ class TerminalController {
                 nil,
                 .err(
                     code: "invalid_params",
-                    message: "Choose either --window <id|ref|index> or --all-windows, not both. Run `cmux list-windows` to see available windows and retry.",
+                    message: "Choose either --window <id|ref|index> or --all-windows, not both. Run `mosaic list-windows` to see available windows and retry.",
                     data: v2WindowSelectorDetails(params: params)
                 )
             )
@@ -2639,7 +2639,7 @@ class TerminalController {
     private func v2WindowNotFoundResult(params: [String: Any], windowId: UUID) -> V2CallResult {
         .err(
             code: "not_found",
-            message: "Window not found. Run `cmux list-windows` to see available windows, then retry with --window <id|ref|index>.",
+            message: "Window not found. Run `mosaic list-windows` to see available windows, then retry with --window <id|ref|index>.",
             data: v2WindowSelectorDetails(params: params) ?? ["window_id": windowId.uuidString]
         )
     }
@@ -2678,11 +2678,11 @@ class TerminalController {
         v2AttachTopApplicationProcess(to: &windowNodes)
 
         let processSnapshot = await withTaskGroup(
-            of: CmuxTopProcessSnapshot.self,
-            returning: CmuxTopProcessSnapshot.self
+            of: MosaicTopProcessSnapshot.self,
+            returning: MosaicTopProcessSnapshot.self
         ) { group in
             group.addTask(priority: .utility) {
-                CmuxTopProcessSnapshot.capture(includeProcessDetails: includeProcesses)
+                MosaicTopProcessSnapshot.capture(includeProcessDetails: includeProcesses)
             }
             return await group.next()!
         }
@@ -2713,7 +2713,7 @@ class TerminalController {
     }
 
     private nonisolated func processAggregates(
-        from processSnapshot: CmuxTopProcessSnapshot,
+        from processSnapshot: MosaicTopProcessSnapshot,
         totalPIDs: Set<Int>
     ) -> (programs: [[String: Any]], codingAgents: [[String: Any]]) {
         (
@@ -2733,7 +2733,7 @@ class TerminalController {
               var windowNodes = payload.removeValue(forKey: "windows") as? [[String: Any]] else {
             return .err(code: "internal_error", message: "Invalid system.top payload", data: nil)
         }
-        let processSnapshot = CmuxTopProcessSnapshot.capture(includeProcessDetails: includeProcesses)
+        let processSnapshot = MosaicTopProcessSnapshot.capture(includeProcessDetails: includeProcesses)
         let browserPIDOccurrences = v2TopBrowserPIDOccurrences(in: windowNodes)
         let totalPIDs = v2AnnotateTopWindows(
             &windowNodes,
@@ -2809,7 +2809,7 @@ class TerminalController {
             return .err(code: "invalid_params", message: "\(invalidLimitKey) must be an integer from 1 to 100", data: nil)
         }
         let topGroupLimit = topGroupLimitValue ?? groupLimitValue ?? 12
-        let processSnapshot = CmuxTopProcessSnapshot.captureCached(
+        let processSnapshot = MosaicTopProcessSnapshot.captureCached(
             includeProcessDetails: true,
             maximumAge: 2
         )
@@ -2988,7 +2988,7 @@ class TerminalController {
             ]
 
             if panel.panelType == .browser, let browserPanel = panel as? BrowserPanel {
-                let webContentPID = CmuxWebContentProcessIdentifier.pid(for: browserPanel.webView)
+                let webContentPID = MosaicWebContentProcessIdentifier.pid(for: browserPanel.webView)
                 let url = browserPanel.currentURL?.absoluteString ?? ""
                 let webViewLifecycle = browserPanel.webViewLifecycleTopPayload()
                 item["url"] = url
@@ -3853,7 +3853,7 @@ class TerminalController {
     /// Resolves the workspace by `workspace_id` / surface / pane, falling back to the
     /// selected workspace only when no explicit target is supplied, and returns the
     /// raw configured set. An explicit-but-unresolvable target errors. Secret masking is a
-    /// CLI presentation concern (`cmux workspace env --mask`): the local control
+    /// CLI presentation concern (`mosaic workspace env --mask`): the local control
     /// socket already exposes the surrounding workspace state, so values are returned
     /// verbatim and the env set is deliberately kept out of `workspace.list` so a
     /// plain listing never echoes secrets.
@@ -4815,7 +4815,7 @@ class TerminalController {
                 }
 
                 guard let raw = window.identifier?.rawValue else { return (nil, nil) }
-                let prefix = "cmux.main."
+                let prefix = "mosaic.main."
                 guard raw.hasPrefix(prefix),
                       let parsedWindowId = UUID(uuidString: String(raw.dropFirst(prefix.count))) else {
                     return (nil, nil)
@@ -5154,7 +5154,7 @@ class TerminalController {
             return ok
         }
         #if DEBUG
-        cmuxDebugLog("mobile.vtExport action=\(bindingAction) succeeded=\(actionSucceeded) hasPath=\(exportedPath != nil)")
+        mosaicDebugLog("mobile.vtExport action=\(bindingAction) succeeded=\(actionSucceeded) hasPath=\(exportedPath != nil)")
         #endif
         guard let exportedPath = Self.normalizedExportedScreenPath(exportedPath) else {
             return nil
@@ -5406,7 +5406,7 @@ class TerminalController {
             )
         }
 
-        CmuxEventBus.shared.publishWorkstreamEvent(event, phase: "received")
+        MosaicEventBus.shared.publishWorkstreamEvent(event, phase: "received")
         v2ApplyIMessageModeSideEffects(for: event)
         Task { @MainActor in self.agentChatTranscriptService?.noteHookEvent(event) }
 
@@ -5414,7 +5414,7 @@ class TerminalController {
             event: event,
             waitTimeout: waitTimeout
         )
-        CmuxEventBus.shared.publishWorkstreamEvent(
+        MosaicEventBus.shared.publishWorkstreamEvent(
             event,
             phase: "completed",
             result: FeedSocketEncoding.payload(for: result)
@@ -5868,7 +5868,7 @@ class TerminalController {
 
         guard let outcome else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.jsRun.timeout preferAsync=\(preferAsync) " +
                 "world=\(world == .page ? "page" : "isolated") timeout=\(timeoutSeconds)"
             )
@@ -5897,7 +5897,7 @@ class TerminalController {
         let timeout = Double(timeoutMs) / 1000.0
         let waitScript = """
         (() => {
-          const __cmuxEvaluate = () => {
+          const __mosaicEvaluate = () => {
             try {
               return !!(\(conditionScript));
             } catch (_) {
@@ -5905,7 +5905,7 @@ class TerminalController {
             }
           };
 
-          if (__cmuxEvaluate()) {
+          if (__mosaicEvaluate()) {
             return true;
           }
 
@@ -5923,7 +5923,7 @@ class TerminalController {
               resolve(value);
             };
             const recheck = () => {
-              if (__cmuxEvaluate()) {
+              if (__mosaicEvaluate()) {
                 finish(true);
               }
             };
@@ -6040,7 +6040,7 @@ class TerminalController {
                   let browserPanel = workspace.browserPanel(for: surfaceId),
                   let blankURL = URL(string: "about:blank") else {
 #if DEBUG
-                cmuxDebugLog("browser.jsKick.locateFailed surface=\(surfaceId.uuidString.prefix(5))")
+                mosaicDebugLog("browser.jsKick.locateFailed surface=\(surfaceId.uuidString.prefix(5))")
 #endif
                 return false
             }
@@ -6074,7 +6074,7 @@ class TerminalController {
             observation = nil
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.jsKick surface=\(surfaceId.uuidString.prefix(5)) " +
             "committed=\(committed == true) url=\(v2MainSync { webView.url?.absoluteString ?? "nil" })"
         )
@@ -6095,16 +6095,16 @@ class TerminalController {
         if let frameSelector = v2BrowserCurrentFrameSelector(surfaceId: surfaceId) {
             let selectorLiteral = v2JSONLiteral(frameSelector)
             framePrelude = """
-            let __cmuxDoc = document;
+            let __mosaicDoc = document;
             try {
-              const __cmuxFrame = document.querySelector(\(selectorLiteral));
-              if (__cmuxFrame && __cmuxFrame.contentDocument) {
-                __cmuxDoc = __cmuxFrame.contentDocument;
+              const __mosaicFrame = document.querySelector(\(selectorLiteral));
+              if (__mosaicFrame && __mosaicFrame.contentDocument) {
+                __mosaicDoc = __mosaicFrame.contentDocument;
               }
             } catch (_) {}
             """
         } else {
-            framePrelude = "const __cmuxDoc = document;"
+            framePrelude = "const __mosaicDoc = document;"
         }
 
         let executionBlock: String
@@ -6117,24 +6117,24 @@ class TerminalController {
         let asyncFunctionBody = """
         \(framePrelude)
 
-        const __cmuxMaybeAwait = async (__r) => {
+        const __mosaicMaybeAwait = async (__r) => {
           if (__r !== null && (typeof __r === 'object' || typeof __r === 'function') && typeof __r.then === 'function') {
             return await __r;
           }
           return __r;
         };
 
-        const __cmuxEvalInFrame = async function() {
-          const document = __cmuxDoc;
+        const __mosaicEvalInFrame = async function() {
+          const document = __mosaicDoc;
           \(executionBlock)
-          const __value = await __cmuxMaybeAwait(__r);
+          const __value = await __mosaicMaybeAwait(__r);
           return {
-            __cmux_t: (typeof __value === 'undefined') ? 'undefined' : 'value',
-            __cmux_v: __value
+            __mosaic_t: (typeof __value === 'undefined') ? 'undefined' : 'value',
+            __mosaic_v: __value
           };
         };
 
-        return await __cmuxEvalInFrame();
+        return await __mosaicEvalInFrame();
         """
 
         var rawResult: V2JavaScriptResult
@@ -6264,7 +6264,7 @@ class TerminalController {
 
         let injector = """
         (() => {
-          window.__cmuxInitScriptsApplied = window.__cmuxInitScriptsApplied || { scripts: [], styles: [] };
+          window.__mosaicInitScriptsApplied = window.__mosaicInitScriptsApplied || { scripts: [], styles: [] };
           return true;
         })()
         """
@@ -6277,7 +6277,7 @@ class TerminalController {
             let cssLiteral = v2JSONLiteral(css)
             let styleScript = """
             (() => {
-              const id = 'cmux-init-style-' + btoa(unescape(encodeURIComponent(\(cssLiteral)))).replace(/=+$/g, '');
+              const id = 'mosaic-init-style-' + btoa(unescape(encodeURIComponent(\(cssLiteral)))).replace(/=+$/g, '');
               if (document.getElementById(id)) return true;
               const el = document.createElement('style');
               el.id = id;
@@ -6359,7 +6359,7 @@ class TerminalController {
             )
         }
         guard let url else {
-            return .err(code: "browser_disabled", message: "cmux browser is disabled", data: nil)
+            return .err(code: "browser_disabled", message: "mosaic browser is disabled", data: nil)
         }
 
         var result: V2CallResult = .err(
@@ -6404,7 +6404,7 @@ class TerminalController {
                 url = navigable
             } else if let parsed = URL(string: trimmedURLStr), parsed.scheme != nil {
                 // Preserve any real-scheme URL the navigable resolver rejects: about:blank,
-                // the trusted cmux-diff-viewer:// scheme, and external app/deep-link schemes
+                // the trusted mosaic-diff-viewer:// scheme, and external app/deep-link schemes
                 // (mailto:, xcode://, ...). The downstream browser-disabled, external-open, and
                 // diff-viewer-registration paths act on the original URL; only scheme-less,
                 // non-navigable input should fall through to a search query.
@@ -6425,7 +6425,7 @@ class TerminalController {
 
         if BrowserAvailabilitySettings.isDisabled() {
             if v2IsDiffViewerURL(url) {
-                return .err(code: "browser_disabled", message: "cmux browser is disabled", data: nil)
+                return .err(code: "browser_disabled", message: "mosaic browser is disabled", data: nil)
             }
             return v2BrowserDisabledExternalOpenResult(rawURL: urlStr, url: url, tabManager: tabManager)
         }
@@ -6549,34 +6549,34 @@ class TerminalController {
 
     private func v2IsDiffViewerURL(_ url: URL?) -> Bool {
         guard let url else { return false }
-        if url.scheme?.lowercased() == CmuxDiffViewerURLSchemeHandler.scheme {
+        if url.scheme?.lowercased() == MosaicDiffViewerURLSchemeHandler.scheme {
             return true
         }
         return url.scheme?.lowercased() == "http" &&
             url.host == "127.0.0.1" &&
-            url.fragment == "cmux-diff-viewer"
+            url.fragment == "mosaic-diff-viewer"
     }
 
     private func v2RegisterDiffViewerURLIfNeeded(params: [String: Any], url: URL?) -> V2CallResult? {
         guard let url,
-              url.scheme == CmuxDiffViewerURLSchemeHandler.scheme else {
+              url.scheme == MosaicDiffViewerURLSchemeHandler.scheme else {
             return nil
         }
         guard let token = v2String(params, "diff_viewer_token"),
               token == url.host,
               let rawFiles = params["diff_viewer_files"] as? [[String: Any]],
               !rawFiles.isEmpty,
-              rawFiles.count <= CmuxDiffViewerURLSchemeHandler.maxRegisteredFiles else {
+              rawFiles.count <= MosaicDiffViewerURLSchemeHandler.maxRegisteredFiles else {
             return .err(code: "invalid_params", message: "Missing or invalid trusted diff viewer allowlist", data: nil)
         }
 
-        let files = rawFiles.compactMap(CmuxDiffViewerURLSchemeHandler.registeredFile(from:))
+        let files = rawFiles.compactMap(MosaicDiffViewerURLSchemeHandler.registeredFile(from:))
         guard files.count == rawFiles.count else {
             return .err(code: "invalid_params", message: "Invalid trusted diff viewer allowlist", data: nil)
         }
 
         do {
-            try CmuxDiffViewerURLSchemeHandler.shared.register(token: token, files: files)
+            try MosaicDiffViewerURLSchemeHandler.shared.register(token: token, files: files)
             return nil
         } catch {
             return .err(
@@ -7242,7 +7242,7 @@ class TerminalController {
                 data: [
                     "timeout_ms": timeoutMs,
                     "url": v2MainSync { webView.url?.absoluteString ?? "about:blank" },
-                    "hint": "Verify the page loaded with 'cmux browser <surface> get url' before waiting"
+                    "hint": "Verify the page loaded with 'mosaic browser <surface> get url' before waiting"
                 ]
             )
         }
@@ -7257,7 +7257,7 @@ class TerminalController {
               if (!el) return { ok: false, error: 'not_found' };
               if (el.disabled) return { ok: false, error: 'disabled' };
               el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-              __cmuxClick(el);
+              __mosaicClick(el);
               return { ok: true };
             })()
             """
@@ -7273,10 +7273,10 @@ class TerminalController {
               if (!el) return { ok: false, error: 'not_found' };
               if (el.disabled) return { ok: false, error: 'disabled' };
               el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-              __cmuxClick(el);
-              __cmuxClick(el);
-              const c = __cmuxCenter(el);
-              __cmuxMouse(el, 'dblclick', c, 0, 2);
+              __mosaicClick(el);
+              __mosaicClick(el);
+              const c = __mosaicCenter(el);
+              __mosaicMouse(el, 'dblclick', c, 0, 2);
               return { ok: true };
             })()
             """
@@ -7291,7 +7291,7 @@ class TerminalController {
               const el = document.querySelector(\(selectorLiteral));
               if (!el) return { ok: false, error: 'not_found' };
               el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-              __cmuxHover(el);
+              __mosaicHover(el);
               return { ok: true };
             })()
             """
@@ -7338,26 +7338,26 @@ class TerminalController {
     /// mouse sequence (not just `click`) or need legacy KeyboardEvent fields (keyCode/which/code).
     /// These helpers reproduce a real user gesture so React, Vue, Svelte, Angular, Solid, and
     /// vanilla handlers all fire. Define them once at the top of an injected snippet, then call
-    /// `__cmuxClick(el)`, `__cmuxHover(el)`, `__cmuxSetChecked(el, desired)`, and `__cmuxKey(t,type,key)`.
+    /// `__mosaicClick(el)`, `__mosaicHover(el)`, `__mosaicSetChecked(el, desired)`, and `__mosaicKey(t,type,key)`.
     private nonisolated static let browserInputHelpers = """
-    function __cmuxCenter(el){const r=el.getBoundingClientRect();return {x:Math.floor(r.left+Math.min(r.width,r.width/2)),y:Math.floor(r.top+Math.min(r.height,r.height/2))};}
-    function __cmuxPointer(el,type,c,buttons,bubbles){try{el.dispatchEvent(new PointerEvent(type,{bubbles:(bubbles===false?false:true),cancelable:true,composed:true,view:window,pointerId:1,pointerType:'mouse',isPrimary:true,button:0,buttons:buttons,clientX:c.x,clientY:c.y,screenX:c.x,screenY:c.y}));}catch(e){}}
-    function __cmuxMouse(el,type,c,buttons,detail,bubbles){el.dispatchEvent(new MouseEvent(type,{bubbles:(bubbles===false?false:true),cancelable:true,composed:true,view:window,button:0,buttons:buttons,detail:detail||0,clientX:c.x,clientY:c.y,screenX:c.x,screenY:c.y}));}
-    function __cmuxClick(el){const c=__cmuxCenter(el);
-      __cmuxPointer(el,'pointerover',c,0);__cmuxMouse(el,'mouseover',c,0);
-      __cmuxPointer(el,'pointerenter',c,0,false);__cmuxMouse(el,'mouseenter',c,0,0,false);
-      __cmuxPointer(el,'pointermove',c,0);__cmuxMouse(el,'mousemove',c,0);
-      __cmuxPointer(el,'pointerdown',c,1);__cmuxMouse(el,'mousedown',c,1,1);
+    function __mosaicCenter(el){const r=el.getBoundingClientRect();return {x:Math.floor(r.left+Math.min(r.width,r.width/2)),y:Math.floor(r.top+Math.min(r.height,r.height/2))};}
+    function __mosaicPointer(el,type,c,buttons,bubbles){try{el.dispatchEvent(new PointerEvent(type,{bubbles:(bubbles===false?false:true),cancelable:true,composed:true,view:window,pointerId:1,pointerType:'mouse',isPrimary:true,button:0,buttons:buttons,clientX:c.x,clientY:c.y,screenX:c.x,screenY:c.y}));}catch(e){}}
+    function __mosaicMouse(el,type,c,buttons,detail,bubbles){el.dispatchEvent(new MouseEvent(type,{bubbles:(bubbles===false?false:true),cancelable:true,composed:true,view:window,button:0,buttons:buttons,detail:detail||0,clientX:c.x,clientY:c.y,screenX:c.x,screenY:c.y}));}
+    function __mosaicClick(el){const c=__mosaicCenter(el);
+      __mosaicPointer(el,'pointerover',c,0);__mosaicMouse(el,'mouseover',c,0);
+      __mosaicPointer(el,'pointerenter',c,0,false);__mosaicMouse(el,'mouseenter',c,0,0,false);
+      __mosaicPointer(el,'pointermove',c,0);__mosaicMouse(el,'mousemove',c,0);
+      __mosaicPointer(el,'pointerdown',c,1);__mosaicMouse(el,'mousedown',c,1,1);
       if(typeof el.focus==='function'){try{el.focus({preventScroll:true});}catch(e){try{el.focus();}catch(e2){}}}
-      __cmuxPointer(el,'pointerup',c,0);__cmuxMouse(el,'mouseup',c,0,1);
-      if(typeof el.click==='function'){el.click();}else{__cmuxMouse(el,'click',c,0,1);}
+      __mosaicPointer(el,'pointerup',c,0);__mosaicMouse(el,'mouseup',c,0,1);
+      if(typeof el.click==='function'){el.click();}else{__mosaicMouse(el,'click',c,0,1);}
     }
-    function __cmuxHover(el){const c=__cmuxCenter(el);
-      __cmuxPointer(el,'pointerover',c,0);__cmuxMouse(el,'mouseover',c,0);
-      __cmuxPointer(el,'pointerenter',c,0,false);__cmuxMouse(el,'mouseenter',c,0,0,false);
-      __cmuxPointer(el,'pointermove',c,0);__cmuxMouse(el,'mousemove',c,0);
+    function __mosaicHover(el){const c=__mosaicCenter(el);
+      __mosaicPointer(el,'pointerover',c,0);__mosaicMouse(el,'mouseover',c,0);
+      __mosaicPointer(el,'pointerenter',c,0,false);__mosaicMouse(el,'mouseenter',c,0,0,false);
+      __mosaicPointer(el,'pointermove',c,0);__mosaicMouse(el,'mousemove',c,0);
     }
-    function __cmuxSetChecked(el,desired){
+    function __mosaicSetChecked(el,desired){
       // A click event runs the checkbox/radio activation behavior (it TOGGLES a checkbox / SELECTS a
       // radio) even when dispatched, and is also what React maps onChange to. So the correct way to
       // reach a target state is to click only when it differs; that fires input + change + (React)
@@ -7377,9 +7377,9 @@ class TerminalController {
         return;
       }
       if(typeof el.click==='function'){el.click();}
-      else {const c=__cmuxCenter(el); __cmuxMouse(el,'click',c,0,1);}
+      else {const c=__mosaicCenter(el); __mosaicMouse(el,'click',c,0,1);}
     }
-    function __cmuxKeyMeta(key){
+    function __mosaicKeyMeta(key){
       const map={Enter:[13,'Enter'],Tab:[9,'Tab'],Backspace:[8,'Backspace'],Delete:[46,'Delete'],Escape:[27,'Escape'],' ':[32,'Space'],ArrowUp:[38,'ArrowUp'],ArrowDown:[40,'ArrowDown'],ArrowLeft:[37,'ArrowLeft'],ArrowRight:[39,'ArrowRight'],Home:[36,'Home'],End:[35,'End'],PageUp:[33,'PageUp'],PageDown:[34,'PageDown']};
       if(map[key])return {keyCode:map[key][0],code:map[key][1]};
       if(key&&key.length===1){const u=key.toUpperCase();
@@ -7388,8 +7388,8 @@ class TerminalController {
         return {keyCode:key.charCodeAt(0),code:''};}
       return {keyCode:0,code:key||''};
     }
-    function __cmuxKey(target,type,key){
-      const meta=__cmuxKeyMeta(key);
+    function __mosaicKey(target,type,key){
+      const meta=__mosaicKeyMeta(key);
       const ev=new KeyboardEvent(type,{key:key,code:meta.code,location:0,repeat:false,isComposing:false,bubbles:true,cancelable:true,composed:true,view:window});
       try{Object.defineProperty(ev,'keyCode',{get(){return meta.keyCode;}});}catch(e){}
       try{Object.defineProperty(ev,'which',{get(){return meta.keyCode;}});}catch(e){}
@@ -7489,12 +7489,12 @@ class TerminalController {
               const target = document.activeElement || document.body || document.documentElement;
               if (!target) return { ok: false, error: 'not_found' };
               const k = String(\(keyLiteral));
-              const kdNotPrevented = __cmuxKey(target, 'keydown', k);
+              const kdNotPrevented = __mosaicKey(target, 'keydown', k);
               // keypress historically fires for character-producing keys, which includes Enter and
               // Space; many pages still bind submit/search to keypress for Enter.
               let kpNotPrevented = true;
-              if (k.length === 1 || k === 'Enter') { kpNotPrevented = __cmuxKey(target, 'keypress', k); }
-              __cmuxKey(target, 'keyup', k);
+              if (k.length === 1 || k === 'Enter') { kpNotPrevented = __mosaicKey(target, 'keypress', k); }
+              __mosaicKey(target, 'keyup', k);
               // Synthetic key events do not run WebKit's native "Enter submits the form" default
               // action. Mirror real-user behavior, but only when neither keydown nor keypress was
               // canceled (pages cancel Enter to run their own handling) and the native HTML implicit
@@ -7542,7 +7542,7 @@ class TerminalController {
               const target = document.activeElement || document.body || document.documentElement;
               if (!target) return { ok: false, error: 'not_found' };
               const k = String(\(keyLiteral));
-              __cmuxKey(target, 'keydown', k);
+              __mosaicKey(target, 'keydown', k);
               return { ok: true };
             })()
             """
@@ -7575,7 +7575,7 @@ class TerminalController {
               const target = document.activeElement || document.body || document.documentElement;
               if (!target) return { ok: false, error: 'not_found' };
               const k = String(\(keyLiteral));
-              __cmuxKey(target, 'keyup', k);
+              __mosaicKey(target, 'keyup', k);
               return { ok: true };
             })()
             """
@@ -7606,7 +7606,7 @@ class TerminalController {
               if (el.disabled) return { ok: false, error: 'disabled' };
               el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
               if (typeof el.focus === 'function') { try { el.focus({ preventScroll: true }); } catch (e) {} }
-              __cmuxSetChecked(el, \(checked ? "true" : "false"));
+              __mosaicSetChecked(el, \(checked ? "true" : "false"));
               if (el.checked !== \(checked ? "true" : "false")) return { ok: false, error: 'not_changed' };
               return { ok: true };
             })()
@@ -7772,7 +7772,7 @@ class TerminalController {
 
         // Best effort: keep screenshot data available even when temp-file writes fail.
         let screenshotsDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cmux-browser-screenshots", isDirectory: true)
+            .appendingPathComponent("mosaic-browser-screenshots", isDirectory: true)
         if (try? FileManager.default.createDirectory(at: screenshotsDirectory, withIntermediateDirectories: true)) != nil {
             bestEffortPruneTemporaryFiles(in: screenshotsDirectory)
             let timestampMs = Int(Date().timeIntervalSince1970 * 1000)
@@ -8796,19 +8796,19 @@ class TerminalController {
             let textLiteral = text.map(v2JSONLiteral) ?? "null"
             let script = """
             (() => {
-              const q = window.__cmuxDialogQueue || [];
+              const q = window.__mosaicDialogQueue || [];
               if (!q.length) return { ok: false, error: 'not_found' };
               const entry = q.shift();
               if (entry.type === 'confirm') {
-                window.__cmuxDialogDefaults = window.__cmuxDialogDefaults || { confirm: false, prompt: null };
-                window.__cmuxDialogDefaults.confirm = \(acceptLiteral);
+                window.__mosaicDialogDefaults = window.__mosaicDialogDefaults || { confirm: false, prompt: null };
+                window.__mosaicDialogDefaults.confirm = \(acceptLiteral);
               }
               if (entry.type === 'prompt') {
-                window.__cmuxDialogDefaults = window.__cmuxDialogDefaults || { confirm: false, prompt: null };
+                window.__mosaicDialogDefaults = window.__mosaicDialogDefaults || { confirm: false, prompt: null };
                 if (\(acceptLiteral)) {
-                  window.__cmuxDialogDefaults.prompt = \(textLiteral);
+                  window.__mosaicDialogDefaults.prompt = \(textLiteral);
                 } else {
-                  window.__cmuxDialogDefaults.prompt = null;
+                  window.__mosaicDialogDefaults.prompt = null;
                 }
               }
               return { ok: true, dialog: entry, remaining: q.length };
@@ -9155,7 +9155,7 @@ class TerminalController {
             semaphore.signal()
         }
 
-        let watcherQueue = DispatchQueue(label: "com.cmux.browser.download.wait.file")
+        let watcherQueue = DispatchQueue(label: "com.mosaic.browser.download.wait.file")
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
             eventMask: [.write, .extend, .attrib, .link, .rename],
@@ -9286,7 +9286,7 @@ class TerminalController {
             } else {
                 return .err(
                     code: "invalid_params",
-                    message: "destination_profile does not match a cmux browser profile",
+                    message: "destination_profile does not match a mosaic browser profile",
                     data: ["param": "destination_profile"]
                 )
             }
@@ -9877,9 +9877,9 @@ class TerminalController {
             let clearLiteral = clear ? "true" : "false"
             let script = """
             (() => {
-              const items = Array.isArray(window.__cmuxConsoleLog) ? window.__cmuxConsoleLog.slice() : [];
+              const items = Array.isArray(window.__mosaicConsoleLog) ? window.__mosaicConsoleLog.slice() : [];
               if (\(clearLiteral)) {
-                window.__cmuxConsoleLog = [];
+                window.__mosaicConsoleLog = [];
               }
               return { ok: true, items };
             })()
@@ -9911,9 +9911,9 @@ class TerminalController {
             let clearLiteral = clear ? "true" : "false"
             let script = """
             (() => {
-              const items = Array.isArray(window.__cmuxErrorLog) ? window.__cmuxErrorLog.slice() : [];
+              const items = Array.isArray(window.__mosaicErrorLog) ? window.__mosaicErrorLog.slice() : [];
               if (\(clearLiteral)) {
-                window.__cmuxErrorLog = [];
+                window.__mosaicErrorLog = [];
               }
               return { ok: true, items };
             })()
@@ -10599,7 +10599,7 @@ class TerminalController {
           focus_pane <pane-id|index>      - Focus a pane
           focus_surface_by_panel <panel_id> - Focus surface by panel ID
           close_surface [id|idx]          - Close surface (collapse split)
-          reload_config                   - Reload Ghostty config, cmux settings, and refresh terminals
+          reload_config                   - Reload Ghostty config, mosaic settings, and refresh terminals
           refresh_surfaces                - Force refresh all terminals
           surface_health [workspace]      - Check view health of all surfaces
 
@@ -11169,7 +11169,7 @@ class TerminalController {
         case "tabtransfer", "tab-transfer", "com.splittabbar.tabtransfer":
             return DragOverlayRoutingPolicy.bonsplitTabTransferType
         case "sidebarreorder", "sidebar-reorder", "sidebar_tab_reorder",
-            "com.cmux.sidebar-tab-reorder":
+            "com.mosaic.sidebar-tab-reorder":
             return DragOverlayRoutingPolicy.sidebarTabReorderType
         default:
             // Allow explicit UTI strings for ad-hoc debug probes.
@@ -11196,7 +11196,7 @@ class TerminalController {
                 ?? NSApp.keyWindow
                 ?? NSApp.windows.first(where: { win in
                     guard let raw = win.identifier?.rawValue else { return false }
-                    return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                    return raw == "mosaic.main" || raw.hasPrefix("mosaic.main.")
                 }),
                   let contentView = window.contentView,
                   let themeFrame = contentView.superview else { return }
@@ -11237,7 +11237,7 @@ class TerminalController {
                 ?? NSApp.keyWindow
                 ?? NSApp.windows.first(where: { win in
                     guard let raw = win.identifier?.rawValue else { return false }
-                    return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                    return raw == "mosaic.main" || raw.hasPrefix("mosaic.main.")
                 }),
                   let contentView = window.contentView,
                   let themeFrame = contentView.superview else { return }
@@ -11972,7 +11972,7 @@ class TerminalController {
         }
         let (title, subtitle, body) = parseNotificationPayload(payload)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "socket.notifyTargetAsync.enqueue workspace=\(tabId.uuidString.prefix(8)) surface=\(surfaceId.uuidString.prefix(8)) titleLen=\(title.count) subtitleLen=\(subtitle.count) bodyLen=\(body.count) coalesces=0"
         )
 #endif
@@ -12336,7 +12336,7 @@ class TerminalController {
         let snapshotId = "\(timestamp)_\(shortId)"
 
         let outputDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cmux-screenshots")
+            .appendingPathComponent("mosaic-screenshots")
         try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
         let filename = label.isEmpty ? "\(snapshotId).png" : "\(label)_\(snapshotId).png"
         let outputPath = outputDir.appendingPathComponent(filename)
@@ -12655,7 +12655,7 @@ class TerminalController {
 
         // Determine output path
         let outputDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cmux-screenshots")
+            .appendingPathComponent("mosaic-screenshots")
         try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
         let filename = label.isEmpty ? "\(screenshotId).png" : "\(label)_\(screenshotId).png"
@@ -13160,7 +13160,7 @@ class TerminalController {
         options: [String: String]
     ) -> (target: SidebarMutationTabTarget?, error: String?) {
         // `SidebarMetadataArgumentParser.parseMutationTabTarget` already returns the
-        // `CmuxSidebar.SidebarMutationTabTarget` cases this controller resolves, so
+        // `MosaicSidebar.SidebarMutationTabTarget` cases this controller resolves, so
         // forward the parsed target verbatim instead of re-mapping it case-for-case
         // onto a duplicate local enum.
         let resolution = sidebarMetadataArgumentParser.parseMutationTabTarget(options: options)
@@ -13397,10 +13397,10 @@ class TerminalController {
             return true
         }
         guard let tab = resolveSidebarMutationTab(target),
-              CmuxVaultAgentRegistration.isValidID(key) else {
+              MosaicVaultAgentRegistration.isValidID(key) else {
             return false
         }
-        let registry = CmuxVaultAgentRegistry.load(
+        let registry = MosaicVaultAgentRegistry.load(
             workingDirectory: agentLifecycleRegistryWorkingDirectory(tab: tab, panelId: panelId)
         )
         return registry.registration(id: key) != nil
@@ -13556,9 +13556,9 @@ class TerminalController {
     ///
     /// Reads `{ text, terminal_text, build_stamp, diagnostic_blob_base64 }` off
     /// the wire and hands them to ``DogfoodFeedbackService`` (in the
-    /// `CmuxFeedback` package), which caps the fields, rejects an oversized
+    /// `MosaicFeedback` package), which caps the fields, rejects an oversized
     /// base64 blob without decoding, and writes a self-contained bundle
-    /// directory under `~/.cache/cmux-dogfood-feedback/<ISO8601>_<shortid>/`
+    /// directory under `~/.cache/mosaic-dogfood-feedback/<ISO8601>_<shortid>/`
     /// (a `bundle.json` manifest plus the decoded `diagnostic.log`) off the main
     /// actor. This method owns only the trust-boundary privilege check and the
     /// wire mapping; the validation, allocation caps, and filesystem I/O live in
@@ -13611,7 +13611,7 @@ class TerminalController {
     /// Publish a `terminal.set_font` event to connected iOS device(s) so the
     /// mirrored terminal live-zooms its font (the grid reflows automatically on
     /// the phone). Drives the same iOS apply path as a pinch/zoom step, just
-    /// initiated from the Mac for automation (`cmux mobile set-font <size>`).
+    /// initiated from the Mac for automation (`mosaic mobile set-font <size>`).
     ///
     /// Params: `{ "font_size": Number, optional "surface_id": String,
     /// optional "workspace_id": String }`. When `surface_id` is omitted the
@@ -13953,7 +13953,7 @@ class TerminalController {
               let surfaceId = resolved.surfaceId,
               let terminalPanel = resolved.workspace.terminalPanel(for: surfaceId) else {
             #if DEBUG
-            cmuxDebugLog("mobile.terminal.replay NOT_FOUND surface=\(v2RawString(params, "surface_id") ?? "nil")")
+            mosaicDebugLog("mobile.terminal.replay NOT_FOUND surface=\(v2RawString(params, "surface_id") ?? "nil")")
             #endif
             return .err(code: "not_found", message: "Terminal surface not found", data: nil)
         }
@@ -13965,7 +13965,7 @@ class TerminalController {
             seq: seq
         )
         #if DEBUG
-        cmuxDebugLog("mobile.terminal.replay surface=\(surfaceId.uuidString.prefix(8)) renderGrid=\(renderGrid != nil) seq=\(seq) hasState=\(state != nil)")
+        mosaicDebugLog("mobile.terminal.replay surface=\(surfaceId.uuidString.prefix(8)) renderGrid=\(renderGrid != nil) seq=\(seq) hasState=\(state != nil)")
         #endif
         var payload: [String: Any] = [
             "workspace_id": resolved.workspace.id.uuidString,
@@ -14134,7 +14134,7 @@ class TerminalController {
         }
         #if DEBUG
         let sendMs = (ProcessInfo.processInfo.systemUptime - sendStart) * 1000.0
-        cmuxDebugLog(
+        mosaicDebugLog(
             "mobile.terminal.input workspace=\(resolved.workspace.id.uuidString.prefix(8)) surface=\(surfaceId.uuidString.prefix(8)) queued=\(sendResult == .queued ? 1 : 0) chars=\(text.count) ms=\(String(format: "%.2f", sendMs))"
         )
         #endif
@@ -14192,7 +14192,7 @@ class TerminalController {
             return .err(code: "process_exited", message: Self.terminalProcessExitedMessage, data: ["surface_id": surfaceId.uuidString])
         }
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "mobile.terminal.paste_image workspace=\(resolved.workspace.id.uuidString.prefix(8)) surface=\(surfaceId.uuidString.prefix(8)) bytes=\(imageData.count) format=\(format)"
         )
         #endif
@@ -14310,7 +14310,7 @@ class TerminalController {
         terminalPanel.surface.forceRefresh(reason: "mobileHost.terminalPaste")
 
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "mobile.terminal.paste workspace=\(resolved.workspace.id.uuidString.prefix(8)) surface=\(surfaceId.uuidString.prefix(8)) chars=\(text.count) submitted=\(submitted ? 1 : 0)"
         )
         #endif

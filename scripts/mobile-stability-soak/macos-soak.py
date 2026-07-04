@@ -8,11 +8,11 @@ import time
 from pathlib import Path
 
 
-TAG = os.environ.get("CMUX_TAG", "swmob")
-REPO = Path(os.environ.get("CMUX_REPO", Path(__file__).resolve().parents[2]))
+TAG = os.environ.get("MOSAIC_TAG", "swmob")
+REPO = Path(os.environ.get("MOSAIC_REPO", Path(__file__).resolve().parents[2]))
 DURATION_SECONDS = int(os.environ.get("SOAK_SECONDS", "43200"))
-CLI_TIMEOUT_SECONDS = float(os.environ.get("CMUX_CLI_TIMEOUT_SECONDS", "20"))
-soak_root = Path(os.environ.get("SOAK_ROOT", f"/tmp/cmux-mobile-soak-{TAG}"))
+CLI_TIMEOUT_SECONDS = float(os.environ.get("MOSAIC_CLI_TIMEOUT_SECONDS", "20"))
+soak_root = Path(os.environ.get("SOAK_ROOT", f"/tmp/mosaic-mobile-soak-{TAG}"))
 LOG_PATH = Path(os.environ.get("SOAK_LOG", soak_root / "macos-soak.log"))
 STATUS_PATH = Path(os.environ.get("SOAK_STATUS", soak_root / "macos-soak.status"))
 LOOP_SLEEP_SECONDS = float(os.environ.get("LOOP_SLEEP_SECONDS", "5"))
@@ -58,8 +58,8 @@ def write_status(status: str, iteration: int, failures: int, **extra: object) ->
 
 def cli(*args: str, timeout: float = CLI_TIMEOUT_SECONDS) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["CMUX_TAG"] = TAG
-    cmd = [str(REPO / "scripts/cmux-debug-cli.sh"), *args]
+    env["MOSAIC_TAG"] = TAG
+    cmd = [str(REPO / "scripts/mosaic-debug-cli.sh"), *args]
     try:
         return subprocess.run(
             cmd,
@@ -73,7 +73,7 @@ def cli(*args: str, timeout: float = CLI_TIMEOUT_SECONDS) -> subprocess.Complete
         out = exc.stdout or ""
         if isinstance(out, bytes):
             out = out.decode(errors="replace")
-        return subprocess.CompletedProcess(cmd, 124, out + f"\ncmux-debug-cli timed out after {timeout:g}s\n")
+        return subprocess.CompletedProcess(cmd, 124, out + f"\nmosaic-debug-cli timed out after {timeout:g}s\n")
 
 
 def require_cli(*args: str, timeout: float = CLI_TIMEOUT_SECONDS) -> str:

@@ -14,7 +14,7 @@ export function ThemeBootstrapScript({ script }: { script: string }) {
     // which is too late for this first-paint theme bootstrap.
     return (
       <script
-        id="cmux-theme-bootstrap"
+        id="mosaic-theme-bootstrap"
         dangerouslySetInnerHTML={{ __html: script }}
       />
     );

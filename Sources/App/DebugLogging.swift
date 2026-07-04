@@ -1,8 +1,8 @@
 #if DEBUG
-import CMUXDebugLog
+import MosaicDebugLog
 
 @inline(__always)
-func cmuxDebugLog(_ message: @autoclosure () -> String) {
-    CMUXDebugLog.logDebugEvent(message())
+func mosaicDebugLog(_ message: @autoclosure () -> String) {
+    MosaicDebugLog.logDebugEvent(message())
 }
 #endif

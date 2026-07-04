@@ -2,7 +2,7 @@
   "files": [
     {
       "path": ".github/review-bot-rules/swift-actor-isolation.md",
-      "description": "Source-of-truth cmux lint rule for Swift actor isolation review.",
+      "description": "Source-of-truth mosaic lint rule for Swift actor isolation review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -10,16 +10,16 @@
     },
     {
       "path": ".github/review-bot-rules/swift-architectural-rethink.md",
-      "description": "Source-of-truth cmux lint rule for architectural review of Swift changes.",
+      "description": "Source-of-truth mosaic lint rule for architectural review of Swift changes.",
       "scope": [
         "**/*.swift",
         "**/Package.swift",
-        "cmux.xcodeproj/**"
+        "mosaic.xcodeproj/**"
       ]
     },
     {
       "path": ".github/review-bot-rules/swift-blocking-runtime.md",
-      "description": "Source-of-truth cmux lint rule for blocking and timing primitive review.",
+      "description": "Source-of-truth mosaic lint rule for blocking and timing primitive review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -27,16 +27,16 @@
     },
     {
       "path": ".github/review-bot-rules/browser-automation-webkit-waits-off-main.md",
-      "description": "Source-of-truth cmux review rule for keeping browser socket automation WebKit waits off the main actor.",
+      "description": "Source-of-truth mosaic review rule for keeping browser socket automation WebKit waits off the main actor.",
       "scope": [
         "Sources/TerminalController.swift",
-        "Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Wire/ControlCommandExecutionPolicy.swift",
-        "Packages/macOS/CmuxControlSocket/Tests/CmuxControlSocketTests/ControlCommandExecutionPolicyTests.swift"
+        "Packages/macOS/MosaicControlSocket/Sources/MosaicControlSocket/Wire/ControlCommandExecutionPolicy.swift",
+        "Packages/macOS/MosaicControlSocket/Tests/MosaicControlSocketTests/ControlCommandExecutionPolicyTests.swift"
       ]
     },
     {
       "path": ".github/review-bot-rules/runtime-no-hacky-sleeps.md",
-      "description": "Source-of-truth cmux review rule for fixed sleeps, delays, and polling used as runtime synchronization.",
+      "description": "Source-of-truth mosaic review rule for fixed sleeps, delays, and polling used as runtime synchronization.",
       "scope": [
         "**/*.ts",
         "**/*.tsx",
@@ -50,7 +50,7 @@
     },
     {
       "path": ".github/review-bot-rules/full-internationalization.md",
-      "description": "Source-of-truth cmux review rule for complete localization across every supported app and web locale.",
+      "description": "Source-of-truth mosaic review rule for complete localization across every supported app and web locale.",
       "scope": [
         "**/*.swift",
         "CHANGELOG.md",
@@ -76,7 +76,7 @@
     },
     {
       "path": ".github/review-bot-rules/algorithmic-complexity.md",
-      "description": "Source-of-truth cmux review rule for scalable collection algorithms and benchmark-backed complexity choices.",
+      "description": "Source-of-truth mosaic review rule for scalable collection algorithms and benchmark-backed complexity choices.",
       "scope": [
         "**/*.swift",
         "**/*.ts",
@@ -91,7 +91,7 @@
     },
     {
       "path": ".github/review-bot-rules/swift-expensive-sync-load.md",
-      "description": "Source-of-truth cmux review rule for keeping large agent-history JSON, transcript, trajectory, and syscall loads off MainActor and interactive Swift paths.",
+      "description": "Source-of-truth mosaic review rule for keeping large agent-history JSON, transcript, trajectory, and syscall loads off MainActor and interactive Swift paths.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -99,7 +99,7 @@
     },
     {
       "path": ".github/review-bot-rules/swift-concurrency-modernization.md",
-      "description": "Source-of-truth cmux lint rule for Swift concurrency modernization review.",
+      "description": "Source-of-truth mosaic lint rule for Swift concurrency modernization review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -107,7 +107,7 @@
     },
     {
       "path": ".github/review-bot-rules/swift-concurrent-annotation.md",
-      "description": "Source-of-truth cmux lint rule for @concurrent and nonisolated async review.",
+      "description": "Source-of-truth mosaic lint rule for @concurrent and nonisolated async review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -115,16 +115,16 @@
     },
     {
       "path": ".github/review-bot-rules/swift-file-package-boundaries.md",
-      "description": "Source-of-truth cmux lint rule for Swift file size and SwiftPM package boundary review.",
+      "description": "Source-of-truth mosaic lint rule for Swift file size and SwiftPM package boundary review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift",
-        "cmux.xcodeproj/**"
+        "mosaic.xcodeproj/**"
       ]
     },
     {
       "path": ".github/review-bot-rules/swift-logging.md",
-      "description": "Source-of-truth cmux lint rule for production Swift logging review.",
+      "description": "Source-of-truth mosaic lint rule for production Swift logging review.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -132,21 +132,21 @@
     },
     {
       "path": ".github/review-bot-rules/swiftui-state-layout.md",
-      "description": "Source-of-truth cmux lint rule for SwiftUI state and layout review.",
+      "description": "Source-of-truth mosaic lint rule for SwiftUI state and layout review.",
       "scope": [
         "**/*.swift"
       ]
     },
     {
       "path": ".github/review-bot-rules/no-test-debug-seam-in-production-source.md",
-      "description": "Source-of-truth cmux review rule against adding test-only or debug-only seams to production Swift Sources.",
+      "description": "Source-of-truth mosaic review rule against adding test-only or debug-only seams to production Swift Sources.",
       "scope": [
         "**/Sources/**/*.swift"
       ]
     },
     {
       "path": ".github/review-bot-rules/no-ambient-global-state.md",
-      "description": "Source-of-truth cmux review rule against ambient global state: top-level free functions, global mutable vars, static-only namespace types, and new singletons that should be owned and injected.",
+      "description": "Source-of-truth mosaic review rule against ambient global state: top-level free functions, global mutable vars, static-only namespace types, and new singletons that should be owned and injected.",
       "scope": [
         "**/*.swift",
         "**/Package.swift"
@@ -154,14 +154,14 @@
     },
     {
       "path": ".github/review-bot-rules/hot-path-allocating-formatting.md",
-      "description": "Source-of-truth cmux review rule against per-call allocating formatting (String(format:), per-call formatters) on hot or concurrent Swift paths.",
+      "description": "Source-of-truth mosaic review rule against per-call allocating formatting (String(format:), per-call formatters) on hot or concurrent Swift paths.",
       "scope": [
         "**/*.swift"
       ]
     },
     {
       "path": ".github/review-bot-rules/reliability-single-source-of-truth.md",
-      "description": "Source-of-truth cmux review rule requiring a single reliable source of truth for correctness-critical detection/identity, with no title/name heuristics or unreliable fallbacks.",
+      "description": "Source-of-truth mosaic review rule requiring a single reliable source of truth for correctness-critical detection/identity, with no title/name heuristics or unreliable fallbacks.",
       "scope": [
         "**/*.swift",
         "**/*.ts",
@@ -174,7 +174,7 @@
     },
     {
       "path": ".github/review-bot-rules/react-base-ui-accessibility.md",
-      "description": "Source-of-truth cmux review rule requiring relevant Base UI or local React primitives for custom interactive UI accessibility and keyboard behavior.",
+      "description": "Source-of-truth mosaic review rule requiring relevant Base UI or local React primitives for custom interactive UI accessibility and keyboard behavior.",
       "scope": [
         "web/**/*.tsx",
         "web/**/*.jsx"
@@ -182,43 +182,43 @@
     },
     {
       "path": ".github/review-bot-rules/source-control-artifacts.md",
-      "description": "Source-of-truth cmux review rule for local/generated artifacts that should not enter source control.",
+      "description": "Source-of-truth mosaic review rule for local/generated artifacts that should not enter source control.",
       "scope": [
         "**/*"
       ]
     },
     {
       "path": ".github/review-bot-rules/swiftpm-package-resolved.md",
-      "description": "Source-of-truth cmux review rule for SwiftPM Package.resolved lockfile policy.",
+      "description": "Source-of-truth mosaic review rule for SwiftPM Package.resolved lockfile policy.",
       "scope": [
         "**/Package.swift",
         "**/Package.resolved",
         "**/.gitignore",
-        "cmux.xcodeproj/**",
+        "mosaic.xcodeproj/**",
         ".github/workflows/**"
       ]
     },
     {
       "path": "CLAUDE.md",
-      "description": "Repo-local guidance for cmux Swift, SwiftUI, testing, shortcut, localization, and no-sleep policies.",
+      "description": "Repo-local guidance for mosaic Swift, SwiftUI, testing, shortcut, localization, and no-sleep policies.",
       "scope": [
         "**/*.swift",
         "**/Package.swift",
-        "cmux.xcodeproj/**"
+        "mosaic.xcodeproj/**"
       ]
     },
     {
       "path": "AGENTS.md",
-      "description": "Repo-local guidance for cmux agents, Swift conventions, testing, shortcuts, localization, and no-sleep policies.",
+      "description": "Repo-local guidance for mosaic agents, Swift conventions, testing, shortcuts, localization, and no-sleep policies.",
       "scope": [
         "**/*.swift",
         "**/Package.swift",
-        "cmux.xcodeproj/**"
+        "mosaic.xcodeproj/**"
       ]
     },
     {
       "path": ".github/review-bot-rules/readme-site-feature-parity.md",
-      "description": "Source-of-truth cmux review rule for keeping README features consistent with the marketing site features and FAQ.",
+      "description": "Source-of-truth mosaic review rule for keeping README features consistent with the marketing site features and FAQ.",
       "scope": [
         "README.md",
         "web/app/[locale]/page.tsx",
@@ -227,7 +227,7 @@
     },
     {
       "path": ".github/review-bot-rules/landing-page-registry-parity.md",
-      "description": "Source-of-truth cmux review rule for keeping new landing pages registered in sitemap.ts, agentReadablePages, the /guides index, and landing.links.",
+      "description": "Source-of-truth mosaic review rule for keeping new landing pages registered in sitemap.ts, agentReadablePages, the /guides index, and landing.links.",
       "scope": [
         "web/app/[locale]/(landing)/**/page.tsx",
         "web/app/sitemap.ts",

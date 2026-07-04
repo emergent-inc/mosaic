@@ -1,4 +1,4 @@
-import CmuxSwiftRender
+import MosaicSwiftRender
 import Foundation
 
 extension Workspace {

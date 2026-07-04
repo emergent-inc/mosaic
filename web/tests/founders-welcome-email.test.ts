@@ -117,11 +117,11 @@ describe("buildFoundersWelcomeEmail", () => {
     });
 
     const iosBetaParagraph =
-      "cmux iOS Beta is out for cmux Founder's Edition! If you have a different " +
+      "mosaic iOS Beta is out for mosaic Founder's Edition! If you have a different " +
       "TestFlight email, please reply to this email with the new email address. " +
       "Otherwise, we'll send it to the one on file.";
 
-    // The new paragraph must be present verbatim (lowercase "cmux", "cmux
+    // The new paragraph must be present verbatim (lowercase "mosaic", "mosaic
     // Founder's Edition", and one-word "TestFlight" are intentional brand/style).
     expect(email.text).toContain(iosBetaParagraph);
 

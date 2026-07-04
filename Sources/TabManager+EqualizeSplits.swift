@@ -1,4 +1,4 @@
-import CmuxPanes
+import MosaicPanes
 import Foundation
 
 extension TabManager {

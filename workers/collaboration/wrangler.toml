@@ -1,10 +1,10 @@
-# cmux Multiplayer collaboration relay — Cloudflare Worker + Durable Objects.
+# mosaic Multiplayer collaboration relay — Cloudflare Worker + Durable Objects.
 #
 # Deploys run from .github/workflows/collaboration.yml on push to main. The
 # Durable Object migration block is the service's schema migration story:
 # wrangler applies class migrations atomically with every deploy.
 
-name = "cmux-collaboration-worker"
+name = "mosaic-collaboration-worker"
 main = "src/index.ts"
 compatibility_date = "2026-06-01"
 workers_dev = true

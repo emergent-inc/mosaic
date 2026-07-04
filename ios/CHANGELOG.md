@@ -1,6 +1,6 @@
-# cmux iOS changelog
+# mosaic iOS changelog
 
-Single source of truth for what each cmux iOS TestFlight build changed. Every
+Single source of truth for what each mosaic iOS TestFlight build changed. Every
 beta cut updates this file FIRST (top entry = the build you are about to upload),
 and the upload pushes the top entry's notes to TestFlight "What to Test" so the
 build is no longer an opaque timestamp on install or auto-update.
@@ -16,7 +16,7 @@ distinguishes rapid internal iterations of the same version.
 
 Two audiences, two notes per entry:
 
-- **Internal** (`ship ios`, the `cmux beta` group): terse, dev-facing, per-build.
+- **Internal** (`ship ios`, the `mosaic beta` group): terse, dev-facing, per-build.
   Lists what changed in THIS build, including rough edges, so internal dogfood
   knows what to hit. Pushed to "What to Test" on every internal cut.
 - **External / founders** (`ship ios founders`): a curated, user-facing summary of
@@ -68,7 +68,7 @@ The top entry's version MUST equal the checked-in `MARKETING_VERSION` in
 
 ### Internal
 
-- Mobile terminal foundation: faithful render-grid replay over the cmux SPM core (#5079).
+- Mobile terminal foundation: faithful render-grid replay over the mosaic SPM core (#5079).
 - Multi-Mac host switcher with a hierarchical device tree; workspaces from all Mac windows; rename and pin from the phone (#5513, #5648, #5565, #5512).
 - Customizable terminal toolbar: data-driven custom actions, reorderable built-ins, redesigned default layout (#5510, #5532, #5579).
 - Paste images from the phone clipboard into the terminal (#5546).
@@ -78,7 +78,7 @@ The top entry's version MUST equal the checked-in `MARKETING_VERSION` in
 
 ### External
 
-- Mobile terminal: drive your Mac's cmux terminals from your phone.
+- Mobile terminal: drive your Mac's mosaic terminals from your phone.
 - Switch between multiple Macs, see workspaces from every window, and rename or pin from the phone.
 - Customizable terminal toolbar with your own actions.
 - Paste images straight from the phone clipboard.

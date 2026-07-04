@@ -15,7 +15,7 @@ non-interactive build pass cannot verify).
 it builds a fresh `Environment` from the read-only `state` dictionary, walks the
 AST once, returns a `RenderNode` tree. The host (`ContentView`) re-invokes it on
 a 1s `TimelineView` tick and on workspace changes. `ButtonAction` is a frozen
-`[ActionCommand]` (`cmux`/`log`/`openURL`); actions never mutate interpreter
+`[ActionCommand]` (`mosaic`/`log`/`openURL`); actions never mutate interpreter
 state. There is no `$binding` value, no mutable bag, no re-walk-on-change.
 
 ## The four pieces
@@ -41,7 +41,7 @@ state. There is no `$binding` value, no mutable bag, no re-walk-on-change.
    also carry **assignments**: `name = expr`, `name.toggle()`, `name += n`,
    `name.append(x)`. `parseAction` captures these as structured ops; on tap the
    executor evaluates the RHS against the current env+bag, writes the bag, and
-   **requests a re-walk**. `cmux(...)` keeps flowing to the host dispatcher.
+   **requests a re-walk**. `mosaic(...)` keeps flowing to the host dispatcher.
 
 4. **Re-walk on change + input control kinds.**
    - When the bag changes (control edit or action assignment), the host

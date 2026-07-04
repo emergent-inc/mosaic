@@ -6,7 +6,7 @@ preprompt line when Enter is pressed on an empty prompt.
 Usage:
   python3 scripts/probe-pure-prompt-duplication.py
 
-Run this from a spare cmux pane. The script creates a temporary workspace,
+Run this from a spare mosaic pane. The script creates a temporary workspace,
 probes the prompt there, and restores your original workspace afterwards.
 """
 
@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "tests_v2")))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
 def _is_prompt_line(line: str) -> bool:
@@ -38,7 +38,7 @@ def _prompt_block(text: str) -> tuple[list[str], str]:
             prompt_idx = i
             break
     if prompt_idx == -1:
-        raise cmuxError(f"Could not find prompt line in surface text:\n{text}")
+        raise mosaicError(f"Could not find prompt line in surface text:\n{text}")
 
     preprompt: list[str] = []
     i = prompt_idx - 1
@@ -61,7 +61,7 @@ def _duplicate_run_length(preprompt: list[str]) -> int:
     return count
 
 
-def _read_text(client: cmux, workspace_id: str, surface_id: str) -> str:
+def _read_text(client: mosaic, workspace_id: str, surface_id: str) -> str:
     payload = client._call(
         "surface.read_text",
         {
@@ -75,7 +75,7 @@ def _read_text(client: cmux, workspace_id: str, surface_id: str) -> str:
 
 
 def _wait_for_prompt_text(
-    client: cmux,
+    client: mosaic,
     workspace_id: str,
     surface_id: str,
     *,
@@ -94,7 +94,7 @@ def _wait_for_prompt_text(
             last_error = str(exc)
             time.sleep(0.2)
 
-    raise cmuxError(
+    raise mosaicError(
         "Timed out waiting for a prompt block "
         f"(last_error={last_error!r}, surface_text={last_text!r})"
     )
@@ -108,20 +108,20 @@ def main() -> int:
     parser.add_argument("--keep-workspace", action="store_true")
     parser.add_argument(
         "--socket",
-        default=os.environ.get("CMUX_SOCKET_PATH") or "/tmp/cmux-debug.sock",
+        default=os.environ.get("MOSAIC_SOCKET_PATH") or "/tmp/mosaic-debug.sock",
     )
     args = parser.parse_args()
 
-    with cmux(args.socket) as client:
+    with mosaic(args.socket) as client:
         current = client._call("workspace.current", {}) or {}
         original_workspace_id = str(current.get("workspace_id") or "")
         if not original_workspace_id:
-            raise cmuxError(f"workspace.current returned no workspace_id: {current}")
+            raise mosaicError(f"workspace.current returned no workspace_id: {current}")
 
         created = client._call("workspace.create", {}) or {}
         workspace_id = str(created.get("workspace_id") or "")
         if not workspace_id:
-            raise cmuxError(f"workspace.create returned no workspace_id: {created}")
+            raise mosaicError(f"workspace.create returned no workspace_id: {created}")
         client._call("workspace.select", {"workspace_id": workspace_id})
 
         surface_id = ""
@@ -138,11 +138,11 @@ def main() -> int:
                     baseline = _read_text(client, workspace_id, surface_id)
                     probe_text = baseline
                     break
-                raise cmuxError("surface not ready yet")
+                raise mosaicError("surface not ready yet")
             except Exception as exc:
                 probe_text = str(exc)
                 if time.time() - start > 10:
-                    raise cmuxError(f"Timed out waiting for readable terminal surface: {probe_text}")
+                    raise mosaicError(f"Timed out waiting for readable terminal surface: {probe_text}")
                 time.sleep(0.2)
 
         try:

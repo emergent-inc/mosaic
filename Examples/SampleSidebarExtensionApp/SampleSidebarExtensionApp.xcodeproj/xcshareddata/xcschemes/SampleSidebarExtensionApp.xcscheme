@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A3685BE82FCA3AEE00009F1B"
-               BuildableName = "CMUX ExtKit Sample Sidebar.app"
+               BuildableName = "MOSAIC ExtKit Sample Sidebar.app"
                BlueprintName = "SampleSidebarExtensionApp"
                ReferencedContainer = "container:SampleSidebarExtensionApp.xcodeproj">
             </BuildableReference>
@@ -46,7 +46,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A3685BE82FCA3AEE00009F1B"
-            BuildableName = "CMUX ExtKit Sample Sidebar.app"
+            BuildableName = "MOSAIC ExtKit Sample Sidebar.app"
             BlueprintName = "SampleSidebarExtensionApp"
             ReferencedContainer = "container:SampleSidebarExtensionApp.xcodeproj">
          </BuildableReference>
@@ -63,7 +63,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A3685BE82FCA3AEE00009F1B"
-            BuildableName = "CMUX ExtKit Sample Sidebar.app"
+            BuildableName = "MOSAIC ExtKit Sample Sidebar.app"
             BlueprintName = "SampleSidebarExtensionApp"
             ReferencedContainer = "container:SampleSidebarExtensionApp.xcodeproj">
          </BuildableReference>

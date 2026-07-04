@@ -1,9 +1,9 @@
 import Foundation
-import CmuxCanvas
+import MosaicCanvas
 
 /// User-configurable canvas layout settings.
 ///
-/// Values persist through `UserDefaults` (mirrored into `~/.config/cmux/cmux.json`
+/// Values persist through `UserDefaults` (mirrored into `~/.config/mosaic/mosaic.json`
 /// by the settings catalog) and feed ``CanvasMetrics`` so every canvas
 /// operation shares one canonical gap.
 enum CanvasLayoutSettings {

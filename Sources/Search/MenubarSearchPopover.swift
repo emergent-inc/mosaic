@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import AppKit
 import SwiftUI
 
@@ -73,7 +73,7 @@ private struct GlobalSearchPaletteView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .cmuxFont(size: 15, weight: .semibold)
+                    .mosaicFont(size: 15, weight: .semibold)
                     .foregroundStyle(.secondary)
                 TextField(
                     String(
@@ -83,7 +83,7 @@ private struct GlobalSearchPaletteView: View {
                     text: $query
                 )
                 .textFieldStyle(.plain)
-                .cmuxFont(size: 18, weight: .regular)
+                .mosaicFont(size: 18, weight: .regular)
                 .focused($searchFieldFocused)
             }
             .padding(.horizontal, 18)
@@ -323,7 +323,7 @@ private struct GlobalSearchEmptyStateView: View {
 
     var body: some View {
         Text(title)
-            .cmuxFont(size: 14, weight: .medium)
+            .mosaicFont(size: 14, weight: .medium)
             .foregroundStyle(.secondary)
     }
 }
@@ -376,27 +376,27 @@ private struct GlobalSearchResultRowView: View {
         TrackedButton("menubarsearchpopover_button_376", action: action) {
             HStack(spacing: 12) {
                 Image(systemName: row.systemImageName)
-                    .cmuxFont(size: 14, weight: .semibold)
+                    .mosaicFont(size: 14, weight: .semibold)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .frame(width: 22, height: 22)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(row.title)
-                            .cmuxFont(size: 13, weight: .semibold)
+                            .mosaicFont(size: 13, weight: .semibold)
                             .lineLimit(1)
                         Text(row.hit.kind.localizedLabel)
-                            .cmuxFont(size: 11, weight: .medium)
+                            .mosaicFont(size: 11, weight: .medium)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                     Text(row.snippet)
-                        .cmuxFont(size: 12)
+                        .mosaicFont(size: 12)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                     if !row.location.isEmpty {
                         Text(row.location)
-                            .cmuxFont(size: 11)
+                            .mosaicFont(size: 11)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
                     }
@@ -406,7 +406,7 @@ private struct GlobalSearchResultRowView: View {
 
                 if let shortcutLabel = row.shortcutLabel {
                     Text(shortcutLabel)
-                        .cmuxFont(size: 11, weight: .medium, design: .monospaced)
+                        .mosaicFont(size: 11, weight: .medium, design: .monospaced)
                         .foregroundStyle(.secondary)
                         .frame(minWidth: 30, alignment: .trailing)
                 }

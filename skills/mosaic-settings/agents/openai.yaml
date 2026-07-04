@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Settings"
+  short_description: "Inspect, edit, validate, and reload mosaic.json settings."
+  default_prompt: "Use this skill to change mosaic settings safely: map user-facing preferences to mosaic.json paths, edit with the bundled helper, validate recognized keys, and rely on mosaic's live config reload."

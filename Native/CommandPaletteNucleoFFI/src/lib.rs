@@ -8,7 +8,7 @@ use nucleo::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
 use nucleo::{Config, Matcher, Utf32Str};
 
 #[repr(C)]
-pub struct CmuxNucleoCandidateSpan {
+pub struct MosaicNucleoCandidateSpan {
     title_offset: usize,
     title_len: usize,
     search_offset: usize,
@@ -18,7 +18,7 @@ pub struct CmuxNucleoCandidateSpan {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct CmuxNucleoMatch {
+pub struct MosaicNucleoMatch {
     index: usize,
     score: f64,
     rank: i32,
@@ -123,7 +123,7 @@ impl SearchState {
     }
 }
 
-pub struct CmuxNucleoIndex {
+pub struct MosaicNucleoIndex {
     candidates: Vec<Candidate>,
 }
 
@@ -135,17 +135,17 @@ thread_local! {
 }
 
 #[no_mangle]
-pub extern "C" fn cmux_nucleo_ffi_version() -> u32 {
+pub extern "C" fn mosaic_nucleo_ffi_version() -> u32 {
     2
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn cmux_nucleo_index_create(
+pub unsafe extern "C" fn mosaic_nucleo_index_create(
     blob_ptr: *const u8,
     blob_len: usize,
-    spans_ptr: *const CmuxNucleoCandidateSpan,
+    spans_ptr: *const MosaicNucleoCandidateSpan,
     span_count: usize,
-) -> *mut CmuxNucleoIndex {
+) -> *mut MosaicNucleoIndex {
     if blob_ptr.is_null() || spans_ptr.is_null() {
         return std::ptr::null_mut();
     }
@@ -182,27 +182,27 @@ pub unsafe extern "C" fn cmux_nucleo_index_create(
         });
     }
 
-    Box::into_raw(Box::new(CmuxNucleoIndex { candidates }))
+    Box::into_raw(Box::new(MosaicNucleoIndex { candidates }))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn cmux_nucleo_index_destroy(index: *mut CmuxNucleoIndex) {
+pub unsafe extern "C" fn mosaic_nucleo_index_destroy(index: *mut MosaicNucleoIndex) {
     if !index.is_null() {
         drop(Box::from_raw(index));
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn cmux_nucleo_index_search(
-    index: *mut CmuxNucleoIndex,
+pub unsafe extern "C" fn mosaic_nucleo_index_search(
+    index: *mut MosaicNucleoIndex,
     query_ptr: *const u8,
     query_len: usize,
     result_limit: usize,
-    out_matches: *mut CmuxNucleoMatch,
+    out_matches: *mut MosaicNucleoMatch,
     out_capacity: usize,
     out_count: *mut usize,
 ) -> i32 {
-    cmux_nucleo_index_search_impl(
+    mosaic_nucleo_index_search_impl(
         index,
         query_ptr,
         query_len,
@@ -216,18 +216,18 @@ pub unsafe extern "C" fn cmux_nucleo_index_search(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn cmux_nucleo_index_search_with_boosts(
-    index: *mut CmuxNucleoIndex,
+pub unsafe extern "C" fn mosaic_nucleo_index_search_with_boosts(
+    index: *mut MosaicNucleoIndex,
     query_ptr: *const u8,
     query_len: usize,
     result_limit: usize,
     boosts_ptr: *const i32,
     boosts_count: usize,
-    out_matches: *mut CmuxNucleoMatch,
+    out_matches: *mut MosaicNucleoMatch,
     out_capacity: usize,
     out_count: *mut usize,
 ) -> i32 {
-    cmux_nucleo_index_search_impl(
+    mosaic_nucleo_index_search_impl(
         index,
         query_ptr,
         query_len,
@@ -240,14 +240,14 @@ pub unsafe extern "C" fn cmux_nucleo_index_search_with_boosts(
     )
 }
 
-unsafe fn cmux_nucleo_index_search_impl(
-    index: *mut CmuxNucleoIndex,
+unsafe fn mosaic_nucleo_index_search_impl(
+    index: *mut MosaicNucleoIndex,
     query_ptr: *const u8,
     query_len: usize,
     result_limit: usize,
     boosts_ptr: *const i32,
     boosts_count: usize,
-    out_matches: *mut CmuxNucleoMatch,
+    out_matches: *mut MosaicNucleoMatch,
     out_capacity: usize,
     out_count: *mut usize,
 ) -> i32 {
@@ -282,7 +282,7 @@ unsafe fn cmux_nucleo_index_search_impl(
     let normalized_query = query.split_whitespace().collect::<Vec<_>>().join(" ");
     let output_limit = result_limit.min(out_capacity);
     let query_is_empty = normalized_query.is_empty();
-    let output: Vec<CmuxNucleoMatch>;
+    let output: Vec<MosaicNucleoMatch>;
 
     if query_is_empty {
         let mut best_matches = BinaryHeap::with_capacity(output_limit);
@@ -354,7 +354,7 @@ fn candidate_boost(boosts: Option<&[i32]>, candidate_index: usize) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn sorted_output(best_matches: BinaryHeap<WorstFirstScoredCandidate>) -> Vec<CmuxNucleoMatch> {
+fn sorted_output(best_matches: BinaryHeap<WorstFirstScoredCandidate>) -> Vec<MosaicNucleoMatch> {
     let mut scored: Vec<ScoredCandidate> = best_matches
         .into_iter()
         .map(|candidate| candidate.0)
@@ -362,7 +362,7 @@ fn sorted_output(best_matches: BinaryHeap<WorstFirstScoredCandidate>) -> Vec<Cmu
     scored.sort_by(scored_candidate_order);
     scored
         .into_iter()
-        .map(|candidate| CmuxNucleoMatch {
+        .map(|candidate| MosaicNucleoMatch {
             index: candidate.index,
             score: candidate.score,
             rank: candidate.rank,

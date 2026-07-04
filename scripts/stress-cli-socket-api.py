@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stress the cmux CLI and Unix socket API.
+"""Stress the mosaic CLI and Unix socket API.
 
 The harness is intentionally stateful: it creates one isolated stress workspace,
 exercises CLI commands and raw v2 socket methods against that workspace, and
@@ -203,7 +203,7 @@ SKIPPED_SOCKET_METHODS = {
     "feed.permission.reply": "mutates feed state",
     "feed.question.reply": "mutates feed state",
     "feed.exit_plan.reply": "mutates feed state",
-    "events.stream": "streaming protocol, covered by cmux events --limit",
+    "events.stream": "streaming protocol, covered by mosaic events --limit",
     "session.restore_previous": "mutates app session state",
     "workspace.remote.configure": "requires remote workspace credentials",
     "workspace.remote.foreground_auth_ready": "requires remote workspace state",
@@ -402,12 +402,12 @@ class Diagnostics:
         if self.free_bytes(capture_dir) > MIN_LIGHT_DIAGNOSTIC_FREE_BYTES:
             self._capture_command(
                 capture_dir,
-                "log-show-cmux.txt",
-                ["log", "show", "--last", "2m", "--style", "compact", "--predicate", 'process CONTAINS "cmux"'],
+                "log-show-mosaic.txt",
+                ["log", "show", "--last", "2m", "--style", "compact", "--predicate", 'process CONTAINS "mosaic"'],
                 timeout=20,
             )
         else:
-            safe_write_text(capture_dir / "log-show-cmux.txt", "skipped: low free disk space\n")
+            safe_write_text(capture_dir / "log-show-mosaic.txt", "skipped: low free disk space\n")
 
         for pid in self.app_pids():
             if self.free_bytes(capture_dir) > MIN_SAMPLE_FREE_BYTES:
@@ -458,9 +458,9 @@ class Diagnostics:
     def _interesting_log_paths(self) -> list[pathlib.Path]:
         paths = []
         if self.tag:
-            paths.append(pathlib.Path(f"/tmp/cmux-debug-{self.tag}.log"))
-        paths.extend(pathlib.Path(path) for path in glob.glob("/tmp/cmux-debug*.log"))
-        paths.extend(pathlib.Path(path) for path in glob.glob("/tmp/cmux-launch-*.out"))
+            paths.append(pathlib.Path(f"/tmp/mosaic-debug-{self.tag}.log"))
+        paths.extend(pathlib.Path(path) for path in glob.glob("/tmp/mosaic-debug*.log"))
+        paths.extend(pathlib.Path(path) for path in glob.glob("/tmp/mosaic-launch-*.out"))
         return [path for path in paths if path.exists() and path.is_file()]
 
     def _copy_log_tail(self, source: pathlib.Path, target: pathlib.Path) -> None:
@@ -484,12 +484,12 @@ class Diagnostics:
         roots = [
             pathlib.Path.home() / "Library/Logs/DiagnosticReports",
             pathlib.Path("/Library/Logs/DiagnosticReports"),
-            pathlib.Path.home() / ".local/state/cmux/crash",
+            pathlib.Path.home() / ".local/state/mosaic/crash",
         ]
         for root in roots:
             if not root.exists():
                 continue
-            for path in root.glob("*cmux*"):
+            for path in root.glob("*mosaic*"):
                 try:
                     if now - path.stat().st_mtime <= 60 * 60:
                         candidates.append(path)
@@ -540,31 +540,31 @@ class StressContext:
         self.state_path = self.temp_dir / "browser-state.json"
         self.screenshot_path = self.temp_dir / "browser.png"
         self.trace_path = self.temp_dir / "browser-trace.json"
-        self.markdown_path.write_text("# cmux stress\n\nsocket and cli stress fixture\n", encoding="utf-8")
-        self.text_path.write_text("cmux stress file\n", encoding="utf-8")
-        html = "<!doctype html><title>cmux stress</title><main><input id=i value=ready><button id=b>go</button><select id=s><option>a</option><option>b</option></select><p>stress body</p></main>"
+        self.markdown_path.write_text("# mosaic stress\n\nsocket and cli stress fixture\n", encoding="utf-8")
+        self.text_path.write_text("mosaic stress file\n", encoding="utf-8")
+        html = "<!doctype html><title>mosaic stress</title><main><input id=i value=ready><button id=b>go</button><select id=s><option>a</option><option>b</option></select><p>stress body</p></main>"
         self.browser_url = "data:text/html," + urllib.parse.quote(html, safe="")
 
     def base_env(self) -> dict[str, str]:
         env = dict(os.environ)
-        env["CMUX_SOCKET_PATH"] = self.socket_path
-        env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-        env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+        env["MOSAIC_SOCKET_PATH"] = self.socket_path
+        env["MOSAIC_CLI_SENTRY_DISABLED"] = "1"
+        env["MOSAIC_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
         if self.tag:
-            env["CMUX_TAG"] = self.tag
-            env["CMUX_BUNDLE_ID"] = f"mosaic.com.emergent.app.debug.{self.tag.replace('-', '.')}"
-        env.pop("CMUX_SOCKET", None)
-        env.pop("CMUX_SOCKET_PASSWORD", None)
-        env.pop("CMUX_WORKSPACE_ID", None)
-        env.pop("CMUX_SURFACE_ID", None)
-        env.pop("CMUX_TAB_ID", None)
-        env.pop("CMUX_PANEL_ID", None)
+            env["MOSAIC_TAG"] = self.tag
+            env["MOSAIC_BUNDLE_ID"] = f"mosaic.com.emergent.app.debug.{self.tag.replace('-', '.')}"
+        env.pop("MOSAIC_SOCKET", None)
+        env.pop("MOSAIC_SOCKET_PASSWORD", None)
+        env.pop("MOSAIC_WORKSPACE_ID", None)
+        env.pop("MOSAIC_SURFACE_ID", None)
+        env.pop("MOSAIC_TAB_ID", None)
+        env.pop("MOSAIC_PANEL_ID", None)
         return env
 
     def no_socket_env(self) -> dict[str, str]:
         env = self.base_env()
-        env.pop("CMUX_SOCKET_PATH", None)
-        env["CMUX_BUNDLE_ID"] = f"com.cmuxterm.stress.{self.run_id.lower()}"
+        env.pop("MOSAIC_SOCKET_PATH", None)
+        env["MOSAIC_BUNDLE_ID"] = f"com.mosaicterm.stress.{self.run_id.lower()}"
         return env
 
     def setup(self) -> None:
@@ -1041,7 +1041,7 @@ def browser_cli_cases() -> list[CliCase]:
         CliCase("browser-errors-list", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "errors", "list"]), expect_codes=any_code, covered_command="browser"),
         CliCase("browser-highlight", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "highlight", "body"]), expect_codes=any_code, covered_command="browser"),
         CliCase("browser-state-save", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "state", "save", str(c.state_path)]), expect_codes=any_code, covered_command="browser"),
-        CliCase("browser-addscript", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "addscript", "window.__cmuxStress=1"]), expect_codes=any_code, covered_command="browser"),
+        CliCase("browser-addscript", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "addscript", "window.__mosaicStress=1"]), expect_codes=any_code, covered_command="browser"),
         CliCase("browser-addstyle", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "addstyle", "body{outline:1px solid transparent}"]), expect_codes=any_code, covered_command="browser"),
         CliCase("browser-viewport", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "viewport", "800", "600"]), expect_codes=any_code, covered_command="browser"),
         CliCase("browser-geo", ctx_argv(lambda c: ["browser", "--surface", require(c.browser_surface_id, "browser surface"), "geo", "37.7749", "-122.4194"]), expect_codes=any_code, covered_command="browser"),
@@ -1208,7 +1208,7 @@ def browser_socket_cases() -> list[SocketCase]:
         SocketCase("browser.find.label", "browser.find.label", lambda c: {**p_browser(c), "text": "missing"}, expect_ok=None),
         SocketCase("browser.find.placeholder", "browser.find.placeholder", lambda c: {**p_browser(c), "text": "missing"}, expect_ok=None),
         SocketCase("browser.find.alt", "browser.find.alt", lambda c: {**p_browser(c), "text": "missing"}, expect_ok=None),
-        SocketCase("browser.find.title", "browser.find.title", lambda c: {**p_browser(c), "text": "cmux stress"}, expect_ok=None),
+        SocketCase("browser.find.title", "browser.find.title", lambda c: {**p_browser(c), "text": "mosaic stress"}, expect_ok=None),
         SocketCase("browser.find.testid", "browser.find.testid", lambda c: {**p_browser(c), "text": "missing"}, expect_ok=None),
         SocketCase("browser.find.first", "browser.find.first", lambda c: {**p_browser(c), "selector": "body"}, expect_ok=None),
         SocketCase("browser.find.last", "browser.find.last", lambda c: {**p_browser(c), "selector": "body"}, expect_ok=None),
@@ -1309,7 +1309,7 @@ class StressRunner:
         duration = parse_duration(self.args.duration)
         end_at = time.monotonic() + duration
         iteration_limit = self.args.iterations
-        heartbeat = threading.Thread(target=self.heartbeat_loop, name="cmux-stress-heartbeat", daemon=True)
+        heartbeat = threading.Thread(target=self.heartbeat_loop, name="mosaic-stress-heartbeat", daemon=True)
         heartbeat.start()
         started_at = time.time()
         cycle = 0
@@ -1529,34 +1529,34 @@ def resolve_cli_path(raw: str | None, tag: str | None) -> str:
     candidates: list[str] = []
     if raw:
         candidates.append(os.path.expanduser(raw))
-    env_cli = os.environ.get("CMUXTERM_CLI") or os.environ.get("CMUX_BUNDLED_CLI_PATH")
+    env_cli = os.environ.get("MOSAICTERM_CLI") or os.environ.get("MOSAIC_BUNDLED_CLI_PATH")
     if env_cli:
         candidates.append(os.path.expanduser(env_cli))
     if tag:
-        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/cmux-{tag}/Build/Products/Debug/Mosaic DEV {tag}.app/Contents/Resources/bin/cmux"))
-        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/cmux-{tag}/Build/Products/Debug/cmux"))
-    last_cli = pathlib.Path("/tmp/cmux-last-cli-path")
+        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/mosaic-{tag}/Build/Products/Debug/Mosaic DEV {tag}.app/Contents/Resources/bin/mosaic"))
+        candidates.append(os.path.expanduser(f"~/Library/Developer/Xcode/DerivedData/mosaic-{tag}/Build/Products/Debug/mosaic"))
+    last_cli = pathlib.Path("/tmp/mosaic-last-cli-path")
     if last_cli.exists():
         try:
             candidates.append(last_cli.read_text(encoding="utf-8").strip())
         except OSError:
             pass
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True))
     for candidate in candidates:
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
-    raise SystemExit("error: could not find cmux CLI. Pass --cli or set CMUXTERM_CLI.")
+    raise SystemExit("error: could not find mosaic CLI. Pass --cli or set MOSAICTERM_CLI.")
 
 
 def resolve_socket_path(raw: str | None, tag: str | None) -> str:
     if raw:
         return os.path.expanduser(raw)
-    env_socket = os.environ.get("CMUX_SOCKET_PATH")
+    env_socket = os.environ.get("MOSAIC_SOCKET_PATH")
     if env_socket:
         return env_socket
     if tag:
-        return f"/tmp/cmux-debug-{tag}.sock"
-    last_socket = pathlib.Path("/tmp/cmux-last-socket-path")
+        return f"/tmp/mosaic-debug-{tag}.sock"
+    last_socket = pathlib.Path("/tmp/mosaic-last-socket-path")
     if last_socket.exists():
         try:
             value = last_socket.read_text(encoding="utf-8").strip()
@@ -1564,19 +1564,19 @@ def resolve_socket_path(raw: str | None, tag: str | None) -> str:
                 return value
         except OSError:
             pass
-    raise SystemExit("error: socket path required. Pass --socket or --tag, or set CMUX_SOCKET_PATH.")
+    raise SystemExit("error: socket path required. Pass --socket or --tag, or set MOSAIC_SOCKET_PATH.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--cli", help="Path to cmux CLI binary. Defaults to CMUXTERM_CLI, tagged DerivedData, then recent DerivedData.")
-    parser.add_argument("--socket", help="Unix socket path. Defaults to CMUX_SOCKET_PATH or /tmp/cmux-debug-<tag>.sock.")
+    parser.add_argument("--cli", help="Path to mosaic CLI binary. Defaults to MOSAICTERM_CLI, tagged DerivedData, then recent DerivedData.")
+    parser.add_argument("--socket", help="Unix socket path. Defaults to MOSAIC_SOCKET_PATH or /tmp/mosaic-debug-<tag>.sock.")
     parser.add_argument("--tag", help="Tagged dev app slug, for path defaults and diagnostics.")
     parser.add_argument("--duration", default=f"{DEFAULT_DURATION_SECONDS}s", help="Stress duration, e.g. 30s, 10m, 12h. Default: 12h.")
     parser.add_argument("--iterations", type=int, help="Stop after this many cycles. Useful for smoke runs.")
     parser.add_argument("--finish-cycle", action="store_true", help="Finish the current cycle when --duration expires.")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS, help="Per-command timeout in seconds.")
-    parser.add_argument("--artifacts", help="Artifact directory. Default: /tmp/cmux-cli-socket-stress-<timestamp>.")
+    parser.add_argument("--artifacts", help="Artifact directory. Default: /tmp/mosaic-cli-socket-stress-<timestamp>.")
     parser.add_argument("--app-pgrep", help="pgrep -f pattern used to locate the app process for diagnostics.")
     parser.add_argument("--heartbeat-interval", type=float, default=15.0, help="Socket heartbeat interval in seconds.")
     parser.add_argument("--burst-workers", type=int, default=DEFAULT_BURST_WORKERS, help="Parallel socket burst worker count.")
@@ -1585,7 +1585,7 @@ def main() -> int:
     args = parser.parse_args()
 
     tag = safe_name(args.tag) if args.tag else None
-    artifacts_dir = pathlib.Path(args.artifacts or f"/tmp/cmux-cli-socket-stress-{now_slug()}").expanduser()
+    artifacts_dir = pathlib.Path(args.artifacts or f"/tmp/mosaic-cli-socket-stress-{now_slug()}").expanduser()
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     cli_path = resolve_cli_path(args.cli, tag)
     socket_path = resolve_socket_path(args.socket, tag)

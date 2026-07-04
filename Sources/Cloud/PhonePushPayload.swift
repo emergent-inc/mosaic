@@ -11,7 +11,7 @@ struct PhonePushPayload: Sendable {
     let macDeviceId: String?
     /// Stable notification id (the Mac store ``TerminalNotification/id``).
     /// Travels to APNs as both an `apns-collapse-id` (so a later Mac->iOS
-    /// dismiss can target the delivered banner) and `cmux.notificationId`
+    /// dismiss can target the delivered banner) and `mosaic.notificationId`
     /// (so an iOS swipe can tell the Mac which notification was dismissed).
     let notificationId: String?
     /// The dismissed ids a `.dismiss` push carries (else empty).

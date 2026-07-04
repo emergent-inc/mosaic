@@ -1,8 +1,8 @@
 # Dock
 
-Dock is the cmux right sidebar rendered as a full panel container. It uses the **same surface and split system as the main content area** — terminals *and* browsers, tiled with the same split affordances — just docked on the right. Each Dock terminal runs in its own Ghostty-backed surface, so TUIs keep normal keyboard behavior such as arrow keys, `j` / `k`, and `Ctrl-C`. Dock browsers share the same browser stack as main-area browser panes (cookies, profile, devtools, navigation).
+Dock is the mosaic right sidebar rendered as a full panel container. It uses the **same surface and split system as the main content area** — terminals *and* browsers, tiled with the same split affordances — just docked on the right. Each Dock terminal runs in its own Ghostty-backed surface, so TUIs keep normal keyboard behavior such as arrow keys, `j` / `k`, and `Ctrl-C`. Dock browsers share the same browser stack as main-area browser panes (cookies, profile, devtools, navigation).
 
-Dock is useful for project dashboards, git views, logs, queues, local services, test watchers, dev servers, custom TUIs, and reference web pages. Feed can be added as one optional terminal with `cmux feed tui --opentui`, but Dock is not limited to Feed.
+Dock is useful for project dashboards, git views, logs, queues, local services, test watchers, dev servers, custom TUIs, and reference web pages. Feed can be added as one optional terminal with `mosaic feed tui --opentui`, but Dock is not limited to Feed.
 
 Each terminal command starts inside the terminal's non-interactive login shell. That keeps the user's normal PATH and toolchain setup without running prompt code before the TUI starts. When the command exits, Dock drops into an interactive login shell in the same section so the user can inspect, rerun, or exit.
 
@@ -23,9 +23,9 @@ When a Dock pane has keyboard focus, the standard creation/split shortcuts act o
 Dock panes are scriptable through the same creation commands as the main area, with `--placement dock`:
 
 ```sh
-cmux new-pane --placement dock                              # split a terminal into the Dock
-cmux new-pane --type browser --placement dock --url https://example.com
-cmux new-surface --type browser --placement dock --url https://example.com   # add a Dock tab
+mosaic new-pane --placement dock                              # split a terminal into the Dock
+mosaic new-pane --type browser --placement dock --url https://example.com
+mosaic new-surface --type browser --placement dock --url https://example.com   # add a Dock tab
 ```
 
 `--placement` accepts `workspace` (default) or `dock`. The Dock hosts terminal and browser panes only.
@@ -86,26 +86,26 @@ Existing terminal-only configs (no `type`) keep loading unchanged. The order of 
 
 ## Config Precedence
 
-cmux looks for Dock config in this order:
+mosaic looks for Dock config in this order:
 
-1. `.cmux/dock.json` in the current project or a parent directory
-2. `~/.config/cmux/dock.json`
+1. `.mosaic/dock.json` in the current project or a parent directory
+2. `~/.config/mosaic/dock.json`
 
-Use `.cmux/dock.json` for repo-specific controls that should be shared with teammates. Commit it to the repo when the commands are safe and portable.
+Use `.mosaic/dock.json` for repo-specific controls that should be shared with teammates. Commit it to the repo when the commands are safe and portable.
 
-Use `~/.config/cmux/dock.json` for personal defaults, machines without a repo, or controls that are specific to your local setup.
+Use `~/.config/mosaic/dock.json` for personal defaults, machines without a repo, or controls that are specific to your local setup.
 
-Nested project configs apply to their directory tree. If a nested project has its own `.cmux/dock.json`, use that nearest config for work inside the nested project. Do not put unrelated project controls into the global config just because a repo is absent.
+Nested project configs apply to their directory tree. If a nested project has its own `.mosaic/dock.json`, use that nearest config for work inside the nested project. Do not put unrelated project controls into the global config just because a repo is absent.
 
-If neither file exists, Dock opens empty and offers a prompt to create a starter config. cmux does not add Dock controls automatically.
+If neither file exists, Dock opens empty and offers a prompt to create a starter config. mosaic does not add Dock controls automatically.
 
-Relative `cwd` values resolve from the config base. For `.cmux/dock.json`, that base is the project directory containing `.cmux`. For the global config, that base is the home directory.
+Relative `cwd` values resolve from the config base. For `.mosaic/dock.json`, that base is the project directory containing `.mosaic`. For the global config, that base is the home directory.
 
 ## Trust
 
-Project Dock configs can start commands. The first time cmux sees a project Dock config, it shows a trust gate before launching controls. Changing the config changes the trust fingerprint and asks again.
+Project Dock configs can start commands. The first time mosaic sees a project Dock config, it shows a trust gate before launching controls. Changing the config changes the trust fingerprint and asks again.
 
-Global Dock config at `~/.config/cmux/dock.json` is treated as personal config and starts without a project trust gate.
+Global Dock config at `~/.config/mosaic/dock.json` is treated as personal config and starts without a project trust gate.
 
 Do not put secrets, tokens, or machine-specific private paths in a shared project Dock config. Read secrets from the user's shell, local env files, or existing dev tooling.
 
@@ -114,7 +114,7 @@ Do not put secrets, tokens, or machine-specific private paths in a shared projec
 When asking a coding agent to create a Dock config, tell it to run:
 
 ```sh
-cmux docs dock
+mosaic docs dock
 ```
 
 The agent should inspect the project first, choose project config or global config deliberately, ask the user when the desired controls are unclear, validate the JSON, and summarize each command before the user trusts the config.
@@ -123,6 +123,6 @@ The agent should inspect the project first, choose project config or global conf
 
 The product name is **Dock**. A single entry is a **Dock control**. Suggested launch phrase:
 
-> Bring your team's TUIs into the cmux Dock.
+> Bring your team's TUIs into the mosaic Dock.
 
 Other names that still fit the feature: **TUI Dock**, **Command Dock**, **Control Dock**, **Deck**, and **Sidecar**.

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# cmux pre-commit hook
+# mosaic pre-commit hook
 # Installed by ./scripts/setup.sh via `git config core.hooksPath scripts/git-hooks`.
-# Normalizes cmux.xcodeproj/project.pbxproj when staged so Xcode's
+# Normalizes mosaic.xcodeproj/project.pbxproj when staged so Xcode's
 # nondeterministic section reordering never reaches a commit.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-PBXPROJ="cmux.xcodeproj/project.pbxproj"
+PBXPROJ="mosaic.xcodeproj/project.pbxproj"
 
 # Only run when the pbxproj is part of this commit.
 if ! git diff --cached --name-only --diff-filter=ACMRT | grep -Fxq "$PBXPROJ"; then

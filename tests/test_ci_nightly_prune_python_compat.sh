@@ -45,12 +45,12 @@ module.os.environ["GH_TOKEN"] = "test-token"
 module.os.environ["GITHUB_API_URL"] = "https://api.example.test"
 module.os.environ["PATH"] = ""
 
-release = module.load_release("emergent-inc/cmux", "nightly")
+release = module.load_release("emergent-inc/mosaic", "nightly")
 assert release == {"assets": []}
-module.delete_assets("emergent-inc/cmux", [module.ReleaseAsset(asset_id=123, name="old.dmg", build=1)])
+module.delete_assets("emergent-inc/mosaic", [module.ReleaseAsset(asset_id=123, name="old.dmg", build=1)])
 assert requests == [
-    ("GET", "https://api.example.test/repos/emergent-inc/cmux/releases/tags/nightly"),
-    ("DELETE", "https://api.example.test/repos/emergent-inc/cmux/releases/assets/123"),
+    ("GET", "https://api.example.test/repos/emergent-inc/mosaic/releases/tags/nightly"),
+    ("DELETE", "https://api.example.test/repos/emergent-inc/mosaic/releases/assets/123"),
 ]
 
 class FakeProc:
@@ -69,9 +69,9 @@ module.os.environ.pop("GITHUB_TOKEN", None)
 module.shutil.which = lambda name: "/fake/gh" if name == "gh" else None
 module.subprocess.run = fake_run
 
-module.delete_assets("emergent-inc/cmux", [module.ReleaseAsset(asset_id=456, name="older.dmg", build=1)])
+module.delete_assets("emergent-inc/mosaic", [module.ReleaseAsset(asset_id=456, name="older.dmg", build=1)])
 assert gh_calls == [
-    ["gh", "api", "-X", "DELETE", "repos/emergent-inc/cmux/releases/assets/456"],
+    ["gh", "api", "-X", "DELETE", "repos/emergent-inc/mosaic/releases/assets/456"],
 ]
 PY
 

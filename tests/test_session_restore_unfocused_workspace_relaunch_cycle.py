@@ -18,7 +18,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from cmux import cmux
+from mosaic import mosaic
 
 
 def _bundle_id(app_path: Path) -> str:
@@ -35,7 +35,7 @@ def _bundle_id(app_path: Path) -> str:
 
 def _snapshot_path(bundle_id: str) -> Path:
     safe_bundle = re.sub(r"[^A-Za-z0-9._-]", "_", bundle_id)
-    return Path.home() / "Library/Application Support/cmux" / f"session-{safe_bundle}.json"
+    return Path.home() / "Library/Application Support/mosaic" / f"session-{safe_bundle}.json"
 
 
 def _socket_reachable(socket_path: Path) -> bool:
@@ -89,9 +89,9 @@ def _launch(app_path: Path, socket_path: Path) -> None:
             "-na",
             str(app_path),
             "--env",
-            f"CMUX_SOCKET_PATH={socket_path}",
+            f"MOSAIC_SOCKET_PATH={socket_path}",
             "--env",
-            "CMUX_ALLOW_SOCKET_OVERRIDE=1",
+            "MOSAIC_ALLOW_SOCKET_OVERRIDE=1",
         ],
         check=True,
     )
@@ -114,19 +114,19 @@ def _quit(bundle_id: str, socket_path: Path) -> None:
     time.sleep(0.8)
 
 
-def _connect(socket_path: Path) -> cmux:
-    client = cmux(socket_path=str(socket_path))
+def _connect(socket_path: Path) -> mosaic:
+    client = mosaic(socket_path=str(socket_path))
     client.connect()
     if not client.ping():
         raise RuntimeError("ping failed")
     return client
 
 
-def _read_scrollback(client: cmux) -> str:
+def _read_scrollback(client: mosaic) -> str:
     return client._send_command("read_screen --scrollback")
 
 
-def _wait_for_marker(client: cmux, marker: str, timeout: float = 8.0) -> bool:
+def _wait_for_marker(client: mosaic, marker: str, timeout: float = 8.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if marker in _read_scrollback(client):
@@ -136,20 +136,20 @@ def _wait_for_marker(client: cmux, marker: str, timeout: float = 8.0) -> bool:
 
 
 def main() -> int:
-    app_path_str = os.environ.get("CMUX_APP_PATH", "").strip()
+    app_path_str = os.environ.get("MOSAIC_APP_PATH", "").strip()
     if not app_path_str:
-        print("SKIP: set CMUX_APP_PATH to a built Mosaic DEV .app path")
+        print("SKIP: set MOSAIC_APP_PATH to a built Mosaic DEV .app path")
         return 0
     app_path = Path(app_path_str)
     if not app_path.exists():
-        print(f"SKIP: CMUX_APP_PATH does not exist: {app_path}")
+        print(f"SKIP: MOSAIC_APP_PATH does not exist: {app_path}")
         return 0
 
     bundle_id = _bundle_id(app_path)
     snapshot = _snapshot_path(bundle_id)
-    socket_path = Path(f"/tmp/cmux-session-restore-cycle-{bundle_id.replace('.', '-')}.sock")
+    socket_path = Path(f"/tmp/mosaic-session-restore-cycle-{bundle_id.replace('.', '-')}.sock")
 
-    markers = [f"CMUX_RESTORE_EDGE_{i}" for i in range(3)]
+    markers = [f"MOSAIC_RESTORE_EDGE_{i}" for i in range(3)]
     failures: list[str] = []
 
     _kill_existing(app_path)

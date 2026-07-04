@@ -3,8 +3,8 @@ import Foundation
 enum AppBundleIconPersistencePolicy {
     private static let stableReleaseBundleIdentifier = "mosaic.com.emergent.app"
     private static let stableReleaseAppBundleName = "Mosaic.app"
-    static let disablePersistenceArgument = "--cmux-disable-bundle-icon-persistence"
-    static let disablePersistenceDefaultsKey = "cmuxDisableBundleIconPersistence"
+    static let disablePersistenceArgument = "--mosaic-disable-bundle-icon-persistence"
+    static let disablePersistenceDefaultsKey = "mosaicDisableBundleIconPersistence"
 
     static func updateDisableDefault(defaults: UserDefaults, launchArguments: [String]) {
         defaults.set(

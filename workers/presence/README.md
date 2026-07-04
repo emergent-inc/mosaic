@@ -1,4 +1,4 @@
-# cmux-presence
+# mosaic-presence
 
 Realtime device presence service: a Cloudflare Worker with one `TeamPresence`
 Durable Object per team. Hosts announce themselves with heartbeats; clients
@@ -8,7 +8,7 @@ Design, decision memo, and client integration: `docs/presence-service.md`.
 ## API
 
 All `/v1` routes require `Authorization: Bearer <Stack access token>` and
-accept optional team scoping via `X-Cmux-Team-Id` or `?teamId=` (must be a
+accept optional team scoping via `X-Mosaic-Team-Id` or `?teamId=` (must be a
 team the caller belongs to; defaults to the selected team, then the
 solo-account user id).
 
@@ -66,41 +66,41 @@ Optional plain var `STACK_API_URL` defaults to `https://api.stack-auth.com`.
 
 ### Dev/staging instance
 
-A dev instance runs as `cmux-presence-dev` on the team Cloudflare account
+A dev instance runs as `mosaic-presence-dev` on the team Cloudflare account
 (the same one the regatta subrouter deploys to), configured with the dev
 Stack project's Worker secrets:
 
 ```
-https://cmux-presence-dev.debussy.workers.dev
+https://mosaic-presence-dev.debussy.workers.dev
 ```
 
 Redeploy it manually with `bunx wrangler deploy --config wrangler.dev.toml`
 (its `STACK_*` Worker secrets are already provisioned and survive deploys).
 
 > [!IMPORTANT]
-> Use `--config wrangler.dev.toml`, NOT `--name cmux-presence-dev`. The default
-> `wrangler.toml` carries the **production** `presence.cmux.dev` custom domain;
+> Use `--config wrangler.dev.toml`, NOT `--name mosaic-presence-dev`. The default
+> `wrangler.toml` carries the **production** `presence.mosaic.dev` custom domain;
 > `--name` only overrides the worker name, so it inherits that route and STEALS
-> the production domain (detaching it from `cmux-presence`, which breaks prod
+> the production domain (detaching it from `mosaic-presence`, which breaks prod
 > auth since the dev worker uses the dev Stack project). `wrangler.dev.toml` has
 > `workers_dev = true` and no custom domain, so the dev instance stays on its
 > own `*.workers.dev` URL.
-Point a dev Mac build at it with the `CMUX_PRESENCE_BASE_URL` env override or
+Point a dev Mac build at it with the `MOSAIC_PRESENCE_BASE_URL` env override or
 the `presenceServiceURL` defaults key, plus `presenceHeartbeatEnabled` (see
 `Sources/Cloud/PresenceSettings.swift`).
 
 ### Working on the worker with several people at once
 
-`cmux-presence-dev` is a **single shared instance** — last deploy wins, and an
+`mosaic-presence-dev` is a **single shared instance** — last deploy wins, and an
 unmerged feature (e.g. the paired-Mac backup, which only exists on its branch)
 lives ONLY on whoever deployed last. So don't push your branch onto the shared
 worker: get your own **isolated** one instead.
 
 ```
-./scripts/deploy-dev.sh           # deploys cmux-presence-dev-<your-id>
+./scripts/deploy-dev.sh           # deploys mosaic-presence-dev-<your-id>
 ```
 
-Each `cmux-presence-dev-<slug>` is a separate worker with its **own Durable
+Each `mosaic-presence-dev-<slug>` is a separate worker with its **own Durable
 Object namespace**, so presence + paired-Mac-backup state is fully isolated per
 developer — multiple people dogfood worker changes simultaneously without
 clobbering each other or the shared baseline. Because Cloudflare secrets are
@@ -111,24 +111,24 @@ it refuses to deploy if those values are missing. The script prints the worker
 URL and the env var to export:
 
 ```
-export CMUX_PRESENCE_BASE_URL=https://cmux-presence-dev-<slug>.<subdomain>.workers.dev
+export MOSAIC_PRESENCE_BASE_URL=https://mosaic-presence-dev-<slug>.<subdomain>.workers.dev
 ```
 
 Point **every** build in your dogfood loop at it (the Mac that heartbeats AND the
 iPhone that subscribes/backs up must share one worker):
 
-- **Mac:** `CMUX_PRESENCE_BASE_URL` env, or `defaults write <tagged-bundle>
+- **Mac:** `MOSAIC_PRESENCE_BASE_URL` env, or `defaults write <tagged-bundle>
   presenceServiceURL <url>`. Resolved by `PresenceSettings`.
 - **iOS:** a tapped device app sees no shell env, so the override is read from the
-  app's **Info.plist key `CMUXPresenceBaseURL`** (and from `presenceServiceURL`
-  UserDefaults / the `CMUX_PRESENCE_BASE_URL` launch env). Resolution precedence:
+  app's **Info.plist key `MosaicPresenceBaseURL`** (and from `presenceServiceURL`
+  UserDefaults / the `MOSAIC_PRESENCE_BASE_URL` launch env). Resolution precedence:
   env → UserDefaults → Info.plist → Debug default. `ios/scripts/reload.sh` bakes
-  `$CMUX_PRESENCE_BASE_URL` into that Info.plist key (next to `CMUXDevTag`, via the
-  `CMUX_PRESENCE_BASE_URL` build setting in `ios/Config/Shared.xcconfig` +
+  `$MOSAIC_PRESENCE_BASE_URL` into that Info.plist key (next to `MosaicDevTag`, via the
+  `MOSAIC_PRESENCE_BASE_URL` build setting in `ios/Config/Shared.xcconfig` +
   `Info.plist`), so once it is exported a normally-tapped dev device build talks to
   your worker. Empty by default, so release/TestFlight builds are unaffected.
 
-Leave `CMUX_PRESENCE_BASE_URL` unset to use the shared `cmux-presence-dev`
+Leave `MOSAIC_PRESENCE_BASE_URL` unset to use the shared `mosaic-presence-dev`
 baseline. The durable fix for any feature is to **merge it** — then it ships on
 prod via CI and anyone deploying dev from `main` carries it, no coordination
 needed.

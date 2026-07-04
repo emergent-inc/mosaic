@@ -1,29 +1,29 @@
 import Foundation
 import Observation
 import SwiftUI
-import CmuxExtensionKit
+import MosaicExtensionKit
 
 @Observable
 @MainActor
 final class SidebarConnectionModel {
-    private(set) var snapshot: CmuxSidebarSnapshot?
+    private(set) var snapshot: MosaicSidebarSnapshot?
     private(set) var errorText: String?
 
     @ObservationIgnored
-    private var host: CmuxSidebarHost?
+    private var host: MosaicSidebarHost?
 
-    func update(context: CmuxSidebarContext) {
+    func update(context: MosaicSidebarContext) {
         snapshot = context.snapshot
         host = context.host
         errorText = nil
     }
 
-    func connectionStatusDidChange(_ status: CmuxSidebarConnectionStatus) {
+    func connectionStatusDidChange(_ status: MosaicSidebarConnectionStatus) {
         switch status {
         case .connected:
             errorText = nil
         case .waitingForHost:
-            errorText = String(localized: "sampleSidebar.waitingForHost", defaultValue: "Waiting for cmux")
+            errorText = String(localized: "sampleSidebar.waitingForHost", defaultValue: "Waiting for mosaic")
         case .error(let message):
             errorText = message
         }
@@ -76,12 +76,12 @@ final class SidebarConnectionModel {
         do {
             try await operation()
             errorText = nil
-        } catch CmuxSidebarActionError.rejected(let message) {
+        } catch MosaicSidebarActionError.rejected(let message) {
             errorText = message
-        } catch CmuxSidebarActionError.cancelled {
+        } catch MosaicSidebarActionError.cancelled {
             errorText = nil
         } catch {
-            errorText = String(localized: "sampleSidebar.actionDenied", defaultValue: "cmux did not allow that action")
+            errorText = String(localized: "sampleSidebar.actionDenied", defaultValue: "mosaic did not allow that action")
         }
     }
 

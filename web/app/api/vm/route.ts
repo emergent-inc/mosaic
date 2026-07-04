@@ -49,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
   return withAuthedVmApiRoute(
     request,
     "/api/vm",
-    { "cmux.vm.operation": "list" },
+    { "mosaic.vm.operation": "list" },
     "/api/vm GET failed",
     async ({ user, span }) => {
       let billingTeamId: string | null = null;
@@ -62,9 +62,9 @@ export async function GET(request: Request): Promise<Response> {
           });
           billingTeamId = entitlements.billingTeamId;
           setSpanAttributes(span, {
-            "cmux.billing.team_id_set": !!billingTeamId,
-            "cmux.billing.customer_type": entitlements.billingCustomerType,
-            "cmux.billing.plan_id": entitlements.planId,
+            "mosaic.billing.team_id_set": !!billingTeamId,
+            "mosaic.billing.customer_type": entitlements.billingCustomerType,
+            "mosaic.billing.plan_id": entitlements.planId,
           });
         }
       } catch (err) {
@@ -75,7 +75,7 @@ export async function GET(request: Request): Promise<Response> {
       }
 
       const entries = await runVmWorkflow(listUserVms(user.id, billingTeamId));
-      setSpanAttributes(span, { "cmux.vm.count": entries.length });
+      setSpanAttributes(span, { "mosaic.vm.count": entries.length });
       // REST adapter: expose `id` at the top level so existing CLI + curl users don't need to
       // learn the new `providerVmId` field name. Swift CLI reads `vm["id"]`.
       const vms = entries.map((entry) => ({
@@ -94,7 +94,7 @@ export async function POST(request: Request): Promise<Response> {
   return withAuthedVmApiRoute(
     request,
     "/api/vm",
-    { "cmux.vm.operation": "create" },
+    { "mosaic.vm.operation": "create" },
     "/api/vm POST failed",
     async ({ user: initialUser, span, authDurationMs, routeStartedAtMs, setResponseFinalizer }) => {
       const timing = new VmTimingRecorder(span, "create", { startedAt: routeStartedAtMs });
@@ -211,21 +211,21 @@ export async function POST(request: Request): Promise<Response> {
           throw err;
         }
         const image = imageSelection.image;
-        // Idempotency-Key is standard HTTP; we also accept x-cmux-idempotency-key for CLI
+        // Idempotency-Key is standard HTTP; we also accept x-mosaic-idempotency-key for CLI
         // callers that don't know about RFC-style keys. Trim + clamp to a reasonable length
         // so we don't store unbounded idempotency metadata.
         const rawKey = (
           request.headers.get("idempotency-key") ||
-          request.headers.get("x-cmux-idempotency-key") ||
+          request.headers.get("x-mosaic-idempotency-key") ||
           ""
         ).trim();
         const idempotencyKey = rawKey ? rawKey.slice(0, 128) : undefined;
         setSpanAttributes(span, {
-          "cmux.vm.provider": provider,
-          "cmux.vm.image_set": image.length > 0,
-          "cmux.vm.image_version": imageSelection.imageVersion,
-          "cmux.vm.image_manifest": !!imageSelection.manifestEntry,
-          "cmux.idempotency_key_set": !!idempotencyKey,
+          "mosaic.vm.provider": provider,
+          "mosaic.vm.image_set": image.length > 0,
+          "mosaic.vm.image_version": imageSelection.imageVersion,
+          "mosaic.vm.image_manifest": !!imageSelection.manifestEntry,
+          "mosaic.idempotency_key_set": !!idempotencyKey,
         });
 
         const requestedBillingTeamId = body.billingTeamId || requestedVmTeamIdFromRequest(request);
@@ -251,11 +251,11 @@ export async function POST(request: Request): Promise<Response> {
           throw err;
         }
         setSpanAttributes(span, {
-          "cmux.billing.team_id_set": !!entitlements.billingTeamId,
-          "cmux.billing.customer_type": entitlements.billingCustomerType,
-          "cmux.billing.plan_id": entitlements.planId,
-          "cmux.billing.requested_team_id_set": !!requestedBillingTeamId,
-          "cmux.vm.max_active": entitlements.maxActiveVms,
+          "mosaic.billing.team_id_set": !!entitlements.billingTeamId,
+          "mosaic.billing.customer_type": entitlements.billingCustomerType,
+          "mosaic.billing.plan_id": entitlements.planId,
+          "mosaic.billing.requested_team_id_set": !!requestedBillingTeamId,
+          "mosaic.vm.max_active": entitlements.maxActiveVms,
         });
 
         let created;
@@ -278,7 +278,7 @@ export async function POST(request: Request): Promise<Response> {
               error: "vm_create_in_progress",
               status: 409,
               message: "A Cloud VM create is already running for this request.",
-              action: "Wait for the first `cmux vm new` to finish. If your terminal was interrupted, retry the same command and cmux will reuse the in-flight request.",
+              action: "Wait for the first `mosaic vm new` to finish. If your terminal was interrupted, retry the same command and mosaic will reuse the in-flight request.",
               details: { idempotencyKeySet: !!err.idempotencyKey },
             });
           }
@@ -287,7 +287,7 @@ export async function POST(request: Request): Promise<Response> {
               error: "vm_create_failed",
               status: 500,
               message: "The previous Cloud VM create attempt failed.",
-              action: "Retry with a fresh `cmux vm new`. If it fails again, copy the details and contact support.",
+              action: "Retry with a fresh `mosaic vm new`. If it fails again, copy the details and contact support.",
               details: {
                 idempotencyKeySet: !!err.idempotencyKey,
               },
@@ -298,7 +298,7 @@ export async function POST(request: Request): Promise<Response> {
               error: "vm_active_limit_exceeded",
               status: 402,
               message: `This plan allows ${err.limit} active Cloud VM${err.limit === 1 ? "" : "s"} at a time.`,
-              action: "Run `cmux vm ls`, then stop or delete an active VM with `cmux vm rm <id>` before creating another. Paused VMs do not count against this limit.",
+              action: "Run `mosaic vm ls`, then stop or delete an active VM with `mosaic vm rm <id>` before creating another. Paused VMs do not count against this limit.",
               extra: { limit: err.limit },
               details: { limit: err.limit },
             });
@@ -317,7 +317,7 @@ export async function POST(request: Request): Promise<Response> {
           if (workflowError) return workflowError;
           throw err;
         }
-        setSpanAttributes(span, { "cmux.vm.id": created.providerVmId });
+        setSpanAttributes(span, { "mosaic.vm.id": created.providerVmId });
         return jsonResponse({
           id: created.providerVmId,
           provider: created.provider,
@@ -335,13 +335,13 @@ function invalidTeamIdResponse(): Response {
     error: "vm_invalid_request",
     status: 400,
     message: "`teamId` must be a non-empty string when provided.",
-    action: "Use a team id from `cmux auth status`, or omit `teamId` when the signed-in account has one team.",
+    action: "Use a team id from `mosaic auth status`, or omit `teamId` when the signed-in account has one team.",
     details: { field: "teamId" },
   });
 }
 
 function requestHasBlankVmTeamId(request: Request): boolean {
-  for (const header of ["x-cmux-team-id", "x-cmux-billing-team-id"]) {
+  for (const header of ["x-mosaic-team-id", "x-mosaic-billing-team-id"]) {
     const value = request.headers.get(header);
     if (value !== null && value.trim().length === 0) return true;
   }
@@ -371,7 +371,7 @@ function billingTeamErrorResponse(err: {
       error: err.code,
       status: err.status,
       message: "That team is not available for this account.",
-      action: "Switch to a team you belong to, or run `cmux auth login` again and retry with the correct team id.",
+      action: "Switch to a team you belong to, or run `mosaic auth login` again and retry with the correct team id.",
       reason: "The selected team is not available for this account.",
     });
   }
@@ -379,8 +379,8 @@ function billingTeamErrorResponse(err: {
   return vmErrorResponse({
     error: err.code,
     status: err.status,
-    message: "cmux needs to know which team should own this Cloud VM.",
-    action: "Select a team in cmux, or pass the team id with `X-Cmux-Team-Id`. If you do not see a team, run `cmux auth login` again.",
+    message: "mosaic needs to know which team should own this Cloud VM.",
+    action: "Select a team in mosaic, or pass the team id with `X-Mosaic-Team-Id`. If you do not see a team, run `mosaic auth login` again.",
     reason: "No eligible team was selected for this Cloud VM.",
   });
 }

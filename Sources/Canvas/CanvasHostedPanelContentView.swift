@@ -1,6 +1,6 @@
 import SwiftUI
 import Bonsplit
-import CmuxAppKitSupportUI
+import MosaicAppKitSupportUI
 
 /// SwiftUI fallback content for canvas panes whose panel kind is not yet
 /// direct-hosted (browser, markdown, file preview, agent session, ...).
@@ -51,7 +51,7 @@ struct CanvasHostedPanelContentView: View {
         // launch-time default `canvasInlineBrowserHostingDisabled` is the
         // escape hatch back to window-portal hosting.
         .environment(
-            \.cmuxCanvasInlineBrowserHosting,
+            \.mosaicCanvasInlineBrowserHosting,
             !UserDefaults.standard.bool(forKey: "canvasInlineBrowserHostingDisabled")
         )
     }

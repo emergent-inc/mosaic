@@ -6,10 +6,10 @@ extension DockSplitStore {
 
     /// Resolves the config that seeds a Dock of the given scope.
     ///
-    /// - `.workspace`: only the project `.cmux/dock.json` (searched upward from
+    /// - `.workspace`: only the project `.mosaic/dock.json` (searched upward from
     ///   `rootDirectory`); no global fallback, so the Workspace Dock stays
     ///   distinct from the Global Dock. Empty when there is no project config.
-    /// - `.global`: only `~/.config/cmux/dock.json` with a home base directory.
+    /// - `.global`: only `~/.config/mosaic/dock.json` with a home base directory.
     ///
     /// `scope` defaults to `.workspace` to preserve existing call sites/tests.
     nonisolated static func resolve(scope: DockScope = .workspace, rootDirectory: String?) throws -> DockConfigResolution {
@@ -95,7 +95,7 @@ extension DockSplitStore {
         case .workspace:
             if let rootDirectory = rootDirectory.flatMap(existingDirectory) {
                 return URL(fileURLWithPath: rootDirectory, isDirectory: true)
-                    .appendingPathComponent(".cmux", isDirectory: true)
+                    .appendingPathComponent(".mosaic", isDirectory: true)
                     .appendingPathComponent("dock.json", isDirectory: false)
             }
             return globalConfigURL()
@@ -109,7 +109,7 @@ extension DockSplitStore {
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        // Intentionally empty: cmux ships no opinionated default controls (no
+        // Intentionally empty: mosaic ships no opinionated default controls (no
         // assumed tools like lazygit). The starter file is schema-valid and
         // ready for the user to add their own controls; an empty Dock is a
         // fully supported state — the toolbar `+` menu and empty panes offer
@@ -149,7 +149,7 @@ extension DockSplitStore {
 
     nonisolated private static func dockValidationErrorMessage(for error: Error) -> String? {
         let nsError = error as NSError
-        if nsError.domain == "cmux.dock",
+        if nsError.domain == "mosaic.dock",
            let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String,
            !message.isEmpty {
             return message
@@ -158,13 +158,13 @@ extension DockSplitStore {
         return nil
     }
 
-    nonisolated static func trustDescriptor(for resolution: DockConfigResolution) -> CmuxActionTrustDescriptor {
+    nonisolated static func trustDescriptor(for resolution: DockConfigResolution) -> MosaicActionTrustDescriptor {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = (try? encoder.encode(DockConfigFile(controls: resolution.controls))) ?? Data()
         let commandFingerprint = String(data: data, encoding: .utf8) ?? ""
-        return CmuxActionTrustDescriptor(
-            actionID: "cmux.dock",
+        return MosaicActionTrustDescriptor(
+            actionID: "mosaic.dock",
             kind: "dockControls",
             command: commandFingerprint,
             target: "rightSidebarDock",
@@ -186,7 +186,7 @@ extension DockSplitStore {
         for control in file.controls {
             guard seen.insert(control.id).inserted else {
                 throw NSError(
-                    domain: "cmux.dock",
+                    domain: "mosaic.dock",
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey: String(
@@ -211,7 +211,7 @@ extension DockSplitStore {
         let homePath = FileManager.default.homeDirectoryForCurrentUser.path
         while true {
             let configURL = URL(fileURLWithPath: candidatePath, isDirectory: true)
-                .appendingPathComponent(".cmux", isDirectory: true)
+                .appendingPathComponent(".mosaic", isDirectory: true)
                 .appendingPathComponent("dock.json", isDirectory: false)
             if FileManager.default.fileExists(atPath: configURL.path) {
                 return configURL
@@ -227,19 +227,19 @@ extension DockSplitStore {
     }
 
     nonisolated private static func projectBaseDirectory(for configURL: URL) -> String {
-        let cmuxDirectory = configURL.deletingLastPathComponent()
-        return cmuxDirectory.deletingLastPathComponent().path
+        let mosaicDirectory = configURL.deletingLastPathComponent()
+        return mosaicDirectory.deletingLastPathComponent().path
     }
 
     nonisolated private static func globalConfigURL() -> URL {
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_MODE"] == "1",
-           let testPath = ProcessInfo.processInfo.environment["CMUX_UI_TEST_DOCK_CONFIG_PATH"]?
+        if ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_MODE"] == "1",
+           let testPath = ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_DOCK_CONFIG_PATH"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !testPath.isEmpty {
             return URL(fileURLWithPath: testPath)
         }
         return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/cmux/dock.json", isDirectory: false)
+            .appendingPathComponent(".config/mosaic/dock.json", isDirectory: false)
     }
 
     nonisolated private static func existingDirectory(_ rawPath: String) -> String? {

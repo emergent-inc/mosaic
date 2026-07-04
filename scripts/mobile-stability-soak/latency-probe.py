@@ -14,7 +14,7 @@ representative. A physical iPhone adds local Wi-Fi/Tailscale RTT
 (typically a few ms) plus iOS render latency on top.
 
 Usage:
-  CMUX_TAG=swmob ./scripts/mobile-stability-soak/latency-probe.py \
+  MOSAIC_TAG=swmob ./scripts/mobile-stability-soak/latency-probe.py \
       [--iterations N] [--workspace-id <uuid>] [--route debug_loopback] \
       [--poll-interval-ms 2] [--warmup 3] [--json /tmp/latency.json]
 """
@@ -37,10 +37,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 
-def cmux_debug_rpc(tag: str, method: str, params: dict) -> dict:
-    env = {**os.environ, "CMUX_TAG": tag}
+def mosaic_debug_rpc(tag: str, method: str, params: dict) -> dict:
+    env = {**os.environ, "MOSAIC_TAG": tag}
     out = subprocess.check_output(
-        [str(REPO / "scripts/cmux-debug-cli.sh"), "rpc", method, json.dumps(params)],
+        [str(REPO / "scripts/mosaic-debug-cli.sh"), "rpc", method, json.dumps(params)],
         env=env,
         text=True,
     )
@@ -61,7 +61,7 @@ def create_attach_ticket(tag: str, prefer_route: str, workspace_id: str | None) 
     params = {"ttl_seconds": 600}
     if workspace_id:
         params["workspace_id"] = workspace_id
-    payload = cmux_debug_rpc(tag, "mobile.attach_ticket.create", params)
+    payload = mosaic_debug_rpc(tag, "mobile.attach_ticket.create", params)
     ticket = payload["ticket"]
     route = select_route(ticket["routes"], prefer_route)
     return {
@@ -112,7 +112,7 @@ def pick_terminal(ticket: dict, *, create_if_missing: bool) -> str:
     workspaces = framed_rpc(ticket, "mobile.workspace.list", {})
     ws_list = workspaces.get("workspaces", [])
     if not ws_list:
-        raise RuntimeError("tagged host has no workspaces; create one in cmux first")
+        raise RuntimeError("tagged host has no workspaces; create one in mosaic first")
     for ws in ws_list:
         if ws.get("id") == ticket["workspace_id"]:
             terms = ws.get("terminals", [])
@@ -196,11 +196,11 @@ def main() -> int:
     ap.add_argument("--per-sample-timeout-s", type=float, default=5.0)
     ap.add_argument("--no-create", action="store_true", help="reuse existing terminal instead of creating one")
     ap.add_argument("--json", type=Path, default=None, help="write results to this JSON path")
-    ap.add_argument("--tag", default=os.environ.get("CMUX_TAG", "swmob"))
+    ap.add_argument("--tag", default=os.environ.get("MOSAIC_TAG", "swmob"))
     args = ap.parse_args()
 
     if not args.tag:
-        print("error: pass --tag or set CMUX_TAG", file=sys.stderr)
+        print("error: pass --tag or set MOSAIC_TAG", file=sys.stderr)
         return 2
 
     print(f"[latency-probe] tag={args.tag} route={args.route} iterations={args.iterations} warmup={args.warmup} poll_interval_ms={args.poll_interval_ms}")

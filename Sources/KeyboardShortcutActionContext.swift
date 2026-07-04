@@ -1,5 +1,5 @@
-import CmuxCommandPalette
-import CmuxSettings
+import MosaicCommandPalette
+import MosaicSettings
 
 extension KeyboardShortcutSettings.Action {
     enum ShortcutContext: Equatable {

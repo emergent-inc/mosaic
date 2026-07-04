@@ -29,7 +29,7 @@ nonisolated enum BrowserHiddenWebViewDiscardPolicy {
     }
 
     static func isEnabled(defaults: UserDefaults) -> Bool {
-        let value = ProcessInfo.processInfo.environment["CMUX_BROWSER_HIDDEN_WEBVIEW_DISCARD_ENABLED"]?
+        let value = ProcessInfo.processInfo.environment["MOSAIC_BROWSER_HIDDEN_WEBVIEW_DISCARD_ENABLED"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         if let value {
@@ -59,7 +59,7 @@ nonisolated enum BrowserHiddenWebViewDiscardPolicy {
     }
 
     static func hiddenDelay(defaults: UserDefaults) -> TimeInterval {
-        let rawValue = ProcessInfo.processInfo.environment["CMUX_BROWSER_HIDDEN_WEBVIEW_DISCARD_DELAY_SECONDS"]?
+        let rawValue = ProcessInfo.processInfo.environment["MOSAIC_BROWSER_HIDDEN_WEBVIEW_DISCARD_DELAY_SECONDS"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let rawValue, let value = TimeInterval(rawValue), let resolvedValue = resolvedHiddenDelay(value) else {
             let storedValue = defaults.double(forKey: hiddenDelayKey)

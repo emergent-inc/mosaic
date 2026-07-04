@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-INTERVAL="${CMUX_CURSOR_TUI_INTERVAL:-1}"
-USE_ALT_SCREEN="${CMUX_CURSOR_TUI_ALT_SCREEN:-1}"
+INTERVAL="${MOSAIC_CURSOR_TUI_INTERVAL:-1}"
+USE_ALT_SCREEN="${MOSAIC_CURSOR_TUI_ALT_SCREEN:-1}"
 HAVE_ALT_SCREEN=0
 NEEDS_DRAW=1
 
@@ -173,7 +173,7 @@ draw_frame() {
   put_line_text "$TARGET_ROW" "$TARGET_COL" "@"
 
   now="$(date '+%H:%M:%S')"
-  put_centered_line_text 3 "CMUX CURSOR CHECK"
+  put_centered_line_text 3 "MOSAIC CURSOR CHECK"
   put_centered_line_text 4 "rows=$ROWS cols=$COLS cursor_row=$TARGET_ROW cursor_col=$TARGET_COL"
   put_centered_line_text 5 "The active cursor must sit on @ in macOS, iOS, and iPadOS."
 
@@ -194,7 +194,7 @@ draw() {
   printf '\033[0m\033[?7l\033[?12l\033[2 q\033[?25h\033[H'
 
   if (( ROWS < 8 || COLS < 28 )); then
-    printf 'CMUX CURSOR CHECK\r\n'
+    printf 'MOSAIC CURSOR CHECK\r\n'
     printf 'Too small: %sx%s\r\n' "$ROWS" "$COLS"
     printf 'Need 8x28 or larger.'
     printf '\033[?12l\033[2 q\033[?25h\033[1;1H'

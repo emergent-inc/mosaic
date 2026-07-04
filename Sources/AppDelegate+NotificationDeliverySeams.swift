@@ -1,6 +1,6 @@
 import AppKit
-import CMUXAgentLaunch
-import CmuxNotifications
+import MosaicAgentLaunch
+import MosaicNotifications
 import Foundation
 
 /// App-side adapter for notification delivery seams. The delivery coordinator

@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 import SwiftUI
 
-struct CmuxTaskManagerRow: Identifiable, Equatable {
+struct MosaicTaskManagerRow: Identifiable, Equatable {
     enum Kind: String, Equatable {
         case window
         case workspace
@@ -54,7 +54,7 @@ struct CmuxTaskManagerRow: Identifiable, Equatable {
     let level: Int
     let title: String
     let detail: String
-    let resources: CmuxTaskManagerResources
+    let resources: MosaicTaskManagerResources
     let isDimmed: Bool
     let workspaceId: UUID?
     let surfaceId: UUID?
@@ -76,7 +76,7 @@ struct CmuxTaskManagerRow: Identifiable, Equatable {
         level: Int,
         title: String,
         detail: String,
-        resources: CmuxTaskManagerResources,
+        resources: MosaicTaskManagerResources,
         isDimmed: Bool,
         workspaceId: UUID?,
         surfaceId: UUID?,
@@ -155,9 +155,9 @@ struct CmuxTaskManagerRow: Identifiable, Equatable {
             .sorted()
     }
 
-    func withAgentAssetName(_ assetName: String?) -> CmuxTaskManagerRow {
+    func withAgentAssetName(_ assetName: String?) -> MosaicTaskManagerRow {
         guard agentAssetName != assetName else { return self }
-        return CmuxTaskManagerRow(
+        return MosaicTaskManagerRow(
             id: id,
             kind: kind,
             level: level,
@@ -176,7 +176,7 @@ struct CmuxTaskManagerRow: Identifiable, Equatable {
     }
 }
 
-struct CmuxTaskManagerSortOrder: Equatable {
+struct MosaicTaskManagerSortOrder: Equatable {
     enum Column: Equatable {
         case name
         case cpu
@@ -203,22 +203,22 @@ struct CmuxTaskManagerSortOrder: Equatable {
         }
     }
 
-    static let defaultOrder = CmuxTaskManagerSortOrder(column: .cpu, direction: .descending)
+    static let defaultOrder = MosaicTaskManagerSortOrder(column: .cpu, direction: .descending)
 
     let column: Column
     let direction: Direction
 
-    func toggled(for selectedColumn: Column) -> CmuxTaskManagerSortOrder {
+    func toggled(for selectedColumn: Column) -> MosaicTaskManagerSortOrder {
         if selectedColumn == column {
-            return CmuxTaskManagerSortOrder(column: column, direction: direction.toggled)
+            return MosaicTaskManagerSortOrder(column: column, direction: direction.toggled)
         }
-        return CmuxTaskManagerSortOrder(
+        return MosaicTaskManagerSortOrder(
             column: selectedColumn,
             direction: selectedColumn.defaultDirection
         )
     }
 
-    func sortedRows(_ rows: [CmuxTaskManagerRow]) -> [CmuxTaskManagerRow] {
+    func sortedRows(_ rows: [MosaicTaskManagerRow]) -> [MosaicTaskManagerRow] {
         guard !rows.isEmpty else { return rows }
         var index = 0
         let rootLevel = rows.reduce(Int.max) { min($0, $1.level) }
@@ -227,7 +227,7 @@ struct CmuxTaskManagerSortOrder: Equatable {
     }
 
     private func parseNodes(
-        _ rows: [CmuxTaskManagerRow],
+        _ rows: [MosaicTaskManagerRow],
         index: inout Int,
         level: Int
     ) -> [SortNode] {
@@ -267,13 +267,13 @@ struct CmuxTaskManagerSortOrder: Equatable {
         }
     }
 
-    private func flatten(_ nodes: [SortNode]) -> [CmuxTaskManagerRow] {
+    private func flatten(_ nodes: [SortNode]) -> [MosaicTaskManagerRow] {
         nodes.flatMap { node in
             [node.row] + flatten(node.children)
         }
     }
 
-    private func compare(_ lhs: CmuxTaskManagerRow, _ rhs: CmuxTaskManagerRow) -> ComparisonResult {
+    private func compare(_ lhs: MosaicTaskManagerRow, _ rhs: MosaicTaskManagerRow) -> ComparisonResult {
         switch column {
         case .name:
             return lhs.title.localizedStandardCompare(rhs.title)
@@ -294,12 +294,12 @@ struct CmuxTaskManagerSortOrder: Equatable {
 }
 
 private struct SortNode {
-    let row: CmuxTaskManagerRow
+    let row: MosaicTaskManagerRow
     let children: [SortNode]
 }
 
-struct CmuxTaskManagerResources: Equatable {
-    static let zero = CmuxTaskManagerResources(cpuPercent: 0, residentBytes: 0, processCount: 0)
+struct MosaicTaskManagerResources: Equatable {
+    static let zero = MosaicTaskManagerResources(cpuPercent: 0, residentBytes: 0, processCount: 0)
 
     let cpuPercent: Double
     let memoryBytes: Int64
@@ -331,7 +331,7 @@ struct CmuxTaskManagerResources: Equatable {
 
     /// Canonical (deduped + ascending) ordering so synthesized
     /// `Equatable` stays stable across snapshot reorderings. See
-    /// `CmuxTaskManagerRow.canonicalIds` for the same rationale.
+    /// `MosaicTaskManagerRow.canonicalIds` for the same rationale.
     private static func canonicalIds(_ ids: [Int]) -> [Int] {
         guard !ids.isEmpty else { return ids }
         return Array(Set(ids)).sorted()
@@ -374,13 +374,13 @@ struct CmuxTaskManagerResources: Equatable {
     }
 }
 
-struct CmuxTaskManagerMemoryDiagnostic: Sendable {
+struct MosaicTaskManagerMemoryDiagnostic: Sendable {
     let summary: String
     let appFootprintBytes: Int64
     let appResidentBytes: Int64
     let childRSSBytes: Int64
     let childProcessCount: Int
-    let groups: [CmuxTaskManagerMemoryGroup]
+    let groups: [MosaicTaskManagerMemoryGroup]
 
     init?(_ payload: [String: Any]?) {
         guard let payload else { return nil }
@@ -392,7 +392,7 @@ struct CmuxTaskManagerMemoryDiagnostic: Sendable {
         self.childRSSBytes = Self.int64(children["recursive_rss_bytes"])
         self.childProcessCount = Self.int(children["process_count"]) ?? 0
         self.groups = (children["groups"] as? [[String: Any]] ?? [])
-            .compactMap(CmuxTaskManagerMemoryGroup.init)
+            .compactMap(MosaicTaskManagerMemoryGroup.init)
     }
 
     static func string(_ raw: Any?) -> String? {
@@ -428,30 +428,30 @@ struct CmuxTaskManagerMemoryDiagnostic: Sendable {
     }
 }
 
-struct CmuxTaskManagerMemoryGroup: Sendable {
+struct MosaicTaskManagerMemoryGroup: Sendable {
     let id: String
     let name: String
     let rssBytes: Int64
     let processCount: Int
     let processIds: [Int]
-    let topAttribution: CmuxTaskManagerMemoryAttribution?
+    let topAttribution: MosaicTaskManagerMemoryAttribution?
 
     init?(_ payload: [String: Any]) {
-        guard let name = CmuxTaskManagerMemoryDiagnostic.string(payload["name"]) else {
+        guard let name = MosaicTaskManagerMemoryDiagnostic.string(payload["name"]) else {
             return nil
         }
-        let processCount = CmuxTaskManagerMemoryDiagnostic.int(payload["process_count"]) ?? 0
+        let processCount = MosaicTaskManagerMemoryDiagnostic.int(payload["process_count"]) ?? 0
         guard processCount > 0 else { return nil }
-        self.id = CmuxTaskManagerMemoryDiagnostic.string(payload["id"]) ?? name.lowercased()
+        self.id = MosaicTaskManagerMemoryDiagnostic.string(payload["id"]) ?? name.lowercased()
         self.name = name
-        self.rssBytes = CmuxTaskManagerMemoryDiagnostic.int64(payload["rss_bytes"])
+        self.rssBytes = MosaicTaskManagerMemoryDiagnostic.int64(payload["rss_bytes"])
         self.processCount = processCount
-        self.processIds = CmuxTaskManagerMemoryDiagnostic.intArray(payload["pids"])
-        self.topAttribution = CmuxTaskManagerMemoryAttribution(payload["top_attribution"] as? [String: Any])
+        self.processIds = MosaicTaskManagerMemoryDiagnostic.intArray(payload["pids"])
+        self.topAttribution = MosaicTaskManagerMemoryAttribution(payload["top_attribution"] as? [String: Any])
     }
 }
 
-struct CmuxTaskManagerMemoryAttribution: Sendable {
+struct MosaicTaskManagerMemoryAttribution: Sendable {
     let workspaceId: UUID?
     let workspaceRef: String?
     let paneId: UUID?
@@ -463,12 +463,12 @@ struct CmuxTaskManagerMemoryAttribution: Sendable {
     init?(_ payload: [String: Any]?) {
         guard let payload else { return nil }
         self.workspaceId = Self.uuid(payload["workspace_id"])
-        self.workspaceRef = CmuxTaskManagerMemoryDiagnostic.string(payload["workspace_ref"])
+        self.workspaceRef = MosaicTaskManagerMemoryDiagnostic.string(payload["workspace_ref"])
         self.paneId = Self.uuid(payload["pane_id"])
-        self.paneRef = CmuxTaskManagerMemoryDiagnostic.string(payload["pane_ref"])
+        self.paneRef = MosaicTaskManagerMemoryDiagnostic.string(payload["pane_ref"])
         self.surfaceId = Self.uuid(payload["surface_id"])
-        self.surfaceRef = CmuxTaskManagerMemoryDiagnostic.string(payload["surface_ref"])
-        self.surfaceType = CmuxTaskManagerMemoryDiagnostic.string(payload["surface_type"])
+        self.surfaceRef = MosaicTaskManagerMemoryDiagnostic.string(payload["surface_ref"])
+        self.surfaceType = MosaicTaskManagerMemoryDiagnostic.string(payload["surface_type"])
         if workspaceId == nil,
            workspaceRef == nil,
            paneId == nil,
@@ -484,14 +484,14 @@ struct CmuxTaskManagerMemoryAttribution: Sendable {
         if let value = raw as? UUID {
             return value
         }
-        guard let value = CmuxTaskManagerMemoryDiagnostic.string(raw) else {
+        guard let value = MosaicTaskManagerMemoryDiagnostic.string(raw) else {
             return nil
         }
         return UUID(uuidString: value)
     }
 }
 
-enum CmuxTaskManagerFormat {
+enum MosaicTaskManagerFormat {
     private static let isoFormatter = ISO8601DateFormatter()
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -528,7 +528,7 @@ enum CmuxTaskManagerFormat {
     }
 }
 
-struct CmuxTaskManagerCodingAgentDefinition: Equatable {
+struct MosaicTaskManagerCodingAgentDefinition: Equatable {
     let id: String
     let displayName: String
     let assetName: String?
@@ -536,8 +536,8 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
     let directBasenames: [String]
     let argumentNeedles: [String]
 
-    static let builtIns: [CmuxTaskManagerCodingAgentDefinition] = [
-        CmuxTaskManagerCodingAgentDefinition(
+    static let builtIns: [MosaicTaskManagerCodingAgentDefinition] = [
+        MosaicTaskManagerCodingAgentDefinition(
             id: "claude",
             displayName: "Claude Code",
             assetName: "AgentIcons/Claude",
@@ -555,7 +555,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
                 "/library/application support/claude/claude-code/",
             ]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "codex",
             displayName: "Codex",
             assetName: "AgentIcons/Codex",
@@ -563,7 +563,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["codex", "omx"],
             argumentNeedles: ["codex", "@openai/codex", "oh-my-codex"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "grok",
             displayName: "Grok",
             assetName: nil,
@@ -571,7 +571,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["grok", "grok-macos-aarch64", "grok-macos-aarch"],
             argumentNeedles: ["grok", "grok-build", "@xai/grok"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "opencode",
             displayName: "OpenCode",
             assetName: "AgentIcons/OpenCode",
@@ -579,7 +579,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["opencode", "opencode-ai", "open-code", "omo"],
             argumentNeedles: ["opencode", "opencode-ai", "open-code", "oh-my-openagent"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "omp",
             displayName: "OMP",
             assetName: nil,
@@ -587,7 +587,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["omp"],
             argumentNeedles: ["@oh-my-pi/pi-coding-agent"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "pi",
             displayName: "Pi",
             assetName: "AgentIcons/Pi",
@@ -595,7 +595,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["pi", "pi-coding-agent"],
             argumentNeedles: ["@mariozechner/pi-coding-agent", "pi-coding-agent"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "amp",
             displayName: "Amp",
             assetName: nil,
@@ -603,7 +603,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["amp"],
             argumentNeedles: ["@ampcode"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "cursor",
             displayName: "Cursor",
             assetName: nil,
@@ -611,7 +611,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["cursor-agent"],
             argumentNeedles: ["cursor-agent"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "gemini",
             displayName: "Gemini",
             assetName: nil,
@@ -619,7 +619,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["gemini"],
             argumentNeedles: ["gemini"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "kiro",
             displayName: "Kiro",
             assetName: nil,
@@ -627,7 +627,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["kiro", "kiro-cli"],
             argumentNeedles: ["kiro", "kiro-cli"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "antigravity",
             displayName: "Antigravity",
             assetName: "AgentIcons/Antigravity",
@@ -635,7 +635,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["agy", "antigravity"],
             argumentNeedles: ["antigravity-cli", "antigravity"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "rovodev",
             displayName: "Rovo Dev",
             assetName: "AgentIcons/RovoDev",
@@ -643,7 +643,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["rovodev"],
             argumentNeedles: ["rovodev"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "hermes-agent",
             displayName: "Hermes Agent",
             assetName: "AgentIcons/HermesAgent",
@@ -651,7 +651,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["hermes", "hermes-agent"],
             argumentNeedles: ["hermes-agent"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "copilot",
             displayName: "Copilot",
             assetName: nil,
@@ -659,7 +659,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["copilot"],
             argumentNeedles: ["copilot"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "codebuddy",
             displayName: "CodeBuddy",
             assetName: nil,
@@ -667,7 +667,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["codebuddy"],
             argumentNeedles: ["codebuddy"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "factory",
             displayName: "Factory",
             assetName: nil,
@@ -675,7 +675,7 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
             directBasenames: ["droid", "factory"],
             argumentNeedles: ["factory"]
         ),
-        CmuxTaskManagerCodingAgentDefinition(
+        MosaicTaskManagerCodingAgentDefinition(
             id: "qoder",
             displayName: "Qoder",
             assetName: nil,
@@ -708,9 +708,9 @@ struct CmuxTaskManagerCodingAgentDefinition: Equatable {
         processPath: String?,
         arguments: [String],
         environment: [String: String]
-    ) -> CmuxTaskManagerCodingAgentDefinition? {
+    ) -> MosaicTaskManagerCodingAgentDefinition? {
         let definitions = builtIns
-        let launchKind = normalized(environment["CMUX_AGENT_LAUNCH_KIND"])
+        let launchKind = normalized(environment["MOSAIC_AGENT_LAUNCH_KIND"])
         if let launchKind,
            let definition = definitions.first(where: { $0.launchKinds.contains(launchKind) }) {
             return definition

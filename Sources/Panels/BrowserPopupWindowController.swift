@@ -1,13 +1,13 @@
 import AppKit
 import Bonsplit
-import CmuxFoundation
+import MosaicFoundation
 import ObjectiveC
 import WebKit
 #if canImport(Security)
 import Security
 #endif
 
-/// Hosts a popup `CmuxWebView` in a standalone `NSPanel`, created when a page
+/// Hosts a popup `MosaicWebView` in a standalone `NSPanel`, created when a page
 /// calls `window.open()` (scripted new-window requests).
 ///
 /// Lifecycle:
@@ -20,7 +20,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
 
     static let maxNestingDepth = 3
 
-    let webView: CmuxWebView
+    let webView: MosaicWebView
     private let browserContext: BrowserPopupBrowserContext
     private let panel: NSPanel
     private let urlLabel: NSTextField, urlLabelHeightConstraint: NSLayoutConstraint
@@ -58,9 +58,9 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         )
 
         // Create popup web view with WebKit's supplied configuration after
-        // overlaying the opener's browser context so OAuth popups keep cmux's
+        // overlaying the opener's browser context so OAuth popups keep mosaic's
         // shared cookie/storage scope and opener linkage.
-        let webView = CmuxWebView(frame: .zero, configuration: configuration)
+        let webView = MosaicWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         if #available(macOS 13.3, *) {
             webView.isInspectable = true
@@ -109,7 +109,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.identifier = NSUserInterfaceItemIdentifier("cmux.browser-popup")
+        panel.identifier = NSUserInterfaceItemIdentifier("mosaic.browser-popup")
         panel.level = NSWindow.Level.normal
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
@@ -167,7 +167,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         dlDel.savePanelParentWindow = { [weak panel] in
             panel
         }
-        webView.cmuxDownloadDelegate = dlDel
+        webView.mosaicDownloadDelegate = dlDel
         webView.onSubframeDownloadIntent = { [weak navDel] in navDel?.recordSubframeDownloadIntent($0) }
         webView.uiDelegate = uiDel
         webView.navigationDelegate = navDel
@@ -216,7 +216,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         panel.delegate = self
 
         #if DEBUG
-        cmuxDebugLog("popup.init depth=\(nestingDepth) size=\(Int(contentRect.width))x\(Int(contentRect.height)) opener=\(openerPanel?.id.uuidString.prefix(5) ?? "nil")")
+        mosaicDebugLog("popup.init depth=\(nestingDepth) size=\(Int(contentRect.width))x\(Int(contentRect.height)) opener=\(openerPanel?.id.uuidString.prefix(5) ?? "nil")")
         #endif
 
         panel.makeKeyAndOrderFront(self)
@@ -269,7 +269,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         #if DEBUG
-        cmuxDebugLog("popup.close depth=\(nestingDepth)")
+        mosaicDebugLog("popup.close depth=\(nestingDepth)")
         #endif
 
         WebViewInspectorTeardown.closeInspector(for: webView)
@@ -308,7 +308,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         let nextDepth = nestingDepth + 1
         if nextDepth > Self.maxNestingDepth {
             #if DEBUG
-            cmuxDebugLog("popup.nested.blocked depth=\(nextDepth) max=\(Self.maxNestingDepth)")
+            mosaicDebugLog("popup.nested.blocked depth=\(nextDepth) max=\(Self.maxNestingDepth)")
             #endif
             return nil
         }
@@ -335,7 +335,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
     fileprivate func handleWebContentProcessTermination(for terminatedWebView: WKWebView) {
         guard terminatedWebView === webView else { return }
 #if DEBUG
-        cmuxDebugLog("popup.webcontent.terminated depth=\(nestingDepth)")
+        mosaicDebugLog("popup.webcontent.terminated depth=\(nestingDepth)")
 #endif
         closePopup()
     }
@@ -373,7 +373,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         alert.messageText = String(localized: "browser.error.insecure.title", defaultValue: "Connection isn\u{2019}t secure")
         alert.informativeText = String(localized: "browser.error.insecure.message", defaultValue: "\(host) uses plain HTTP, so traffic can be read or modified on the network.\n\nOpen this URL in your default browser, or proceed in mosaic.")
         alert.addButton(withTitle: String(localized: "browser.openInDefaultBrowser", defaultValue: "Open in Default Browser"))
-        alert.addButton(withTitle: String(localized: "browser.proceedInCmux", defaultValue: "Proceed in mosaic"))
+        alert.addButton(withTitle: String(localized: "browser.proceedInMosaic", defaultValue: "Proceed in mosaic"))
         alert.addButton(withTitle: String(localized: "common.cancel", defaultValue: "Cancel"))
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = String(localized: "browser.alwaysAllowHost", defaultValue: "Always allow this host in mosaic")
@@ -413,7 +413,7 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
 
     func webViewDidClose(_ webView: WKWebView) {
         #if DEBUG
-        cmuxDebugLog("popup.webViewDidClose")
+        mosaicDebugLog("popup.webViewDidClose")
         #endif
         controller?.closePopup()
     }
@@ -442,7 +442,7 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
             modifierFlags: navigationAction.modifierFlags,
             buttonNumber: navigationAction.buttonNumber,
             popupFeaturesWereSpecified: browserNavigationPopupFeaturesWereSpecified(windowFeatures: windowFeatures),
-            hasRecentMiddleClickIntent: CmuxWebView.hasRecentMiddleClickIntent(for: webView)
+            hasRecentMiddleClickIntent: MosaicWebView.hasRecentMiddleClickIntent(for: webView)
         )
 
         if isScriptedPopup {
@@ -638,7 +638,7 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
         if let url = navigationAction.request.url,
-           url.scheme == "cmux-browser-action",
+           url.scheme == "mosaic-browser-action",
            url.host == "bypass-ssl" {
             decisionHandler(.cancel)
             handleSSLTrustBypassAction(url, in: webView)
@@ -682,7 +682,7 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
         // Insecure HTTP → show same prompt as main browser
         if browserShouldBlockInsecureHTTPURL(url) {
             #if DEBUG
-            cmuxDebugLog("popup.nav.insecureHTTP url=\(url.absoluteString)")
+            mosaicDebugLog("popup.nav.insecureHTTP url=\(url.absoluteString)")
             #endif
             controller?.presentInsecureHTTPAlert(for: url, in: webView, decisionHandler: decisionHandler)
             return
@@ -696,7 +696,7 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
 
         if shouldPreserveSSLTrustBypassForErrorPageNavigation(navigationAction) {
             #if DEBUG
-            cmuxDebugLog("popup.nav.preserveSSLBypassErrorPage url=\(url.absoluteString)")
+            mosaicDebugLog("popup.nav.preserveSSLBypassErrorPage url=\(url.absoluteString)")
             #endif
         } else if let scheme = url.scheme?.lowercased(),
                   scheme == "http" || scheme == "https" {
@@ -904,14 +904,14 @@ private class PopupUIDelegate: NSObject, WKUIDelegate {
 
     func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
         #if DEBUG
-        cmuxDebugLog("popup.download.didBecome source=navigationAction")
+        mosaicDebugLog("popup.download.didBecome source=navigationAction")
         #endif
         download.delegate = downloadDelegate
     }
 
     func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
         #if DEBUG
-        cmuxDebugLog("popup.download.didBecome source=navigationResponse")
+        mosaicDebugLog("popup.download.didBecome source=navigationResponse")
         #endif
         download.delegate = downloadDelegate
     }

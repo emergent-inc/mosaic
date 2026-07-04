@@ -19,7 +19,7 @@
 
 # production
 /build
-/.cmux-cloud-build
+/.mosaic-cloud-build
 
 # misc
 .DS_Store

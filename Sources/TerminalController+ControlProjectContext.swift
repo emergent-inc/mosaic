@@ -1,6 +1,6 @@
 import AppKit
 import Bonsplit
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
 
 /// The project-domain witnesses: the byte-faithful bodies of the former
@@ -247,7 +247,7 @@ extension TerminalController: ControlProjectContext {
     // MARK: - file.open
 
     /// `file.open` forwards to the single shared `v2FileOpen` body (also driven
-    /// directly by cmuxTests), bridging its Foundation result — one source of
+    /// directly by mosaicTests), bridging its Foundation result — one source of
     /// truth, byte-identical wire output.
     func controlFileOpen(params: [String: JSONValue]) -> ControlCallResult {
         switch v2FileOpen(params: params.mapValues(\.foundationObject)) {

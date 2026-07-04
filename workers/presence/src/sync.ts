@@ -1,6 +1,6 @@
 // Generic local-first sync substrate (sync/v1) — pure layer.
 //
-// This is the cloud half of the cmux local-first sync protocol designed in
+// This is the cloud half of the mosaic local-first sync protocol designed in
 // plans/feat-do-device-list/DESIGN.md. It is collection-agnostic: a record is
 // an opaque, collection-tagged payload stamped with a per-(team, collection)
 // monotone `rev` (a logical clock), an `updatedAt`, and a tombstone flag.

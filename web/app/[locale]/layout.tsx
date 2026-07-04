@@ -105,7 +105,7 @@ export default async function LocaleLayout({
     keywords:
       "terminal, macOS, open source terminal, Claude Code, Codex, OpenCode, Gemini CLI, Kiro, Aider, AI coding agents, Ghostty",
     isAccessibleForFree: true,
-    license: "https://github.com/emergent-inc/cmux/blob/main/LICENSE",
+    license: "https://github.com/emergent-inc/mosaic/blob/main/LICENSE",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   };
   const jsonLdScript = JSON.stringify(jsonLd).replace(/</g, "\\u003c");

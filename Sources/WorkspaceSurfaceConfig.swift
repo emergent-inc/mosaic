@@ -1,42 +1,42 @@
 import Foundation
-import CmuxFoundation
-import CmuxTerminalCore
+import MosaicFoundation
+import MosaicTerminalCore
 
-// CmuxSurfaceConfigTemplate and the surface runtime probes moved to
-// CmuxTerminalCore (SurfaceValues/CmuxSurfaceConfigTemplate.swift and
+// MosaicSurfaceConfigTemplate and the surface runtime probes moved to
+// MosaicTerminalCore (SurfaceValues/MosaicSurfaceConfigTemplate.swift and
 // Interop/GhosttySurfaceRuntimeProbe.swift). The legacy free-function names
 // below are shims forwarding existing app callers to the probe.
 
-typealias CmuxSurfaceConfigTemplate = CmuxTerminalCore.CmuxSurfaceConfigTemplate
+typealias MosaicSurfaceConfigTemplate = MosaicTerminalCore.MosaicSurfaceConfigTemplate
 
-func cmuxSurfaceContextName(_ context: ghostty_surface_context_e) -> String {
+func mosaicSurfaceContextName(_ context: ghostty_surface_context_e) -> String {
     GhosttySurfaceRuntimeProbe.contextName(context)
 }
 
-func cmuxSurfacePointerAppearsLive(_ surface: ghostty_surface_t) -> Bool {
+func mosaicSurfacePointerAppearsLive(_ surface: ghostty_surface_t) -> Bool {
     GhosttySurfaceRuntimeProbe.surfacePointerAppearsLive(surface)
 }
 
-func cmuxCurrentSurfaceFontSizePoints(_ surface: ghostty_surface_t) -> Float? {
+func mosaicCurrentSurfaceFontSizePoints(_ surface: ghostty_surface_t) -> Float? {
     GhosttySurfaceRuntimeProbe.currentSurfaceFontSizePoints(surface)
 }
 
-func cmuxInheritedSurfaceConfig(
+func mosaicInheritedSurfaceConfig(
     sourceSurface: ghostty_surface_t,
     context: ghostty_surface_context_e
-) -> CmuxSurfaceConfigTemplate {
+) -> MosaicSurfaceConfigTemplate {
     let inherited = ghostty_surface_inherited_config(sourceSurface, context)
     let percent = GlobalFontMagnification.storedPercent
-    var config = CmuxSurfaceConfigTemplate(
+    var config = MosaicSurfaceConfigTemplate(
         cConfig: inherited,
         globalFontMagnificationPercent: percent
     )
 
     // Make runtime zoom inheritance explicit, even when Ghostty's
     // inherit-font-size config is disabled.
-    let runtimePoints = cmuxCurrentSurfaceFontSizePoints(sourceSurface)
+    let runtimePoints = mosaicCurrentSurfaceFontSizePoints(sourceSurface)
     if let points = runtimePoints {
-        config.fontSize = CmuxSurfaceConfigTemplate.baseFontSize(
+        config.fontSize = MosaicSurfaceConfigTemplate.baseFontSize(
             fromRuntimePoints: points,
             percent: percent
         )
@@ -46,8 +46,8 @@ func cmuxInheritedSurfaceConfig(
     let inheritedText = String(format: "%.2f", inherited.font_size)
     let runtimeText = runtimePoints.map { String(format: "%.2f", $0) } ?? "nil"
     let finalText = String(format: "%.2f", config.fontSize)
-    cmuxDebugLog(
-        "zoom.inherit context=\(cmuxSurfaceContextName(context)) " +
+    mosaicDebugLog(
+        "zoom.inherit context=\(mosaicSurfaceContextName(context)) " +
         "inherited=\(inheritedText) runtime=\(runtimeText) final=\(finalText)"
     )
 #endif

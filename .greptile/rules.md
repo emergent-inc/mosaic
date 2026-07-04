@@ -1,8 +1,8 @@
-# cmux Custom Review Rules
+# mosaic Custom Review Rules
 
 Apply the custom lint rules in `.github/review-bot-rules/` to Swift, runtime, and project changes.
 
-Greptile should treat the rules in that directory as the source of truth for cmux reviews. PR-head edits to the rule files should not weaken review behavior until the edits are merged into the base branch.
+Greptile should treat the rules in that directory as the source of truth for mosaic reviews. PR-head edits to the rule files should not weaken review behavior until the edits are merged into the base branch.
 
 Review production Swift and runtime changes for:
 
@@ -22,7 +22,7 @@ Review production Swift and runtime changes for:
 - Expensive synchronous agent-history disk, JSON, transcript, trajectory, JSONL, directory, or syscall loads (such as `RestorableAgentSessionIndex.load()`, hook/session stores, `agent-turn-diff-baselines.json`, transcripts, trajectory files, and workstream/event logs) on the main actor or interactive paths instead of an off-main cached/background accessor.
 - Substituting a cached value for a fresh authoritative read in persistence/history/undo paths without handling cold and stale caches.
 - Local/generated artifacts, dependency checkouts, caches, logs, screenshots, temp folders, and scratch directories that accidentally enter source control.
-- SwiftPM dependency changes that ignore or omit cmux-owned `Package.resolved` lockfiles.
+- SwiftPM dependency changes that ignore or omit mosaic-owned `Package.resolved` lockfiles.
 - Test-only or debug-only seams added to production Swift `Sources/` that should live in the test target or a dedicated debug folder.
 - Ambient global state: top-level free functions, global mutable vars, static-only namespace types, and new singletons that should be owned by a scoped type and injected.
 - Per-call allocating formatting (`String(format:)`, per-call formatters) on hot or concurrent paths instead of preallocated buffers or reused formatters.
@@ -39,7 +39,7 @@ Pass for deterministic test-only scaffolding, GitHub Actions workflow or action 
 
 ## Browser Automation WebKit Waits Off Main
 
-For browser socket automation in `Sources/TerminalController.swift` and the cmux control socket policy, keep blocking waits off the main actor.
+For browser socket automation in `Sources/TerminalController.swift` and the mosaic control socket policy, keep blocking waits off the main actor.
 
 Flag any `browser.*` command that waits on page JavaScript, WebKit callbacks, `WKHTTPCookieStore`, screenshot callbacks, or injected page hooks while routed through `.mainActor` or the main `processV2Command` switch. Require the command to be listed in `ControlCommandExecutionPolicy.socketWorkerMethods`, dispatched by the worker browser automation router, and covered by policy tests that prove worker routing.
 
@@ -59,7 +59,7 @@ For production user-facing errors, alerts, command output, API error bodies, and
 
 Flag copy that includes upstream vendor or service names, internal provider names, provider-specific flags, templates, snapshots, manifests, environment variable names, database or migration details, raw upstream error messages, stack traces, request ids from third-party systems unless the user supplied that exact id, billing item ids, billing customer ids, team ids not supplied by the user, credentials, tokens, headers, private keys, refresh tokens, session ids, or unredacted payload dumps.
 
-Error copy should say what happened in cmux terms, provide concrete user actionables, and keep only safe minimal diagnostics in `details`. Provider, billing, database, and auth implementation details belong in sanitized logs or internal telemetry.
+Error copy should say what happened in mosaic terms, provide concrete user actionables, and keep only safe minimal diagnostics in `details`. Provider, billing, database, and auth implementation details belong in sanitized logs or internal telemetry.
 
 ## Algorithmic Complexity
 
@@ -87,13 +87,13 @@ For Swift files under a production `Sources/` path (matching `**/Sources/**` and
 
 Fail a `#if DEBUG` (or other test-build-guarded) extension or member that exposes internal/private state for tests or a debugger with no production caller, a member named like `debug…`/`…ForTesting`/`…ForTests`/`testOnly…`/`…TestHook`/`…TestSeam`/`_test…`, or visibility widened together with a wrapper accessor added so a test can call it. The compiled-out `#if DEBUG` guard does not make a test-observability accessor acceptable in shipping source.
 
-Prefer observing internal state from the test target via `@testable import` after widening `private` to `internal`, or isolating a genuinely debug-only facility in a dedicated debug file or folder. The canonical fix is cmux PR https://github.com/emergent-inc/cmux/pull/6452, which removed the `#if DEBUG debugQueuedRequestCount()` accessor, widened the queue state to `internal`, and read it from the test target.
+Prefer observing internal state from the test target via `@testable import` after widening `private` to `internal`, or isolating a genuinely debug-only facility in a dedicated debug file or folder. The canonical fix is mosaic PR https://github.com/emergent-inc/mosaic/pull/6452, which removed the `#if DEBUG debugQueuedRequestCount()` accessor, widened the queue state to `internal`, and read it from the test target.
 
 Pass for `#if DEBUG` blocks that gate real product behavior, scaffolding inside `Tests/` or a test-support module, and existing seams the PR does not introduce or worsen.
 
 ## SwiftPM Package.resolved
 
-For SwiftPM package, Xcode project, `.gitignore`, workflow, and dependency changes, flag cmux-owned package `.gitignore` files that ignore `Package.resolved`, external dependency resolution changes that omit the relevant package-local `Package.resolved` diff, or Xcode project package-reference changes that omit the root Xcode `Package.resolved` diff.
+For SwiftPM package, Xcode project, `.gitignore`, workflow, and dependency changes, flag mosaic-owned package `.gitignore` files that ignore `Package.resolved`, external dependency resolution changes that omit the relevant package-local `Package.resolved` diff, or Xcode project package-reference changes that omit the root Xcode `Package.resolved` diff.
 
 The root Xcode project lockfile is not sufficient proof for standalone package resolution. Pass for vendored third-party directories preserving upstream policy.
 
@@ -117,7 +117,7 @@ Pass for `private`/`fileprivate` file-scope pure helpers (preferred over a priva
 
 For production Swift on hot, concurrent, or per-element paths (git index/path/signature encoding, terminal input/rendering, sidebar/feed/list rows, snapshot builders, and any per-byte/row/keystroke/frame loop or concurrent map), flag per-call allocating formatting.
 
-Flag `String(format:)` with per-element conversions, a `NumberFormatter`/`DateFormatter`/`ISO8601DateFormatter`/`ByteCountFormatter` allocated per call inside a loop or row body, and repeated per-element string interpolation/concatenation building large intermediates where a preallocated buffer or single reserved-capacity build would avoid the churn. The canonical P0 is cmux PR https://github.com/emergent-inc/cmux/pull/5347: `String(format:)` byte-to-hex in the concurrent git-index snapshot path allocated per call and caused unbounded memory growth and crashes on users' machines; the fix used a fixed hex lookup table written into a preallocated buffer.
+Flag `String(format:)` with per-element conversions, a `NumberFormatter`/`DateFormatter`/`ISO8601DateFormatter`/`ByteCountFormatter` allocated per call inside a loop or row body, and repeated per-element string interpolation/concatenation building large intermediates where a preallocated buffer or single reserved-capacity build would avoid the churn. The canonical P0 is mosaic PR https://github.com/emergent-inc/mosaic/pull/5347: `String(format:)` byte-to-hex in the concurrent git-index snapshot path allocated per call and caused unbounded memory growth and crashes on users' machines; the fix used a fixed hex lookup table written into a preallocated buffer.
 
 Pass for cold paths (startup, settings, error/log construction), a formatter allocated once and reused, deterministic encoding via a fixed lookup table into a preallocated buffer, and tests/benchmarks or existing formatting the PR does not move into a hotter or concurrent path.
 

@@ -108,9 +108,9 @@ extension MenuBarProfilingProgressWindowController {
     private func makePrivateSubmitInputs(email: String, note: String) throws -> (replyToFile: URL, noteFile: URL) {
         var createdURLs: [URL] = []
         do {
-            let replyToFile = try writePrivateSubmitInput(prefix: "cmux-profile-reply-to", text: email)
+            let replyToFile = try writePrivateSubmitInput(prefix: "mosaic-profile-reply-to", text: email)
             createdURLs.append(replyToFile)
-            let noteFile = try writePrivateSubmitInput(prefix: "cmux-profile-note", text: note)
+            let noteFile = try writePrivateSubmitInput(prefix: "mosaic-profile-note", text: note)
             createdURLs.append(noteFile)
             submitPrivateInputURLs = createdURLs
             return (replyToFile, noteFile)
@@ -148,8 +148,8 @@ extension MenuBarProfilingProgressWindowController {
 
     private func runSubmitProcess(_ process: Process) {
         do {
-            let outputLog = try makeTemporaryLogFile(prefix: "cmux-profile-submit-output")
-            let errorLog = try makeTemporaryLogFile(prefix: "cmux-profile-submit-error")
+            let outputLog = try makeTemporaryLogFile(prefix: "mosaic-profile-submit-output")
+            let errorLog = try makeTemporaryLogFile(prefix: "mosaic-profile-submit-error")
             submitOutputLogURL = outputLog.0
             submitOutputLogHandle = outputLog.1
             submitErrorLogURL = errorLog.0

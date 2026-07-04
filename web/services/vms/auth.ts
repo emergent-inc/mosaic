@@ -24,7 +24,7 @@ export type AuthedTeam = {
 };
 
 /**
- * Verify the caller's Clerk session. Accepts either a cmux native bearer token
+ * Verify the caller's Clerk session. Accepts either a mosaic native bearer token
  * minted from a Clerk browser session or a Clerk cookie session for browser
  * routes.
  *

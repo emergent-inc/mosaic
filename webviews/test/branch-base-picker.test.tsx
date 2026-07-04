@@ -148,11 +148,11 @@ test("toCurrentOriginRelative strips an http origin so a restored page re-resolv
   // restart the port changes and the page is served via the custom scheme, so
   // the picker must rebase the embedded absolute URL to a root-relative path.
   expect(
-    toCurrentOriginRelative("http://127.0.0.1:51234/__cmux_diff_viewer_refs?repo=%2Ftmp%2Fr&token=abc"),
-  ).toBe("/__cmux_diff_viewer_refs?repo=%2Ftmp%2Fr&token=abc");
+    toCurrentOriginRelative("http://127.0.0.1:51234/__mosaic_diff_viewer_refs?repo=%2Ftmp%2Fr&token=abc"),
+  ).toBe("/__mosaic_diff_viewer_refs?repo=%2Ftmp%2Fr&token=abc");
   expect(
-    toCurrentOriginRelative("cmux-diff-viewer://tok/__cmux_diff_viewer_branch?group=g&token=abc&base={ref}"),
-  ).toBe("/__cmux_diff_viewer_branch?group=g&token=abc&base={ref}");
+    toCurrentOriginRelative("mosaic-diff-viewer://tok/__mosaic_diff_viewer_branch?group=g&token=abc&base={ref}"),
+  ).toBe("/__mosaic_diff_viewer_branch?group=g&token=abc&base={ref}");
 });
 
 test("toCurrentOriginRelative preserves a literal {ref} placeholder (no URL parsing)", () => {
@@ -163,7 +163,7 @@ test("toCurrentOriginRelative preserves a literal {ref} placeholder (no URL pars
 test("toCurrentOriginRelative leaves a data: URL and an already-relative path untouched", () => {
   const dataURL = "data:application/json,%7B%22groups%22%3A%5B%5D%7D";
   expect(toCurrentOriginRelative(dataURL)).toBe(dataURL);
-  expect(toCurrentOriginRelative("/__cmux_diff_viewer_refs?token=abc")).toBe("/__cmux_diff_viewer_refs?token=abc");
+  expect(toCurrentOriginRelative("/__mosaic_diff_viewer_refs?token=abc")).toBe("/__mosaic_diff_viewer_refs?token=abc");
 });
 
 test("selecting a ref navigates to a root-relative regenerate URL", async () => {
@@ -181,7 +181,7 @@ test("selecting a ref navigates to a root-relative regenerate URL", async () => 
       groups: [{ id: "suggested", label: "Suggested", rows: [{ ref: "develop", label: "develop" }] }],
     })),
     // Absolute HTTP origin as embedded in a freshly generated page.
-    regenerateURLTemplate: "http://127.0.0.1:51234/__cmux_diff_viewer_branch?group=g&repo=%2Ftmp%2Fmock&token=abc&base={ref}",
+    regenerateURLTemplate: "http://127.0.0.1:51234/__mosaic_diff_viewer_branch?group=g&repo=%2Ftmp%2Fmock&token=abc&base={ref}",
   };
   const container = document.getElementById("root");
   root = createRoot(container!);
@@ -199,7 +199,7 @@ test("selecting a ref navigates to a root-relative regenerate URL", async () => 
 
   expect(navigated.length).toBe(1);
   // Origin stripped, token/repo/group survive in the query, ref substituted.
-  expect(navigated[0]).toBe("/__cmux_diff_viewer_branch?group=g&repo=%2Ftmp%2Fmock&token=abc&base=develop");
+  expect(navigated[0]).toBe("/__mosaic_diff_viewer_branch?group=g&repo=%2Ftmp%2Fmock&token=abc&base=develop");
 });
 
 function createDom(): JSDOM {

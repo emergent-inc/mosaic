@@ -43,7 +43,7 @@ enum WorkspaceSurfaceIdentifierClipboardText {
     }
 
     static func makeWorkspaceLink(workspaceId: UUID) -> String {
-        CmuxNavigationURLRequest.workspaceLink(workspaceId: workspaceId)
+        MosaicNavigationURLRequest.workspaceLink(workspaceId: workspaceId)
     }
 
     static func makeWorkspaceLinks(_ ids: [UUID]) -> String {
@@ -51,11 +51,11 @@ enum WorkspaceSurfaceIdentifierClipboardText {
     }
 
     static func makePaneLink(workspaceId: UUID, paneId: UUID) -> String {
-        CmuxNavigationURLRequest.paneLink(workspaceId: workspaceId, paneId: paneId)
+        MosaicNavigationURLRequest.paneLink(workspaceId: workspaceId, paneId: paneId)
     }
 
     static func makeSurfaceLink(workspaceId: UUID, surfaceId: UUID) -> String {
-        CmuxNavigationURLRequest.surfaceLink(workspaceId: workspaceId, surfaceId: surfaceId)
+        MosaicNavigationURLRequest.surfaceLink(workspaceId: workspaceId, surfaceId: surfaceId)
     }
 
     @MainActor

@@ -1,6 +1,6 @@
 import AppKit
 import Bonsplit
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
 import GhosttyKit
 

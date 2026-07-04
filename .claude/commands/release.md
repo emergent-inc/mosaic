@@ -1,11 +1,11 @@
 # Release
 
-Prepare a new release for cmux. This command updates the changelog, bumps the version, creates a PR, monitors CI, and then merges and tags.
+Prepare a new release for mosaic. This command updates the changelog, bumps the version, creates a PR, monitors CI, and then merges and tags.
 
 ## Steps
 
 1. **Determine the new version number**
-   - Get the current version from `cmux.xcodeproj/project.pbxproj` (look for `MARKETING_VERSION`)
+   - Get the current version from `mosaic.xcodeproj/project.pbxproj` (look for `MARKETING_VERSION`)
    - Bump the minor version unless the user specifies otherwise (e.g., 0.12.0 → 0.13.0)
 
 2. **Create a release branch**
@@ -18,11 +18,11 @@ Prepare a new release for cmux. This command updates the changelog, bumps the ve
    - Categorize changes into: Added, Changed, Fixed, Removed
    - **Collect contributors:** For each PR referenced in the commits, get the author:
      ```bash
-     gh pr view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
+     gh pr view <N> --repo emergent-inc/mosaic --json author --jq '.author.login'
      ```
    - Also check for linked issue reporters (the person who filed the bug):
      ```bash
-     gh issue view <N> --repo emergent-inc/cmux --json author --jq '.author.login'
+     gh issue view <N> --repo emergent-inc/mosaic --json author --jq '.author.login'
      ```
    - Build a deduplicated list of all contributor `@handle`s for the release
 
@@ -35,11 +35,11 @@ Prepare a new release for cmux. This command updates the changelog, bumps the ve
    - If there are no user-facing changes, ask the user if they still want to release
 
 5. **Bump the version in Xcode project**
-   - Update all occurrences of `MARKETING_VERSION` in `cmux.xcodeproj/project.pbxproj`
+   - Update all occurrences of `MARKETING_VERSION` in `mosaic.xcodeproj/project.pbxproj`
    - There are typically 4 occurrences (Debug/Release for main app and CLI)
 
 6. **Commit and push the release branch**
-   - Stage: `CHANGELOG.md`, `docs-site/content/docs/changelog.mdx`, `cmux.xcodeproj/project.pbxproj`
+   - Stage: `CHANGELOG.md`, `docs-site/content/docs/changelog.mdx`, `mosaic.xcodeproj/project.pbxproj`
    - Commit message: `Bump version to X.Y.Z`
    - Push: `git push -u origin release/vX.Y.Z`
 
@@ -63,19 +63,19 @@ Prepare a new release for cmux. This command updates the changelog, bumps the ve
     - Push tag: `git push origin vX.Y.Z`
 
 11. **Monitor the release workflow**
-    - Watch: `gh run watch --repo emergent-inc/cmux`
-    - Verify the release appears at: https://github.com/emergent-inc/cmux/releases
+    - Watch: `gh run watch --repo emergent-inc/mosaic`
+    - Verify the release appears at: https://github.com/emergent-inc/mosaic/releases
     - Check that the DMG is attached to the release
 
 12. **Verify homebrew cask update**
     - The "Update Homebrew Cask" workflow triggers automatically after the release workflow completes
     - Watch: `gh run list --workflow=update-homebrew.yml --limit=1` and `gh run watch`
-    - Verify: `cd homebrew-cmux && git pull && grep version Casks/cmux.rb`
+    - Verify: `cd homebrew-mosaic && git pull && grep version Casks/mosaic.rb`
     - Run `bash tests/test_homebrew_sha.sh` to confirm the SHA matches
 
 13. **Notify**
-    - On success: `say "cmux release complete"`
-    - On failure: `say "cmux release failed"`
+    - On success: `say "mosaic release complete"`
+    - On failure: `say "mosaic release failed"`
 
 ## Changelog Guidelines
 
@@ -129,14 +129,14 @@ Credit the people who made each release happen. This builds community and encour
 ## [0.13.0] - 2025-01-30
 
 ### Added
-- New keyboard shortcut for quick tab switching ([#42](https://github.com/emergent-inc/cmux/pull/42)) — thanks @contributor!
+- New keyboard shortcut for quick tab switching ([#42](https://github.com/emergent-inc/mosaic/pull/42)) — thanks @contributor!
 
 ### Fixed
-- Memory leak when closing split panes ([#38](https://github.com/emergent-inc/cmux/pull/38)) — thanks @fixer!
-- Notification badges not clearing properly ([#35](https://github.com/emergent-inc/cmux/pull/35)) — thanks @reporter for the report!
+- Memory leak when closing split panes ([#38](https://github.com/emergent-inc/mosaic/pull/38)) — thanks @fixer!
+- Notification badges not clearing properly ([#35](https://github.com/emergent-inc/mosaic/pull/35)) — thanks @reporter for the report!
 
 ### Changed
-- Improved terminal rendering performance ([#40](https://github.com/emergent-inc/cmux/pull/40))
+- Improved terminal rendering performance ([#40](https://github.com/emergent-inc/mosaic/pull/40))
 
 ### Thanks to 4 contributors!
 

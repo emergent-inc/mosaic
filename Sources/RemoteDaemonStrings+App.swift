@@ -1,4 +1,4 @@
-import CmuxRemoteDaemon
+import MosaicRemoteDaemon
 import Foundation
 
 // User-facing daemon strings resolve here, in the app target, so

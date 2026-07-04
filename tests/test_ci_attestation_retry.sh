@@ -47,11 +47,11 @@ check_attestation_retry \
   "Attest remote daemon nightly assets" \
   "attest-remote-daemon-nightly-assets" \
   "Retry remote daemon nightly asset attestation" \
-  'remote-daemon-assets/cmuxd-remote-manifest-${{ env.NIGHTLY_BUILD }}.json'
+  'remote-daemon-assets/mosaicd-remote-manifest-${{ env.NIGHTLY_BUILD }}.json'
 
 check_attestation_retry \
   "$ROOT_DIR/.github/workflows/release.yml" \
   "Attest remote daemon release assets" \
   "attest-remote-daemon-release-assets" \
   "Retry remote daemon release asset attestation" \
-  "remote-daemon-assets/cmuxd-remote-manifest.json"
+  "remote-daemon-assets/mosaicd-remote-manifest.json"

@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 
 struct SidebarWorkspaceDropTargetWriters: View {

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 INTERVAL_SECONDS = float(os.environ.get("SOAK_AUDIT_INTERVAL_SECONDS", "300"))
-STATUS_OUT = Path(os.environ.get("SOAK_AUDIT_STATUS", "/tmp/cmux-mobile-soak/audit.json"))
+STATUS_OUT = Path(os.environ.get("SOAK_AUDIT_STATUS", "/tmp/mosaic-mobile-soak/audit.json"))
 REQUIRED_SECONDS = int(os.environ.get("SOAK_SECONDS", "43200"))
 STALE_SECONDS = float(os.environ.get("SOAK_STALE_SECONDS", "300"))
 PATHS = {

@@ -10,7 +10,7 @@ struct ContentView: View {
                 .font(.title2.weight(.semibold))
             Text(String(
                 localized: "tabsVisible.app.detail",
-                defaultValue: "Keep this app installed. Enable Tabs Visible Sidebar from cmux Sidebar Extensions, then choose the extension sidebar provider from the sidebar footer puzzle button."
+                defaultValue: "Keep this app installed. Enable Tabs Visible Sidebar from mosaic Sidebar Extensions, then choose the extension sidebar provider from the sidebar footer puzzle button."
             ))
             .foregroundStyle(.secondary)
             Text(String(

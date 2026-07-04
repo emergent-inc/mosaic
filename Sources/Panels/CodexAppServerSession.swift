@@ -50,8 +50,8 @@ final class CodexAppServerSession {
             method: "initialize",
             params: [
                 "clientInfo": [
-                    "name": "cmux",
-                    "title": "cmux",
+                    "name": "mosaic",
+                    "title": "mosaic",
                     "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
                 ],
                 "capabilities": [
@@ -537,7 +537,7 @@ final class CodexAppServerSession {
         }
         guard threadID == nil, threadStartRequestID == nil else { return }
         var params: [String: Any] = [
-            "serviceName": "cmux",
+            "serviceName": "mosaic",
             "threadSource": "user"
         ]
         if let workingDirectory {
@@ -657,7 +657,7 @@ final class CodexAppServerSession {
 
     private func emitCodexRPCFailure(_ error: Error) {
 #if DEBUG
-        cmuxDebugLog("agentSession.codex.rpc.failed error=\(error.localizedDescription)")
+        mosaicDebugLog("agentSession.codex.rpc.failed error=\(error.localizedDescription)")
 #endif
         outputSink("stderr", Self.rpcFailedMessage())
     }
@@ -665,7 +665,7 @@ final class CodexAppServerSession {
     private func emitCodexRPCFailure(details: String?) {
 #if DEBUG
         if let details, !details.isEmpty {
-            cmuxDebugLog("agentSession.codex.rpc.failed details=\(details)")
+            mosaicDebugLog("agentSession.codex.rpc.failed details=\(details)")
         }
 #else
         _ = details

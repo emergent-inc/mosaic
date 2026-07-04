@@ -4,18 +4,18 @@
 
 #include "Shared.xcconfig"
 
-PRODUCT_BUNDLE_IDENTIFIER = dev.cmux.app.beta
+PRODUCT_BUNDLE_IDENTIFIER = dev.mosaic.app.beta
 DEVELOPMENT_TEAM = 7WLXT3NR37
 
-// Distinguish the TestFlight beta on-device from a future App Store "cmux"
-// (overrides PRODUCT_DISPLAY_NAME = cmux from Shared.xcconfig). Debug stays "cmux".
+// Distinguish the TestFlight beta on-device from a future App Store "mosaic"
+// (overrides PRODUCT_DISPLAY_NAME = mosaic from Shared.xcconfig). Debug stays "mosaic".
 PRODUCT_DISPLAY_NAME = Mosaic BETA
 
 // TestFlight/App Store builds use production APNs. Debug keeps
-// Config/cmux.entitlements from Shared.xcconfig.
-CODE_SIGN_ENTITLEMENTS = Config/cmux-release.entitlements
+// Config/mosaic.entitlements from Shared.xcconfig.
+CODE_SIGN_ENTITLEMENTS = Config/mosaic-release.entitlements
 
 // Release (TestFlight beta + App Store) pairing scheme. Dev builds register
-// cmux-ios-dev instead, so the Camera app routes each channel's QR to the
+// mosaic-ios-dev instead, so the Camera app routes each channel's QR to the
 // matching build. Keep in sync with CmxPairingURLScheme.release.
-CMUX_IOS_URL_SCHEME = cmux-ios
+MOSAIC_IOS_URL_SCHEME = mosaic-ios

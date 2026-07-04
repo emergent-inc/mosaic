@@ -1,13 +1,13 @@
 import Foundation
 import OSLog
-import CmuxTerminal
+import MosaicTerminal
 
 private let mobileTerminalByteTeeLog = Logger(
-    subsystem: "dev.cmux",
+    subsystem: "dev.mosaic",
     category: "mobile-terminal-byte-tee"
 )
 
-/// Captures raw PTY-output bytes from every cmux terminal surface and
+/// Captures raw PTY-output bytes from every mosaic terminal surface and
 /// publishes them to subscribed mobile clients as `terminal.bytes`
 /// events. Provides a per-surface ring buffer that mobile clients can
 /// replay from as a fallback; the primary mobile replay path sends a
@@ -15,7 +15,7 @@ private let mobileTerminalByteTeeLog = Logger(
 /// screen state for TUIs.
 ///
 /// The byte source is libghostty's `ghostty_surface_set_pty_tee_cb`
-/// callback (cmux fork addition). The callback fires on the IO read
+/// callback (mosaic fork addition). The callback fires on the IO read
 /// thread before the VT parser sees the bytes, so the bytes the
 /// iPhone receives are byte-identical to what the Mac's own libghostty
 /// surface will process.
@@ -46,7 +46,7 @@ final class MobileTerminalByteTee {
     /// Serial queue so fan-out preserves byte order even though the
     /// upstream callback runs off the main thread.
     private let publishQueue = DispatchQueue(
-        label: "dev.cmux.mobile.byte-tee.publish",
+        label: "dev.mosaic.mobile.byte-tee.publish",
         qos: .userInitiated
     )
 
@@ -141,7 +141,7 @@ final class MobileTerminalByteTee {
 /// symbol is private to this translation unit and the linker doesn't
 /// see a duplicate when other files reference the symbol via function
 /// pointer.
-public let cmuxMobileTerminalByteTeeCallback: @convention(c) (
+public let mosaicMobileTerminalByteTeeCallback: @convention(c) (
     UnsafeMutableRawPointer?, UnsafePointer<CChar>?, UInt
 ) -> Void = { userdata, bytes, len in
     guard let userdata, let bytes, len > 0 else { return }

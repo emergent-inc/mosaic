@@ -1,6 +1,6 @@
-import CmuxControlSocket
+import MosaicControlSocket
 import Foundation
-import CmuxSidebar
+import MosaicSidebar
 
 /// The live-app half of the v1 sidebar metadata commands (`set_status` /
 /// `report_meta` / `report_meta_block` / agent PID + lifecycle / `log` /
@@ -110,10 +110,10 @@ extension TerminalController: ControlSidebarContext {
             return true
         }
         guard let tab = controlSidebarResolveMutationTab(target),
-              CmuxVaultAgentRegistration.isValidID(key) else {
+              MosaicVaultAgentRegistration.isValidID(key) else {
             return false
         }
-        let registry = CmuxVaultAgentRegistry.load(
+        let registry = MosaicVaultAgentRegistry.load(
             workingDirectory: controlSidebarAgentLifecycleRegistryWorkingDirectory(tab: tab, panelId: panelID)
         )
         return registry.registration(id: key) != nil

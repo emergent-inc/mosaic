@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Turnkey cloud TestFlight lane for the cmux iOS beta.
+# Turnkey cloud TestFlight lane for the mosaic iOS beta.
 #
 #   ios/scripts/cloud-testflight.sh --no-upload          # dry run: archive + export + re-sign + verify, NO upload
 #   ios/scripts/cloud-testflight.sh                       # full lane: build on the fleet, upload to TestFlight
@@ -8,27 +8,27 @@
 # The heavy GhosttyKit + Swift Release compile runs on a leased fleet Mac (the
 # same maclease pool/exclusions reload-cloud-ios uses, m1ultra excluded). The
 # fleet builds an UNSIGNED Release archive for the beta bundle id
-# (dev.cmux.app.beta): no signing material ever lands on the shared Macs (they
+# (dev.mosaic.app.beta): no signing material ever lands on the shared Macs (they
 # also run GitHub Actions, i.e. arbitrary PR code). The archive is downloaded
 # locally and handed to ios/scripts/upload-testflight.sh --archive-path, which
 # does the local export, re-sign with the Apple Distribution cert (re-adding
 # aps-environment=production), strict codesign verification, and TestFlight
 # upload.
 #
-# The cloud build is provided by the cmuxterm-hq script scripts/reload-cloud-ios.sh
+# The cloud build is provided by the mosaicterm-hq script scripts/reload-cloud-ios.sh
 # (located the same way the worktree shim ios/scripts/reload-cloud.sh finds it).
 # That script also owns builder resilience: an unreachable leased slot is released
 # and the next builder is tried, and beta-archive mode applies a pre-build disk
 # floor (RELOAD_CLOUD_IOS_MIN_FREE_GB, default 20G) so a nearly-full fleet host
-# (cmux-aws-m4pro routinely sits ~99.7% APFS-full) is skipped instead of dying
+# (mosaic-aws-m4pro routinely sits ~99.7% APFS-full) is skipped instead of dying
 # mid-archive; it also prunes its remote work dir after the download. A standalone
-# cmux clone with no hq checkout transparently falls back to a LOCAL Release
+# mosaic clone with no hq checkout transparently falls back to a LOCAL Release
 # archive on this Mac. Either way the archive is then handed to
 # upload-testflight.sh, so the export/re-sign/verify/upload path is identical.
 #
 # Relies on the upload-testflight.sh re-sign + aps-environment=production gate
 # (shipped with this lane; a superset of the copy in PR
-# https://github.com/emergent-inc/cmux/pull/5647 with the same re-sign/gates plus
+# https://github.com/emergent-inc/mosaic/pull/5647 with the same re-sign/gates plus
 # main's --external support preserved) to make a push-working beta. This lane
 # only feeds the archive in; it deliberately does NOT duplicate that signing
 # logic. Without the re-sign, the export still runs but the unsigned archive's
@@ -38,7 +38,7 @@
 #
 # FIRST EXTERNAL BUILD OF A VERSION: an --external build must pass a one-time
 # Apple Beta App Review (~24h) before external testers can install it. Internal
-# testers (the "cmux beta" group) get every build instantly with no review.
+# testers (the "mosaic beta" group) get every build instantly with no review.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -66,7 +66,7 @@ WAIT_SECONDS="${CLOUD_TESTFLIGHT_WAIT:-1200}"
 # Force a local Release archive on this Mac instead of the fleet (offline cloud,
 # or deliberate). Also the automatic fallback when no hq cloud script is found.
 FORCE_LOCAL="${CLOUD_TESTFLIGHT_FORCE_LOCAL:-0}"
-BETA_BUNDLE_ID="${IOS_BETA_BUNDLE_ID:-dev.cmux.app.beta}"
+BETA_BUNDLE_ID="${IOS_BETA_BUNDLE_ID:-dev.mosaic.app.beta}"
 
 err() { printf 'cloud-testflight: %s\n' "$*" >&2; }
 die() { err "$*"; exit 1; }
@@ -77,7 +77,7 @@ Usage: ios/scripts/cloud-testflight.sh [--no-upload] [--external] [--tag <tag>] 
                                        [--host <name>] [--wait <seconds>]
                                        [--local] [--keep-artifacts]
 
-Build an UNSIGNED Release archive for the cmux iOS beta on a leased fleet Mac,
+Build an UNSIGNED Release archive for the mosaic iOS beta on a leased fleet Mac,
 download it, then export/re-sign/verify/upload via upload-testflight.sh.
 
   --no-upload        Dry run. Stop after the local export + re-sign + strict
@@ -86,7 +86,7 @@ download it, then export/re-sign/verify/upload via upload-testflight.sh.
                      --export-only.
   --external         Make the build eligible for EXTERNAL TestFlight testers
                      (requires a one-time Apple Beta App Review per version).
-                     Default is internal-only (instant for the "cmux beta" group).
+                     Default is internal-only (instant for the "mosaic beta" group).
   --tag <tag>        Build tag for the lease description / remote work dir
                      (default: beta). Does not change the bundle id.
   --host <name>      Force a specific fleet builder (skips host preference).
@@ -130,12 +130,12 @@ done
 # a rejected archive 25 minutes into a fleet build.
 [[ -z "$MARKETING_VERSION_OVERRIDE" || "$MARKETING_VERSION_OVERRIDE" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] \
   || die "invalid --marketing-version (want X.Y or X.Y.Z): $MARKETING_VERSION_OVERRIDE"
-[[ -d "$IOS_DIR/cmux.xcworkspace" ]] || die "run from a cmux checkout containing ios/cmux.xcworkspace"
+[[ -d "$IOS_DIR/mosaic.xcworkspace" ]] || die "run from a mosaic checkout containing ios/mosaic.xcworkspace"
 
 # --- locate the hq cloud build script (mirrors ios/scripts/reload-cloud.sh) ---
-# scripts/reload-cloud-ios.sh lives in the cmuxterm-hq checkout, two levels up
-# from the worktree's git common dir (.../cmuxterm-hq/repo/.git -> cmuxterm-hq).
-# A standalone cmux clone has no such file; we fall back to a local build.
+# scripts/reload-cloud-ios.sh lives in the mosaicterm-hq checkout, two levels up
+# from the worktree's git common dir (.../mosaicterm-hq/repo/.git -> mosaicterm-hq).
+# A standalone mosaic clone has no such file; we fall back to a local build.
 find_hq_cloud_ios() {
   local git_common_dir hq_root real
   git_common_dir="$(git -C "$REPO_ROOT" rev-parse --git-common-dir 2>/dev/null || true)"
@@ -173,7 +173,7 @@ build_archive_cloud() {
   fi
   [[ -n "$HOST_FILTER" ]] && args+=( --host "$HOST_FILTER" )
   [[ "$WAIT_SECONDS" =~ ^[0-9]+$ && "$WAIT_SECONDS" -gt 0 ]] && args+=( --wait "$WAIT_SECONDS" )
-  # Run from the repo root so the hq script's "run from a cmux checkout" check and
+  # Run from the repo root so the hq script's "run from a mosaic checkout" check and
   # its dirty-tree rsync pick up THIS worktree.
   #
   # RELOAD_CLOUD_IOS_FALLBACK_LOCAL=0 pins the hq script's no-cloud-slot behavior
@@ -201,14 +201,14 @@ build_archive_local() {
   out="$ARTIFACT_ROOT/$TAG-$(date -u +%Y%m%d%H%M%S)"
   mkdir -p "$out"
   build_number="$(date -u +%Y%m%d%H%M%S)"
-  ARCHIVE_PATH="$out/cmux-ios-beta.xcarchive"
+  ARCHIVE_PATH="$out/mosaic-ios-beta.xcarchive"
   [[ -x "$REPO_ROOT/scripts/ensure-ghosttykit.sh" ]] && ( cd "$REPO_ROOT" && ./scripts/ensure-ghosttykit.sh ) || true
   # Same UNSIGNED Release archive the fleet builds, so the downstream export/
   # re-sign/upload path is identical. CODE_SIGNING_ALLOWED=NO keeps signing out of
   # the archive; upload-testflight.sh does all signing.
   ( cd "$REPO_ROOT" && xcodebuild archive \
-      -workspace ios/cmux.xcworkspace \
-      -scheme cmux-ios \
+      -workspace ios/mosaic.xcworkspace \
+      -scheme mosaic-ios \
       -configuration Release \
       -destination 'generic/platform=iOS' \
       -archivePath "$ARCHIVE_PATH" \
@@ -233,7 +233,7 @@ else
       build_archive_local
     }
   else
-    err "no cmuxterm-hq cloud build script found; building locally"
+    err "no mosaicterm-hq cloud build script found; building locally"
     build_archive_local
   fi
 fi

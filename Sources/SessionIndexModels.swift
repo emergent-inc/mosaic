@@ -1,4 +1,4 @@
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import Foundation
 
 // MARK: - Agents
@@ -14,7 +14,7 @@ struct RegisteredSessionAgent: Hashable, Sendable {
         self.iconAssetName = Self.normalizedOptional(iconAssetName)
     }
 
-    init(registration: CmuxVaultAgentRegistration) {
+    init(registration: MosaicVaultAgentRegistration) {
         self.init(id: registration.id, name: registration.name, iconAssetName: registration.iconAssetName)
     }
 
@@ -57,7 +57,7 @@ enum SessionAgent: Identifiable, Codable, Sendable, Hashable {
         case "rovodev": self = .rovodev
         case "hermes-agent": self = .hermesAgent
         default:
-            guard CmuxVaultAgentRegistration.isValidID(value) else { return nil }
+            guard MosaicVaultAgentRegistration.isValidID(value) else { return nil }
             self = .registered(RegisteredSessionAgent(id: value))
         }
     }
@@ -87,12 +87,12 @@ enum SessionAgent: Identifiable, Codable, Sendable, Hashable {
             let iconAssetName = try container.decodeIfPresent(String.self, forKey: .iconAssetName)
             let hasRegisteredMetadata = name != nil || iconAssetName != nil
             if let builtIn = SessionAgent(rawValue: id),
-               (!CmuxVaultAgentRegistration.isValidID(id) || SessionAgent.builtInCases.contains(builtIn)),
+               (!MosaicVaultAgentRegistration.isValidID(id) || SessionAgent.builtInCases.contains(builtIn)),
                !hasRegisteredMetadata {
                 self = builtIn
                 return
             }
-            guard CmuxVaultAgentRegistration.isValidID(id) else {
+            guard MosaicVaultAgentRegistration.isValidID(id) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .id,
                     in: container,
@@ -202,7 +202,7 @@ enum AgentSpecifics: Hashable {
     case opencode(providerModel: String?, agentName: String?)
     case rovodev
     case hermesAgent(source: String?, model: String?, hermesHome: String?)
-    case registered(CmuxVaultAgentRegistration)
+    case registered(MosaicVaultAgentRegistration)
 }
 
 enum ClaudeConfigurationRoot {
@@ -316,13 +316,13 @@ struct SessionEntry: Identifiable, Hashable {
         switch specifics {
         case let .claude(model, permissionMode, configDirectoryForResume):
             // Route through the wrapper resolver token so a manually-resumed claude session
-            // re-injects cmux hooks even when the command runs in a shell where the
+            // re-injects mosaic hooks even when the command runs in a shell where the
             // integration's PATH shim / `claude()` function are not active (e.g. the
             // `$SHELL -lic` restore launcher). The token is POSIX-only and this command
             // is typed into — and copy-pasted into — the user's own shell (fish/csh
             // included), so the rendered command is wrapped in `/bin/sh -c '…'` to parse
             // everywhere; the `cd` guard stays outside in `resumeCommandWithCwd`.
-            // https://github.com/emergent-inc/cmux/issues/5639
+            // https://github.com/emergent-inc/mosaic/issues/5639
             var parts = ["\(AgentResumeArgv.claudeWrapperShellExecutableToken) --resume \(sessionId)"]
             if let model, !model.isEmpty {
                 parts.append("--model \(Self.shellQuote(model))")
@@ -331,23 +331,23 @@ struct SessionEntry: Identifiable, Hashable {
                 parts.append("--permission-mode \(Self.shellQuote(permissionMode))")
             }
             let environment = configDirectoryForResume.map {
-                ["CLAUDE_CONFIG_DIR": $0, "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1", "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "CLAUDE_CONFIG_DIR"]
+                ["CLAUDE_CONFIG_DIR": $0, "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1", "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "CLAUDE_CONFIG_DIR"]
             } ?? [:]
             return AgentResumeArgv.portableClaudeResumeShellCommand(
                 posixCommand: Self.withShellEnvironment(environment, command: parts.joined(separator: " "))
             )
         case let .codex(model, approval, sandbox, effort):
             // Route through the codex wrapper-resolver token so a manually- or
-            // auto-resumed codex session re-injects cmux hooks even when the
+            // auto-resumed codex session re-injects mosaic hooks even when the
             // command runs in a shell where the integration's PATH shim is not
             // active (e.g. the `$SHELL -lic` restore launcher). Without this the
             // bare `codex resume <id>` resolves to the real codex binary,
-            // bypassing cmux-codex-wrapper, so no SessionStart fires and the iOS
+            // bypassing mosaic-codex-wrapper, so no SessionStart fires and the iOS
             // GUI stays read-only. Mirror of the claude case: the token is
             // POSIX-only and this command is typed into / copy-pasted into the
             // user's own shell (fish/csh included), so the rendered command is
             // wrapped in `/bin/sh -c '…'`; the `cd` guard stays outside in
-            // `resumeCommandWithCwd`. https://github.com/emergent-inc/cmux/issues/5639
+            // `resumeCommandWithCwd`. https://github.com/emergent-inc/mosaic/issues/5639
             var parts = ["\(AgentResumeArgv.codexWrapperShellExecutableToken) resume \(sessionId)"]
             if let model, !model.isEmpty {
                 parts.append("-m \(Self.shellQuote(model))")
@@ -463,11 +463,11 @@ struct SessionEntry: Identifiable, Hashable {
 
     /// Sandbox-policy values the Codex CLI `--sandbox` flag accepts.
     ///
-    /// cmux captures Codex's *internal* sandbox-policy `type`, which is a
+    /// mosaic captures Codex's *internal* sandbox-policy `type`, which is a
     /// superset of the CLI vocabulary (it also includes `disabled`, `managed`,
     /// and may grow further). Those extra types have no `--sandbox` equivalent
     /// and must never be forwarded as `-s`, or Codex rejects the resumed command
-    /// (see https://github.com/emergent-inc/cmux/issues/5262).
+    /// (see https://github.com/emergent-inc/mosaic/issues/5262).
     static let codexCLISandboxModes: Set<String> = [
         "read-only",
         "workspace-write",
@@ -475,7 +475,7 @@ struct SessionEntry: Identifiable, Hashable {
     ]
 
     /// Builds the approval/sandbox CLI tokens for a `codex resume` command from
-    /// the per-session policy cmux captured, always yielding a valid invocation.
+    /// the per-session policy mosaic captured, always yielding a valid invocation.
     ///
     /// A `--dangerously-bypass-approvals-and-sandbox` launch round-trips to a
     /// captured `(approval: "never", sandbox: "disabled")`. This reproduces that

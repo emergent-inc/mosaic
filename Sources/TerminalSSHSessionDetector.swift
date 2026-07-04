@@ -1,5 +1,5 @@
-import CmuxFoundation
-import CmuxRemoteSession
+import MosaicFoundation
+import MosaicRemoteSession
 import Foundation
 import Darwin
 
@@ -94,7 +94,7 @@ struct DetectedSSHSession: Equatable {
                 try operation.throwIfCancelled()
                 let normalizedLocalURL = localURL.standardizedFileURL
                 guard normalizedLocalURL.isFileURL else {
-                    throw NSError(domain: "cmux.detected-ssh.drop", code: 1, userInfo: [
+                    throw NSError(domain: "mosaic.detected-ssh.drop", code: 1, userInfo: [
                         NSLocalizedDescriptionKey: String(
                             localized: "detectedSSH.fileDrop.error.notFileURL",
                             defaultValue: "Couldn't upload the dropped item because it isn't a local file. Drop a file from Finder, then try again."
@@ -110,7 +110,7 @@ struct DetectedSSHSession: Equatable {
                     operation: operation
                 )
                 guard result.status == 0 else {
-                    throw NSError(domain: "cmux.detected-ssh.drop", code: 2, userInfo: [
+                    throw NSError(domain: "mosaic.detected-ssh.drop", code: 2, userInfo: [
                         NSLocalizedDescriptionKey: String(
                             localized: "detectedSSH.fileDrop.error.uploadFailed",
                             defaultValue: "Couldn't upload the file to the remote session. Check that the remote host is reachable, then try again."
@@ -303,7 +303,7 @@ struct DetectedSSHSession: Equatable {
                 throw TerminalImageTransferExecutionError.cancelled
             }
             terminateProcessAndWait()
-            throw NSError(domain: "cmux.detected-ssh.drop", code: 3, userInfo: [
+            throw NSError(domain: "mosaic.detected-ssh.drop", code: 3, userInfo: [
                 NSLocalizedDescriptionKey: String(
                     localized: "detectedSSH.fileDrop.error.scpTimedOut",
                     defaultValue: "File transfer timed out. Check the remote host and network connection, then try again."

@@ -1,8 +1,8 @@
 import AppKit
-import CmuxAgentChat
-import CMUXMobileCore
-import CmuxCollaboration
-import CmuxFoundation
+import MosaicAgentChat
+import MosaicMobileCore
+import MosaicCollaboration
+import MosaicFoundation
 import Foundation
 import ImageIO
 import Observation
@@ -146,6 +146,34 @@ private struct CollaborationTerminalRenderGridWire: Codable {
         self.terminalID = terminalID
         self.frame = frame
         self.recipientParticipantIDs = recipientParticipantIDs
+    }
+}
+
+enum CollaborationTerminalRenderGridSeedLimiter {
+    /// The collaboration relay silently drops any websocket message over
+    /// 1 MiB (`parseEnvelope` in workers/collaboration/src/protocol.ts), and
+    /// Cloudflare enforces the same cap on Durable Object websockets. A full
+    /// render-grid seed with deep scrollback can exceed that, in which case
+    /// viewers get `terminal.open` (a black mirror pane) but never the screen
+    /// snapshot — the pane stays blank until the host produces new output.
+    /// Keep seeds comfortably under the cap; the relay measures UTF-16 code
+    /// units while we count UTF-8 bytes, which is always >= and thus safe.
+    static let maxWireBytes = 768 * 1024
+
+    /// Returns the first encoded seed payload that fits under `limit`,
+    /// regenerating with progressively less scrollback (halving down to a
+    /// screen-only frame, which is always small enough in practice).
+    static func firstPayloadUnderLimit(
+        startingScrollbackLines: Int,
+        limit: Int = maxWireBytes,
+        payload: (Int) -> Data?
+    ) -> Data? {
+        var lines = max(0, startingScrollbackLines)
+        while true {
+            guard let data = payload(lines) else { return nil }
+            if data.count <= limit || lines == 0 { return data }
+            lines = lines > 1 ? lines / 2 : 0
+        }
     }
 }
 
@@ -725,8 +753,8 @@ extension CollaborationTerminalOwnerAvatarImageCache {
 @Observable
 final class CollaborationRuntime {
     static let shared = CollaborationRuntime()
-    static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
-    private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
+    static let agentRoomWirePasteboardTypeIdentifier = "com.mosaic.agent-room-wire"
+    private static let defaultRelayURLString = "https://mosaic-collaboration-worker.dorsa-rohani.workers.dev"
     private static let terminalInitialRenderGridScrollbackLines = 10_000
     private static let joinAcknowledgementTimeout: Duration = .seconds(5)
     private static let inviteCodeStore = CollaborationInviteCodeStore()
@@ -809,12 +837,12 @@ final class CollaborationRuntime {
     private var sessionStartedAtBySessionCode: [String: TimeInterval] = [:]
     private var isPresentingStartDialog = false
     /// Rooms, members (cursors), events, and indexed transcript turns persist
-    /// under `~/.cmuxterm` so shared context survives an app relaunch. The
+    /// under `~/.mosaicterm` so shared context survives an app relaunch. The
     /// in-memory-only store previously erased every room ledger on restart,
     /// which silently disconnected wired agents from their shared history.
     private let agentRoomStore = ClaudeRoomStore(
         persistenceURL: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cmuxterm", isDirectory: true)
+            .appendingPathComponent(".mosaicterm", isDirectory: true)
             .appendingPathComponent("agent-rooms.json", isDirectory: false)
     )
     private let agentRoomDigestBuilder = ClaudeRoomDigestBuilder()
@@ -846,7 +874,7 @@ final class CollaborationRuntime {
     @ObservationIgnored private var terminalSurfaceReadyObserver: NSObjectProtocol?
 
     private init() {
-        let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
+        let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "mosaic" : NSFullUserName()
         localAvatarSeed = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? displayName
         peerIdentity = CollaborationPeerIdentity.persistedParticipant(displayName: displayName)
         installTerminalSurfaceReadyObserver()
@@ -2319,7 +2347,7 @@ final class CollaborationRuntime {
             ?? TerminalController.shared.tabManager?.tabs.first
 
         if let workspace {
-            properties.merge(workspace.cmuxAnalyticsLayoutProperties(snapshotReason: reason)) { _, new in new }
+            properties.merge(workspace.mosaicAnalyticsLayoutProperties(snapshotReason: reason)) { _, new in new }
             let sharedPaneCount = workspace.bonsplitController.allPaneIds.filter { paneId in
                 workspace.bonsplitController.tabs(inPane: paneId).contains { tab in
                     guard let panelId = workspace.panelIdFromSurfaceId(tab.id) else { return false }
@@ -2404,7 +2432,7 @@ final class CollaborationRuntime {
     /// surface has a Claude hook session record on disk (and its transcript
     /// path). A member without one is a dead link — its hooks never registered,
     /// so it neither publishes to nor receives from the room. Exposed through
-    /// `cmux agent-room status` so a silently unplugged agent is diagnosable.
+    /// `mosaic agent-room status` so a silently unplugged agent is diagnosable.
     private func agentRoomStatusRoomPayload(_ room: ClaudeRoomSnapshot) -> [String: Any] {
         var payload = agentRoomPayload(room)
         payload["members"] = room.members.map { member -> [String: Any] in
@@ -2692,7 +2720,7 @@ final class CollaborationRuntime {
         )
         guard let roomID else {
             #if DEBUG
-            cmuxDebugLog("agentRoom.post dropped: no active room (from raw=\(rawFromSurfaceID ?? "nil") resolved=\(fromSurfaceUUID?.uuidString ?? "nil"))")
+            mosaicDebugLog("agentRoom.post dropped: no active room (from raw=\(rawFromSurfaceID ?? "nil") resolved=\(fromSurfaceUUID?.uuidString ?? "nil"))")
             #endif
             return [
                 "posted": false,
@@ -2705,7 +2733,7 @@ final class CollaborationRuntime {
         let fromMemberID = fromSurfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
         #if DEBUG
         if fromSurfaceUUID.flatMap({ agentRoomIDsBySurfaceID[$0] }) != roomID {
-            cmuxDebugLog("agentRoom.post: from surface \(fromSurfaceID ?? "nil") is not a mapped member of room \(roomID); event still posts but peers may be unreachable")
+            mosaicDebugLog("agentRoom.post: from surface \(fromSurfaceID ?? "nil") is not a mapped member of room \(roomID); event still posts but peers may be unreachable")
         }
         #endif
         let result = await agentRoomStore.appendEvent(
@@ -3058,8 +3086,8 @@ final class CollaborationRuntime {
     }
 
     /// Resolves the Claude hook session to bind a surface to, straight from the
-    /// on-disk hook store (`~/.cmuxterm/claude-hook-sessions.json`, written by
-    /// `cmux hooks claude ...`).
+    /// on-disk hook store (`~/.mosaicterm/claude-hook-sessions.json`, written by
+    /// `mosaic hooks claude ...`).
     ///
     /// Prefers the surface's *currently active* session (the live Claude that
     /// last drove hooks in that pane) so wiring binds to the running agent
@@ -3067,7 +3095,7 @@ final class CollaborationRuntime {
     /// to the newest session that carries a transcript path.
     static func claudeHookSessionRef(surfaceID: String) -> ClaudeHookSessionRef? {
         let file = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cmuxterm", isDirectory: true)
+            .appendingPathComponent(".mosaicterm", isDirectory: true)
             .appendingPathComponent("claude-hook-sessions.json", isDirectory: false)
         guard let data = try? Data(contentsOf: file),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -4474,7 +4502,7 @@ final class CollaborationRuntime {
         guard !data.isEmpty || !pendingPrefix.isEmpty else { return nil }
         #if DEBUG
         let originalPendingCount = pendingPrefix.count
-        cmuxDebugLog(
+        mosaicDebugLog(
             "collab.terminal.input.raw direction=\(direction) terminal=\(terminalID) " +
             "pending=\(originalPendingCount) data=\(debugByteSummary(data))"
         )
@@ -4491,7 +4519,7 @@ final class CollaborationRuntime {
             if let prefixLength = incompleteTerminalGeneratedReportPrefixLength(bytes, from: index) {
                 pendingPrefix = Data(bytes[index..<(index + prefixLength)])
                 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "collab.terminal.input.buffer direction=\(direction) terminal=\(terminalID) " +
                     "prefix=\(debugByteSummary(pendingPrefix))"
                 )
@@ -4500,7 +4528,7 @@ final class CollaborationRuntime {
             } else if let keyboardInput = terminalKeyboardInputReplacement(bytes, from: index) {
                 #if DEBUG
                 let sequence = Data(bytes[index..<(index + keyboardInput.length)])
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "collab.terminal.input.normalize direction=\(direction) terminal=\(terminalID) " +
                     "sequence=\(debugByteSummary(sequence)) replacement=\(debugByteSummary(keyboardInput.replacement))"
                 )
@@ -4511,7 +4539,7 @@ final class CollaborationRuntime {
             } else if let reportLength = terminalGeneratedReportLength(bytes, from: index) {
                 #if DEBUG
                 let report = Data(bytes[index..<(index + reportLength)])
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "collab.terminal.input.drop direction=\(direction) terminal=\(terminalID) " +
                     "report=\(debugByteSummary(report))"
                 )
@@ -4524,7 +4552,7 @@ final class CollaborationRuntime {
         }
         let filteredData = filtered.isEmpty ? nil : Data(filtered)
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "collab.terminal.input.forward direction=\(direction) terminal=\(terminalID) " +
             "data=\(debugByteSummary(filteredData ?? Data())) pending=\(pendingPrefix.count)"
         )
@@ -5086,21 +5114,31 @@ final class CollaborationRuntime {
         let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
             ?? MobileTerminalByteTee.shared.currentSequence(surfaceID: panel.id)
             ?? 0
-        guard let snapshot = panel.surface.mobileRenderGridFrame(
-            stateSeq: stateSeq,
-            full: full,
-            scrollbackLines: scrollbackLines
-        ) else { return }
-        let frame = terminalRenderGridFrameWithResolvedDefaults(snapshot.frame)
-        try await send(CollaborationTerminalRenderGridWire(
-            type: "terminal.render_grid",
+        let recipients = recipientParticipantIDs ?? recipientParticipantIDsForSending(
             terminalID: terminalID,
-            frame: frame,
-            recipientParticipantIDs: recipientParticipantIDs ?? recipientParticipantIDsForSending(
+            connection: connection
+        )
+        // Encode before sending and shrink scrollback until the frame fits
+        // under the relay's message-size cap; an oversized seed is silently
+        // dropped by the relay, leaving viewers with a black mirror pane.
+        let payload = CollaborationTerminalRenderGridSeedLimiter.firstPayloadUnderLimit(
+            startingScrollbackLines: scrollbackLines
+        ) { lines in
+            guard let snapshot = panel.surface.mobileRenderGridFrame(
+                stateSeq: stateSeq,
+                full: full,
+                scrollbackLines: lines
+            ) else { return nil }
+            let frame = terminalRenderGridFrameWithResolvedDefaults(snapshot.frame)
+            return try? encoder.encode(CollaborationTerminalRenderGridWire(
+                type: "terminal.render_grid",
                 terminalID: terminalID,
-                connection: connection
-            )
-        ), via: connection)
+                frame: frame,
+                recipientParticipantIDs: recipients
+            ))
+        }
+        guard let payload else { return }
+        try await send(encodedFrame: payload, via: connection)
     }
 
     private func terminalRenderGridFrameWithResolvedDefaults(
@@ -5284,8 +5322,11 @@ final class CollaborationRuntime {
     }
 
     private func send<T: Encodable>(_ frame: T, via connection: CollaborationRelayConnection) async throws {
+        try await send(encodedFrame: try encoder.encode(frame), via: connection)
+    }
+
+    private func send(encodedFrame data: Data, via connection: CollaborationRelayConnection) async throws {
         guard let webSocketTask = connection.webSocketTask else { throw CollaborationRuntimeError.notConnected }
-        let data = try encoder.encode(frame)
         let text = String(decoding: data, as: UTF8.self)
         try await webSocketTask.send(.string(text))
     }
@@ -6899,7 +6940,7 @@ struct CollaborationHeaderControls<PanelModel>: View where PanelModel: Collabora
                     .foregroundStyle(.secondary)
             }
             Text(CollaborationStrings.sharingToggle)
-                .cmuxFont(size: 10, weight: .semibold)
+                .mosaicFont(size: 10, weight: .semibold)
                 .foregroundStyle(state.isShared ? Color.accentColor : Color.secondary)
             Toggle(isOn: Binding(
                 get: {

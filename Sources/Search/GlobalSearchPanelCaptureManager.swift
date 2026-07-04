@@ -32,7 +32,7 @@ final class GlobalSearchPanelCaptureManager {
                     try await index.upsert(document)
                 } catch {
 #if DEBUG
-                    cmuxDebugLog("globalSearch.markdown.upsert failed panel=\(context.panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
+                    mosaicDebugLog("globalSearch.markdown.upsert failed panel=\(context.panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
 #endif
                 }
             }
@@ -148,7 +148,7 @@ final class GlobalSearchPanelCaptureManager {
                     } catch {
                         guard !Task.isCancelled else { return }
 #if DEBUG
-                        cmuxDebugLog("globalSearch.markdown.capture failed panel=\(panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
+                        mosaicDebugLog("globalSearch.markdown.capture failed panel=\(panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
 #endif
                     }
                 }
@@ -196,7 +196,7 @@ final class GlobalSearchPanelCaptureManager {
             try await index.deleteDocument(id: documentID)
         } catch {
 #if DEBUG
-            cmuxDebugLog("globalSearch.markdown.purge failed panel=\(panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
+            mosaicDebugLog("globalSearch.markdown.purge failed panel=\(panelID.uuidString.prefix(5)) error=\(error.localizedDescription)")
 #endif
         }
     }
@@ -240,7 +240,7 @@ final class GlobalSearchPanelCaptureManager {
         } catch {
             guard !Task.isCancelled else { return }
 #if DEBUG
-            cmuxDebugLog("globalSearch.browser.upsert failed panel=\(panel.id.uuidString.prefix(5)) error=\(error.localizedDescription)")
+            mosaicDebugLog("globalSearch.browser.upsert failed panel=\(panel.id.uuidString.prefix(5)) error=\(error.localizedDescription)")
 #endif
         }
     }

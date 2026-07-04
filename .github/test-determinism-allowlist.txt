@@ -2,19 +2,19 @@
 # Format: relpath<TAB>rule<TAB>short reason
 # A finding whose (path, rule) appears here is suppressed.
 # Remove a line once the underlying test is determinized.
-Packages/Shared/CmuxAuthRuntime/Tests/CmuxAuthRuntimeTests/HostBrowserSignInFlowTests.swift	sleep-then-assert	grandfathered
-Packages/macOS/CmuxBrowser/Tests/CmuxBrowserTests/Omnibar/BrowserOmnibarPageFocusRepositoryTests.swift	sleep-then-assert	grandfathered
-Packages/macOS/CmuxControlSocket/Tests/CmuxControlSocketTests/SocketTransportIOTests.swift	assert-on-duration	grandfathered
-Packages/macOS/CmuxFoundation/Tests/CmuxFoundationTests/Process/CommandRunnerTests.swift	assert-on-duration	grandfathered
-Packages/macOS/CmuxSettings/Tests/CmuxSettingsTests/UserDefaultsSettingsStoreTests.swift	sleep-then-assert	grandfathered
-cmuxTests/CMUXOpenCommandTests.swift	assert-on-duration	grandfathered
-cmuxTests/FileExplorerStoreTests.swift	sleep-then-assert	grandfathered
-cmuxTests/MobileHostAuthorizationTests.swift	sleep-then-assert	grandfathered
-cmuxTests/NotificationAndMenuBarTests.swift	assert-on-duration	grandfathered
-cmuxTests/OmnibarAndToolsTests.swift	assert-on-duration	grandfathered
-cmuxTests/RovoDevSessionIndexTests.swift	sleep-then-assert	grandfathered
-cmuxTests/TabManagerSessionSnapshotTests.swift	assert-on-duration	grandfathered
-cmuxUITests/FeedSidebarUITests.swift	sleep-then-assert	grandfathered
+Packages/Shared/MosaicAuthRuntime/Tests/MosaicAuthRuntimeTests/HostBrowserSignInFlowTests.swift	sleep-then-assert	grandfathered
+Packages/macOS/MosaicBrowser/Tests/MosaicBrowserTests/Omnibar/BrowserOmnibarPageFocusRepositoryTests.swift	sleep-then-assert	grandfathered
+Packages/macOS/MosaicControlSocket/Tests/MosaicControlSocketTests/SocketTransportIOTests.swift	assert-on-duration	grandfathered
+Packages/macOS/MosaicFoundation/Tests/MosaicFoundationTests/Process/CommandRunnerTests.swift	assert-on-duration	grandfathered
+Packages/macOS/MosaicSettings/Tests/MosaicSettingsTests/UserDefaultsSettingsStoreTests.swift	sleep-then-assert	grandfathered
+mosaicTests/MosaicOpenCommandTests.swift	assert-on-duration	grandfathered
+mosaicTests/FileExplorerStoreTests.swift	sleep-then-assert	grandfathered
+mosaicTests/MobileHostAuthorizationTests.swift	sleep-then-assert	grandfathered
+mosaicTests/NotificationAndMenuBarTests.swift	assert-on-duration	grandfathered
+mosaicTests/OmnibarAndToolsTests.swift	assert-on-duration	grandfathered
+mosaicTests/RovoDevSessionIndexTests.swift	sleep-then-assert	grandfathered
+mosaicTests/TabManagerSessionSnapshotTests.swift	assert-on-duration	grandfathered
+mosaicUITests/FeedSidebarUITests.swift	sleep-then-assert	grandfathered
 tests/test_multi_workspace_focus.py	sleep-then-assert	grandfathered
 tests_v2/test_browser_api_extended_families.py	sleep-then-assert	grandfathered
 tests_v2/test_pane_break_swap_preserve_focus.py	sleep-then-assert	grandfathered

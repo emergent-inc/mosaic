@@ -1,0 +1,4 @@
+interface:
+  display_name: "mosaic Browser"
+  short_description: "Automate mosaic webview surfaces with snapshot/ref workflows."
+  default_prompt: "Use this skill for browser automation via mosaic CLI: identify target surface, snapshot interactive refs, perform actions, wait for state changes, and re-snapshot to avoid stale refs."

@@ -14,7 +14,7 @@ final class NativeInteractionAnalytics {
     func installIfNeeded() {
         guard !isInstalled else { return }
         guard TelemetrySettings.enabledForCurrentLaunch else { return }
-        guard ProcessInfo.processInfo.environment["CMUX_POSTHOG_NATIVE_INTERACTIONS"] != "0" else { return }
+        guard ProcessInfo.processInfo.environment["MOSAIC_POSTHOG_NATIVE_INTERACTIONS"] != "0" else { return }
 
         isInstalled = true
         installEventMonitors()
@@ -24,7 +24,7 @@ final class NativeInteractionAnalytics {
     /// Mouse event types observed by the interaction monitor.
     ///
     /// IMPORTANT: `.scrollWheel` must never be included. `track(_:)` calls
-    /// `contentView.hitTest(_:)`, and cmux's hit-test chain is not
+    /// `contentView.hitTest(_:)`, and mosaic's hit-test chain is not
     /// side-effect-free (overlays toggle `isHidden`, the terminal portal reads
     /// `NSApp.currentEvent`, sets cursors, and notes interactions). Running that
     /// re-entrant hit-test from a `.scrollWheel` local monitor, before AppKit

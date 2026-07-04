@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODE="${1:-run}"
 APP_NAME="SettingsShellLab"
-BUNDLE_ID="com.cmux.prototype.SettingsShellLab"
+BUNDLE_ID="com.mosaic.prototype.SettingsShellLab"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

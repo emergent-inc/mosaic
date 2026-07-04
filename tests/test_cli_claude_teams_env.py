@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: `cmux claude-teams` injects the tmux-style auto-mode env.
+Regression test: `mosaic claude-teams` injects the tmux-style auto-mode env.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -30,7 +30,7 @@ def run_claude_teams(
     node_options: str,
     tmpdir: str | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], str, str, str]:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-teams-env-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-teams-env-") as td:
         tmp = Path(td)
         real_bin = tmp / "real-bin"
         real_bin.mkdir(parents=True, exist_ok=True)
@@ -39,7 +39,7 @@ def run_claude_teams(
         sandboxed_log = tmp / "sandboxed.log"
         marker_log = tmp / "sandboxed-marker.log"
         tmux_log = tmp / "tmux-path.log"
-        cmux_bin_log = tmp / "cmux-bin.log"
+        mosaic_bin_log = tmp / "mosaic-bin.log"
         argv_log = tmp / "argv.log"
         tmux_env_log = tmp / "tmux-env.log"
         tmux_pane_log = tmp / "tmux-pane.log"
@@ -59,16 +59,16 @@ def run_claude_teams(
 set -euo pipefail
 printf '%s\\n' "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS-__UNSET__}" > "$FAKE_AGENT_TEAMS_LOG"
 printf '%s\\n' "${CLAUDE_CODE_SANDBOXED-__UNSET__}" > "$FAKE_SANDBOXED_LOG"
-printf '%s\\n' "${CMUX_CLAUDE_TEAMS_SANDBOXED-__UNSET__}" > "$FAKE_SANDBOXED_MARKER_LOG"
+printf '%s\\n' "${MOSAIC_CLAUDE_TEAMS_SANDBOXED-__UNSET__}" > "$FAKE_SANDBOXED_MARKER_LOG"
 command -v tmux > "$FAKE_TMUX_PATH_LOG"
-printf '%s\\n' "${CMUX_CLAUDE_TEAMS_CMUX_BIN-__UNSET__}" > "$FAKE_CMUX_BIN_LOG"
+printf '%s\\n' "${MOSAIC_CLAUDE_TEAMS_MOSAIC_BIN-__UNSET__}" > "$FAKE_MOSAIC_BIN_LOG"
 printf '%s\\n' "$@" > "$FAKE_ARGV_LOG"
 printf '%s\\n' "${TMUX-__UNSET__}" > "$FAKE_TMUX_ENV_LOG"
 printf '%s\\n' "${TMUX_PANE-__UNSET__}" > "$FAKE_TMUX_PANE_LOG"
 printf '%s\\n' "${TERM-__UNSET__}" > "$FAKE_TERM_LOG"
 printf '%s\\n' "${TERM_PROGRAM-__UNSET__}" > "$FAKE_TERM_PROGRAM_LOG"
-printf '%s\\n' "${CMUX_SOCKET_PATH-__UNSET__}" > "$FAKE_SOCKET_PATH_LOG"
-printf '%s\\n' "${CMUX_SOCKET_PASSWORD-__UNSET__}" > "$FAKE_SOCKET_PASSWORD_LOG"
+printf '%s\\n' "${MOSAIC_SOCKET_PATH-__UNSET__}" > "$FAKE_SOCKET_PATH_LOG"
+printf '%s\\n' "${MOSAIC_SOCKET_PASSWORD-__UNSET__}" > "$FAKE_SOCKET_PASSWORD_LOG"
 printf '%s\\n' "${NODE_OPTIONS-__UNSET__}" > "$FAKE_NODE_OPTIONS_LOG"
 exec node "$FAKE_REAL_NODE_SCRIPT" "$@"
 """,
@@ -115,7 +115,7 @@ fs.writeFileSync(
         env["FAKE_SANDBOXED_LOG"] = str(sandboxed_log)
         env["FAKE_SANDBOXED_MARKER_LOG"] = str(marker_log)
         env["FAKE_TMUX_PATH_LOG"] = str(tmux_log)
-        env["FAKE_CMUX_BIN_LOG"] = str(cmux_bin_log)
+        env["FAKE_MOSAIC_BIN_LOG"] = str(mosaic_bin_log)
         env["FAKE_ARGV_LOG"] = str(argv_log)
         env["FAKE_TMUX_ENV_LOG"] = str(tmux_env_log)
         env["FAKE_TMUX_PANE_LOG"] = str(tmux_pane_log)
@@ -134,7 +134,7 @@ fs.writeFileSync(
         env["NODE_OPTIONS"] = node_options
         if tmpdir is not None:
             env["TMPDIR"] = tmpdir
-        explicit_socket_path = str(tmp / "explicit-cmux.sock")
+        explicit_socket_path = str(tmp / "explicit-mosaic.sock")
         explicit_socket_password = "topsecret"
 
         proc = subprocess.run(
@@ -174,12 +174,12 @@ fs.writeFileSync(
             print(f"FAIL: expected CLAUDE_CODE_SANDBOXED=1 to skip the trust gate, got {sandboxed_value!r}")
             raise SystemExit(1)
 
-        # The launcher records the opt-in in CMUX_CLAUDE_TEAMS_SANDBOXED so teammate
+        # The launcher records the opt-in in MOSAIC_CLAUDE_TEAMS_SANDBOXED so teammate
         # respawns re-apply the same trust decision without re-deriving it from
         # untrusted command text.
         marker_value = read_text(marker_log)
         if marker_value != "1":
-            print(f"FAIL: expected CMUX_CLAUDE_TEAMS_SANDBOXED=1 opt-in marker, got {marker_value!r}")
+            print(f"FAIL: expected MOSAIC_CLAUDE_TEAMS_SANDBOXED=1 opt-in marker, got {marker_value!r}")
             raise SystemExit(1)
 
         tmux_path = read_text(tmux_log)
@@ -197,16 +197,16 @@ fs.writeFileSync(
             raise SystemExit(1)
 
         if tmux_path.startswith(str(real_bin)):
-            print(f"FAIL: expected cmux tmux shim to shadow PATH, got {tmux_path!r}")
+            print(f"FAIL: expected mosaic tmux shim to shadow PATH, got {tmux_path!r}")
             raise SystemExit(1)
 
-        cmux_bin_value = read_text(cmux_bin_log)
-        if not cmux_bin_value or cmux_bin_value == "__UNSET__":
-            print("FAIL: missing CMUX_CLAUDE_TEAMS_CMUX_BIN")
+        mosaic_bin_value = read_text(mosaic_bin_log)
+        if not mosaic_bin_value or mosaic_bin_value == "__UNSET__":
+            print("FAIL: missing MOSAIC_CLAUDE_TEAMS_MOSAIC_BIN")
             raise SystemExit(1)
 
-        if not os.path.exists(cmux_bin_value):
-            print(f"FAIL: CMUX_CLAUDE_TEAMS_CMUX_BIN does not exist: {cmux_bin_value!r}")
+        if not os.path.exists(mosaic_bin_value):
+            print(f"FAIL: MOSAIC_CLAUDE_TEAMS_MOSAIC_BIN does not exist: {mosaic_bin_value!r}")
             raise SystemExit(1)
 
         argv_lines = argv_log.read_text(encoding="utf-8").splitlines()
@@ -214,7 +214,7 @@ fs.writeFileSync(
             print(f"FAIL: expected launcher to prepend --teammate-mode auto, got {argv_lines!r}")
             raise SystemExit(1)
 
-        # #6447: so a plain `cmux claude-teams "make a demo team"` actually opens
+        # #6447: so a plain `mosaic claude-teams "make a demo team"` actually opens
         # split panes, the lead is nudged (via an appended system prompt) toward
         # named split-pane teammates instead of nameless in-process subagents.
         if "--append-system-prompt" not in argv_lines:
@@ -252,13 +252,13 @@ fs.writeFileSync(
 
         socket_path_value = read_text(socket_path_log)
         if socket_path_value != explicit_socket_path:
-            print(f"FAIL: expected CMUX_SOCKET_PATH={explicit_socket_path!r}, got {socket_path_value!r}")
+            print(f"FAIL: expected MOSAIC_SOCKET_PATH={explicit_socket_path!r}, got {socket_path_value!r}")
             raise SystemExit(1)
 
         socket_password_value = read_text(socket_password_log)
         if socket_password_value != explicit_socket_password:
             print(
-                "FAIL: expected CMUX_SOCKET_PASSWORD to preserve the explicit CLI override, "
+                "FAIL: expected MOSAIC_SOCKET_PASSWORD to preserve the explicit CLI override, "
                 f"got {socket_password_value!r}"
             )
             raise SystemExit(1)
@@ -268,7 +268,7 @@ fs.writeFileSync(
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
@@ -281,7 +281,7 @@ def main() -> int:
         "--trace-warnings",
     )
     if proc.returncode != 0:
-        print("FAIL: `cmux claude-teams --version` exited non-zero")
+        print("FAIL: `mosaic claude-teams --version` exited non-zero")
         print(f"exit={proc.returncode}")
         print(f"stdout={proc.stdout.strip()}")
         print(f"stderr={proc.stderr.strip()}")
@@ -322,7 +322,7 @@ def main() -> int:
         "--max-old-space-size 2048 --trace-warnings",
     )
     if proc.returncode != 0:
-        print("FAIL: `cmux claude-teams --version` with existing heap flag exited non-zero")
+        print("FAIL: `mosaic claude-teams --version` with existing heap flag exited non-zero")
         print(f"exit={proc.returncode}")
         print(f"stdout={proc.stdout.strip()}")
         print(f"stderr={proc.stderr.strip()}")
@@ -357,7 +357,7 @@ def main() -> int:
         )
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-teams-bad-tmp-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-teams-bad-tmp-") as td:
         bad_tmpdir = Path(td) / "not-a-directory"
         bad_tmpdir.write_text("occupied", encoding="utf-8")
         proc, node_options_value, runtime_node_options_value, child_node_options_value = run_claude_teams(
@@ -367,7 +367,7 @@ def main() -> int:
             tmpdir=str(bad_tmpdir),
         )
     if proc.returncode != 0:
-        print("FAIL: `cmux claude-teams --version` should still succeed when TMPDIR is unusable")
+        print("FAIL: `mosaic claude-teams --version` should still succeed when TMPDIR is unusable")
         print(f"exit={proc.returncode}")
         print(f"stdout={proc.stdout.strip()}")
         print(f"stderr={proc.stderr.strip()}")
@@ -394,7 +394,7 @@ def main() -> int:
         )
         return 1
 
-    print("PASS: cmux claude-teams restores child NODE_OPTIONS while injecting the auto-mode tmux env")
+    print("PASS: mosaic claude-teams restores child NODE_OPTIONS while injecting the auto-mode tmux env")
     return 0
 
 

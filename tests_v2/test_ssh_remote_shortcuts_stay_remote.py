@@ -14,58 +14,58 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
-SSH_HOST = os.environ.get("CMUX_SSH_TEST_HOST", "").strip()
-SSH_PORT = os.environ.get("CMUX_SSH_TEST_PORT", "").strip()
-SSH_IDENTITY = os.environ.get("CMUX_SSH_TEST_IDENTITY", "").strip()
-SSH_OPTIONS_RAW = os.environ.get("CMUX_SSH_TEST_OPTIONS", "").strip()
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
+SSH_HOST = os.environ.get("MOSAIC_SSH_TEST_HOST", "").strip()
+SSH_PORT = os.environ.get("MOSAIC_SSH_TEST_PORT", "").strip()
+SSH_IDENTITY = os.environ.get("MOSAIC_SSH_TEST_IDENTITY", "").strip()
+SSH_OPTIONS_RAW = os.environ.get("MOSAIC_SSH_TEST_OPTIONS", "").strip()
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if check and proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
 
 def _run_cli_json(cli: str, args: list[str]) -> dict:
     env = dict(os.environ)
-    env.pop("CMUX_WORKSPACE_ID", None)
-    env.pop("CMUX_SURFACE_ID", None)
-    env.pop("CMUX_TAB_ID", None)
+    env.pop("MOSAIC_WORKSPACE_ID", None)
+    env.pop("MOSAIC_SURFACE_ID", None)
+    env.pop("MOSAIC_TAB_ID", None)
 
     proc = _run([cli, "--socket", SOCKET_PATH, "--json", *args], env=env)
     try:
         return json.loads(proc.stdout or "{}")
     except Exception as exc:  # noqa: BLE001
-        raise cmuxError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
+        raise mosaicError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})")
 
 
 def _wait_for(pred, timeout_s: float = 8.0, step_s: float = 0.1) -> None:
@@ -74,10 +74,10 @@ def _wait_for(pred, timeout_s: float = 8.0, step_s: float = 0.1) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
-def _wait_remote_ready(client: cmux, workspace_id: str, timeout_s: float = 45.0) -> None:
+def _wait_remote_ready(client: mosaic, workspace_id: str, timeout_s: float = 45.0) -> None:
     deadline = time.time() + timeout_s
     last_status = {}
     while time.time() < deadline:
@@ -87,10 +87,10 @@ def _wait_remote_ready(client: cmux, workspace_id: str, timeout_s: float = 45.0)
         if str(remote.get("state") or "") == "connected" and str(daemon.get("state") or "") == "ready":
             return
         time.sleep(0.25)
-    raise cmuxError(f"Remote did not become ready for {workspace_id}: {last_status}")
+    raise mosaicError(f"Remote did not become ready for {workspace_id}: {last_status}")
 
 
-def _resolve_workspace_id(client: cmux, payload: dict, *, before_workspace_ids: set[str]) -> str:
+def _resolve_workspace_id(client: mosaic, payload: dict, *, before_workspace_ids: set[str]) -> str:
     workspace_id = str(payload.get("workspace_id") or "")
     if workspace_id:
         return workspace_id
@@ -109,30 +109,30 @@ def _resolve_workspace_id(client: cmux, payload: dict, *, before_workspace_ids: 
     if len(new_ids) == 1:
         return new_ids[0]
 
-    raise cmuxError(f"Unable to resolve workspace_id from payload: {payload}")
+    raise mosaicError(f"Unable to resolve workspace_id from payload: {payload}")
 
 
-def _focused_surface_id(client: cmux) -> str:
+def _focused_surface_id(client: mosaic) -> str:
     ident = client.identify()
     focused = ident.get("focused") or {}
     surface_id = str(focused.get("surface_id") or "")
     if not surface_id:
-        raise cmuxError(f"Missing focused surface in identify payload: {ident}")
+        raise mosaicError(f"Missing focused surface in identify payload: {ident}")
     return surface_id
 
 
-def _run_remote_shell_probe(client: cmux, surface_id: str, probe_label: str) -> str:
-    token = f"__CMUX_REMOTE_SOCKET_{probe_label}_{secrets.token_hex(4)}__"
+def _run_remote_shell_probe(client: mosaic, surface_id: str, probe_label: str) -> str:
+    token = f"__MOSAIC_REMOTE_SOCKET_{probe_label}_{secrets.token_hex(4)}__"
     client.send_surface(
         surface_id,
         (
-            f"__cmux_socket_path=\"${{CMUX_SOCKET_PATH:-}}\"; "
-            f"printf '{token}:%s:__CMUX_REMOTE_SOCKET_END__\\n' \"$__cmux_socket_path\"\n"
+            f"__mosaic_socket_path=\"${{MOSAIC_SOCKET_PATH:-}}\"; "
+            f"printf '{token}:%s:__MOSAIC_REMOTE_SOCKET_END__\\n' \"$__mosaic_socket_path\"\n"
         ),
     )
     deadline = time.time() + 15.0
     last = ""
-    pattern = re.compile(re.escape(token) + r":(.*?):__CMUX_REMOTE_SOCKET_END__")
+    pattern = re.compile(re.escape(token) + r":(.*?):__MOSAIC_REMOTE_SOCKET_END__")
     while time.time() < deadline:
         last = client.read_terminal_text(surface_id)
         matches = pattern.findall(last)
@@ -142,18 +142,18 @@ def _run_remote_shell_probe(client: cmux, surface_id: str, probe_label: str) -> 
                 if cleaned and cleaned != "%s":
                     return cleaned
         time.sleep(0.15)
-    raise cmuxError(f"Timed out waiting for socket token {token!r}: {last[-1200:]!r}")
+    raise mosaicError(f"Timed out waiting for socket token {token!r}: {last[-1200:]!r}")
 
 
-def _assert_remote_socket_path(client: cmux, surface_id: str, shortcut_name: str) -> None:
+def _assert_remote_socket_path(client: mosaic, surface_id: str, shortcut_name: str) -> None:
     socket_path = _run_remote_shell_probe(client, surface_id, shortcut_name)
     _must(
         socket_path.startswith("127.0.0.1:"),
-        f"{shortcut_name} should keep the new terminal on the ssh relay, got CMUX_SOCKET_PATH={socket_path!r}",
+        f"{shortcut_name} should keep the new terminal on the ssh relay, got MOSAIC_SOCKET_PATH={socket_path!r}",
     )
 
 
-def _open_ssh_workspace(client: cmux, cli: str, *, name: str) -> str:
+def _open_ssh_workspace(client: mosaic, cli: str, *, name: str) -> str:
     before_workspace_ids = {wid for _index, wid, _title, _focused in client.list_workspaces()}
 
     ssh_args = ["ssh", SSH_HOST, "--name", name]
@@ -176,7 +176,7 @@ def _open_ssh_workspace(client: cmux, cli: str, *, name: str) -> str:
 
 
 def _assert_shortcut_creates_remote_terminal(
-    client: cmux,
+    client: mosaic,
     workspace_id: str,
     shortcut: str,
     shortcut_name: str,
@@ -212,14 +212,14 @@ def _assert_shortcut_creates_remote_terminal(
 
 def main() -> int:
     if not SSH_HOST:
-        print("SKIP: set CMUX_SSH_TEST_HOST to run ssh shortcut inheritance regression")
+        print("SKIP: set MOSAIC_SSH_TEST_HOST to run ssh shortcut inheritance regression")
         return 0
 
     cli = _find_cli_binary()
     workspace_ids: list[str] = []
 
     try:
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             workspace_id = _open_ssh_workspace(
                 client,
                 cli,
@@ -264,7 +264,7 @@ def main() -> int:
     finally:
         if workspace_ids:
             try:
-                with cmux(SOCKET_PATH) as client:
+                with mosaic(SOCKET_PATH) as client:
                     for workspace_id in workspace_ids:
                         try:
                             client._call("workspace.close", {"workspace_id": workspace_id})

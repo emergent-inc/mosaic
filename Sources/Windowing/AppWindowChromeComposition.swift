@@ -1,6 +1,6 @@
 import AppKit
-import CmuxAppKitSupportUI
-import CmuxWorkspaces
+import MosaicAppKitSupportUI
+import MosaicWorkspaces
 import SwiftUI
 
 typealias SidebarMaterialOption = WindowChromeSidebarMaterialOption

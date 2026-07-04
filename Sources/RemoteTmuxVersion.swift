@@ -1,18 +1,18 @@
 import Foundation
 
 /// Parses `tmux -V` output and decides whether a remote tmux is new enough for
-/// `cmux ssh-tmux`.
+/// `mosaic ssh-tmux`.
 ///
 /// **Minimum is tmux 3.2.** Determined empirically (see
 /// `docs/investigations/remote-agent-status-sidebar.md` and the version matrix):
 /// the live mirror relies on control-mode subscriptions via `refresh-client -B`
 /// for per-pane working-directory, foreground-command (reflow + close
-/// confirmation), and the `@cmux_agent` / `@cmux_git` status channels. `-B`
+/// confirmation), and the `@mosaic_agent` / `@mosaic_git` status channels. `-B`
 /// was added in tmux 3.2 — on 3.1 and older it is an "unknown option", so the
 /// mirror would attach but never receive any live pane state, silently. tmux 1.x
 /// is worse still: its control mode omits the `%begin`/`%end` command framing the
 /// command-correlation FIFO depends on. Rather than mirror into a broken state,
-/// cmux asserts the version up front and surfaces a clear error.
+/// mosaic asserts the version up front and surfaces a clear error.
 struct RemoteTmuxVersion: Equatable, Comparable, Sendable {
     let major: Int
     let minor: Int
@@ -20,7 +20,7 @@ struct RemoteTmuxVersion: Equatable, Comparable, Sendable {
     /// absent. Lets `3.2a` sort after `3.2` without affecting the `>= 3.2` gate.
     let letterRank: Int
 
-    /// The minimum version `cmux ssh-tmux` supports.
+    /// The minimum version `mosaic ssh-tmux` supports.
     static let minimumSupported = RemoteTmuxVersion(major: 3, minor: 2, letterRank: 0)
 
     static func < (lhs: RemoteTmuxVersion, rhs: RemoteTmuxVersion) -> Bool {

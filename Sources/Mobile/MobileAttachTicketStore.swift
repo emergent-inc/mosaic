@@ -1,5 +1,5 @@
-import CMUXMobileCore
-import CmuxSettings
+import MosaicMobileCore
+import MosaicSettings
 import Foundation
 #if canImport(Security)
 import Security
@@ -246,7 +246,7 @@ enum MobileHostIdentity {
         ) else {
             return nil
         }
-        let directory = appSupport.appendingPathComponent("cmux", isDirectory: true)
+        let directory = appSupport.appendingPathComponent("mosaic", isDirectory: true)
         if !fileManager.fileExists(atPath: directory.path) {
             try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         }

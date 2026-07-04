@@ -2,7 +2,7 @@ import Foundation
 
 /// Errors raised while talking to a remote tmux server over SSH.
 enum RemoteTmuxError: Error, Sendable, Equatable {
-    /// The `ssh` (or remote) command exited non-zero for a reason cmux does
+    /// The `ssh` (or remote) command exited non-zero for a reason mosaic does
     /// not treat as benign. Carries the exit code and captured stderr.
     case commandFailed(exitCode: Int32, stderr: String)
 

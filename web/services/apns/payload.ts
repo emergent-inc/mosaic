@@ -17,7 +17,7 @@ export interface ApnsNotificationInput {
   /**
    * `notify` (default) is the visible terminal-banner mirror; `dismiss` is the
    * banner-less Mac→iOS dismiss-sync push (`content-available` + badge +
-   * `cmux.dismissedIds`) fanned out to every registered device.
+   * `mosaic.dismissedIds`) fanned out to every registered device.
    */
   readonly kind?: "notify" | "dismiss";
   readonly title: string;
@@ -28,7 +28,7 @@ export interface ApnsNotificationInput {
   readonly macDeviceId?: string | null;
   /**
    * Stable Mac-side notification id. Surfaced in the payload as
-   * `cmux.notificationId` so an iOS swipe-dismiss can tell the Mac which
+   * `mosaic.notificationId` so an iOS swipe-dismiss can tell the Mac which
    * notification was cleared. The sender also stamps it as `apns-collapse-id`
    * so a later Mac→iOS dismiss can target this exact delivered banner.
    */
@@ -48,17 +48,17 @@ export interface ApnsNotificationInput {
 }
 
 /**
- * APNs `aps.category` set on every cmux terminal push. iOS registers a
+ * APNs `aps.category` set on every mosaic terminal push. iOS registers a
  * matching ``UNNotificationCategory`` with `customDismissAction` so a
  * swipe/clear delivers `UNNotificationDismissActionIdentifier` to the app,
  * which forwards the dismiss to the Mac. Keep this in sync with the iOS
  * category id.
  */
-export const CMUX_APNS_CATEGORY = "cmux.terminal";
+export const MOSAIC_APNS_CATEGORY = "mosaic.terminal";
 
 /**
- * Build the APNs JSON payload. Adds `cmux.workspaceId`/`cmux.surfaceId`/
- * `cmux.macDeviceId`/`cmux.notificationId` custom keys so a tapped notification
+ * Build the APNs JSON payload. Adds `mosaic.workspaceId`/`mosaic.surfaceId`/
+ * `mosaic.macDeviceId`/`mosaic.notificationId` custom keys so a tapped notification
  * can deep-link to the right terminal on the right Mac and a swipe can be
  * dismiss-synced, sets the dismiss-action `category`, and marks the alert
  * time-sensitive (the app holds that
@@ -67,7 +67,7 @@ export const CMUX_APNS_CATEGORY = "cmux.terminal";
 export function buildApnsPayload(input: ApnsNotificationInput): Record<string, unknown> {
   if (input.kind === "dismiss") return buildDismissPayload(input);
   const hidden = input.hideContent === true;
-  const title = hidden ? "cmux" : input.title.trim() || "cmux";
+  const title = hidden ? "mosaic" : input.title.trim() || "mosaic";
   const body = hidden ? "An agent needs your attention" : input.body;
   const subtitle = hidden ? undefined : input.subtitle?.trim() || undefined;
 
@@ -79,17 +79,17 @@ export function buildApnsPayload(input: ApnsNotificationInput): Record<string, u
     alert,
     sound: "default",
     "interruption-level": "time-sensitive",
-    category: CMUX_APNS_CATEGORY,
+    category: MOSAIC_APNS_CATEGORY,
   };
   if (typeof input.badgeCount === "number") aps.badge = input.badgeCount;
 
-  const cmux: Record<string, string> = {};
-  if (input.workspaceId) cmux.workspaceId = input.workspaceId;
-  if (input.surfaceId) cmux.surfaceId = input.surfaceId;
-  if (input.macDeviceId) cmux.macDeviceId = input.macDeviceId;
-  if (input.notificationId) cmux.notificationId = input.notificationId;
+  const mosaic: Record<string, string> = {};
+  if (input.workspaceId) mosaic.workspaceId = input.workspaceId;
+  if (input.surfaceId) mosaic.surfaceId = input.surfaceId;
+  if (input.macDeviceId) mosaic.macDeviceId = input.macDeviceId;
+  if (input.notificationId) mosaic.notificationId = input.notificationId;
 
-  return Object.keys(cmux).length > 0 ? { aps, cmux } : { aps };
+  return Object.keys(mosaic).length > 0 ? { aps, mosaic } : { aps };
 }
 
 /**
@@ -97,7 +97,7 @@ export function buildApnsPayload(input: ApnsNotificationInput): Record<string, u
  * `aps.badge` set to the authoritative unread total (applied by the system even
  * when iOS declines to wake the app), and `content-available: 1` so iOS wakes
  * the app — within its strictly budgeted background-push allowance — to remove
- * the dismissed delivered banners listed under `cmux.dismissedIds`.
+ * the dismissed delivered banners listed under `mosaic.dismissedIds`.
  *
  * Deliberately sent as push-type `alert` with priority 5 (see sender): per
  * Apple's push-type taxonomy a badge update is user-facing, so this is not a
@@ -106,7 +106,7 @@ export function buildApnsPayload(input: ApnsNotificationInput): Record<string, u
 function buildDismissPayload(input: ApnsNotificationInput): Record<string, unknown> {
   const aps: Record<string, unknown> = { "content-available": 1 };
   if (typeof input.badgeCount === "number") aps.badge = input.badgeCount;
-  return { aps, cmux: { dismissedIds: [...(input.dismissedIds ?? [])] } };
+  return { aps, mosaic: { dismissedIds: [...(input.dismissedIds ?? [])] } };
 }
 
 /**

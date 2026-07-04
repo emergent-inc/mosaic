@@ -1,4 +1,4 @@
-// Pure construction of the cmux Founder's Edition welcome email payload.
+// Pure construction of the mosaic Founder's Edition welcome email payload.
 //
 // Kept free of Stripe/Resend/env imports so it can be unit-tested directly
 // (web/tests/founders-welcome-email.test.ts) without booting the webhook route
@@ -10,7 +10,7 @@
 export const DEFAULT_FROM_EMAIL = "austin@emergent.inc";
 export const FOUNDER_CC = ["austin@emergent.inc", "lawrence@emergent.inc"];
 export const REPLY_TO = "austin@emergent.inc";
-export const EMAIL_SUBJECT = "cmux Founder's Edition";
+export const EMAIL_SUBJECT = "mosaic Founder's Edition";
 
 // Custom header that defeats Gmail's subject-based conversation grouping.
 // Gmail collapses messages that share a normalized subject among the same
@@ -32,14 +32,14 @@ function buildBody(name: string): string {
   return [
     `Hi ${name}!`,
     "",
-    "Thank you for being one of the first ever customers of cmux :)",
+    "Thank you for being one of the first ever customers of mosaic :)",
     "",
     "My number is +1(714) 699-0169 and Lawrence's number is +1(949) 302-0749. " +
       "Our emails are austin@emergent.inc and lawrence@emergent.inc. Feel free to " +
       "text me on iMessage or WhatsApp, or we can just continue talking here. " +
       "I've CC'd my cofounder as well.",
     "",
-    "cmux iOS Beta is out for cmux Founder's Edition! If you have a different " +
+    "mosaic iOS Beta is out for mosaic Founder's Edition! If you have a different " +
       "TestFlight email, please reply to this email with the new email address. " +
       "Otherwise, we'll send it to the one on file.",
     "",

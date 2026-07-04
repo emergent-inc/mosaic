@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression tests for OMO subagent panes through cmux's tmux compatibility shim.
+Regression tests for OMO subagent panes through mosaic's tmux compatibility shim.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 WORKSPACE_ID = "11111111-1111-4111-8111-111111111111"
 WINDOW_ID = "22222222-2222-4222-8222-222222222222"
@@ -34,7 +34,7 @@ ATTACH_COMMAND = (
 
 
 def shell_wrapped(command: str) -> str:
-    """Mirror CMUXCLI.tmuxShellInvokedStartCommand: respawn shell-commands are run
+    """Mirror MosaicCLI.tmuxShellInvokedStartCommand: respawn shell-commands are run
     through a POSIX shell (`/bin/sh -c`) so Ghostty's macOS `exec -l <command>`
     execs a shell rather than the raw expression (issue #6447). Quoting mirrors
     tmuxShellQuote (single-quote, with embedded single quotes escaped)."""
@@ -42,7 +42,7 @@ def shell_wrapped(command: str) -> str:
     return "/bin/sh -c " + quoted
 
 
-class FakeCmuxState:
+class FakeMosaicState:
     def __init__(self) -> None:
         self.split_created = False
         self.placeholder_command: str | None = None
@@ -183,10 +183,10 @@ class FakeCmuxState:
             return {"ok": True}
         if method == "workspace.equalize_splits":
             return {"ok": True}
-        raise RuntimeError(f"Unsupported fake cmux method: {method}")
+        raise RuntimeError(f"Unsupported fake mosaic method: {method}")
 
 
-class FakeCmuxHandler(socketserver.StreamRequestHandler):
+class FakeMosaicHandler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         while True:
             line = self.rfile.readline()
@@ -211,12 +211,12 @@ class FakeCmuxHandler(socketserver.StreamRequestHandler):
             self.wfile.flush()
 
 
-class FakeCmuxUnixServer(socketserver.ThreadingUnixStreamServer):
+class FakeMosaicUnixServer(socketserver.ThreadingUnixStreamServer):
     allow_reuse_address = True
 
-    def __init__(self, socket_path: str, state: FakeCmuxState) -> None:
+    def __init__(self, socket_path: str, state: FakeMosaicState) -> None:
         self.state = state
-        super().__init__(socket_path, FakeCmuxHandler)
+        super().__init__(socket_path, FakeMosaicHandler)
 
 
 def run_cli(
@@ -226,12 +226,12 @@ def run_cli(
     args: list[str],
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_WORKSPACE_ID"] = "workspace:1"
-    env["CMUX_SURFACE_ID"] = "surface:1"
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_WORKSPACE_ID"] = "workspace:1"
+    env["MOSAIC_SURFACE_ID"] = "surface:1"
     env["TMUX_PANE"] = f"%{PANE_ID}"
     env["HOME"] = str(fake_home)
-    env["CMUX_OMO_CMUX_BIN"] = cli_path
+    env["MOSAIC_OMO_MOSAIC_BIN"] = cli_path
     return subprocess.run(
         [cli_path, "--socket", str(socket_path), *args],
         capture_output=True,
@@ -267,7 +267,7 @@ def assert_omo_split_is_listed_and_respawned(
     cli_path: str,
     socket_path: Path,
     fake_home: Path,
-    state: FakeCmuxState,
+    state: FakeMosaicState,
 ) -> None:
     split = run_cli(
         cli_path,
@@ -387,7 +387,7 @@ def assert_caller_pane_respawn_uses_caller_surface(
     cli_path: str,
     socket_path: Path,
     fake_home: Path,
-    state: FakeCmuxState,
+    state: FakeMosaicState,
 ) -> None:
     respawn = run_cli(
         cli_path,
@@ -408,7 +408,7 @@ def assert_caller_pane_respawn_uses_caller_surface(
     respawn_params = state.respawn_params[0]
     if respawn_params.get("surface_id") != SURFACE_ID:
         raise AssertionError(
-            "caller pane respawn should prefer CMUX_SURFACE_ID over the pane's selected tab: "
+            "caller pane respawn should prefer MOSAIC_SURFACE_ID over the pane's selected tab: "
             f"{respawn_params!r}"
         )
     state.respawn_params.clear()
@@ -418,7 +418,7 @@ def assert_public_respawn_uses_same_surface_lifecycle(
     cli_path: str,
     socket_path: Path,
     fake_home: Path,
-    state: FakeCmuxState,
+    state: FakeMosaicState,
 ) -> None:
     state.respawn_params.clear()
     state.sent_text.clear()
@@ -454,17 +454,17 @@ def assert_public_respawn_uses_same_surface_lifecycle(
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
     try:
-        with tempfile.TemporaryDirectory(prefix="cmux-omo-respawn-") as td:
+        with tempfile.TemporaryDirectory(prefix="mosaic-omo-respawn-") as td:
             tmp = Path(td)
-            socket_path = tmp / "fake-cmux.sock"
-            state = FakeCmuxState()
-            server = FakeCmuxUnixServer(str(socket_path), state)
+            socket_path = tmp / "fake-mosaic.sock"
+            state = FakeMosaicState()
+            server = FakeMosaicUnixServer(str(socket_path), state)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             fake_home = tmp / "home"

@@ -36,10 +36,10 @@ export default function GettingStartedPage() {
       <p>{t("dmgDesc")}</p>
 
       <DocsHeading level={3} id="homebrew">{t("homebrew")}</DocsHeading>
-      <CodeBlock lang="bash">{`brew tap emergent-inc/cmux
-brew install --cask cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`brew tap emergent-inc/mosaic
+brew install --cask mosaic`}</CodeBlock>
       <p>{t("updateLater")}</p>
-      <CodeBlock lang="bash">{`brew upgrade --cask cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`brew upgrade --cask mosaic`}</CodeBlock>
 
       <Callout>
         {t.rich("firstLaunchCallout", {
@@ -57,10 +57,10 @@ brew install --cask cmux`}</CodeBlock>
 
       <DocsHeading level={2} id="cli-setup">{t("cliSetup")}</DocsHeading>
       <p>{t("cliDesc")}</p>
-      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/Mosaic.app/Contents/Resources/bin/cmux" /usr/local/bin/cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/Mosaic.app/Contents/Resources/bin/mosaic" /usr/local/bin/mosaic`}</CodeBlock>
       <p>{t("cliThen")}</p>
-      <CodeBlock lang="bash">{`cmux list-workspaces
-cmux notify --title "Build Complete" --body "Your build finished"`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic list-workspaces
+mosaic notify --title "Build Complete" --body "Your build finished"`}</CodeBlock>
 
       <DocsHeading level={2} id="auto-updates">{t("autoUpdates")}</DocsHeading>
       <p>{t("autoUpdatesDesc")}</p>

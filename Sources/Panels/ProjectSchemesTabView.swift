@@ -1,5 +1,5 @@
-import CmuxFoundation
-import CMUXProjectModel
+import MosaicFoundation
+import MosaicProjectModel
 import SwiftUI
 
 /// Schemes tab inside ``ProjectPanelView``.
@@ -49,9 +49,9 @@ struct ProjectSchemesTabView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
                         Text(scheme.name)
-                            .cmuxFont(size: 12, weight: .semibold)
+                            .mosaicFont(size: 12, weight: .semibold)
                         Text(scopeBadgeText(isShared: scheme.isShared))
-                            .cmuxFont(size: 9, weight: .medium)
+                            .mosaicFont(size: 9, weight: .medium)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(
@@ -63,12 +63,12 @@ struct ProjectSchemesTabView: View {
                     HStack(spacing: 8) {
                         if !scheme.runTargetIDs.isEmpty {
                             Text(runSummaryText(for: scheme.runTargetIDs, in: module))
-                                .cmuxFont(size: 10)
+                                .mosaicFont(size: 10)
                                 .foregroundStyle(.secondary)
                         }
                         if !scheme.testTargetIDs.isEmpty {
                             Text(testSummaryText(count: scheme.testTargetIDs.count))
-                                .cmuxFont(size: 10)
+                                .mosaicFont(size: 10)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -90,9 +90,9 @@ struct ProjectSchemesTabView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 8) {
                         Label(selected.scheme.name, systemImage: "play.rectangle.fill")
-                            .cmuxFont(size: 14, weight: .semibold)
+                            .mosaicFont(size: 14, weight: .semibold)
                         Text(scopeBadgeText(isShared: selected.scheme.isShared))
-                            .cmuxFont(size: 10, weight: .medium)
+                            .mosaicFont(size: 10, weight: .medium)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
                             .background(
@@ -118,11 +118,11 @@ struct ProjectSchemesTabView: View {
                     if !selected.scheme.launchArguments.isEmpty {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "projectSchemes.detail.launchArguments", defaultValue: "Launch arguments"))
-                                .cmuxFont(size: 11, weight: .semibold)
+                                .mosaicFont(size: 11, weight: .semibold)
                                 .foregroundStyle(.secondary)
                             ForEach(selected.scheme.launchArguments, id: \.self) { arg in
                                 Text(arg)
-                                    .cmuxFont(size: 11, design: .monospaced)
+                                    .mosaicFont(size: 11, design: .monospaced)
                                     .textSelection(.enabled)
                             }
                         }
@@ -130,11 +130,11 @@ struct ProjectSchemesTabView: View {
                     if !selected.scheme.environmentVariables.isEmpty {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "projectSchemes.detail.environment", defaultValue: "Environment"))
-                                .cmuxFont(size: 11, weight: .semibold)
+                                .mosaicFont(size: 11, weight: .semibold)
                                 .foregroundStyle(.secondary)
                             ForEach(selected.scheme.environmentVariables.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
                                 Text("\(entry.key) = \(entry.value)")
-                                    .cmuxFont(size: 11, design: .monospaced)
+                                    .mosaicFont(size: 11, design: .monospaced)
                                     .textSelection(.enabled)
                             }
                         }
@@ -197,11 +197,11 @@ struct ProjectSchemesTabView: View {
     private func row(label: String, value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
-                .cmuxFont(size: 11, weight: .semibold)
+                .mosaicFont(size: 11, weight: .semibold)
                 .foregroundStyle(.secondary)
                 .frame(width: 110, alignment: .leading)
             Text(value)
-                .cmuxFont(size: 12)
+                .mosaicFont(size: 12)
                 .textSelection(.enabled)
         }
     }

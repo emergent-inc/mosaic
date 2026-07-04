@@ -14,7 +14,7 @@
 # runner that lacks the newer Xcode. Exports DEVELOPER_DIR to GITHUB_ENV.
 set -euo pipefail
 
-APPLICATIONS_DIR="${CMUX_XCODE_APPLICATIONS_DIR:-/Applications}"
+APPLICATIONS_DIR="${MOSAIC_XCODE_APPLICATIONS_DIR:-/Applications}"
 
 # Rank by macOS SDK as maj*1000+min so 26.2 (26002) outranks 15.5 (15005).
 sdk_rank() {

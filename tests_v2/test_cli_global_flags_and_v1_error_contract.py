@@ -10,34 +10,34 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmuxError
+from mosaic import mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "").strip()
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "").strip()
 if not SOCKET_PATH:
-    raise cmuxError("CMUX_SOCKET_PATH is required (expected /tmp/cmux-debug-<tag>.sock)")
-LAST_SOCKET_HINT_PATH = Path("/tmp/cmux-last-socket-path")
+    raise mosaicError("MOSAIC_SOCKET_PATH is required (expected /tmp/mosaic-debug-<tag>.sock)")
+LAST_SOCKET_HINT_PATH = Path("/tmp/mosaic-last-socket-path")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
@@ -57,16 +57,16 @@ def main() -> int:
     version_proc = _run([cli, "--version"])
     version_out = _merged_output(version_proc).lower()
     _must(version_proc.returncode == 0, f"--version should succeed: {version_proc.returncode} {version_out!r}")
-    _must("cmux" in version_out, f"--version output should mention cmux: {version_out!r}")
+    _must("mosaic" in version_out, f"--version output should mention mosaic: {version_out!r}")
 
-    legacy_socket_key = "CMUX_" + "SOCKET"
+    legacy_socket_key = "MOSAIC_" + "SOCKET"
     conflict_env = dict(os.environ)
-    conflict_env["CMUX_SOCKET_PATH"] = SOCKET_PATH
-    conflict_env[legacy_socket_key] = "/tmp/cmux-conflicting-legacy.sock"
+    conflict_env["MOSAIC_SOCKET_PATH"] = SOCKET_PATH
+    conflict_env[legacy_socket_key] = "/tmp/mosaic-conflicting-legacy.sock"
     conflict_version = _run([cli, "--version"], env=conflict_env)
     conflict_version_out = _merged_output(conflict_version).lower()
     _must(conflict_version.returncode == 0, f"--version should ignore socket env conflicts: {conflict_version_out!r}")
-    _must("cmux" in conflict_version_out, f"--version with socket env conflict should mention cmux: {conflict_version_out!r}")
+    _must("mosaic" in conflict_version_out, f"--version with socket env conflict should mention mosaic: {conflict_version_out!r}")
     conflict_help = _run([cli, "--help"], env=conflict_env)
     conflict_help_out = _merged_output(conflict_help).lower()
     _must(conflict_help.returncode == 0, f"--help should ignore socket env conflicts: {conflict_help_out!r}")
@@ -78,11 +78,11 @@ def main() -> int:
     conflict_help_command_help = _run([cli, "help", "--help"], env=conflict_env)
     conflict_help_command_help_out = _merged_output(conflict_help_command_help).lower()
     _must(conflict_help_command_help.returncode == 0, f"help --help should ignore socket env conflicts: {conflict_help_command_help_out!r}")
-    _must("usage: cmux help" in conflict_help_command_help_out, f"help --help should show help command usage: {conflict_help_command_help_out!r}")
+    _must("usage: mosaic help" in conflict_help_command_help_out, f"help --help should show help command usage: {conflict_help_command_help_out!r}")
     conflict_subcommand_help = _run([cli, "ping", "--help"], env=conflict_env)
     conflict_subcommand_help_out = _merged_output(conflict_subcommand_help).lower()
     _must(conflict_subcommand_help.returncode == 0, f"subcommand --help should ignore socket env conflicts: {conflict_subcommand_help_out!r}")
-    _must("usage: cmux ping" in conflict_subcommand_help_out, f"subcommand --help should show command usage: {conflict_subcommand_help_out!r}")
+    _must("usage: mosaic ping" in conflict_subcommand_help_out, f"subcommand --help should show command usage: {conflict_subcommand_help_out!r}")
     for docs_cmd, expected in [
         ([cli, "docs"], "topics:"),
         ([cli, "docs", "settings"], "config files:"),
@@ -103,10 +103,10 @@ def main() -> int:
     conflict_proc = _run([cli, "ping"], env=conflict_env)
     conflict_out = _merged_output(conflict_proc)
     _must(conflict_proc.returncode != 0, f"conflicting socket env should fail: {conflict_out!r}")
-    _must("CMUX_SOCKET_PATH" in conflict_out and "differ" in conflict_out, f"conflict error should name canonical socket env: {conflict_out!r}")
+    _must("MOSAIC_SOCKET_PATH" in conflict_out and "differ" in conflict_out, f"conflict error should name canonical socket env: {conflict_out!r}")
 
-    # Debug builds should auto-resolve the active debug socket via /tmp/cmux-last-socket-path
-    # when CMUX_SOCKET_PATH is not set.
+    # Debug builds should auto-resolve the active debug socket via /tmp/mosaic-last-socket-path
+    # when MOSAIC_SOCKET_PATH is not set.
     hint_backup: str | None = None
     hint_had_file = LAST_SOCKET_HINT_PATH.exists()
     if hint_had_file:
@@ -114,7 +114,7 @@ def main() -> int:
     try:
         LAST_SOCKET_HINT_PATH.write_text(f"{SOCKET_PATH}\n", encoding="utf-8")
         auto_env = dict(os.environ)
-        auto_env.pop("CMUX_SOCKET_PATH", None)
+        auto_env.pop("MOSAIC_SOCKET_PATH", None)
         auto_ping = _run([cli, "ping"], env=auto_env)
         auto_ping_out = _merged_output(auto_ping).lower()
         _must(auto_ping.returncode == 0, f"debug auto socket resolution should succeed: {auto_ping.returncode} {auto_ping_out!r}")
@@ -129,7 +129,7 @@ def main() -> int:
             pass
 
     # Global --password should parse as a flag (not a command name) and still allow non-password sockets.
-    ping_proc = _run([cli, "--socket", SOCKET_PATH, "--password", "ignored-in-cmuxonly", "ping"])
+    ping_proc = _run([cli, "--socket", SOCKET_PATH, "--password", "ignored-in-mosaiconly", "ping"])
     ping_out = _merged_output(ping_proc).lower()
     _must(ping_proc.returncode == 0, f"ping with --password should succeed: {ping_proc.returncode} {ping_out!r}")
     _must("pong" in ping_out, f"ping should still return pong: {ping_out!r}")

@@ -7,11 +7,11 @@ import WebKit
 /// submission pool (consumed by whichever terminal TextBox submits first).
 ///
 /// Only main-frame pages served from a registered diff viewer session (custom
-/// `cmux-diff-viewer://` scheme or the local HTTP server form) may call it;
+/// `mosaic-diff-viewer://` scheme or the local HTTP server form) may call it;
 /// every other page gets a `not_allowed` reply.
 @MainActor
 final class DiffCommentsBridge: NSObject, WKScriptMessageHandlerWithReply {
-    static let handlerName = "cmuxDiffComments"
+    static let handlerName = "mosaicDiffComments"
     static let shared = DiffCommentsBridge()
 
     private static var handlerInstalledKey: UInt8 = 0
@@ -116,17 +116,17 @@ final class DiffCommentsBridge: NSObject, WKScriptMessageHandlerWithReply {
               let token = diffViewerToken(from: frameInfo.request.url) else {
             return false
         }
-        return CmuxDiffViewerURLSchemeHandler.shared.hasActiveSession(token: token)
+        return MosaicDiffViewerURLSchemeHandler.shared.hasActiveSession(token: token)
     }
 
     /// Extracts the diff viewer session token from a live page URL. Unlike
     /// `diffViewerComponents(from:)` this ignores the fragment: the viewer's
-    /// in-page router rewrites `#cmux-diff-viewer` to `#/cmux-diff-viewer`
+    /// in-page router rewrites `#mosaic-diff-viewer` to `#/mosaic-diff-viewer`
     /// once the app boots, so live bridge messages carry a different fragment
     /// than the URL the page was opened with. Token registration (checked by
     /// the caller) remains the trust authority.
     static func diffViewerToken(from url: URL?) -> String? {
-        if let components = CmuxDiffViewerURLSchemeHandler.diffViewerComponents(from: url) {
+        if let components = MosaicDiffViewerURLSchemeHandler.diffViewerComponents(from: url) {
             return components.token
         }
         guard let url,
@@ -137,8 +137,8 @@ final class DiffCommentsBridge: NSObject, WKScriptMessageHandlerWithReply {
         let rawPath = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath ?? url.path
         let parts = rawPath.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard parts.count >= 2,
-              CmuxDiffViewerURLSchemeHandler.isValidToken(parts[0]),
-              CmuxDiffViewerURLSchemeHandler.isValidRequestPath("/" + parts.dropFirst().joined(separator: "/")) else {
+              MosaicDiffViewerURLSchemeHandler.isValidToken(parts[0]),
+              MosaicDiffViewerURLSchemeHandler.isValidRequestPath("/" + parts.dropFirst().joined(separator: "/")) else {
             return nil
         }
         return parts[0]

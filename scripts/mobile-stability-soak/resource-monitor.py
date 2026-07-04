@@ -9,10 +9,10 @@ import time
 from pathlib import Path
 
 
-TAG = os.environ.get("CMUX_TAG", "swmob")
+TAG = os.environ.get("MOSAIC_TAG", "swmob")
 DURATION_SECONDS = int(os.environ.get("SOAK_SECONDS", "43200"))
 INTERVAL_SECONDS = float(os.environ.get("RESOURCE_SAMPLE_INTERVAL", "60"))
-soak_root = Path(os.environ.get("SOAK_ROOT", f"/tmp/cmux-mobile-soak-{TAG}"))
+soak_root = Path(os.environ.get("SOAK_ROOT", f"/tmp/mosaic-mobile-soak-{TAG}"))
 LOG_PATH = Path(os.environ.get("RESOURCE_LOG", soak_root / "resources.jsonl"))
 STATUS_PATH = Path(os.environ.get("RESOURCE_STATUS", soak_root / "resources.status"))
 IPHONE_SIM_ID = os.environ.get("IPHONE_SIM_ID", "")
@@ -82,20 +82,20 @@ def all_processes() -> list[tuple[int, str]]:
 
 def find_pid(label: str, processes: list[tuple[int, str]]) -> int | None:
     if label == "mac":
-        needle = f"cmux-{TAG}/Build/Products/Debug/Mosaic DEV {TAG}.app/Contents/MacOS/Mosaic DEV"
+        needle = f"mosaic-{TAG}/Build/Products/Debug/Mosaic DEV {TAG}.app/Contents/MacOS/Mosaic DEV"
         for pid, command in processes:
             if needle in command:
                 return pid
     elif label == "iphone":
         candidates: list[int] = []
         for pid, command in processes:
-            if f"/Devices/{IPHONE_SIM_ID}/" in command and "Mosaic.app/cmux" in command:
+            if f"/Devices/{IPHONE_SIM_ID}/" in command and "Mosaic.app/mosaic" in command:
                 candidates.append(pid)
         return max(candidates) if candidates else None
     elif label == "ipad":
         candidates: list[int] = []
         for pid, command in processes:
-            if f"/Devices/{IPAD_SIM_ID}/" in command and "Mosaic.app/cmux" in command:
+            if f"/Devices/{IPAD_SIM_ID}/" in command and "Mosaic.app/mosaic" in command:
                 candidates.append(pid)
         return max(candidates) if candidates else None
     return None

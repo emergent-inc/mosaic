@@ -12,7 +12,7 @@ python3 -m py_compile "$ROOT_DIR/scripts/ci/upload-r2-object.py"
 AWS_ACCESS_KEY_ID=AKIDEXAMPLE \
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY \
 AWS_DEFAULT_REGION=auto \
-CMUX_R2_UPLOAD_AMZ_DATE=20260102T030405Z \
+MOSAIC_R2_UPLOAD_AMZ_DATE=20260102T030405Z \
 python3 "$ROOT_DIR/scripts/ci/upload-r2-object.py" \
   --file "$TMP_DIR/appcast.xml" \
   --endpoint-url "https://example-account.r2.cloudflarestorage.com" \

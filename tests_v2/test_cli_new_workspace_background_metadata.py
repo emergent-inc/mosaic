@@ -13,46 +13,46 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
 
 def _run_cli(cli: str, args: list[str]) -> str:
     env = dict(os.environ)
-    env.pop("CMUX_WORKSPACE_ID", None)
-    env.pop("CMUX_SURFACE_ID", None)
-    env.pop("CMUX_TAB_ID", None)
+    env.pop("MOSAIC_WORKSPACE_ID", None)
+    env.pop("MOSAIC_SURFACE_ID", None)
+    env.pop("MOSAIC_TAB_ID", None)
 
     cmd = [cli, "--socket", SOCKET_PATH] + args
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
     if proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"CLI failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"CLI failed ({' '.join(cmd)}): {merged}")
     return (proc.stdout or "").strip()
 
 
@@ -81,7 +81,7 @@ def _wait_for_sidebar_git_branch(cli: str, workspace: str, timeout: float = 15.0
             return state
         time.sleep(0.1)
 
-    raise cmuxError(
+    raise mosaicError(
         "Timed out waiting for background git metadata on new workspace. "
         f"Last sidebar-state: {last_state!r}"
     )
@@ -99,14 +99,14 @@ def _create_git_repo(root: Path) -> tuple[Path, str]:
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        ["git", "config", "user.name", "cmux-test"],
+        ["git", "config", "user.name", "mosaic-test"],
         cwd=repo,
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        ["git", "config", "user.email", "cmux-test@example.com"],
+        ["git", "config", "user.email", "mosaic-test@example.com"],
         cwd=repo,
         check=True,
         stdout=subprocess.DEVNULL,
@@ -139,13 +139,13 @@ def _create_git_repo(root: Path) -> tuple[Path, str]:
 
 def main() -> int:
     cli = _find_cli_binary()
-    temp_root = Path(tempfile.mkdtemp(prefix="cmux_issue_915_"))
+    temp_root = Path(tempfile.mkdtemp(prefix="mosaic_issue_915_"))
     created_workspace: str | None = None
 
     try:
         repo_path, expected_branch = _create_git_repo(temp_root)
 
-        with cmux(SOCKET_PATH) as c:
+        with mosaic(SOCKET_PATH) as c:
             baseline_workspace = c.current_workspace()
 
             created = _run_cli(cli, ["new-workspace", "--cwd", str(repo_path)])
