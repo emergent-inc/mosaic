@@ -1143,7 +1143,8 @@ final class CollaborationRuntime {
         let alert = NSAlert()
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.signInRequiredTitle
-        alert.addButton(withTitle: CollaborationStrings.signIn)
+        let signInButton = alert.addButton(withTitle: CollaborationStrings.signIn)
+        styleAccentAlertButtonTitleBlack(signInButton)
         alert.addButton(withTitle: CollaborationStrings.cancel)
         guard alert.runModal() == .alertFirstButtonReturn else {
             return false
@@ -2588,7 +2589,8 @@ final class CollaborationRuntime {
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.joinSession
         alert.informativeText = CollaborationStrings.joinMessage
-        alert.addButton(withTitle: CollaborationStrings.joinSession)
+        let joinButton = alert.addButton(withTitle: CollaborationStrings.joinSession)
+        styleAccentAlertButtonTitleBlack(joinButton)
         alert.addButton(withTitle: CollaborationStrings.cancel)
         let joinButton = alert.buttons[0]
 
@@ -2609,6 +2611,24 @@ final class CollaborationRuntime {
 
     private func configureCollaborationAlertChrome(_ alert: NSAlert) {
         alert.icon = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+    }
+
+    /// Forces an alert button's title to render in bold black. The default alert button
+    /// takes the yellow accent color as its background, and the system-drawn white
+    /// title is illegible on yellow — matching the black-on-yellow `.mosaicAccent`
+    /// SwiftUI buttons keeps the two surfaces consistent.
+    private func styleAccentAlertButtonTitleBlack(_ button: NSButton) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let pointSize = button.font?.pointSize ?? NSFont.systemFontSize
+        button.attributedTitle = NSAttributedString(
+            string: button.title,
+            attributes: [
+                .foregroundColor: NSColor.black,
+                .paragraphStyle: paragraph,
+                .font: NSFont.systemFont(ofSize: pointSize, weight: .bold),
+            ]
+        )
     }
 
     private func runCollaborationStartChooser() -> NSApplication.ModalResponse {
@@ -2780,7 +2800,8 @@ final class CollaborationRuntime {
         configureCollaborationAlertChrome(alert)
         alert.messageText = CollaborationStrings.sessionCreatedTitle
         alert.informativeText = CollaborationStrings.sessionCreatedMessage(code: normalizedCode)
-        alert.addButton(withTitle: CollaborationStrings.copyCode)
+        let copyButton = alert.addButton(withTitle: CollaborationStrings.copyCode)
+        styleAccentAlertButtonTitleBlack(copyButton)
         alert.addButton(withTitle: CollaborationStrings.done)
 
         let stack = NSStackView()
@@ -4458,6 +4479,10 @@ enum CollaborationStrings {
         String(localized: "collaboration.action.startSession", defaultValue: "Start session")
     }
 
+    static var endSession: String {
+        String(localized: "collaboration.action.endSession", defaultValue: "End session")
+    }
+
     static var sessionPopoverTitle: String {
         String(localized: "collaboration.session.popover.title", defaultValue: "Collaboration Session")
     }
@@ -4554,7 +4579,7 @@ enum CollaborationStrings {
     }
 
     static var stopSharingTerminal: String {
-        String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop session")
+        String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop sharing")
     }
 
     static var sharingTerminal: String {

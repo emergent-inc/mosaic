@@ -39,23 +39,64 @@ struct TrackedButton<Label: View>: View {
 /// text stays legible.
 struct MosaicAccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.black)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.accentColor)
-            )
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        MosaicAccentButtonLabel(configuration: configuration)
+    }
+
+    private struct MosaicAccentButtonLabel: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.accentColor)
+                )
+                .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
     }
 }
 
 extension ButtonStyle where Self == MosaicAccentButtonStyle {
     /// Yellow-accent prominent button with black (not white) label text.
     static var mosaicAccent: MosaicAccentButtonStyle { MosaicAccentButtonStyle() }
+}
+
+/// Secondary prominent button: neutral grey bezel with white label text. Used for
+/// non-primary actions that should read as less emphatic than `.mosaicAccent`.
+struct MosaicSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        MosaicSecondaryButtonLabel(configuration: configuration)
+    }
+
+    private struct MosaicSecondaryButtonLabel: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.gray.opacity(0.4))
+                )
+                .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+    }
+}
+
+extension ButtonStyle where Self == MosaicSecondaryButtonStyle {
+    /// Grey secondary button with white label text.
+    static var mosaicSecondary: MosaicSecondaryButtonStyle { MosaicSecondaryButtonStyle() }
 }
 
 /// A checkbox toggle style that fills the box with the yellow accent when on and
