@@ -1194,9 +1194,6 @@ struct TabBarView: View {
     /// to the viewport width so the flexible tabs distribute the slack.
     @ViewBuilder
     private var tabScrollContent: some View {
-        #if DEBUG
-        let _ = bonsplitAvatarDebugLog("tabScrollContent eval pane=\(ObjectIdentifier(pane)) tabs=[\(pane.tabs.map { "\($0.id.uuidString.prefix(4)):\($0.iconImageData?.count ?? -1):\($0.icon ?? "nil")" }.joined(separator: " "))]")
-        #endif
         HStack(spacing: TabBarMetrics.tabSpacing) {
             Color.clear
                 .frame(width: 0, height: tabBarHeight)
