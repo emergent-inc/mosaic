@@ -59,9 +59,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Scan cmux pairing QR codes from your Mac terminal.</string>
+	<string>Scan Mosaic pairing QR codes from your Mac terminal.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Connect to your Mac on the local network for cmux mobile pairing and terminal sync.</string>
+	<string>Connect to your Mac on the local network for Mosaic mobile pairing and terminal sync.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record audio to transcribe your voice into the message box.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

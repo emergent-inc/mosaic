@@ -15,7 +15,7 @@ The public installable is not a Debug build. It is the `mosaic-macos.dmg` asset 
 
 Use this when validating a worktree change on the same machine.
 
-- Product: `cmux DEV <tag>.app`
+- Product: `Mosaic DEV <tag>.app`
 - Configuration: Debug
 - Bundle ID: tag-scoped debug bundle ID
 - Socket: tag-scoped debug socket
@@ -27,7 +27,7 @@ Use this when validating a worktree change on the same machine.
 Use this when producing the app others download.
 
 - Product: `mosaic-macos.dmg`
-- Contents: signed and notarized `cmux.app`
+- Contents: signed and notarized `Mosaic.app`
 - Configuration: Release, universal macOS app
 - Bundle ID: `mosaic.com.emergent.app`
 - Update feed: Sparkle `appcast.xml`
@@ -37,7 +37,7 @@ Use this when producing the app others download.
 Nightly has the same shape but a different channel:
 
 - Product: `mosaic-nightly-macos.dmg`
-- Contents: signed and notarized `cmux NIGHTLY.app`
+- Contents: signed and notarized `Mosaic NIGHTLY.app`
 - Bundle ID: `mosaic.com.emergent.app.nightly`
 - Update feed: `https://updates.mosaic.inc/nightly/appcast.xml`
 - Release target: the mutable `nightly` GitHub Release
@@ -143,7 +143,7 @@ The workflow deliberately installs `create-dmg` so self-hosted runners do not ne
 The app is built as a universal Release app:
 
 ```text
-build-universal/Build/Products/Release/cmux.app
+build-universal/Build/Products/Release/Mosaic.app
 ```
 
 The workflow injects Sparkle metadata into `Info.plist`:
@@ -158,7 +158,7 @@ The workflow also embeds release channel metadata and removes Sparkle sandbox XP
 The release profile from `APPLE_RELEASE_PROVISIONING_PROFILE_BASE64` is decoded and embedded at:
 
 ```text
-cmux.app/Contents/embedded.provisionprofile
+Mosaic.app/Contents/embedded.provisionprofile
 ```
 
 CI validates that the profile app identifier matches `APPLE_TEAM_ID` plus the release bundle id:
@@ -179,7 +179,7 @@ The signing certificate is imported into an ephemeral `build.keychain`, and Appl
 
 ### 6. Notarize The App
 
-CI submits a zip of `cmux.app` to Apple notarization:
+CI submits a zip of `Mosaic.app` to Apple notarization:
 
 ```bash
 xcrun notarytool submit cmux-notary.zip --wait
@@ -387,7 +387,7 @@ https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg
 Nightly uses:
 
 - bundle ID `mosaic.com.emergent.app.nightly`
-- app display name `cmux NIGHTLY`
+- app display name `Mosaic NIGHTLY`
 - `cmux.nightly.entitlements`
 - `APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64`
 - Sparkle feed `https://updates.mosaic.inc/nightly/appcast.xml`
@@ -405,7 +405,7 @@ Use a tagged Debug reload when validating source changes locally:
 The tag creates an isolated app name, bundle ID, socket, sidebar extension point, and derived data path. For the `run-current` tag, the expected build product is:
 
 ```text
-~/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/cmux DEV run-current.app
+~/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/Mosaic DEV run-current.app
 ```
 
 If `xcode-select -p` points at Command Line Tools, `xcodebuild` will fail with:
@@ -426,7 +426,7 @@ A successful run prints:
 ==> reload succeeded
 
 App path:
-  /Users/dorsa/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/cmux DEV run-current.app
+  /Users/dorsa/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/Mosaic DEV run-current.app
 ```
 
 To share the launched app in chat, convert that `App path:` line to a `file://` URL and URL-encode spaces as `%20`:
@@ -453,7 +453,7 @@ The working shape mirrors the known-openable local `v1.dmg` style:
 
 - DMG container: unsigned
 - DMG root: exactly one `.app`
-- App bundle name: keep the tagged Debug app name, for example `cmux DEV session-code-ui.app`
+- App bundle name: keep the tagged Debug app name, for example `Mosaic DEV session-code-ui.app`
 - No `Applications` symlink
 - No copied app from an already-mounted DMG
 - Source app: the freshly rebuilt DerivedData product from `reload.sh`
@@ -474,14 +474,14 @@ Stage the rebuilt `.app` as the only root entry, then create a compressed read-o
 
 ```bash
 TAG="session-code-ui"
-APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG}/Build/Products/Debug/cmux DEV ${TAG}.app"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG}/Build/Products/Debug/Mosaic DEV ${TAG}.app"
 OUT_DIR="build/local-dmg"
 STAGING="$OUT_DIR/${TAG}-v1-style-staging"
 DMG="$OUT_DIR/cmux-${TAG}-v1-style.dmg"
 
 rm -rf "$STAGING" "$DMG"
 mkdir -p "$STAGING"
-ditto "$APP_PATH" "$STAGING/cmux DEV ${TAG}.app"
+ditto "$APP_PATH" "$STAGING/Mosaic DEV ${TAG}.app"
 hdiutil create -volname "cmux ${TAG//-/ }" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
 rm -rf "$STAGING"
 shasum -a 256 "$DMG"
@@ -504,8 +504,8 @@ Mount the new DMG and validate the app inside the mounted image, not just the De
 hdiutil attach -readonly -nobrowse "build/local-dmg/cmux-session-code-ui-v1-style.dmg"
 CMUX_INSTALLABLE_REQUIRE_NOTARIZATION=0 CMUX_INSTALLABLE_REQUIRE_SPCTL=0 \
   ./scripts/smoke-installable-artifact.sh --channel debug \
-  "/Volumes/cmux session code ui/cmux DEV session-code-ui.app"
-open -n "/Volumes/cmux session code ui/cmux DEV session-code-ui.app"
+  "/Volumes/cmux session code ui/Mosaic DEV session-code-ui.app"
+open -n "/Volumes/cmux session code ui/Mosaic DEV session-code-ui.app"
 ```
 
 The debug artifact smoke should report:
@@ -581,6 +581,6 @@ If release CI cannot find the prebuilt GhosttyKit for the current submodule SHA,
 2. Do not commit `*.dmg` files.
 3. Do not commit generated Worker `dist/` output.
 4. Do not overwrite stable release assets unless doing a documented emergency reroll.
-5. Do not use bare `xcodebuild` or untagged `cmux DEV.app` for local agent verification.
+5. Do not use bare `xcodebuild` or untagged `Mosaic DEV.app` for local agent verification.
 6. Do not claim multiplayer is ready unless the production relay deploy and create/connect smoke pass.
 7. Do not update download URLs unless every user-facing download surface is updated consistently.

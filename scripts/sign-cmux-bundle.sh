@@ -6,7 +6,7 @@
 #
 # Example:
 #   scripts/sign-cmux-bundle.sh \
-#     "build-universal/Build/Products/Release/cmux NIGHTLY.app" \
+#     "build-universal/Build/Products/Release/Mosaic NIGHTLY.app" \
 #     cmux.nightly.entitlements \
 #     "Developer ID Application: emergent.inc (7WLXT3NR37)"
 #

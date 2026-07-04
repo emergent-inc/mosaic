@@ -64,13 +64,13 @@ function HomeContent() {
           <BrandLogoLink className="shrink-0">
             <img
               src="/logo.png"
-              alt="cmux icon"
+              alt="Mosaic icon"
               width={48}
               height={48}
               className="rounded-xl"
             />
           </BrandLogoLink>
-          <h1 className="text-2xl font-semibold tracking-tight">cmux</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Mosaic</h1>
         </div>
 
         {/* Tagline */}
@@ -455,7 +455,7 @@ function HomeContent() {
                   ),
                   mailLink: (chunks) => (
                     <a
-                      href="mailto:contact@emergent.inc?subject=%5Bcmux%20feature%20request%20landing%5D&body=Hi%20cmux%20team%2C%20"
+                      href="mailto:contact@emergent.inc?subject=%5BMosaic%20feature%20request%20landing%5D&body=Hi%20Mosaic%20team%2C%20"
                       className={linkClass}
                     >
                       {chunks}

@@ -165,7 +165,7 @@ fi
 WORKSPACE="$IOS_DIR/cmux.xcworkspace"
 SCHEME="cmux-ios"
 TAG_SLUG="$(sanitize_tag "$TAG")"
-DISPLAY_NAME="cmux DEV $TAG"
+DISPLAY_NAME="Mosaic DEV $TAG"
 BUNDLE_ID="dev.cmux.ios.$TAG_SLUG"
 DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData/cmux-ios-$TAG_SLUG"
 DESTINATION="platform=iOS Simulator,name=$SIMULATOR_NAME"

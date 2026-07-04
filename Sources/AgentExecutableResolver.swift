@@ -267,8 +267,9 @@ struct AgentExecutableResolver {
         let components = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
         guard components.count >= 4 else { return nil }
         for index in components.indices {
+            let lowercased = components[index].lowercased()
             guard components[index].hasSuffix(".app"),
-                  components[index].lowercased().contains("cmux"),
+                  lowercased.contains("cmux") || lowercased.contains("mosaic"),
                   components.indices.contains(index + 3),
                   components[index + 1] == "Contents",
                   components[index + 2] == "Resources",

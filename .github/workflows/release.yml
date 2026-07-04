@@ -304,15 +304,15 @@ jobs:
           set -euo pipefail
           ./scripts/install-prebuilt-ghostty-cli-helper.sh \
             ghostty-cli-helper/ghostty \
-            build-universal/Build/Products/Release/cmux.app
+            build-universal/Build/Products/Release/Mosaic.app
 
       - name: Verify binary architectures
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
           set -euo pipefail
-          APP_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/MacOS/cmux"
-          CLI_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/cmux"
-          HELPER_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/ghostty"
+          APP_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/MacOS/Mosaic"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
+          HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           APP_ARCHS="$(lipo -archs "$APP_BINARY")"
           CLI_ARCHS="$(lipo -archs "$CLI_BINARY")"
           HELPER_ARCHS="$(lipo -archs "$HELPER_BINARY")"
@@ -330,7 +330,7 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
           set -euo pipefail
-          CLI_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/cmux"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
           [ -x "$CLI_BINARY" ] || { echo "cmux CLI binary not found at $CLI_BINARY" >&2; exit 1; }
           CMUX_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
 
@@ -338,13 +338,13 @@ jobs:
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
           set -euo pipefail
-          HELPER_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/ghostty"
+          HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           [ -x "$HELPER_BINARY" ] || { echo "Ghostty theme picker helper not found at $HELPER_BINARY" >&2; exit 1; }
 
       - name: Inject Sparkle keys into Info.plist
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         run: |
-          APP_PLIST="build-universal/Build/Products/Release/cmux.app/Contents/Info.plist"
+          APP_PLIST="build-universal/Build/Products/Release/Mosaic.app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" "$APP_PLIST" >/dev/null 2>&1 || true
           /usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$APP_PLIST" >/dev/null 2>&1 || true
           echo "Adding SUPublicEDKey to Info.plist..."
@@ -394,7 +394,7 @@ jobs:
             echo "Missing APPLE_TEAM_ID secret" >&2
             exit 1
           fi
-          APP_PATH="build-universal/Build/Products/Release/cmux.app"
+          APP_PATH="build-universal/Build/Products/Release/Mosaic.app"
           PROFILE_PATH="$APP_PATH/Contents/embedded.provisionprofile"
           TMP_PROFILE="$(mktemp /tmp/cmux-release-profile.XXXXXX)"
           TMP_PLIST="$(mktemp /tmp/cmux-release-profile.XXXXXX.plist)"
@@ -435,7 +435,7 @@ jobs:
             echo "Missing APPLE_TEAM_ID secret" >&2
             exit 1
           fi
-          APP_PATH="build-universal/Build/Products/Release/cmux.app"
+          APP_PATH="build-universal/Build/Products/Release/Mosaic.app"
           ENTITLEMENTS="$RUNNER_TEMP/mosaic.release.entitlements"
           ./scripts/resolve-app-entitlements.sh \
             cmux.release.entitlements \
@@ -458,8 +458,8 @@ jobs:
             echo "Missing notarization secrets (APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID)" >&2
             exit 1
           fi
-          APP_PATH="build-universal/Build/Products/Release/cmux.app"
-          ZIP_SUBMIT="cmux-notary.zip"
+          APP_PATH="build-universal/Build/Products/Release/Mosaic.app"
+          ZIP_SUBMIT="mosaic-notary.zip"
           DMG_RELEASE="mosaic-macos.dmg"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_SUBMIT"
           APP_SUBMIT_JSON="$(xcrun notarytool submit "$ZIP_SUBMIT" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --output-format json)"
@@ -483,7 +483,7 @@ jobs:
             --no-code-sign \
             "$APP_PATH" \
             ./
-          mv ./cmux*.dmg "$DMG_RELEASE"
+          mv ./Mosaic*.dmg "$DMG_RELEASE"
           /usr/bin/codesign --force --timestamp --keychain build.keychain \
             --sign "$APPLE_SIGNING_IDENTITY" \
             "$DMG_RELEASE"

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "EULA — cmux",
+  title: "EULA — Mosaic",
   description: "End-User License Agreement for cmux",
   alternates: { canonical: "https://mosaic.inc/eula" },
 };

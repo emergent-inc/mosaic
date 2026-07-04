@@ -5,10 +5,10 @@ import CmuxWorkspaces
 import SwiftUI
 import Testing
 
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
-#elseif canImport(cmux)
-@testable import cmux
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
 #endif
 
 struct WindowAppearanceSnapshotPaneBackgroundTests {
