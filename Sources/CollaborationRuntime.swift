@@ -751,6 +751,15 @@ final class CollaborationRuntime {
     /// Incoming shared-session invites delivered to this user's inbox (the
     /// team "no codes" directory-sharing surface).
     private(set) var incomingSharedSessions: [CollaborationIncomingSession] = []
+    /// The most recent genuinely-new invite that should be auto-surfaced as an
+    /// alert anchored to the session pill. Cleared once handled/dismissed.
+    private(set) var incomingInviteAlert: CollaborationIncomingSession?
+    /// Bumped whenever `incomingInviteAlert` is set to a new invite, so a view
+    /// can trigger presentation via `.onChange` without re-alerting on refetch.
+    private(set) var incomingInviteAlertToken = 0
+    /// Session ids we have already surfaced, so a refetch of the same invite
+    /// does not re-alert.
+    @ObservationIgnored private var seenIncomingSessionIDs: Set<String> = []
 
     /// Short-lived www-issued join grants keyed by relay room. Attached to the
     /// relay connect URL so the relay admits the connection.
@@ -759,6 +768,10 @@ final class CollaborationRuntime {
     /// teammate (via the org directory) into an already-created session.
     @ObservationIgnored private var sessionDescriptorsByRoom: [String: String] = [:]
     @ObservationIgnored private var incomingSharedSessionsPollTask: Task<Void, Never>?
+    /// Persistent relay WebSocket that pushes invite nudges for the signed-in
+    /// user, plus the user id it is bound to (so we restart on user change).
+    @ObservationIgnored private var inboxRealtimeTask: Task<Void, Never>?
+    @ObservationIgnored private var inboxRealtimeUserID: String?
 
     private var peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
@@ -1377,6 +1390,7 @@ final class CollaborationRuntime {
             await self?.refreshCollaborationEntitlements()
         }
         startIncomingSharedSessionsPolling()
+        startInboxRealtimeSubscription()
     }
 
     /// Presents the org-directory teammate picker for the active session and,
@@ -3788,6 +3802,7 @@ final class CollaborationRuntime {
                 inviteeUserId: userID,
                 relayURL: relayURLString
             )
+            await notifyInboxRealtime(inviteeUserID: userID)
             return true
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -3799,11 +3814,31 @@ final class CollaborationRuntime {
     func refreshIncomingSharedSessions() async {
         guard let token = await collaborationAccessToken() else {
             incomingSharedSessions = []
+            seenIncomingSessionIDs = []
+            incomingInviteAlert = nil
             return
         }
         if let invites = try? await collaborationBackendClient.inbox(accessToken: token) {
+            let previouslySeen = seenIncomingSessionIDs
+            let currentIDs = Set(invites.map(\.session))
             incomingSharedSessions = invites
+            seenIncomingSessionIDs = currentIDs
+            // Auto-surface only genuinely new invites, so a routine refetch of an
+            // invite the user already saw does not re-pop the alert.
+            if let latestNew = invites.first(where: { !previouslySeen.contains($0.session) }) {
+                incomingInviteAlert = latestNew
+                incomingInviteAlertToken &+= 1
+            } else if let current = incomingInviteAlert, !currentIDs.contains(current.session) {
+                // The pending alert was accepted or withdrawn elsewhere; clear it.
+                incomingInviteAlert = nil
+            }
         }
+    }
+
+    /// Dismiss the auto-surfaced invite alert without joining. The invite stays
+    /// in the inbox (badge/popover) until accepted or withdrawn.
+    func dismissIncomingInviteAlert() {
+        incomingInviteAlert = nil
     }
 
     /// Accept an incoming shared session: swap the descriptor for a join grant
@@ -3823,6 +3858,9 @@ final class CollaborationRuntime {
             storeGrant(result.grant, forRoom: result.room)
             let connection = await connect(sessionID: result.room, code: result.code ?? result.room)
             incomingSharedSessions.removeAll { $0.session == invite.session }
+            if incomingInviteAlert?.session == invite.session {
+                incomingInviteAlert = nil
+            }
             return connection != nil
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -3835,7 +3873,10 @@ final class CollaborationRuntime {
         incomingSharedSessionsPollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 await self?.refreshIncomingSharedSessions()
-                try? await Task.sleep(for: .seconds(5))
+                // Realtime relay nudges (startInboxRealtimeSubscription) deliver
+                // invites near-instantly; this poll is only a slow safety net for
+                // when the WebSocket is down or a nudge was missed while offline.
+                try? await Task.sleep(for: .seconds(60))
             }
         }
     }
@@ -3843,6 +3884,119 @@ final class CollaborationRuntime {
     func stopIncomingSharedSessionsPolling() {
         incomingSharedSessionsPollTask?.cancel()
         incomingSharedSessionsPollTask = nil
+    }
+
+    // MARK: - Realtime inbox (relay nudge → www refetch)
+
+    /// Opens a persistent relay WebSocket keyed by the signed-in user so invite
+    /// alerts arrive in near real time. The relay only signals "check your
+    /// inbox"; the authoritative invite list is always refetched from www.
+    func startInboxRealtimeSubscription() {
+        let userID = AppDelegate.shared?.auth?.coordinator.currentUser?.id
+        guard let userID, !userID.isEmpty else {
+            stopInboxRealtimeSubscription()
+            return
+        }
+        if inboxRealtimeTask != nil, inboxRealtimeUserID == userID { return }
+        stopInboxRealtimeSubscription()
+        inboxRealtimeUserID = userID
+        inboxRealtimeTask = Task { @MainActor [weak self] in
+            await self?.runInboxRealtimeLoop(userID: userID)
+        }
+    }
+
+    func stopInboxRealtimeSubscription() {
+        inboxRealtimeTask?.cancel()
+        inboxRealtimeTask = nil
+        inboxRealtimeUserID = nil
+    }
+
+    private func runInboxRealtimeLoop(userID: String) async {
+        var backoff: Duration = .seconds(1)
+        while !Task.isCancelled {
+            guard let url = inboxConnectURL(userID: userID) else { return }
+            let task = URLSession.shared.webSocketTask(with: url)
+            task.resume()
+            // Reconcile on connect so we never depend solely on a live nudge.
+            await refreshIncomingSharedSessions()
+            let heartbeat = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(20))
+                    if Task.isCancelled { return }
+                    do {
+                        try await task.send(.string("{\"type\":\"inbox.heartbeat\"}"))
+                    } catch {
+                        return
+                    }
+                }
+            }
+            let start = ContinuousClock.now
+            await receiveInboxMessages(on: task)
+            heartbeat.cancel()
+            task.cancel(with: .goingAway, reason: nil)
+            if Task.isCancelled { return }
+            // A long-lived connection resets the backoff; rapid drops back off.
+            if ContinuousClock.now - start > .seconds(30) {
+                backoff = .seconds(1)
+            }
+            try? await Task.sleep(for: backoff)
+            backoff = min(backoff * 2, .seconds(30))
+        }
+    }
+
+    private func receiveInboxMessages(on task: URLSessionWebSocketTask) async {
+        while !Task.isCancelled {
+            do {
+                let message = try await task.receive()
+                if inboxMessageIsNudge(message) {
+                    await refreshIncomingSharedSessions()
+                }
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func inboxMessageIsNudge(_ message: URLSessionWebSocketTask.Message) -> Bool {
+        let text: String
+        switch message {
+        case .string(let value):
+            text = value
+        case .data(let data):
+            text = String(decoding: data, as: UTF8.self)
+        @unknown default:
+            return false
+        }
+        guard let data = text.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = object["type"] as? String else {
+            return false
+        }
+        return type == "inbox.invite"
+    }
+
+    private func inboxConnectURL(userID: String) -> URL? {
+        guard var components = URLComponents(string: relayURLString) else { return nil }
+        components.scheme = components.scheme == "https" ? "wss" : "ws"
+        components.path = "/v1/collaboration/inbox/connect"
+        components.queryItems = [URLQueryItem(name: "userID", value: userID)]
+        return components.url
+    }
+
+    /// Best-effort realtime nudge to a teammate's inbox so they refetch invites
+    /// immediately instead of waiting for the safety poll. Failures are ignored:
+    /// www already holds the authoritative invite.
+    private func notifyInboxRealtime(inviteeUserID: String) async {
+        guard var components = URLComponents(string: relayURLString) else { return }
+        components.path = "/v1/collaboration/inbox/notify"
+        guard let url = components.url else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONSerialization.data(
+            withJSONObject: ["inviteeUserId": inviteeUserID]
+        )
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     private func connect(sessionID: String, code: String) async -> CollaborationRelayConnection? {
@@ -5502,6 +5656,17 @@ enum CollaborationStrings {
 
     static var incomingSessionJoin: String {
         String(localized: "collaboration.inbox.join", defaultValue: "Join")
+    }
+
+    static var incomingInviteAlertTitle: String {
+        String(
+            localized: "collaboration.inbox.alert.title",
+            defaultValue: "Incoming session invite"
+        )
+    }
+
+    static var incomingInviteAlertDismiss: String {
+        String(localized: "collaboration.inbox.alert.dismiss", defaultValue: "Dismiss")
     }
 
     static func incomingSessionSubtitle(ownerName: String, orgName: String) -> String {

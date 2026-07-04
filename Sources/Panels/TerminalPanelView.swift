@@ -19,6 +19,7 @@ struct TerminalPanelView: View {
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
     @State private var isTerminalSessionPopoverPresented = false
     @State private var isTerminalRecipientPopoverPresented = false
+    @State private var incomingInviteAlert: CollaborationIncomingSession?
     @State private var isTerminalSessionPillHovered = false
     @State private var isAgentRoomButtonHovered = false
     @State private var isAgentRoomWireDropTargeted = false
@@ -229,9 +230,13 @@ struct TerminalPanelView: View {
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalSessionPillLabel(state: state)
+        // Read the inbox count in the pill body so background inbox updates
+        // (poll or realtime nudge) re-render the always-visible badge.
+        let incomingInviteCount = CollaborationRuntime.shared.incomingSharedSessions.count
         let pillModel = CollaborationTerminalSessionPillModel(
             workspaceSessionCode: state.workspaceSessionCode,
-            participantCount: CollaborationRuntime.shared.participantSnapshots(for: panel).count
+            participantCount: CollaborationRuntime.shared.participantSnapshots(for: panel).count,
+            incomingInviteCount: incomingInviteCount
         )
         let hoverColor = Color.orange
         let foregroundColor = Color.orange
@@ -276,6 +281,13 @@ struct TerminalPanelView: View {
             }
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            if pillModel.showsIncomingBadge {
+                incomingInviteBadge(count: pillModel.incomingInviteCount)
+                    .allowsHitTesting(false)
+                    .offset(x: 5, y: -5)
+            }
+        }
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TerminalCollaborationSessionPill")
@@ -283,6 +295,30 @@ struct TerminalPanelView: View {
             isTerminalSessionPillHovered = hovering
         }
         .cmuxCursorOnHover(.pointingHand)
+        .popover(item: $incomingInviteAlert, arrowEdge: .bottom) { invite in
+            TerminalIncomingInviteAlertContent(
+                invite: invite,
+                onJoin: {
+                    incomingInviteAlert = nil
+                    Task { @MainActor in
+                        _ = await CollaborationRuntime.shared.acceptIncomingSharedSession(invite)
+                    }
+                },
+                onDismiss: {
+                    incomingInviteAlert = nil
+                }
+            )
+        }
+        // Auto-surface a new invite as an alert anchored to this pill, but only
+        // on the focused panel so N panels don't each pop the same alert.
+        .onChange(of: CollaborationRuntime.shared.incomingInviteAlertToken) { _, _ in
+            guard isFocused, !isTerminalSessionPopoverPresented else { return }
+            incomingInviteAlert = CollaborationRuntime.shared.incomingInviteAlert
+        }
+        .onChange(of: incomingInviteAlert == nil) { _, isNil in
+            // Reconcile the runtime alert when the popover is dismissed.
+            if isNil { CollaborationRuntime.shared.dismissIncomingInviteAlert() }
+        }
         .popover(isPresented: $isTerminalSessionPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationSessionPopoverContent(
                 sessionCode: state.workspaceSessionCode,
@@ -325,6 +361,17 @@ struct TerminalPanelView: View {
             return CollaborationStrings.startSession
         }
         return CollaborationStrings.sessionPillLabel(code: sessionCode, peerSummary: state.peerSummary)
+    }
+
+    private func incomingInviteBadge(count: Int) -> some View {
+        Text(count > 9 ? "9+" : String(count))
+            .cmuxFont(size: 8, weight: .bold)
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 4)
+            .frame(minWidth: 14, minHeight: 14)
+            .background(Capsule().fill(Color.red))
+            .overlay(Capsule().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
+            .accessibilityLabel(CollaborationStrings.incomingSessionsButton(count: count))
     }
 
     private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
@@ -457,6 +504,48 @@ struct TerminalPanelView: View {
         )
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: isHovered)
+    }
+}
+
+/// Compact alert auto-anchored to the session pill when a new directory-share
+/// invite arrives, so the user can join or dismiss without opening the popover.
+private struct TerminalIncomingInviteAlertContent: View {
+    let invite: CollaborationIncomingSession
+    let onJoin: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                CmuxSystemSymbolImage(systemName: "person.crop.circle.badge.plus", pointSize: 14, weight: .semibold)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                Text(CollaborationStrings.incomingInviteAlertTitle)
+                    .cmuxFont(size: 12, weight: .semibold)
+            }
+
+            Text(CollaborationStrings.incomingSessionSubtitle(
+                ownerName: invite.ownerName ?? invite.ownerUserId,
+                orgName: invite.orgName ?? ""
+            ))
+            .cmuxFont(size: 11)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                TrackedButton("session_incoming_alert_join", CollaborationStrings.incomingSessionJoin) {
+                    onJoin()
+                }
+                .buttonStyle(.mosaicAccentRegular)
+
+                TrackedButton("session_incoming_alert_dismiss", CollaborationStrings.incomingInviteAlertDismiss) {
+                    onDismiss()
+                }
+                .buttonStyle(.mosaicSecondaryRegular)
+            }
+        }
+        .padding(14)
+        .frame(width: 240)
     }
 }
 
