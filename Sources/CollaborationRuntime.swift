@@ -4562,6 +4562,22 @@ private struct CollaborationDialogChrome<Content: View>: View {
     }
 }
 
+private struct CollaborationDialogBackgroundShape: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(Color(nsColor: .windowBackgroundColor).opacity(0.98))
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.primary.opacity(0.28), lineWidth: 1)
+            }
+    }
+}
+
+private final class CollaborationDialogPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 private struct CollaborationDialogPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -4633,7 +4649,7 @@ private final class CollaborationSignInRequiredPanel {
 
     init() {
         let size = NSSize(width: 420, height: 230)
-        window = NSPanel(
+        window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
             backing: .buffered,
@@ -4670,6 +4686,7 @@ private final class CollaborationSignInRequiredPanel {
         }
 
         parent.beginSheet(window)
+        window.makeKey()
         NSApp.runModal(for: window)
         parent.endSheet(window)
         window.orderOut(nil)
@@ -4682,134 +4699,19 @@ private final class CollaborationSignInRequiredPanel {
     }
 }
 
-private struct CollaborationInviteCodeEntryRepresentable: NSViewRepresentable {
-    @Binding var code: String
-    @Binding var isComplete: Bool
-    let onSubmit: (String) -> Void
-    let onCancel: () -> Void
-
-    func makeNSView(context: Context) -> CollaborationInviteCodeEntryView {
-        let view = CollaborationInviteCodeEntryView(
-            accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
-        )
-        view.onChange = { [weak view] complete in
-            code = view?.code ?? ""
-            isComplete = complete
-        }
-        view.onSubmit = { [weak view] in
-            guard let view, view.isComplete else { return }
-            code = view.code
-            isComplete = true
-            onSubmit(view.code)
-        }
-        view.onCancel = onCancel
-        return view
-    }
-
-    func updateNSView(_ nsView: CollaborationInviteCodeEntryView, context: Context) {
-        nsView.onChange = { [weak nsView] complete in
-            code = nsView?.code ?? ""
-            isComplete = complete
-        }
-        nsView.onSubmit = { [weak nsView] in
-            guard let nsView, nsView.isComplete else { return }
-            code = nsView.code
-            isComplete = true
-            onSubmit(nsView.code)
-        }
-        nsView.onCancel = onCancel
-    }
-}
-
-private struct CollaborationJoinSessionDialogView: View {
-    let onJoin: (String) -> Void
-    let onCancel: () -> Void
-    @State private var code = ""
-    @State private var isComplete = false
-
-    private var appIcon: NSImage {
-        NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
-    }
-
-    var body: some View {
-        CollaborationDialogChrome(width: 420, height: 408) {
-            VStack(alignment: .leading, spacing: 0) {
-                Image(nsImage: appIcon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 64, height: 64)
-                    .accessibilityHidden(true)
-
-                Text(CollaborationStrings.joinSession)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.top, 34)
-
-                Text(CollaborationStrings.joinMessage)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 18)
-
-                HStack {
-                    Spacer()
-                    CollaborationInviteCodeEntryRepresentable(
-                        code: $code,
-                        isComplete: $isComplete,
-                        onSubmit: submit,
-                        onCancel: onCancel
-                    )
-                    .frame(width: 238, height: 56)
-                    Spacer()
-                }
-                .padding(.top, 32)
-
-                HStack(spacing: 16) {
-                    TrackedButton("join_session_cancel", action: {
-                        onCancel()
-                    }) {
-                        Text(CollaborationStrings.cancel)
-                            .frame(width: 116, height: 24)
-                    }
-                    .buttonStyle(.mosaicSecondary)
-                    .keyboardShortcut(.cancelAction)
-
-                    TrackedButton("join_session_confirm", action: submitIfComplete) {
-                        Text(CollaborationStrings.joinSession)
-                            .frame(width: 116, height: 24)
-                    }
-                    .buttonStyle(CollaborationDialogPrimaryButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 34)
-
-                Spacer(minLength: 0)
-            }
-        }
-    }
-
-    private func submit(_ rawCode: String) {
-        let trimmedCode = rawCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedCode.isEmpty else { return }
-        onJoin(trimmedCode)
-    }
-
-    private func submitIfComplete() {
-        guard isComplete else { return }
-        submit(code)
-    }
-}
-
 @MainActor
 private final class CollaborationJoinSessionPanel {
     private let window: NSPanel
     private var response: NSApplication.ModalResponse = .alertSecondButtonReturn
     private var code = ""
+    private let entryView = CollaborationInviteCodeEntryView(
+        accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
+    )
+    private var actionBoxes: [ButtonActionBox] = []
 
     init() {
         let size = NSSize(width: 420, height: 408)
-        window = NSPanel(
+        window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
             backing: .buffered,
@@ -4822,40 +4724,180 @@ private final class CollaborationJoinSessionPanel {
         window.level = .modalPanel
         window.isMovableByWindowBackground = true
 
-        let dialog = CollaborationJoinSessionDialogView(
-            onJoin: { [weak self] code in
-                self?.code = code
-                self?.finish(.alertFirstButtonReturn)
-            },
-            onCancel: { [weak self] in
-                self?.finish(.alertSecondButtonReturn)
-            }
-        )
-        let hostingView = NSHostingView(rootView: dialog)
-        hostingView.frame = NSRect(origin: .zero, size: size)
-        hostingView.autoresizingMask = [.width, .height]
-        window.contentView = hostingView
+        let contentView = NSView(frame: NSRect(origin: .zero, size: size))
+        contentView.wantsLayer = true
+        window.contentView = contentView
+
+        let background = NSHostingView(rootView: CollaborationDialogBackgroundShape())
+        background.frame = contentView.bounds
+        background.autoresizingMask = [.width, .height]
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+
+        let titleField = NSTextField(labelWithString: CollaborationStrings.joinSession)
+        titleField.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleField.textColor = .labelColor
+        stack.addArrangedSubview(titleField)
+        stack.setCustomSpacing(18, after: titleField)
+
+        let messageField = NSTextField(wrappingLabelWithString: CollaborationStrings.joinMessage)
+        messageField.font = .systemFont(ofSize: 16, weight: .regular)
+        messageField.textColor = .labelColor
+        messageField.maximumNumberOfLines = 0
+        messageField.preferredMaxLayoutWidth = 364
+        stack.addArrangedSubview(messageField)
+        stack.setCustomSpacing(32, after: messageField)
+
+        let codeRow = NSStackView()
+        codeRow.orientation = .horizontal
+        codeRow.alignment = .centerY
+        codeRow.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(codeRow)
+        codeRow.addArrangedSubview(NSView())
+        codeRow.addArrangedSubview(entryView)
+        codeRow.addArrangedSubview(NSView())
+        stack.setCustomSpacing(34, after: codeRow)
+
+        let buttonRow = NSStackView()
+        buttonRow.orientation = .horizontal
+        buttonRow.alignment = .centerY
+        buttonRow.spacing = 16
+        buttonRow.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(buttonRow)
+
+        let cancelButton = makeButton(title: CollaborationStrings.cancel, keyEquivalent: "\u{1b}") { [weak self] in
+            self?.finish(.alertSecondButtonReturn)
+        }
+        let joinButton = makeButton(title: CollaborationStrings.joinSession, keyEquivalent: "\r") { [weak self] in
+            self?.submitIfComplete()
+        }
+        styleSecondaryButton(cancelButton)
+        stylePrimaryButton(joinButton)
+        buttonRow.addArrangedSubview(cancelButton)
+        buttonRow.addArrangedSubview(joinButton)
+
+        entryView.onSubmit = { [weak self] in
+            self?.submitIfComplete()
+        }
+        entryView.onCancel = { [weak self] in
+            self?.finish(.alertSecondButtonReturn)
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+
+            iconView.widthAnchor.constraint(equalToConstant: 64),
+            iconView.heightAnchor.constraint(equalToConstant: 64),
+            titleField.widthAnchor.constraint(equalToConstant: 364),
+            messageField.widthAnchor.constraint(equalToConstant: 364),
+            codeRow.widthAnchor.constraint(equalToConstant: 364),
+            buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
+            cancelButton.widthAnchor.constraint(equalToConstant: 144),
+            joinButton.widthAnchor.constraint(equalToConstant: 144),
+            cancelButton.heightAnchor.constraint(equalToConstant: 36),
+            joinButton.heightAnchor.constraint(equalToConstant: 36),
+        ])
+
+        stack.setCustomSpacing(34, after: iconView)
     }
 
     func run() -> String? {
         guard let parent = NSApp.keyWindow ?? NSApp.mainWindow else {
             window.center()
             window.makeKeyAndOrderFront(nil)
+            window.makeFirstResponder(entryView)
             NSApp.runModal(for: window)
             window.orderOut(nil)
             return response == .alertFirstButtonReturn ? code : nil
         }
 
         parent.beginSheet(window)
+        window.makeKey()
+        window.makeFirstResponder(entryView)
         NSApp.runModal(for: window)
         parent.endSheet(window)
         window.orderOut(nil)
         return response == .alertFirstButtonReturn ? code : nil
     }
 
+    private func submitIfComplete() {
+        guard entryView.isComplete else { return }
+        code = entryView.code
+        finish(.alertFirstButtonReturn)
+    }
+
     private func finish(_ response: NSApplication.ModalResponse) {
         self.response = response
         NSApp.stopModal()
+    }
+
+    private func makeButton(
+        title: String,
+        keyEquivalent: String,
+        action: @escaping () -> Void
+    ) -> NSButton {
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.bezelStyle = .rounded
+        button.controlSize = .large
+        button.font = .systemFont(ofSize: 16, weight: .bold)
+        button.keyEquivalent = keyEquivalent
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let actionBox = ButtonActionBox(action)
+        actionBoxes.append(actionBox)
+        button.target = actionBox
+        button.action = #selector(ButtonActionBox.invoke)
+        return button
+    }
+
+    private func stylePrimaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
+        applyCollaborationAccentAlertButtonTitleStyle(
+            button,
+            font: NSFont.systemFont(ofSize: 16, weight: .bold)
+        )
+    }
+
+    private func styleSecondaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: "#2D2D2D") ?? NSColor.controlColor.withAlphaComponent(0.40)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        button.contentTintColor = .white
+        button.attributedTitle = NSAttributedString(
+            string: button.title,
+            attributes: [
+                .foregroundColor: NSColor.white,
+                .paragraphStyle: paragraph,
+                .font: NSFont.systemFont(ofSize: 16, weight: .bold),
+            ]
+        )
+    }
+
+    private final class ButtonActionBox: NSObject {
+        private let action: () -> Void
+
+        init(_ action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func invoke() {
+            action()
+        }
     }
 }
 
@@ -4938,7 +4980,7 @@ private final class CollaborationSessionCreatedPanel {
 
     init(code: String) {
         let size = NSSize(width: 420, height: 286)
-        window = NSPanel(
+        window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
             backing: .buffered,
@@ -4976,6 +5018,7 @@ private final class CollaborationSessionCreatedPanel {
         }
 
         parent.beginSheet(window)
+        window.makeKey()
         NSApp.runModal(for: window)
         parent.endSheet(window)
         window.orderOut(nil)

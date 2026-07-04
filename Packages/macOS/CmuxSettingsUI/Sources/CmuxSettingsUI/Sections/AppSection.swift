@@ -24,8 +24,6 @@ public struct AppSection: View {
     // and persisted across renders so the @Observable change tracking
     // actually drives invalidation.
     @State private var language: DefaultsValueModel<AppLanguage>
-    @State private var appearance: DefaultsValueModel<AppearanceMode>
-    @State private var appIcon: DefaultsValueModel<AppIconMode>
     @State private var placement: DefaultsValueModel<WorkspacePlacement>
     @State private var inheritDir: DefaultsValueModel<Bool>
     @State private var minimalMode: DefaultsValueModel<WorkspacePresentationMode>
@@ -71,8 +69,6 @@ public struct AppSection: View {
         self.catalog = catalog
         self.hostActions = hostActions
         _language = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.language))
-        _appearance = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.appearance))
-        _appIcon = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.appIcon))
         _placement = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.newWorkspacePlacement))
         _inheritDir = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.workspaceInheritWorkingDirectory))
         _minimalMode = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.presentationMode))
@@ -122,7 +118,7 @@ public struct AppSection: View {
             mainCard
         }
         .task {
-            startSettingsObservation([language, appearance, appIcon, placement, inheritDir, minimalMode, keepWorkspaceOpen, firstClick, fileDrop, preferredEditor, openSupported, openMarkdown, globalFontMagnification, markdownFontSize, markdownFontFamily, markdownMaxWidth, canvasPaneGap, canvasSnapping, fileEditorWordWrap, iMessage, reorder, dockBadge, menuBarOnly, showInMenuBar, paneRing, paneFlash, soundName, soundCommand, customSoundFile, telemetry, confirmQuit, warnCloseTab, warnCloseX, hideCloseButton, renameSelects, paletteAllSurfaces])
+            startSettingsObservation([language, placement, inheritDir, minimalMode, keepWorkspaceOpen, firstClick, fileDrop, preferredEditor, openSupported, openMarkdown, globalFontMagnification, markdownFontSize, markdownFontFamily, markdownMaxWidth, canvasPaneGap, canvasSnapping, fileEditorWordWrap, iMessage, reorder, dockBadge, menuBarOnly, showInMenuBar, paneRing, paneFlash, soundName, soundCommand, customSoundFile, telemetry, confirmQuit, warnCloseTab, warnCloseX, hideCloseButton, renameSelects, paletteAllSurfaces])
             if languageAtAppear == nil { languageAtAppear = language.current }; if telemetryAtAppear == nil { telemetryAtAppear = telemetry.current }
         }
     }
@@ -165,22 +161,6 @@ public struct AppSection: View {
                 .labelsHidden()
                 .pickerStyle(.menu)
             }
-            SettingsCardDivider()
-
-            // Theme — three-up visual picker mirroring legacy
-            ThemePickerRow(
-                selectedMode: appearance.current,
-                onSelect: { appearance.set($0) }
-            )
-            .settingsSearchAnchors(["setting:app:appearance"])
-            SettingsCardDivider()
-
-            // App Icon — three-up visual picker mirroring legacy
-            AppIconPickerRow(
-                selectedMode: appIcon.current,
-                onSelect: { appIcon.set($0) }
-            )
-            .settingsSearchAnchors(["setting:app:app-icon"])
             SettingsCardDivider()
 
             // New Workspace Placement
