@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import { describe, expect, test } from "bun:test";
 
 process.env.SKIP_ENV_VALIDATION = "1";
@@ -10,6 +11,32 @@ const {
   refreshNativeSessionTokenPair,
   verifyNativeAuthToken,
 } = await import("../services/auth/nativeSession");
+
+// Forges a token whose payload is exactly `claims`, signed with the same HMAC
+// scheme as the production minter. Used to reproduce tokens that predate a
+// claim (e.g. a legacy token minted before `imageURL` existed).
+function signLegacyToken(claims: Record<string, unknown>): string {
+  const secret = process.env.CMUX_NATIVE_AUTH_SECRET!;
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const signature = createHmac("sha256", secret).update(payload).digest("base64url");
+  return `cmuxv1.${payload}.${signature}`;
+}
+
+function baseLegacyClaims(kind: "access" | "refresh") {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    kind,
+    userId: "user_legacy",
+    displayName: "Legacy User",
+    primaryEmail: "legacy@example.com",
+    // NOTE: no `imageURL` field — this is the pre-imageURL token shape.
+    selectedTeamId: "org_legacy",
+    teamIds: ["org_legacy"],
+    exp: now + 60 * 60,
+    iat: now,
+    nonce: "legacy-nonce",
+  };
+}
 
 describe("cmux native session tokens", () => {
   test("mints signed access and refresh tokens with normalized Clerk identity claims", () => {
@@ -88,5 +115,49 @@ describe("cmux native session tokens", () => {
       selectedTeamId: "org_selected",
       teamIds: ["org_selected"],
     });
+  });
+
+  test("normalizes a missing or null imageURL to null when minting", () => {
+    const withoutImage = mintNativeSessionTokenPair({
+      userId: "user_123",
+      displayName: "Dorsa",
+    });
+    expect(verifyNativeAuthToken(withoutImage.accessToken)!.imageURL).toBeNull();
+
+    const withNullImage = mintNativeSessionTokenPair({
+      userId: "user_123",
+      imageURL: null,
+    });
+    expect(verifyNativeAuthToken(withNullImage.accessToken)!.imageURL).toBeNull();
+  });
+
+  // Regression: this reproduces the exact cause of profile pictures not
+  // rendering in shared sessions. A native token minted before the `imageURL`
+  // claim existed is still accepted (so the user stays signed in), but it
+  // carries no image, so every avatar falls back to initials. Refreshing that
+  // token cannot recover the image — the null propagates forward — which is why
+  // a full re-sign-in is required after the imageURL claim ships.
+  test("accepts legacy tokens without an imageURL claim and reports null", () => {
+    const legacyAccess = signLegacyToken(baseLegacyClaims("access"));
+
+    const claims = verifyNativeAuthToken(legacyAccess);
+    expect(claims).not.toBeNull();
+    expect(claims!.userId).toBe("user_legacy");
+    expect(claims!.imageURL).toBeNull();
+  });
+
+  test("refreshing a legacy refresh token keeps imageURL null (no recovery without re-auth)", () => {
+    const legacyRefresh = signLegacyToken(baseLegacyClaims("refresh"));
+
+    const refreshed = refreshNativeSessionTokenPair(legacyRefresh);
+    expect(refreshed).not.toBeNull();
+
+    const refreshedAccess = verifyNativeAuthToken(refreshed!.accessToken);
+    expect(refreshedAccess).toMatchObject({
+      kind: "access",
+      userId: "user_legacy",
+      displayName: "Legacy User",
+    });
+    expect(refreshedAccess!.imageURL).toBeNull();
   });
 });
