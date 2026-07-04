@@ -58,4 +58,47 @@ import Testing
         )
         #expect(model.otherParticipantCount == 0)
     }
+
+    @Test func defaultsToNoIncomingBadge() {
+        let model = CollaborationTerminalSessionPillModel(
+            workspaceSessionCode: nil,
+            participantCount: 0
+        )
+        #expect(model.incomingInviteCount == 0)
+        #expect(!model.showsIncomingBadge)
+    }
+
+    @Test func incomingInvitesShowBadgeWithoutASession() {
+        // The badge must be visible even before a session exists so a teammate's
+        // invite surfaces without opening the popover.
+        let model = CollaborationTerminalSessionPillModel(
+            workspaceSessionCode: nil,
+            participantCount: 0,
+            incomingInviteCount: 2
+        )
+        #expect(!model.hasSession)
+        #expect(model.incomingInviteCount == 2)
+        #expect(model.showsIncomingBadge)
+    }
+
+    @Test func incomingInvitesCoexistWithParticipantCount() {
+        let model = CollaborationTerminalSessionPillModel(
+            workspaceSessionCode: "ABC123",
+            participantCount: 3,
+            incomingInviteCount: 1
+        )
+        #expect(model.showsParticipantCount)
+        #expect(model.otherParticipantCount == 2)
+        #expect(model.showsIncomingBadge)
+    }
+
+    @Test func negativeIncomingCountClampsToZero() {
+        let model = CollaborationTerminalSessionPillModel(
+            workspaceSessionCode: nil,
+            participantCount: 0,
+            incomingInviteCount: -3
+        )
+        #expect(model.incomingInviteCount == 0)
+        #expect(!model.showsIncomingBadge)
+    }
 }
