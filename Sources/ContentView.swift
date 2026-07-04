@@ -8896,7 +8896,11 @@ struct ContentView: View {
         }
         let availableWidth = max(1, availableSize.width)
         let availableHeight = max(1, availableSize.height)
-        let scale = min(1, availableWidth / sourceSize.width, availableHeight / sourceSize.height)
+        let scale = min(
+            TutorialVideoStyle.popupPreferredScale,
+            availableWidth / sourceSize.width,
+            availableHeight / sourceSize.height
+        )
         return CGSize(
             width: sourceSize.width * scale,
             height: sourceSize.height * scale

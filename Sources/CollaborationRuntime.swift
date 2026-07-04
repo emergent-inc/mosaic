@@ -323,6 +323,56 @@ private final class WeakCollaborationTerminalPanel {
     }
 }
 
+@MainActor
+final class CollaborationJoinAcknowledgementGate {
+    private var continuations: [CheckedContinuation<Bool, Never>] = []
+    private var timeoutTask: Task<Void, Never>?
+    private var result: Bool?
+
+    var isResolved: Bool {
+        result != nil
+    }
+
+    func wait(timeout: Duration) async -> Bool {
+        if let result { return result }
+        return await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+            if timeoutTask == nil {
+                // This is a real protocol deadline: the relay must send session.joined
+                // promptly after accepting the WebSocket, or the join is treated as failed.
+                timeoutTask = Task { [weak self] in
+                    do {
+                        try await Task.sleep(for: timeout)
+                    } catch {
+                        return
+                    }
+                    await self?.fail()
+                }
+            }
+        }
+    }
+
+    func succeed() {
+        complete(true)
+    }
+
+    func fail() {
+        complete(false)
+    }
+
+    private func complete(_ value: Bool) {
+        guard result == nil else { return }
+        result = value
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        let pending = continuations
+        continuations.removeAll()
+        for continuation in pending {
+            continuation.resume(returning: value)
+        }
+    }
+}
+
 private struct TerminalOutputCaretSuppression {
     let expiresAt: Date
 }
@@ -337,6 +387,7 @@ private final class CollaborationRelayConnection {
     var heartbeatTask: Task<Void, Never>?
     var peersByID: [String: CollaborationPeerWire] = [:]
     var connectionLabel = CollaborationStrings.connecting
+    let joinAcknowledgement = CollaborationJoinAcknowledgementGate()
 
     init(sessionID: String, sessionCode: String, session: CollaborationSession) {
         self.sessionID = sessionID
@@ -351,6 +402,7 @@ private final class CollaborationRelayConnection {
     }
 
     func disconnect() {
+        joinAcknowledgement.fail()
         heartbeatTask?.cancel()
         heartbeatTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
@@ -653,6 +705,7 @@ final class CollaborationRuntime {
     static let agentRoomWirePasteboardTypeIdentifier = "com.cmux.agent-room-wire"
     private static let defaultRelayURLString = "https://cmux-collaboration-worker.dorsa-rohani.workers.dev"
     private static let terminalInitialRenderGridScrollbackLines = 10_000
+    private static let joinAcknowledgementTimeout: Duration = .seconds(5)
     private static let inviteCodeStore = CollaborationInviteCodeStore()
     private static let workspaceSessionStore = CollaborationWorkspaceSessionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
@@ -2849,6 +2902,17 @@ final class CollaborationRuntime {
         refreshPeerIdentityFromAuth()
         let normalizedCode = Self.normalizedSessionCode(from: code)
         if let existing = connectionsBySessionCode[normalizedCode] {
+            guard await existing.joinAcknowledgement.wait(timeout: Self.joinAcknowledgementTimeout) else {
+                connectionsBySessionCode.removeValue(forKey: normalizedCode)
+                existing.disconnect()
+                if sessionCode == normalizedCode {
+                    sessionCode = nil
+                }
+                connectionLabel = CollaborationStrings.connectionFailed
+                existing.connectionLabel = CollaborationStrings.connectionFailed
+                await existing.session.markRelayUnavailable()
+                return nil
+            }
             sessionCode = normalizedCode
             connectionLabel = existing.connectionLabel
             reopenSharedDocumentsForCurrentSession()
@@ -2892,6 +2956,27 @@ final class CollaborationRuntime {
         connection.webSocketTask = task
         task.resume()
         receiveNextMessage(for: connection)
+        guard await connection.joinAcknowledgement.wait(timeout: Self.joinAcknowledgementTimeout) else {
+            connectionsBySessionCode.removeValue(forKey: normalizedCode)
+            connection.disconnect()
+            if sessionCode == normalizedCode {
+                sessionCode = nil
+            }
+            connectionLabel = CollaborationStrings.connectionFailed
+            connection.connectionLabel = CollaborationStrings.connectionFailed
+            await nextSession.markRelayUnavailable()
+            trackCollaboration(
+                .connectionFailed,
+                entrypoint: .system,
+                result: .failed,
+                properties: [
+                    "operation": "join_acknowledgement",
+                    "error_kind": "collaboration.join_failed",
+                ],
+                flush: true
+            )
+            return nil
+        }
         startHeartbeatLoop(for: connection)
         await nextSession.markConnected()
         trackCollaborationSessionStarted(sessionCode: normalizedCode)
@@ -3678,6 +3763,7 @@ final class CollaborationRuntime {
         guard let connection = connectionsBySessionCode[sessionCode] else { return }
         switch result {
         case .failure(let error):
+            connection.joinAcknowledgement.fail()
             lastErrorMessage = error.localizedDescription
             connection.connectionLabel = CollaborationStrings.disconnected
             if self.sessionCode == sessionCode {
@@ -3714,6 +3800,9 @@ final class CollaborationRuntime {
                 try await handleFrameData(data, connection: connection)
             } catch {
                 lastErrorMessage = error.localizedDescription
+                if !connection.joinAcknowledgement.isResolved {
+                    connection.joinAcknowledgement.fail()
+                }
             }
             receiveNextMessage(for: connection)
         }
@@ -3728,6 +3817,7 @@ final class CollaborationRuntime {
         case "session.joined":
             let joined = try decoder.decode(CollaborationJoinedWire.self, from: data)
             connection.peersByID = Dictionary(uniqueKeysWithValues: joined.peers.filter { $0.peerID != peerIdentity.peerID }.map { ($0.peerID, $0) })
+            connection.joinAcknowledgement.succeed()
             refreshPeerSummaries(for: connection)
             trackCollaborationLayoutSnapshot(reason: "participant_joined", sessionCode: connection.sessionCode)
         case "peer.joined":
@@ -4621,12 +4711,11 @@ enum CollaborationStrings {
         String(localized: "collaboration.created.title", defaultValue: "Session Created")
     }
 
-    static func sessionCreatedMessage(code: String) -> String {
-        let format = String(
+    static var sessionCreatedMessage: String {
+        String(
             localized: "collaboration.created.message",
-            defaultValue: "Share this session code with collaborators: %@"
+            defaultValue: "Share this session code with collaborators"
         )
-        return String(format: format, code)
     }
 
     static var joinMessage: String {
@@ -4891,9 +4980,11 @@ private final class CollaborationSignInRequiredPanel {
         action: @escaping () -> Void
     ) -> NSButton {
         let button = NSButton(title: title, target: nil, action: nil)
+        button.cell = CollaborationCenteredButtonCell(textCell: title)
         button.bezelStyle = .rounded
         button.controlSize = .large
         button.font = .systemFont(ofSize: 16, weight: .bold)
+        button.alignment = .center
         button.keyEquivalent = keyEquivalent
         button.translatesAutoresizingMaskIntoConstraints = false
 
@@ -4927,6 +5018,16 @@ private final class CollaborationSignInRequiredPanel {
         )
     }
 
+    private final class CollaborationCenteredButtonCell: NSButtonCell {
+        override func titleRect(forBounds rect: NSRect) -> NSRect {
+            var titleRect = super.titleRect(forBounds: rect)
+            let titleHeight = attributedTitle.size().height
+            titleRect.origin.y = rect.origin.y + ((rect.height - titleHeight) / 2)
+            titleRect.size.height = titleHeight
+            return titleRect
+        }
+    }
+
     private final class ButtonActionBox: NSObject {
         private let action: () -> Void
 
@@ -4949,9 +5050,10 @@ private final class CollaborationJoinSessionPanel {
         accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
     )
     private var actionBoxes: [ButtonActionBox] = []
+    private static let contentWidth: CGFloat = 464
 
     init() {
-        let size = NSSize(width: 420, height: 408)
+        let size = NSSize(width: 520, height: 408)
         window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
@@ -4997,7 +5099,7 @@ private final class CollaborationJoinSessionPanel {
         messageField.font = .systemFont(ofSize: 16, weight: .regular)
         messageField.textColor = .labelColor
         messageField.maximumNumberOfLines = 0
-        messageField.preferredMaxLayoutWidth = 364
+        messageField.preferredMaxLayoutWidth = Self.contentWidth
         stack.addArrangedSubview(messageField)
         stack.setCustomSpacing(32, after: messageField)
 
@@ -5044,9 +5146,9 @@ private final class CollaborationJoinSessionPanel {
 
             iconView.widthAnchor.constraint(equalToConstant: 64),
             iconView.heightAnchor.constraint(equalToConstant: 64),
-            titleField.widthAnchor.constraint(equalToConstant: 364),
-            messageField.widthAnchor.constraint(equalToConstant: 364),
-            codeRow.widthAnchor.constraint(equalToConstant: 364),
+            titleField.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            messageField.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            codeRow.widthAnchor.constraint(equalToConstant: Self.contentWidth),
             buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
             cancelButton.widthAnchor.constraint(equalToConstant: 144),
             joinButton.widthAnchor.constraint(equalToConstant: 144),
@@ -5165,9 +5267,10 @@ private struct CollaborationSessionCreatedDialogView: View {
                     .foregroundStyle(.primary)
                     .padding(.top, 12)
 
-                Text(CollaborationStrings.sessionCreatedMessage(code: code))
+                Text(CollaborationStrings.sessionCreatedMessage)
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
 

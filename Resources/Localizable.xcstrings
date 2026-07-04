@@ -2069,6 +2069,17 @@
         }
       }
     },
+    "auth.loopback_callback.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mosaic opened, you may close this tab"
+          }
+        }
+      }
+    },
     "auth.error.invalid_callback": {
       "extractionState": "manual",
       "localizations": {
@@ -37624,7 +37635,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Share this session code with collaborators: %@"
+            "value": "Share this session code with collaborators"
           }
         }
       }
