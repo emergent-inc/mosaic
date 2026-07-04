@@ -12919,6 +12919,7 @@ private struct SidebarAccountButton: View {
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(helpText)
         .accessibilityIdentifier("SidebarAccountButton")
+        .cmuxCursorOnHover(.pointingHand)
     }
 
     @ViewBuilder
@@ -12998,6 +12999,7 @@ private struct SidebarTutorialVideoButton: View {
         .safeHelp(title)
         .accessibilityLabel(title)
         .accessibilityIdentifier("SidebarTutorialVideoButton")
+        .cmuxCursorOnHover(.pointingHand)
     }
 }
 
@@ -13473,7 +13475,21 @@ struct SidebarParticipantAvatarStack: View, Equatable {
     var body: some View {
         ZStack(alignment: .leading) {
             ForEach(Array(displayedParticipants.enumerated()), id: \.element.id) { index, participant in
-                SidebarParticipantAvatar(participant: participant, size: avatarSize)
+                CollaborationParticipantAvatarImage(
+                    participant: participant,
+                    size: avatarSize,
+                    fallbackFontSize: max(7, avatarSize * 0.38),
+                    fallbackFontWeight: .bold,
+                    fallbackUsesRoundedDesign: true,
+                    borderColor: Color(nsColor: .controlBackgroundColor),
+                    borderWidth: max(1.5, avatarSize * 0.1),
+                    shadow: CollaborationParticipantAvatarImage.Shadow(
+                        color: .black.opacity(0.12),
+                        radius: 1,
+                        x: 0,
+                        y: 0.5
+                    )
+                )
                     .offset(x: CGFloat(index) * avatarSize * 0.62)
                     .zIndex(Double(index))
             }
@@ -13483,9 +13499,22 @@ struct SidebarParticipantAvatarStack: View, Equatable {
     }
 }
 
-private struct SidebarParticipantAvatar: View, Equatable {
+struct CollaborationParticipantAvatarImage: View {
+    struct Shadow {
+        let color: Color
+        let radius: CGFloat
+        let x: CGFloat
+        let y: CGFloat
+    }
+
     let participant: CollaborationWorkspaceParticipantSnapshot
     let size: CGFloat
+    let fallbackFontSize: CGFloat
+    let fallbackFontWeight: Font.Weight
+    let fallbackUsesRoundedDesign: Bool
+    var borderColor: Color? = nil
+    var borderWidth: CGFloat = 0
+    var shadow: Shadow? = nil
 
     private var diceBearURL: URL? {
         var components = URLComponents()
@@ -13500,26 +13529,56 @@ private struct SidebarParticipantAvatar: View, Equatable {
         return components.url
     }
 
+    private var profileImageURL: URL? {
+        let trimmed = participant.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return nil }
+        guard let url = URL(string: trimmed) else { return nil }
+        let scheme = url.scheme?.lowercased()
+        guard scheme == "http" || scheme == "https" else { return nil }
+        return url
+    }
+
     var body: some View {
-        AsyncImage(url: diceBearURL) { phase in
+        Group {
+            if let profileImageURL {
+                remoteImage(url: profileImageURL, fallback: {
+                    generatedAvatar
+                })
+            } else {
+                generatedAvatar
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay {
+            if let borderColor, borderWidth > 0 {
+                Circle()
+                    .stroke(borderColor, lineWidth: borderWidth)
+            }
+        }
+        .shadow(color: shadow?.color ?? .clear, radius: shadow?.radius ?? 0, x: shadow?.x ?? 0, y: shadow?.y ?? 0)
+    }
+
+    @ViewBuilder
+    private var generatedAvatar: some View {
+        remoteImage(url: diceBearURL, fallback: {
+            fallbackAvatar
+        })
+    }
+
+    private func remoteImage<Fallback: View>(url: URL?, @ViewBuilder fallback: @escaping () -> Fallback) -> some View {
+        AsyncImage(url: url) { phase in
             switch phase {
             case .success(let image):
                 image
                     .resizable()
                     .scaledToFill()
             case .empty, .failure:
-                fallbackAvatar
+                fallback()
             @unknown default:
-                fallbackAvatar
+                fallback()
             }
         }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .overlay {
-            Circle()
-                .stroke(Color(nsColor: .controlBackgroundColor), lineWidth: max(1.5, size * 0.1))
-        }
-        .shadow(color: .black.opacity(0.12), radius: 1, x: 0, y: 0.5)
     }
 
     private var fallbackAvatar: some View {
@@ -13527,7 +13586,11 @@ private struct SidebarParticipantAvatar: View, Equatable {
             Circle()
                 .fill(Color(nsColor: NSColor(hex: participant.colorHex) ?? .controlAccentColor))
             Text(participant.initials)
-                .font(.system(size: max(7, size * 0.38), weight: .bold, design: .rounded))
+                .font(.system(
+                    size: fallbackFontSize,
+                    weight: fallbackFontWeight,
+                    design: fallbackUsesRoundedDesign ? .rounded : .default
+                ))
                 .foregroundColor(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

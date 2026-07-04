@@ -107,7 +107,10 @@ struct MacAuthComposition {
             ),
             anchor: anchor,
             config: config,
-            launch: launch
+            launch: launch,
+            onSignedIn: {
+                await CollaborationRuntime.shared.refreshPeerIdentityFromCurrentAuth()
+            }
         )
         self.coordinator = coordinator
         let callbackRouter = AuthCallbackRouter(
