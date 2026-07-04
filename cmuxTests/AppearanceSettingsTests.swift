@@ -2,10 +2,10 @@ import XCTest
 import AppKit
 import SwiftUI
 
-#if canImport(cmux_DEV)
-@testable import cmux_DEV
-#elseif canImport(cmux)
-@testable import cmux
+#if canImport(Mosaic_DEV)
+@testable import Mosaic_DEV
+#elseif canImport(Mosaic)
+@testable import Mosaic
 #endif
 
 @MainActor
@@ -14,7 +14,7 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertTrue(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app",
-                appBundleLastPathComponent: "cmux.app",
+                appBundleLastPathComponent: "Mosaic.app",
                 persistenceDisabled: false
             )
         )
@@ -24,14 +24,14 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app.nightly",
-                appBundleLastPathComponent: "cmux NIGHTLY.app",
+                appBundleLastPathComponent: "Mosaic NIGHTLY.app",
                 persistenceDisabled: false
             )
         )
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app.nightly.issue-4350",
-                appBundleLastPathComponent: "cmux NIGHTLY issue-4350.app",
+                appBundleLastPathComponent: "Mosaic NIGHTLY issue-4350.app",
                 persistenceDisabled: false
             )
         )
@@ -41,7 +41,7 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app",
-                appBundleLastPathComponent: "cmux NIGHTLY.app",
+                appBundleLastPathComponent: "Mosaic NIGHTLY.app",
                 persistenceDisabled: false
             )
         )
@@ -51,14 +51,14 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app.debug",
-                appBundleLastPathComponent: "cmux DEV.app",
+                appBundleLastPathComponent: "Mosaic DEV.app",
                 persistenceDisabled: false
             )
         )
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app.debug.issue-4350",
-                appBundleLastPathComponent: "cmux DEV issue-4350.app",
+                appBundleLastPathComponent: "Mosaic DEV issue-4350.app",
                 persistenceDisabled: false
             )
         )
@@ -68,7 +68,7 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertFalse(
             AppBundleIconPersistencePolicy.shouldPersist(
                 bundleIdentifier: "mosaic.com.emergent.app",
-                appBundleLastPathComponent: "cmux.app",
+                appBundleLastPathComponent: "Mosaic.app",
                 persistenceDisabled: true
             )
         )

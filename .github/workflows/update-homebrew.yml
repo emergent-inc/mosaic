@@ -95,7 +95,7 @@ jobs:
             sha256 "${SHA256}"
 
             url "https://download.mosaic.inc/releases/v#{version}/mosaic-macos.dmg"
-            name "cmux"
+            name "Mosaic"
             desc "Lightweight native macOS terminal with vertical tabs for AI coding agents"
             homepage "https://mosaic.inc"
 
@@ -106,8 +106,8 @@ jobs:
 
             depends_on macos: ">= :sonoma"
 
-            app "cmux.app"
-            binary "#{appdir}/cmux.app/Contents/Resources/bin/cmux"
+            app "Mosaic.app"
+            binary "#{appdir}/Mosaic.app/Contents/Resources/bin/cmux"
 
             zap trash: [
               "~/Library/Application Support/cmux",
@@ -142,6 +142,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes - cask already up to date"
           else
-            git commit -m "Update cmux to ${VERSION}"
+            git commit -m "Update Mosaic to ${VERSION}"
             git push
           fi

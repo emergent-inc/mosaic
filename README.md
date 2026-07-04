@@ -1,9 +1,9 @@
-<h1 align="center">cmux</h1>
-<p align="center">A Ghoddtty-based macOS terminal with vertical tabs and notifications for AI coding agents</p>
+<h1 align="center">Mosaic</h1>
+<p align="center">A Ghostty-based macOS terminal with vertical tabs and notifications for AI coding agents</p>
 
 <p align="center">
   <a href="https://download.mosaic.inc/mosaic-macos.dmg">
-    <img src="./docs/assets/macos-badge.png" alt="Download cmux for macOS" width="180" />
+    <img src="./docs/assets/macos-badge.png" alt="Download Mosaic for macOS" width="180" />
   </a>
 </p>
 
@@ -14,11 +14,11 @@
 </p>
 
 <p align="center">
-  <img src="./docs/assets/main-first-image.png" alt="cmux screenshot" width="900" />
+  <img src="./docs/assets/main-first-image.png" alt="Mosaic screenshot" width="900" />
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=i-WxO5YUTOs">▶ Demo video</a> · <a href="https://mosaic.inc/blog/zen-of-cmux">The Zen of cmux</a>
+  <a href="https://www.youtube.com/watch?v=i-WxO5YUTOs">▶ Demo video</a> · <a href="https://mosaic.inc/blog/zen-of-cmux">The Zen of Mosaic</a>
 </p>
 
 ## Features
@@ -94,10 +94,10 @@ Sidebar shows git branch, linked PR status/number, working directory, listening 
 ### DMG (recommended)
 
 <a href="https://download.mosaic.inc/mosaic-macos.dmg">
-  <img src="./docs/assets/macos-badge.png" alt="Download cmux for macOS" width="180" />
+<img src="./docs/assets/macos-badge.png" alt="Download Mosaic for macOS" width="180" />
 </a>
 
-Open the `.dmg` and drag cmux to your Applications folder. cmux auto-updates via Sparkle, so you only need to download once.
+Open the `.dmg` and drag Mosaic to your Applications folder. Mosaic auto-updates via Sparkle, so you only need to download once.
 
 ### Homebrew
 
@@ -114,7 +114,7 @@ brew upgrade --cask cmux
 
 On first launch, macOS may ask you to confirm opening an app from an identified developer. Click **Open** to proceed.
 
-## Why cmux?
+## Why Mosaic?
 
 I run a lot of Claude Code and Codex sessions in parallel. I was using Ghostty with a bunch of split panes, and relying on native macOS notifications to know when an agent needed me. But Claude Code's notification body is always just "Claude is waiting for your input" with no context, and with enough tabs open I couldn't even read the titles anymore.
 
@@ -236,9 +236,9 @@ Command palette navigation shortcuts, including ⌃ P, are also customizable and
 
 ## Nightly Builds
 
-[Download cmux NIGHTLY](https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg)
+[Download Mosaic NIGHTLY](https://download.mosaic.inc/nightly/mosaic-nightly-macos.dmg)
 
-cmux NIGHTLY is a separate app with its own bundle ID, so it runs alongside the stable version. Built automatically from the latest `main` commit and auto-updates via its own Sparkle feed.
+Mosaic NIGHTLY is a separate app with its own bundle ID, so it runs alongside the stable version. Built automatically from the latest `main` commit and auto-updates via its own Sparkle feed.
 
 Report nightly bugs on [GitHub Issues](https://github.com/emergent-inc/cmux/issues) or in [#nightly-bugs on Discord](https://discord.gg/xsgFEVrWCZ).
 

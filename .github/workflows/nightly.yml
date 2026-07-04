@@ -282,7 +282,7 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          APP_DIR="build-universal/Build/Products/Release/cmux.app"
+          APP_DIR="build-universal/Build/Products/Release/Mosaic.app"
           if [ ! -d "$APP_DIR" ]; then
             echo "Built app not found at $APP_DIR" >&2
             exit 1
@@ -296,16 +296,16 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          CMUX_APP_PATH="build-universal/Build/Products/Release/cmux.app" \
+          CMUX_APP_PATH="build-universal/Build/Products/Release/Mosaic.app" \
             ./tests/test_bundled_ghostty_theme_picker_helper.sh
 
       - name: Verify nightly binary architectures
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          APP_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/MacOS/cmux"
-          CLI_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/cmux"
-          HELPER_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/ghostty"
+          APP_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/MacOS/Mosaic"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
+          HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           APP_ARCHS="$(lipo -archs "$APP_BINARY")"
           CLI_ARCHS="$(lipo -archs "$CLI_BINARY")"
           HELPER_ARCHS="$(lipo -archs "$HELPER_BINARY")"
@@ -320,7 +320,7 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          CLI_BINARY="build-universal/Build/Products/Release/cmux.app/Contents/Resources/bin/cmux"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
           [ -x "$CLI_BINARY" ] || { echo "cmux CLI binary not found at $CLI_BINARY" >&2; exit 1; }
           CMUX_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
 
@@ -352,7 +352,7 @@ jobs:
           SHORT_SHA="${{ needs.decide.outputs.short_sha }}"
           APP_DIR="build-universal/Build/Products/Release"
 
-          BASE_MARKETING=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "${APP_DIR}/cmux.app/Contents/Info.plist")
+          BASE_MARKETING=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "${APP_DIR}/Mosaic.app/Contents/Info.plist")
           NIGHTLY_DATE=$(date -u +%Y%m%d)
 
           # Build number: unique/monotonic per workflow run attempt so same-day
@@ -376,10 +376,10 @@ jobs:
             local app_dir="$1"
             local bundle_id="$2"
             local feed_url="$3"
-            local app_plist="$app_dir/cmux.app/Contents/Info.plist"
+            local app_plist="$app_dir/Mosaic.app/Contents/Info.plist"
 
-            /usr/libexec/PlistBuddy -c "Set :CFBundleName cmux NIGHTLY" "$app_plist"
-            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName cmux NIGHTLY" "$app_plist"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleName Mosaic NIGHTLY" "$app_plist"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Mosaic NIGHTLY" "$app_plist"
             /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${bundle_id}" "$app_plist"
             local url_type_name
             url_type_name="$(/usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:1:CFBundleURLName" "$app_plist")"
@@ -396,7 +396,7 @@ jobs:
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NIGHTLY_BUILD}" "$app_plist"
             /usr/libexec/PlistBuddy -c "Delete :CMUXCommit" "$app_plist" >/dev/null 2>&1 || true
             /usr/libexec/PlistBuddy -c "Add :CMUXCommit string ${SHORT_SHA}" "$app_plist"
-            mv "$app_dir/cmux.app" "$app_dir/cmux NIGHTLY.app"
+            mv "$app_dir/Mosaic.app" "$app_dir/Mosaic NIGHTLY.app"
           }
 
           prepare_variant \
@@ -404,7 +404,7 @@ jobs:
             "mosaic.com.emergent.app.nightly" \
             "https://updates.mosaic.inc/nightly/appcast.xml"
 
-          echo "Nightly app name: cmux NIGHTLY"
+          echo "Nightly app name: Mosaic NIGHTLY"
           echo "Nightly bundle ID: mosaic.com.emergent.app.nightly"
           echo "Nightly marketing version: ${NIGHTLY_MARKETING_VERSION}"
           echo "Nightly build number: ${NIGHTLY_BUILD}"
@@ -451,7 +451,7 @@ jobs:
             exit 1
           fi
 
-          APP_PATH="build-universal/Build/Products/Release/cmux NIGHTLY.app"
+          APP_PATH="build-universal/Build/Products/Release/Mosaic NIGHTLY.app"
           PROFILE_PATH="$APP_PATH/Contents/embedded.provisionprofile"
           TMP_PROFILE="$(mktemp /tmp/cmux-nightly-profile.XXXXXX)"
           TMP_PLIST="$(mktemp /tmp/cmux-nightly-profile.XXXXXX.plist)"
@@ -498,7 +498,7 @@ jobs:
             exit 1
           fi
           for APP_PATH in \
-            "build-universal/Build/Products/Release/cmux NIGHTLY.app"
+            "build-universal/Build/Products/Release/Mosaic NIGHTLY.app"
           do
             ENTITLEMENTS="$RUNNER_TEMP/mosaic.nightly.entitlements"
             ./scripts/resolve-app-entitlements.sh \
@@ -581,7 +581,7 @@ jobs:
           }
 
           notarize_and_package \
-            "build-universal/Build/Products/Release/cmux NIGHTLY.app" \
+            "build-universal/Build/Products/Release/Mosaic NIGHTLY.app" \
             "mosaic-nightly-macos.dmg" \
             "$NIGHTLY_DMG_IMMUTABLE"
 
@@ -666,7 +666,7 @@ jobs:
           body: |
             Automated nightly build for `${{ needs.decide.outputs.short_sha }}`.
 
-            **cmux NIGHTLY** is published as a universal app:
+            **Mosaic NIGHTLY** is published as a universal app:
             - bundle ID `mosaic.com.emergent.app.nightly`
             - feed `appcast.xml`
             - compatibility feed `appcast-universal.xml` for older universal nightlies

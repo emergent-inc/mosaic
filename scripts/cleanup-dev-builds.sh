@@ -11,7 +11,7 @@
 #
 # This script removes those artifacts for tags that are safe to clean.
 # Safety rules (always on):
-#   - Skip any tag whose `cmux DEV <tag>` app is currently running.
+#   - Skip any tag whose `Mosaic DEV <tag>` app is currently running.
 #   - Skip the tag pointed at by /tmp/cmux-last-cli-path (most recent reload).
 # A worktree merely existing on the same name is not treated as a
 # protection. Use --keep TAG when you want to preserve a build whose
@@ -132,14 +132,14 @@ if [[ -r "$LAST_CLI_PATH_FILE" ]]; then
     fi
 fi
 
-# Running cmux DEV processes by tag (the app name embeds the tag).
+# Running Mosaic DEV processes by tag (the app name embeds the tag).
 running_tags=()
 while IFS= read -r line; do
-    # Match "cmux DEV <tag>" (with or without .app suffix).
-    if [[ "$line" =~ cmux\ DEV\ ([A-Za-z0-9._-]+) ]]; then
+    # Match "Mosaic DEV <tag>" (with or without .app suffix).
+    if [[ "$line" =~ Mosaic\ DEV\ ([A-Za-z0-9._-]+) ]]; then
         running_tags+=("${BASH_REMATCH[1]}")
     fi
-done < <(pgrep -fl "cmux DEV " 2>/dev/null || true)
+done < <(pgrep -fl "Mosaic DEV " 2>/dev/null || true)
 
 # ---- planning ---------------------------------------------------------------
 

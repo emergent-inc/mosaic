@@ -16,7 +16,7 @@ export async function generateMetadata({
       default: t("layoutTitle"),
     },
     openGraph: {
-      siteName: "cmux",
+      siteName: "Mosaic",
       type: "article" as const,
     },
     alternates: buildAlternates(locale, "/docs"),

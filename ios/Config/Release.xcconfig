@@ -9,7 +9,7 @@ DEVELOPMENT_TEAM = 7WLXT3NR37
 
 // Distinguish the TestFlight beta on-device from a future App Store "cmux"
 // (overrides PRODUCT_DISPLAY_NAME = cmux from Shared.xcconfig). Debug stays "cmux".
-PRODUCT_DISPLAY_NAME = cmux BETA
+PRODUCT_DISPLAY_NAME = Mosaic BETA
 
 // TestFlight/App Store builds use production APNs. Debug keeps
 // Config/cmux.entitlements from Shared.xcconfig.

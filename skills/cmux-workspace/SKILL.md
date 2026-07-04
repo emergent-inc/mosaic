@@ -184,7 +184,7 @@ For cmux app/runtime changes in a cmux source checkout, use tagged reloads from 
 ./scripts/reload.sh --tag <short-tag>
 ```
 
-Never build or launch untagged `cmux DEV`. If tests or tools need a socket, use the tag-specific socket:
+Never build or launch untagged `Mosaic DEV`. If tests or tools need a socket, use the tag-specific socket:
 
 ```bash
 CMUX_SOCKET_PATH=/tmp/cmux-debug-<short-tag>.sock cmux identify --json

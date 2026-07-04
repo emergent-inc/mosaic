@@ -25,9 +25,9 @@ if ! awk '
   in_helper && /build-ghostty-cli-helper\.sh --universal/ { saw_build=1 }
   in_helper && /helper missing arm64 slice/ { saw_arm64_assert=1 }
   in_helper && /helper missing x86_64 slice/ { saw_x86_assert=1 }
-  in_helper && /wait "\$HELPER_PID"/ { saw_wait=1 }
+  in_helper && /HELPER_STATUS=\$\?/ { saw_status=1 }
   in_helper && /cat "\$HELPER_LOG"/ { saw_log=1 }
-  END { exit !(saw_build && saw_arm64_assert && saw_x86_assert && saw_wait && saw_log) }
+  END { exit !(saw_build && saw_arm64_assert && saw_x86_assert && saw_status && saw_log) }
 ' "$WORKFLOW_FILE"; then
   echo "FAIL: nightly workflow must build and verify the real universal Ghostty helper alongside the app build"
   exit 1
