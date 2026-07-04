@@ -76,6 +76,12 @@ describe("after sign-in native handoff", () => {
     expect(html).toContain("Mosaic opened, you may close this tab");
     expect(html).toContain("Open Mosaic again");
     expect(html).toContain("window.location.replace");
+    expect(html).toContain("color-scheme: dark");
+    expect(html).toContain("background: var(--background)");
+    expect(html).toContain("box-shadow: none");
+    expect(html).not.toContain("radial-gradient");
+    expect(html).not.toContain('class="mark"');
+    expect(html).not.toContain('aria-hidden="true">M</div>');
     expect(html).not.toContain("http-equiv=\"refresh\"");
 
     const callbackURL = new URL(returnHref(html));

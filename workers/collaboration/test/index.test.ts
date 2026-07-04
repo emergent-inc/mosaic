@@ -4,9 +4,11 @@ import { collaborationFetch, type CollaborationWorkerEnv } from "../src/handler"
 class FakeSessionStub {
   createdSessionCode: string | null = null;
   fetchRequests: Request[] = [];
+  createAttempts: string[] = [];
   claimExistingSession = false;
 
   async create(sessionCode: string) {
+    this.createAttempts.push(sessionCode);
     if (this.createdSessionCode !== null || this.claimExistingSession) {
       return {
         metadata: {
@@ -233,6 +235,9 @@ test("create route retries when a generated session code is already active", asy
 
     expect(createResponse.status).toBe(201);
     expect(created.sessionCode).toBe("11111111");
+    expect(callCount).toBe(2);
+    expect(occupied.createAttempts).toEqual(["00000000"]);
+    expect(occupied.createdSessionCode).toBeNull();
     expect(namespace.stubs.get("11111111")?.createdSessionCode).toBe("11111111");
     expect(indexNamespace.stubs.get("global")?.records).toEqual([{
       sessionID: "11111111",
@@ -274,6 +279,53 @@ test("create route succeeds when optional index recording fails", async () => {
   }
 });
 
+test("create route skips multiple occupied candidates before returning a fresh code", async () => {
+  const namespace = new FakeSessionNamespace();
+  const indexNamespace = new FakeSessionIndexNamespace();
+  const env = {
+    COLLABORATION_SESSIONS: namespace,
+    COLLABORATION_SESSION_INDEX: indexNamespace,
+  } satisfies CollaborationWorkerEnv;
+  const firstOccupied = namespace.get("00000000");
+  const secondOccupied = namespace.get("11111111");
+  firstOccupied.claimExistingSession = true;
+  secondOccupied.claimExistingSession = true;
+  const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
+  let callCount = 0;
+  Object.defineProperty(crypto, "getRandomValues", {
+    configurable: true,
+    value(values: Uint8Array) {
+      values.fill(callCount);
+      callCount += 1;
+      return values;
+    },
+  });
+
+  try {
+    const createResponse = await collaborationFetch(
+      new Request("http://relay.test/v1/collaboration/sessions", { method: "POST" }),
+      env
+    );
+    const created = await createResponse.json() as { sessionCode: string };
+
+    expect(createResponse.status).toBe(201);
+    expect(created.sessionCode).toBe("22222222");
+    expect(callCount).toBe(3);
+    expect(firstOccupied.createdSessionCode).toBeNull();
+    expect(secondOccupied.createdSessionCode).toBeNull();
+    expect(namespace.stubs.get("22222222")?.createAttempts).toEqual(["22222222"]);
+    expect(indexNamespace.stubs.get("global")?.records).toEqual([{
+      sessionID: "22222222",
+      sessionCode: "22222222",
+    }]);
+  } finally {
+    Object.defineProperty(crypto, "getRandomValues", {
+      configurable: true,
+      value: originalGetRandomValues,
+    });
+  }
+});
+
 test("create route keeps retrying duplicate candidates until a unique code is claimed", async () => {
   const namespace = new FakeSessionNamespace();
   const indexNamespace = new FakeSessionIndexNamespace();
@@ -304,6 +356,8 @@ test("create route keeps retrying duplicate candidates until a unique code is cl
     expect(createResponse.status).toBe(201);
     expect(created.sessionCode).toBe("11111111");
     expect(callCount).toBe(13);
+    expect(occupied.createAttempts).toHaveLength(12);
+    expect(occupied.createdSessionCode).toBeNull();
     expect(namespace.stubs.get("11111111")?.createdSessionCode).toBe("11111111");
     expect(indexNamespace.stubs.get("global")?.records).toEqual([{
       sessionID: "11111111",
