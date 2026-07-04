@@ -147,17 +147,9 @@ struct TerminalPanelView: View {
         let state = CollaborationRuntime.shared.state(for: panel)
         let agentRoomState = CollaborationRuntime.shared.agentRoomState(for: panel)
         return HStack(spacing: 8) {
-            CmuxSystemSymbolImage(systemName: panel.displayIcon ?? "terminal.fill", pointSize: 13)
-                .foregroundStyle(.secondary)
-                .frame(width: 13)
-            Text(panel.displayTitle)
-                .cmuxFont(size: 10, design: .monospaced)
-                .foregroundStyle(Color(nsColor: appearance.foregroundColor).opacity(0.68))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 8)
             agentRoomStatusView(state: agentRoomState)
             terminalAgentRoomButton
+            Spacer(minLength: 8)
             terminalSessionPill(state: state)
             if state.workspaceSessionCode != nil || state.isMirrored {
                 terminalShareButton(state: state)
@@ -219,7 +211,7 @@ struct TerminalPanelView: View {
             .foregroundStyle(Color.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(state.isDegraded ? Color.orange : Color.blue))
+            .background(Capsule().fill(Color.blue))
             .help(
                 state.isDegraded
                     ? String(
@@ -480,7 +472,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 TrackedButton("session_incoming_open", CollaborationStrings.incomingSessionsButton(count: incomingSessionCount)) {
                     onOpenIncomingSessions()
                 }
-                .buttonStyle(.mosaicAccent)
+                .buttonStyle(.mosaicAccentRegular)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -526,7 +518,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
                         onShareWithTeammate()
                     }
-                    .buttonStyle(.mosaicAccent)
+                    .buttonStyle(.mosaicAccentRegular)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -536,7 +528,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 TrackedButton("session_end", CollaborationStrings.endSession) {
                     onLeave()
                 }
-                .buttonStyle(.mosaicSecondary)
+                .buttonStyle(.mosaicSecondaryRegular)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             } else if directorySharingEnabled {
@@ -547,7 +539,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     TrackedButton("session_share_teammate_create", CollaborationStrings.shareWithTeammate) {
                         onCreate()
                     }
-                    .buttonStyle(.mosaicAccent)
+                    .buttonStyle(.mosaicAccentRegular)
                     .keyboardShortcut(.defaultAction)
 
                     // Team plans keep code joining for external/code sessions;
@@ -564,7 +556,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                     TrackedButton("session_create", CollaborationStrings.createSession) {
                         onCreate()
                     }
-                    .buttonStyle(.mosaicAccent)
+                    .buttonStyle(.mosaicAccentRegular)
                     .keyboardShortcut(.defaultAction)
 
                     // Enterprise (org-locked) plans disable codes entirely, so
@@ -645,14 +637,14 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                         TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
                             onCopyInviteCode()
                         }
-                        .buttonStyle(.mosaicAccent)
+                        .buttonStyle(.mosaicAccentRegular)
                         .keyboardShortcut(.defaultAction)
                         .fixedSize()
                     } else {
                         TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
                             onShareWithTeammate()
                         }
-                        .buttonStyle(.mosaicAccent)
+                        .buttonStyle(.mosaicAccentRegular)
                         .keyboardShortcut(.defaultAction)
                         .fixedSize()
                     }

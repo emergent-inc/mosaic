@@ -38,17 +38,24 @@ struct TrackedButton<Label: View>: View {
 /// button whose primary background is the yellow accent should use this so the
 /// text stays legible.
 struct MosaicAccentButtonStyle: ButtonStyle {
+    let labelFontWeight: Font.Weight
+
+    init(labelFontWeight: Font.Weight = .semibold) {
+        self.labelFontWeight = labelFontWeight
+    }
+
     func makeBody(configuration: Configuration) -> some View {
-        MosaicAccentButtonLabel(configuration: configuration)
+        MosaicAccentButtonLabel(configuration: configuration, labelFontWeight: labelFontWeight)
     }
 
     private struct MosaicAccentButtonLabel: View {
         let configuration: ButtonStyleConfiguration
+        let labelFontWeight: Font.Weight
         @Environment(\.isEnabled) private var isEnabled
 
         var body: some View {
             configuration.label
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 12, weight: labelFontWeight))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
@@ -65,22 +72,34 @@ struct MosaicAccentButtonStyle: ButtonStyle {
 extension ButtonStyle where Self == MosaicAccentButtonStyle {
     /// Yellow-accent prominent button with black (not white) label text.
     static var mosaicAccent: MosaicAccentButtonStyle { MosaicAccentButtonStyle() }
+
+    /// Yellow-accent prominent button with a regular-weight label.
+    static var mosaicAccentRegular: MosaicAccentButtonStyle {
+        MosaicAccentButtonStyle(labelFontWeight: .regular)
+    }
 }
 
 /// Secondary prominent button: neutral grey bezel with white label text. Used for
 /// non-primary actions that should read as less emphatic than `.mosaicAccent`.
 struct MosaicSecondaryButtonStyle: ButtonStyle {
+    let labelFontWeight: Font.Weight
+
+    init(labelFontWeight: Font.Weight = .semibold) {
+        self.labelFontWeight = labelFontWeight
+    }
+
     func makeBody(configuration: Configuration) -> some View {
-        MosaicSecondaryButtonLabel(configuration: configuration)
+        MosaicSecondaryButtonLabel(configuration: configuration, labelFontWeight: labelFontWeight)
     }
 
     private struct MosaicSecondaryButtonLabel: View {
         let configuration: ButtonStyleConfiguration
+        let labelFontWeight: Font.Weight
         @Environment(\.isEnabled) private var isEnabled
 
         var body: some View {
             configuration.label
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 12, weight: labelFontWeight))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
@@ -97,6 +116,11 @@ struct MosaicSecondaryButtonStyle: ButtonStyle {
 extension ButtonStyle where Self == MosaicSecondaryButtonStyle {
     /// Grey secondary button with white label text.
     static var mosaicSecondary: MosaicSecondaryButtonStyle { MosaicSecondaryButtonStyle() }
+
+    /// Grey secondary button with a regular-weight label.
+    static var mosaicSecondaryRegular: MosaicSecondaryButtonStyle {
+        MosaicSecondaryButtonStyle(labelFontWeight: .regular)
+    }
 }
 
 /// A checkbox toggle style that fills the box with the yellow accent when on and

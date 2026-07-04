@@ -8,6 +8,7 @@ final class PaneDropTargetView: NSView {
     weak var hostedView: GhosttySurfaceScrollView?
     var dropContext: PaneDropContext?
     private var activeZone: DropZone?
+    private var activeOverlayStyle: PaneDropZoneOverlayStyle = .standard
     private let dropZoneOverlayView = NSView(frame: .zero)
     private lazy var dropZoneOverlayAnimator = PaneDropZoneOverlayAnimator(overlayView: dropZoneOverlayView)
 #if DEBUG
@@ -279,7 +280,7 @@ final class PaneDropTargetView: NSView {
                 clearDragState(phase: "\(phase).agentRoomWire.reject")
                 return []
             }
-            setActiveDropZone(.center)
+            setActiveDropZone(.center, style: .agentRoomWire)
 #if DEBUG
             cmuxDebugLog(
                 "terminal.paneDrop.\(phase).agentRoomWire source=\(sourceSurfaceID.prefix(5)) " +
@@ -486,10 +487,14 @@ final class PaneDropTargetView: NSView {
         addSubview(dropZoneOverlayView)
     }
 
-    private func setActiveDropZone(_ zone: DropZone?) {
+    private func setActiveDropZone(
+        _ zone: DropZone?,
+        style: PaneDropZoneOverlayStyle = .standard
+    ) {
         activeZone = zone
+        activeOverlayStyle = style
         if let hostedView {
-            hostedView.setDropZoneOverlay(zone: zone)
+            hostedView.setDropZoneOverlay(zone: zone, style: style)
             dropZoneOverlayView.isHidden = true
         } else {
             updateStandaloneDropZoneOverlay()
@@ -503,6 +508,7 @@ final class PaneDropTargetView: NSView {
         }
         dropZoneOverlayAnimator.setZone(
             activeZone,
+            style: activeOverlayStyle,
             frameForZone: { [weak self] zone in
                 guard let self else { return .zero }
                 return PaneDropRouting.overlayFrame(for: zone, in: self.bounds)
