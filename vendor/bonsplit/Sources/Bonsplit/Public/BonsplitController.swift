@@ -1,6 +1,24 @@
 import Foundation
 import SwiftUI
 
+#if DEBUG
+/// Diagnostic-only file logger for the terminal-tab avatar investigation.
+/// NSLog is not captured by the tagged dev build, so append to a fixed file.
+@inline(__always)
+func bonsplitAvatarDebugLog(_ message: @autoclosure () -> String) {
+    let line = "\(Date().timeIntervalSince1970) \(message())\n"
+    guard let data = line.data(using: .utf8) else { return }
+    let url = URL(fileURLWithPath: "/tmp/cmux-avatardbg.log")
+    if let handle = try? FileHandle(forWritingTo: url) {
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: data)
+    } else {
+        try? data.write(to: url)
+    }
+}
+#endif
+
 /// Main controller for the split tab bar system
 @MainActor
 @Observable
@@ -253,39 +271,60 @@ public final class BonsplitController {
     ) {
         guard let (pane, tabIndex) = findTabInternal(tabId) else { return }
 
+        // Mutate a local copy and write the whole array back in one assignment.
+        //
+        // `PaneState` is `@Observable` and per-element mutation
+        // (`pane.tabs[i].icon = …`) does not reliably drive SwiftUI to
+        // re-evaluate the tab views: a standalone change (e.g. an async
+        // collaboration avatar swap, or clearing that avatar on session end)
+        // updated the model but the tab kept rendering its stale icon until an
+        // unrelated structural change (a split/duplicate) forced a rebuild.
+        // Assigning `pane.tabs` as a whole invokes the observed setter, so the
+        // change is published immediately.
+        var updatedTab = pane.tabs[tabIndex]
+
         if let title = title {
-            pane.tabs[tabIndex].title = title
+            updatedTab.title = title
         }
         if let icon = icon {
-            pane.tabs[tabIndex].icon = icon
+            updatedTab.icon = icon
         }
         if let iconImageData = iconImageData {
-            pane.tabs[tabIndex].iconImageData = iconImageData
+            updatedTab.iconImageData = iconImageData
         }
         if let kind = kind {
-            pane.tabs[tabIndex].kind = kind
+            updatedTab.kind = kind
         }
         if let hasCustomTitle = hasCustomTitle {
-            pane.tabs[tabIndex].hasCustomTitle = hasCustomTitle
+            updatedTab.hasCustomTitle = hasCustomTitle
         }
         if let isDirty = isDirty {
-            pane.tabs[tabIndex].isDirty = isDirty
+            updatedTab.isDirty = isDirty
         }
         if let showsNotificationBadge = showsNotificationBadge {
-            pane.tabs[tabIndex].showsNotificationBadge = showsNotificationBadge
+            updatedTab.showsNotificationBadge = showsNotificationBadge
         }
         if let isLoading = isLoading {
-            pane.tabs[tabIndex].isLoading = isLoading
+            updatedTab.isLoading = isLoading
         }
         if let isAudioMuted = isAudioMuted {
-            pane.tabs[tabIndex].isAudioMuted = isAudioMuted
+            updatedTab.isAudioMuted = isAudioMuted
         }
         if let isAudioPlaying = isAudioPlaying {
-            pane.tabs[tabIndex].isAudioPlaying = isAudioPlaying
+            updatedTab.isAudioPlaying = isAudioPlaying
         }
         if let isPinned = isPinned {
-            pane.tabs[tabIndex].isPinned = isPinned
+            updatedTab.isPinned = isPinned
         }
+
+        var updatedTabs = pane.tabs
+        updatedTabs[tabIndex] = updatedTab
+        pane.tabs = updatedTabs
+        #if DEBUG
+        if iconImageData != nil {
+            bonsplitAvatarDebugLog("updateTab pane=\(ObjectIdentifier(pane)) controller=\(ObjectIdentifier(self)) tab=\(tabId.id) iconBytes=\(updatedTab.iconImageData?.count ?? -1) icon=\(updatedTab.icon ?? "nil")")
+        }
+        #endif
     }
 
     /// Close a tab by ID

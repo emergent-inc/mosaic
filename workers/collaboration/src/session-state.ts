@@ -1,4 +1,4 @@
-import { parseEnvelope, type PeerInfo, type RelayEnvelope } from "./protocol";
+import { parseEnvelope, parsePeer, type PeerInfo, type RelayEnvelope } from "./protocol";
 
 export interface RelaySocket {
   send(data: string): void;
@@ -40,6 +40,17 @@ export class CollaborationRelaySessionState {
     if (envelope.type === "peer.heartbeat") {
       entry.lastHeartbeatAt = now;
       this.peers.set(peerID, entry);
+      return;
+    }
+    if (envelope.type === "peer.update") {
+      const peer = parsePeer((envelope as { peer?: unknown }).peer);
+      if (peer === null || peer.peerID !== peerID) {
+        this.closePeer(peerID, 1003, "invalid frame");
+        this.dropPeer(peerID, "disconnect");
+        return;
+      }
+      this.peers.set(peerID, { ...entry, peer, lastHeartbeatAt: now });
+      this.broadcast(peerID, { type: "peer.update", peer });
       return;
     }
     this.broadcast(peerID, { ...envelope, fromPeerID: peerID, receivedAt: now }, this.recipientParticipantIDs(envelope));

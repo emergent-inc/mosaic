@@ -72,6 +72,52 @@ test("carries peer imageURL through the roster and join broadcasts", () => {
   });
 });
 
+test("peer update refreshes roster imageURL and broadcasts the new profile picture", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  const third = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+  const updated = peerWithImage("p1", "https://img.example/p1.png");
+
+  state.handleMessage("p1", JSON.stringify({ type: "peer.update", peer: updated }), 1100);
+  expect(JSON.parse(second.sent.at(-1) ?? "{}")).toEqual({
+    type: "peer.update",
+    peer: updated,
+  });
+
+  state.addPeer("ABCD-1234", peer("p3"), third, 1200);
+  expect(JSON.parse(third.sent[0] ?? "{}")).toEqual({
+    type: "session.joined",
+    sessionID: "ABCD-1234",
+    peers: [updated, peer("p2"), peer("p3")],
+  });
+});
+
+test("peer update rejects missing or mismatched peer payloads and removes the sender", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  state.handleMessage("p1", JSON.stringify({ type: "peer.update", peer: peerWithImage("p2", "https://img.example/p2.png") }), 1100);
+
+  expect(first.closed).toEqual([{ code: 1003, reason: "invalid frame" }]);
+  expect(JSON.parse(second.sent.at(-1) ?? "{}")).toEqual({
+    type: "peer.left",
+    peerID: "p1",
+    reason: "disconnect",
+  });
+  expect(state.peerCount).toBe(1);
+
+  state.handleMessage("p2", JSON.stringify({ type: "peer.update" }), 1200);
+
+  expect(second.closed).toEqual([{ code: 1003, reason: "invalid frame" }]);
+  expect(state.peerCount).toBe(0);
+});
+
 test("forwards opaque non-heartbeat frames to other peers", () => {
   const state = new CollaborationRelaySessionState();
   const first = new FakeSocket();
