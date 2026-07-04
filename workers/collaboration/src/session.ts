@@ -9,16 +9,33 @@ import {
   type SessionMetadataCreateResult,
 } from "./session-metadata";
 
+interface CollaborationSessionIndexStub {
+  fetch(request: Request): Promise<Response>;
+}
+
+interface CollaborationSessionIndexNamespace {
+  idFromName(name: string): unknown;
+  get(id: unknown): CollaborationSessionIndexStub;
+}
+
+export interface CollaborationSessionObjectEnv {
+  COLLABORATION_SESSION_INDEX?: CollaborationSessionIndexNamespace;
+}
+
 const HEARTBEAT_TIMEOUT_MS = 30_000;
 const EMPTY_SESSION_GRACE_MS = 10 * 60_000;
 const IDLE_CLEANUP_DUE_AT_KEY = "idleCleanupDueAt";
+const SESSION_INDEX_OBJECT_NAME = "global";
 const liveSessionStates = new Map<string, CollaborationRelaySessionState>();
 
-export class CollaborationSessionObject extends DurableObject {
+export class CollaborationSessionObject extends DurableObject<CollaborationSessionObjectEnv> {
   private metadata: SessionMetadata | null = null;
   private state = new CollaborationRelaySessionState();
 
   async create(sessionCode: string): Promise<SessionMetadataCreateResult> {
+    // Uniqueness is scoped to this Durable Object: every candidate code maps to
+    // one object via idFromName(sessionCode), and DO input gates serialize calls
+    // here before storage is read or written.
     if (this.metadata !== null) return { metadata: this.metadata, created: false };
     const result = await createSessionMetadataIfAbsent(this.ctx.storage, sessionCode);
     this.metadata = result.metadata;
@@ -30,6 +47,18 @@ export class CollaborationSessionObject extends DurableObject {
     const url = new URL(request.url);
     if (url.pathname.endsWith("/connect")) {
       return this.handleConnect(request);
+    }
+    if (url.pathname === "/metadata" && request.method === "GET") {
+      const metadata = await this.loadMetadata();
+      if (metadata === null) {
+        return new Response(JSON.stringify({ error: "session_not_found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ metadata }), {
+        headers: { "content-type": "application/json" },
+      });
     }
     return new Response("not found", { status: 404 });
   }
@@ -107,9 +136,25 @@ export class CollaborationSessionObject extends DurableObject {
       await this.ctx.storage.setAlarm(dueAt);
       return;
     }
+    const metadata = await this.loadMetadata();
     await deleteSessionMetadata(this.ctx.storage);
     await this.ctx.storage.delete(IDLE_CLEANUP_DUE_AT_KEY);
     this.metadata = null;
+    if (metadata !== null) await this.deleteIndexedSession(metadata.sessionCode);
+  }
+
+  private async deleteIndexedSession(sessionCode: string): Promise<void> {
+    const namespace = this.env.COLLABORATION_SESSION_INDEX;
+    if (!namespace) return;
+    const stub = namespace.get(namespace.idFromName(SESSION_INDEX_OBJECT_NAME));
+    try {
+      await stub.fetch(new Request(
+        `https://cmux-collaboration-index.local/sessions/${encodeURIComponent(sessionCode)}`,
+        { method: "DELETE" }
+      ));
+    } catch (error) {
+      console.warn("failed to delete collaboration session index", error);
+    }
   }
 
   private async loadMetadata(): Promise<SessionMetadata | null> {

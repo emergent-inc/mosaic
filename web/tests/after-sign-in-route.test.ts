@@ -16,13 +16,21 @@ let memberships: readonly {
     publicMetadata?: Record<string, unknown>;
   };
 }[];
+type TestClerkUser = {
+  id: string;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  imageUrl?: string | null;
+  primaryEmailAddress?: { emailAddress?: string | null } | null;
+  emailAddresses?: readonly { emailAddress?: string | null }[];
+};
+let clerkUser: TestClerkUser;
 const getUser = mock(async (...args: unknown[]) => {
   const id = args[0] as string;
   return {
+    ...clerkUser,
     id,
-    fullName: "Test User",
-    imageUrl: "https://img.example/test-user.png",
-    primaryEmailAddress: { emailAddress: "test@example.com" },
   };
 });
 
@@ -31,12 +39,7 @@ const { verifyNativeAuthToken } = await import("../services/auth/nativeSession")
 
 const GET = makeAfterSignInHandler({
   getAuth: async () => ({ userId, orgId: "org-1" }),
-  getUser: async (id) => getUser(id) as Promise<{
-    id: string;
-    fullName: string;
-    imageUrl: string;
-    primaryEmailAddress: { emailAddress: string };
-  }>,
+  getUser: async (id) => getUser(id) as Promise<TestClerkUser>,
   listMemberships: async () => memberships,
   getCookieStore: async () => ({
     get: (name: string) => {
@@ -66,11 +69,27 @@ function returnHref(html: string): string {
   return match![1].replaceAll("&amp;", "&");
 }
 
+async function nativeClaimsFromResponse(response: Response) {
+  expect(response.status).toBe(200);
+  const html = await response.text();
+  const callbackURL = new URL(returnHref(html));
+  return {
+    accessClaims: verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_access")!),
+    refreshClaims: verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_refresh")!),
+  };
+}
+
 describe("after sign-in native handoff", () => {
   beforeEach(() => {
     handoffCookie = undefined;
     userId = "user_1";
     memberships = [];
+    clerkUser = {
+      id: "user_1",
+      fullName: "Test User",
+      imageUrl: "https://img.example/test-user.png",
+      primaryEmailAddress: { emailAddress: "test@example.com" },
+    };
   });
 
   test("keeps a fallback page for verified native auto-open handoffs", async () => {
@@ -85,6 +104,12 @@ describe("after sign-in native handoff", () => {
     expect(html).toContain("Mosaic opened, you may close this tab");
     expect(html).toContain("Open Mosaic again");
     expect(html).toContain("window.location.replace");
+    expect(html).toContain("color-scheme: dark");
+    expect(html).toContain("background: var(--background)");
+    expect(html).toContain("box-shadow: none");
+    expect(html).not.toContain("radial-gradient");
+    expect(html).not.toContain('class="mark"');
+    expect(html).not.toContain('aria-hidden="true">M</div>');
     expect(html).not.toContain("http-equiv=\"refresh\"");
 
     const callbackURL = new URL(returnHref(html));
@@ -168,5 +193,77 @@ describe("after sign-in native handoff", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://cmux.test/sign-in");
+  });
+
+  test("captures trimmed profile picture and name from Clerk at sign-in", async () => {
+    clerkUser = {
+      id: "user_1",
+      fullName: "  Ada Lovelace  ",
+      imageUrl: "  https://img.example/ada.png  ",
+      primaryEmailAddress: { emailAddress: "ada@example.com" },
+    };
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
+
+    const { accessClaims, refreshClaims } = await nativeClaimsFromResponse(
+      await GET(signInRequest(nativeReturnTo, "handoff-nonce"))
+    );
+
+    expect(accessClaims).toMatchObject({
+      userId: "user_1",
+      displayName: "Ada Lovelace",
+      primaryEmail: "ada@example.com",
+      imageURL: "https://img.example/ada.png",
+    });
+    expect(refreshClaims).toMatchObject({
+      userId: "user_1",
+      displayName: "Ada Lovelace",
+      primaryEmail: "ada@example.com",
+      imageURL: "https://img.example/ada.png",
+    });
+  });
+
+  test("falls back to first and last name and secondary email at sign-in", async () => {
+    clerkUser = {
+      id: "user_1",
+      fullName: " ",
+      firstName: " Grace ",
+      lastName: " Hopper ",
+      imageUrl: "https://img.example/grace.png",
+      primaryEmailAddress: null,
+      emailAddresses: [{ emailAddress: "" }, { emailAddress: "grace@example.com" }],
+    };
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
+
+    const { accessClaims, refreshClaims } = await nativeClaimsFromResponse(
+      await GET(signInRequest(nativeReturnTo, "handoff-nonce"))
+    );
+
+    expect(accessClaims).toMatchObject({
+      displayName: "Grace Hopper",
+      primaryEmail: "grace@example.com",
+      imageURL: "https://img.example/grace.png",
+    });
+    expect(refreshClaims).toMatchObject({
+      displayName: "Grace Hopper",
+      primaryEmail: "grace@example.com",
+      imageURL: "https://img.example/grace.png",
+    });
+  });
+
+  test("stores null imageURL when Clerk has no profile picture at sign-in", async () => {
+    clerkUser = {
+      id: "user_1",
+      fullName: "No Image",
+      imageUrl: "   ",
+      primaryEmailAddress: { emailAddress: "no-image@example.com" },
+    };
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
+
+    const { accessClaims, refreshClaims } = await nativeClaimsFromResponse(
+      await GET(signInRequest(nativeReturnTo, "handoff-nonce"))
+    );
+
+    expect(accessClaims?.imageURL).toBeNull();
+    expect(refreshClaims?.imageURL).toBeNull();
   });
 });
