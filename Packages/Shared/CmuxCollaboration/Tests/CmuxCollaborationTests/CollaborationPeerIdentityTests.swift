@@ -77,12 +77,14 @@ struct CollaborationPeerIdentityTests {
             peerID: "peer-live-session-1",
             userID: "user_2abc",
             displayName: "Dorsa",
+            imageURL: "https://img.example/dorsa.png",
             colorPalette: ["#111111", "#222222", "#333333"]
         )
         let nextProcessIdentity = CollaborationPeerIdentity.authenticatedParticipant(
             peerID: "peer-live-session-2",
             userID: "user_2abc",
             displayName: "Dorsa",
+            imageURL: "https://img.example/dorsa.png",
             colorPalette: ["#111111", "#222222", "#333333"]
         )
 
@@ -92,5 +94,6 @@ struct CollaborationPeerIdentityTests {
         #expect(nextProcessIdentity.participantID == "user_2abc")
         #expect(identity.color == nextProcessIdentity.color)
         #expect(identity.displayName == "Dorsa")
+        #expect(identity.imageURL == "https://img.example/dorsa.png")
     }
 }
