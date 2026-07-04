@@ -136,7 +136,7 @@ extension TerminalSurface {
         let rawHpx = pixelDimension(from: resolvedBackingHeight)
         lastUncappedPixelWidth = rawWpx
         lastUncappedPixelHeight = rawHpx
-        let cappedSize = cappedByMobileViewportLimit(width: rawWpx, height: rawHpx, surface: surface)
+        let cappedSize = cappedByViewportCellLimit(width: rawWpx, height: rawHpx, surface: surface)
         let wpx = cappedSize.width
         let hpx = cappedSize.height
         guard wpx > 0, hpx > 0 else { return false }
@@ -148,7 +148,7 @@ extension TerminalSurface {
         Self.sizeLog("updateSize-call surface=\(id.uuidString.prefix(8)) size=\(wpx)x\(hpx) prev=\(lastPixelWidth)x\(lastPixelHeight) changed=\((scaleChanged || sizeChanged) ? 1 : 0)")
         #endif
 
-        if mobileViewportCellLimit != nil {
+        if effectiveViewportCellLimit != nil {
             updateMobileViewportBorder(
                 appliedWidth: wpx,
                 appliedHeight: hpx,
@@ -368,22 +368,39 @@ extension TerminalSurface {
         return true
     }
 
-    private func cappedByMobileViewportLimit(
+    /// The effective grid cap in cells, combining the mobile-pairing viewport
+    /// limit and the collaboration full-grid mirror lock. When both are set
+    /// (not expected in practice) the smaller cap per dimension wins. Nil when
+    /// neither cap is active.
+    var effectiveViewportCellLimit: (columns: Int, rows: Int)? {
+        switch (mobileViewportCellLimit, lockedMirrorGrid) {
+        case (nil, nil):
+            return nil
+        case let (mobile?, nil):
+            return mobile
+        case let (nil, locked?):
+            return locked
+        case let (mobile?, locked?):
+            return (columns: min(mobile.columns, locked.columns), rows: min(mobile.rows, locked.rows))
+        }
+    }
+
+    private func cappedByViewportCellLimit(
         width: UInt32,
         height: UInt32,
         surface: ghostty_surface_t
     ) -> (width: UInt32, height: UInt32) {
-        guard let mobileViewportPixelLimit = mobileViewportPixelLimit(for: surface) else {
+        guard let pixelLimit = viewportCellPixelLimit(for: surface) else {
             return (width, height)
         }
         return (
-            width: min(width, mobileViewportPixelLimit.width),
-            height: min(height, mobileViewportPixelLimit.height)
+            width: min(width, pixelLimit.width),
+            height: min(height, pixelLimit.height)
         )
     }
 
-    private func mobileViewportPixelLimit(for surface: ghostty_surface_t) -> (width: UInt32, height: UInt32)? {
-        guard let mobileViewportCellLimit else {
+    private func viewportCellPixelLimit(for surface: ghostty_surface_t) -> (width: UInt32, height: UInt32)? {
+        guard let limit = effectiveViewportCellLimit else {
             return nil
         }
         let size = ghostty_surface_size(surface)
@@ -395,12 +412,12 @@ extension TerminalSurface {
         let verticalNonGridPixels = max(0, Int(size.height_px) - currentRows * cellHeight)
         return (
             width: safePixelDimension(
-                cellCount: mobileViewportCellLimit.columns,
+                cellCount: limit.columns,
                 cellSize: cellWidth,
                 nonGridPixels: horizontalNonGridPixels
             ),
             height: safePixelDimension(
-                cellCount: mobileViewportCellLimit.rows,
+                cellCount: limit.rows,
                 cellSize: cellHeight,
                 nonGridPixels: verticalNonGridPixels
             )
@@ -413,6 +430,120 @@ extension TerminalSurface {
         let maxCells = max(1, (Int(UInt32.max) - clampedNonGridPixels) / clampedCellSize)
         let clampedCellCount = min(max(1, cellCount), maxCells)
         return UInt32(clampedCellCount * clampedCellSize + clampedNonGridPixels)
+    }
+
+    /// The current terminal grid size in cells, or nil while the runtime
+    /// surface is not live or has no real grid yet. Used by the host to
+    /// broadcast its grid so peers can lock their mirror to the same size.
+    @MainActor
+    public func gridCells() -> (columns: Int, rows: Int)? {
+        guard let surface = liveSurfaceForGhosttyAccess(reason: "gridCells") else { return nil }
+        let size = ghostty_surface_size(surface)
+        let cols = Int(size.columns)
+        let rows = Int(size.rows)
+        guard cols > 0, rows > 0 else { return nil }
+        return (columns: cols, rows: rows)
+    }
+
+    /// Locks the collaboration mirror grid to the host's exact `columns x rows`
+    /// and re-applies sizing immediately (letterboxing a larger pane, clipping a
+    /// smaller one). Identical grid geometry is what makes collaborator
+    /// pointer/selection overlays map 1:1 to the same text cell as the host.
+    ///
+    /// - Parameters:
+    ///   - columns: The host's terminal column count.
+    ///   - rows: The host's terminal row count.
+    @MainActor
+    public func applyLockedMirrorGrid(columns: Int, rows: Int) {
+        guard columns > 0, rows > 0 else {
+            clearLockedMirrorGrid()
+            return
+        }
+        lockedMirrorGrid = (columns: max(1, columns), rows: max(1, rows))
+        enforceViewportCellCap(reason: "collaboration.lockMirrorGrid")
+    }
+
+    /// Removes the collaboration mirror grid lock and restores the pane-driven
+    /// size (clearing any letterbox border).
+    @MainActor
+    public func clearLockedMirrorGrid() {
+        lockedMirrorGrid = nil
+        enforceViewportCellCap(reason: "collaboration.clearMirrorGrid")
+    }
+
+    /// Immediately re-applies the current effective viewport cell cap (mobile
+    /// pairing and/or collaboration mirror lock) to the live surface without
+    /// waiting for a local pane resize. Restores the uncapped size when no cap
+    /// is active. Suppresses primary-screen reflow for manual-I/O mirror panes.
+    ///
+    /// - Returns: Whether the runtime surface size changed.
+    @discardableResult
+    @MainActor
+    public func enforceViewportCellCap(reason: String) -> Bool {
+        guard let surface = liveSurfaceForGhosttyAccess(reason: "enforceViewportCellCap") else {
+            paneHost.setMobileViewportBorder(size: nil, drawRight: false, drawBottom: false)
+            return false
+        }
+
+        guard effectiveViewportCellLimit != nil else {
+            // No cap active: drop the letterbox border and restore the
+            // uncapped, pane-driven size.
+            paneHost.setMobileViewportBorder(size: nil, drawRight: false, drawBottom: false)
+            let uncappedWidth = lastUncappedPixelWidth
+            let uncappedHeight = lastUncappedPixelHeight
+            guard uncappedWidth > 0, uncappedHeight > 0 else { return false }
+            guard uncappedWidth != lastPixelWidth || uncappedHeight != lastPixelHeight else {
+                ghostty_surface_refresh(surface)
+                return false
+            }
+            applyMirrorCapResize(surface: surface, width: uncappedWidth, height: uncappedHeight)
+            return true
+        }
+
+        guard let pixelLimit = viewportCellPixelLimit(for: surface) else { return false }
+        let baseWidth = lastUncappedPixelWidth > 0 ? lastUncappedPixelWidth : pixelLimit.width
+        let baseHeight = lastUncappedPixelHeight > 0 ? lastUncappedPixelHeight : pixelLimit.height
+        let appliedWidth = min(pixelLimit.width, baseWidth)
+        let appliedHeight = min(pixelLimit.height, baseHeight)
+        updateMobileViewportBorder(
+            appliedWidth: appliedWidth,
+            appliedHeight: appliedHeight,
+            baseWidth: baseWidth,
+            baseHeight: baseHeight
+        )
+
+        #if DEBUG
+        Self.sizeLog(
+            "enforceViewportCellCap surface=\(id.uuidString.prefix(8)) " +
+            "capPx=\(pixelLimit.width)x\(pixelLimit.height) appliedPx=\(appliedWidth)x\(appliedHeight) " +
+            "basePx=\(baseWidth)x\(baseHeight) prev=\(lastPixelWidth)x\(lastPixelHeight) reason=\(reason)"
+        )
+        #endif
+
+        guard appliedWidth != lastPixelWidth || appliedHeight != lastPixelHeight else {
+            ghostty_surface_refresh(surface)
+            return false
+        }
+        applyMirrorCapResize(surface: surface, width: appliedWidth, height: appliedHeight)
+        return true
+    }
+
+    /// Resizes the live surface to the given backing pixel size, suppressing
+    /// primary-screen reflow across the change for manual-I/O no-reflow mirror
+    /// panes (tmux/collaboration mirrors are authoritative for reflow).
+    @MainActor
+    private func applyMirrorCapResize(surface: ghostty_surface_t, width: UInt32, height: UInt32) {
+        let suppressManualReflow = manualIO && manualIONoReflow
+        if suppressManualReflow {
+            writeProcessOutputData(Self.decawmDisableSequence, to: surface)
+        }
+        ghostty_surface_set_size(surface, width, height)
+        lastPixelWidth = width
+        lastPixelHeight = height
+        ghostty_surface_refresh(surface)
+        if suppressManualReflow {
+            writeProcessOutputData(Self.decawmEnableSequence, to: surface)
+        }
     }
 
     /// The current monospace cell size in points, or nil if the runtime

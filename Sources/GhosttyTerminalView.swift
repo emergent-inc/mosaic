@@ -3947,39 +3947,31 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         if coordinateSpace == "terminalContentBottom",
            let column {
-            if let viewportRowFromBottom {
+            // Canonical anchor: map the host's absolute scrollback line
+            // (contentRowFromBottom) into THIS view's viewport using our own
+            // scrollback geometry. Column-locking keeps line numbering identical
+            // across sides, so this lands on the same text cell regardless of
+            // window height or independent scroll position. Hide (return nil)
+            // when the line is off our viewport rather than clamping to an edge.
+            if let contentRowFromBottom, let scrollbar {
+                guard column >= 0, column <= Double(metrics.columns) else { return nil }
+                guard let viewportRow = TerminalCollaboratorOverlayGeometry.viewportRow(
+                    rowFromBottom: Double(contentRowFromBottom),
+                    totalRows: scrollbar.total,
+                    scrollOffset: scrollbar.offset,
+                    viewportRows: metrics.rows
+                ) else { return nil }
                 return terminalCollaboratorPointerAnchor(
-                    viewportRowFromBottom: CGFloat(viewportRowFromBottom),
+                    row: CGFloat(viewportRow),
                     column: CGFloat(column),
                     metrics: metrics
                 )
             }
-            guard let contentRowFromBottom else {
-                if let row {
-                    return terminalCollaboratorPointerAnchor(
-                        row: CGFloat(row),
-                        column: CGFloat(column),
-                        metrics: metrics
-                    )
-                }
-                return nil
-            }
-            guard let scrollbar else {
-                if let row {
-                    return terminalCollaboratorPointerAnchor(
-                        row: CGFloat(row),
-                        column: CGFloat(column),
-                        metrics: metrics
-                    )
-                }
-                return nil
-            }
-            let peerBottomRow = CGFloat(max(scrollbar.total, 1)) - 1
-            let peerContentRow = peerBottomRow - CGFloat(contentRowFromBottom)
-            let viewportRow = peerContentRow - CGFloat(scrollbar.offset)
-            if viewportRow >= 0, viewportRow < CGFloat(metrics.rows) {
+            // Fallbacks only when the absolute-line geometry is unavailable
+            // (peer has no scrollbar snapshot yet).
+            if let viewportRowFromBottom {
                 return terminalCollaboratorPointerAnchor(
-                    row: viewportRow,
+                    viewportRowFromBottom: CGFloat(viewportRowFromBottom),
                     column: CGFloat(column),
                     metrics: metrics
                 )
@@ -4127,19 +4119,29 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 return nil
             }
 
-            let row: CGFloat
+            let clampedRow: CGFloat
+            let visibleRows: CGFloat
             if let rowFromBottom = selection.rowFromBottom,
                let scrollbar {
-                let peerBottomRow = CGFloat(max(scrollbar.total, 1)) - 1
-                row = peerBottomRow - CGFloat(rowFromBottom) - CGFloat(scrollbar.offset)
+                // Map the absolute selection band into our viewport, clipping
+                // partials and hiding rows scrolled out of view.
+                guard let band = TerminalCollaboratorOverlayGeometry.viewportRowBand(
+                    rowFromBottom: Double(rowFromBottom),
+                    heightRows: Double(heightRows),
+                    totalRows: scrollbar.total,
+                    scrollOffset: scrollbar.offset,
+                    viewportRows: metrics.rows
+                ) else { return nil }
+                clampedRow = CGFloat(band.clampedRow)
+                visibleRows = CGFloat(band.visibleRows)
             } else if let fallbackRow = selection.row {
-                row = CGFloat(fallbackRow)
+                let row = CGFloat(fallbackRow)
+                guard row + CGFloat(heightRows) > 0, row < CGFloat(metrics.rows) else { return nil }
+                clampedRow = max(row, 0)
+                visibleRows = min(row + CGFloat(heightRows), CGFloat(metrics.rows)) - clampedRow
             } else {
                 return nil
             }
-            guard row + CGFloat(heightRows) > 0, row < CGFloat(metrics.rows) else { return nil }
-            let clampedRow = max(row, 0)
-            let visibleRows = min(row + CGFloat(heightRows), CGFloat(metrics.rows)) - clampedRow
             let rect = CGRect(
                 x: metrics.xInset + (CGFloat(column) * metrics.cellWidth),
                 y: bounds.height - metrics.yInset - ((clampedRow + visibleRows) * metrics.cellHeight),
@@ -7953,8 +7955,12 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             let widthColumns = max(abs(endColumn - startColumn), 1)
             let totalRows = Int(scrollbar?.total ?? 1)
             let scrollOffset = Int(scrollbar?.offset ?? 0)
+            // Do not skip rows outside the host's own viewport: peers anchor to
+            // the absolute grid coordinate (rowFromBottom) and map it into their
+            // own viewport, so a row the host has scrolled past must still be
+            // emitted. The pixel `rect` below is only a fallback for peers
+            // lacking grid metadata; it uses the host-viewport-relative row.
             let row = max(CGFloat(totalRows - 1 - rowFromBottom - scrollOffset), 0)
-            guard row < CGFloat(metrics.rows) else { continue }
             let rect = CGRect(
                 x: metrics.xInset + (CGFloat(column) * metrics.cellWidth),
                 y: bounds.height - metrics.yInset - ((row + 1) * metrics.cellHeight),

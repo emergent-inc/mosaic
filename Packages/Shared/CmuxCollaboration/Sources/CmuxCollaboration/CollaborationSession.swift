@@ -137,6 +137,7 @@ public actor CollaborationSession {
             presenceByPeer.removeValue(forKey: peerID)
             continuation?.yield(.presenceCleared(peerID: peerID))
         case .terminalOpen, .terminalOutput, .terminalInput, .terminalClose,
+             .terminalDimensions,
              .agentRoomEvent, .agentRoomSnapshot, .agentRoomSnapshotRequest, .agentRoomCursorAck:
             break
         }

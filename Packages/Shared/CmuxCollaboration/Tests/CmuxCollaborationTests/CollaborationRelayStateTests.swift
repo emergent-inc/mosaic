@@ -46,6 +46,7 @@ struct CollaborationRelayStateTests {
             .terminalOpen(terminalID: "s:terminal:w:t", descriptor: descriptor),
             .terminalOutput(terminalID: "s:terminal:w:t", sequence: 42, data: Data([0x1B, 0x5B, 0x41])),
             .terminalInput(terminalID: "s:terminal:w:t", inputID: "input-1", data: Data("echo ok\r".utf8)),
+            .terminalDimensions(terminalID: "s:terminal:w:t", columns: 132, rows: 43),
             .terminalClose(terminalID: "s:terminal:w:t"),
         ]
 
@@ -53,6 +54,26 @@ struct CollaborationRelayStateTests {
         let decoded = try JSONDecoder().decode([CollaborationRelayFrame].self, from: encoded)
 
         #expect(decoded == frames)
+    }
+
+    @Test
+    func terminalDimensionsFramePreservesColumnsAndRows() throws {
+        let frame = CollaborationRelayFrame.terminalDimensions(
+            terminalID: "s:terminal:w:t",
+            columns: 100,
+            rows: 30
+        )
+
+        let encoded = try JSONEncoder().encode(frame)
+        let decoded = try JSONDecoder().decode(CollaborationRelayFrame.self, from: encoded)
+
+        guard case let .terminalDimensions(terminalID, columns, rows) = decoded else {
+            Issue.record("expected terminalDimensions, got \(decoded)")
+            return
+        }
+        #expect(terminalID == "s:terminal:w:t")
+        #expect(columns == 100)
+        #expect(rows == 30)
     }
 
     @Test

@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test";
-import { createSessionMetadata, readSessionMetadata, type SessionMetadataStorage } from "../src/session-metadata";
+import {
+  createSessionMetadata,
+  deleteSessionMetadata,
+  readSessionMetadata,
+  type SessionMetadataStorage,
+} from "../src/session-metadata";
 
 class FakeMetadataStorage implements SessionMetadataStorage {
   values = new Map<string, unknown>();
@@ -10,6 +15,10 @@ class FakeMetadataStorage implements SessionMetadataStorage {
 
   async put<T>(key: string, value: T): Promise<void> {
     this.values.set(key, value);
+  }
+
+  async delete(key: string): Promise<boolean> {
+    return this.values.delete(key);
   }
 }
 
@@ -30,4 +39,15 @@ test("creating an existing session reuses its metadata", async () => {
   const second = await createSessionMetadata(storage, "ABCDE");
 
   expect(second).toEqual(first);
+});
+
+test("deleted session metadata frees the code for a later session", async () => {
+  const storage = new FakeMetadataStorage();
+
+  await createSessionMetadata(storage, "ABCDE");
+  await deleteSessionMetadata(storage);
+  const recreated = await createSessionMetadata(storage, "ABCDE");
+
+  expect(await readSessionMetadata(storage)).toEqual(recreated);
+  expect(recreated.sessionCode).toBe("ABCDE");
 });
