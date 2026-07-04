@@ -37739,6 +37739,17 @@
         }
       }
     },
+    "collaboration.session.directory.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session active"
+          }
+        }
+      }
+    },
     "collaboration.session.connected": {
       "extractionState": "manual",
       "localizations": {
