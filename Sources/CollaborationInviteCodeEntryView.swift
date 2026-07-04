@@ -26,8 +26,8 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         model.isComplete
     }
 
-    private static let slotSize = NSSize(width: 52, height: 56)
-    private static let slotSpacing: CGFloat = 10
+    private static let slotSize = NSSize(width: 42, height: 56)
+    private static let slotSpacing: CGFloat = 8
 
     init(accessibilityLabel: String) {
         self.slotLabels = (0..<CollaborationInviteCodeEntryModel.codeLength).map { _ in
@@ -144,7 +144,7 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
 
         for label in slotLabels {
             label.alignment = .center
-            label.font = .monospacedSystemFont(ofSize: 22, weight: .semibold)
+            label.font = .monospacedSystemFont(ofSize: 20, weight: .semibold)
             label.textColor = .labelColor
             label.wantsLayer = true
             label.layer?.cornerRadius = 12

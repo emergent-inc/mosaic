@@ -100,6 +100,7 @@ struct NativeAuthClientTests {
                         "id": "user_clerk",
                         "displayName": "Clerk User",
                         "primaryEmail": "clerk@example.com",
+                        "imageURL": "https://img.example/fresh-clerk.png",
                     ],
                     "teams": [],
                     "selectedTeamId": NSNull(),
@@ -121,6 +122,9 @@ struct NativeAuthClientTests {
         let user = try await client.currentUser(throwOnMissing: true)
 
         #expect(user?.id == "user_clerk")
+        #expect(user?.displayName == "Clerk User")
+        #expect(user?.primaryEmail == "clerk@example.com")
+        #expect(user?.imageURL == "https://img.example/fresh-clerk.png")
         #expect(meRequests == 2)
         #expect(await store.getStoredAccessToken() == "fresh-access")
         #expect(await store.getStoredRefreshToken() == "fresh-refresh")

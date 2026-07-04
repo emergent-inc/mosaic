@@ -163,7 +163,7 @@ private final class DefaultBrowserAuthSession: HostBrowserAuthSession {
     }
 
     private func sendResponse(status: String, on connection: NWConnection) {
-        let body = #"<!doctype html><meta charset="utf-8"><script>window.close()</script>"#
+        let body = status.hasPrefix("200") ? callbackCompletionHTML() : ""
         let response = """
         HTTP/1.1 \(status)\r
         Content-Type: text/html; charset=utf-8\r
@@ -176,6 +176,17 @@ private final class DefaultBrowserAuthSession: HostBrowserAuthSession {
         connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in
             connection.cancel()
         })
+    }
+
+    private func callbackCompletionHTML() -> String {
+        DefaultBrowserAuthCallbackPage(
+            title: String(
+                localized: "auth.loopback_callback.title",
+                defaultValue: "Mosaic opened, you may close this tab",
+                bundle: .main
+            )
+        )
+        .html()
     }
 
     private func complete(_ result: HostBrowserAuthSessionResult) {
