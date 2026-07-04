@@ -256,6 +256,18 @@ extension TerminalSurface {
             }
         }
 
+        // A mirror (manual-I/O) surface created before AppKit assigned it a
+        // non-zero size buffers its seed snapshot instead of writing it into
+        // Ghostty's default grid (see `createNativeRuntimeSurface`). Now that a
+        // real grid exists, write the seed into it and force a *synchronous*
+        // present: the async renderer can otherwise sit on a blank frame until
+        // unrelated output arrives, which showed up as a shared terminal
+        // appearing black to other participants until someone pressed Enter.
+        if !pendingRemoteOutput.isEmpty {
+            flushPendingRemoteOutput(to: surface)
+            attachedView?.forceRefreshSurface()
+        }
+
         // Let Ghostty continue rendering on its own wakeups for steady-state frames.
         return true
     }

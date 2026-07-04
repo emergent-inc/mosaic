@@ -4388,7 +4388,7 @@ enum CollaborationStrings {
     }
 
     static var terminalRecipientsShareTitle: String {
-        String(localized: "collaboration.terminal.recipients.shareTitle", defaultValue: "Share terminal with")
+        String(localized: "collaboration.terminal.recipients.shareTitle", defaultValue: "Sharing terminal with")
     }
 
     static var terminalRecipientsEmpty: String {
@@ -4418,18 +4418,8 @@ enum CollaborationStrings {
         String(localized: "collaboration.terminal.stopSharing", defaultValue: "Stop session")
     }
 
-    static func sharedToRecipientCount(_ count: Int) -> String {
-        switch count {
-        case 0:
-            return String(localized: "collaboration.terminal.sharedTo.none", defaultValue: "Shared to no one")
-        case 1:
-            return String(localized: "collaboration.terminal.sharedTo.one", defaultValue: "Shared to 1")
-        default:
-            return String.localizedStringWithFormat(
-                String(localized: "collaboration.terminal.sharedTo.count", defaultValue: "Shared to %d"),
-                count
-            )
-        }
+    static var sharingTerminal: String {
+        String(localized: "collaboration.terminal.sharing", defaultValue: "Sharing")
     }
 
     static var sharedTerminalTitle: String {
