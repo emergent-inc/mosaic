@@ -194,6 +194,84 @@ describe("VM REST auth", () => {
     }));
   });
 
+  test("uses Mosaic Team metadata for VM billing plan resolution", async () => {
+    getUser.mockResolvedValue({
+      id: "user-1",
+      displayName: null,
+      primaryEmail: "user@example.com",
+      selectedTeam: {
+        id: "team-1",
+        clientReadOnlyMetadata: {
+          mosaicWorkspaceType: "team",
+          mosaicPlan: "team",
+          mosaicUseType: "commercial",
+        },
+      },
+      listTeams: async () => [],
+    });
+    runVmWorkflow.mockResolvedValue({
+      providerVmId: "provider-vm-mosaic-team",
+      provider: "freestyle",
+      image: "snapshot-test",
+      imageVersion: null,
+      createdAt: 1_777_000_000_000,
+    });
+
+    const response = await POST(
+      new Request("https://cmux.test/api/vm", {
+        method: "POST",
+        headers: { origin: "https://cmux.test" },
+        body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(createVm).toHaveBeenCalledWith(expect.objectContaining({
+      billingTeamId: "team-1",
+      billingPlanId: "team",
+      maxActiveVms: 10,
+    }));
+  });
+
+  test("maps Mosaic Hobby metadata to the existing free VM plan", async () => {
+    getUser.mockResolvedValue({
+      id: "user-1",
+      displayName: null,
+      primaryEmail: "user@gmail.com",
+      selectedTeam: {
+        id: "team-1",
+        clientReadOnlyMetadata: {
+          mosaicWorkspaceType: "personal",
+          mosaicPlan: "hobby",
+          mosaicUseType: "personal",
+        },
+      },
+      listTeams: async () => [],
+    });
+    runVmWorkflow.mockResolvedValue({
+      providerVmId: "provider-vm-mosaic-hobby",
+      provider: "freestyle",
+      image: "snapshot-test",
+      imageVersion: null,
+      createdAt: 1_777_000_000_000,
+    });
+
+    const response = await POST(
+      new Request("https://cmux.test/api/vm", {
+        method: "POST",
+        headers: { origin: "https://cmux.test" },
+        body: JSON.stringify({ provider: "freestyle", image: "snapshot-test" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(createVm).toHaveBeenCalledWith(expect.objectContaining({
+      billingTeamId: "team-1",
+      billingPlanId: "free",
+      maxActiveVms: 5,
+    }));
+  });
+
   test("uses the native client's requested Stack team for billing", async () => {
     const listTeams = mock(async () => [
       {

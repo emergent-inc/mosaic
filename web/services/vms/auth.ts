@@ -3,6 +3,7 @@ import {
   type NativeSessionClaims,
   verifyNativeAuthToken,
 } from "../auth/nativeSession";
+import { vmBillingPlanIdFromMetadata } from "../workspaces/mosaicWorkspace";
 
 export type AuthedUser = {
   id: string;
@@ -124,7 +125,16 @@ function authedUserFromNativeClaims(
   options: { readonly requestedTeamId?: string | null },
 ): AuthedUser {
   const requestedTeamId = normalizedOptionalString(options.requestedTeamId);
-  const selectedTeam = claims.selectedTeamId ? { id: claims.selectedTeamId, clientReadOnlyMetadata: undefined } : null;
+  const claimedTeamWorkspaces = new Map(
+    (claims.teamWorkspaces ?? []).map((team) => [team.id, team]),
+  );
+  const selectedTeam = claims.selectedTeamId
+    ? {
+        id: claims.selectedTeamId,
+        clientReadOnlyMetadata: undefined,
+        billingPlanId: claimedTeamWorkspaces.get(claims.selectedTeamId)?.vmBillingPlanId ?? null,
+      }
+    : null;
   const teamIds = uniqueStrings([
     selectedTeam?.id,
     ...claims.teamIds,
@@ -134,7 +144,11 @@ function authedUserFromNativeClaims(
     displayName: claims.displayName,
     primaryEmail: claims.primaryEmail,
     selectedTeam,
-    teams: teamIds.map((id) => ({ id, clientReadOnlyMetadata: undefined })),
+    teams: teamIds.map((id) => ({
+      id,
+      clientReadOnlyMetadata: undefined,
+      billingPlanId: claimedTeamWorkspaces.get(id)?.vmBillingPlanId ?? null,
+    })),
     userBillingPlanId: null,
     requestedTeamId,
   });
@@ -177,7 +191,10 @@ function authedUserFromParts(input: {
     ? input.teams.find((team) => team.id === input.requestedTeamId) ?? null
     : null;
   const billingTeam = requestedTeam ?? input.selectedTeam ?? (input.teams.length === 1 ? input.teams[0] : null);
-  const billingPlanId = planIdFromMetadata(billingTeam?.clientReadOnlyMetadata) ?? input.userBillingPlanId;
+  const billingPlanId =
+    billingTeam?.billingPlanId ??
+    planIdFromMetadata(billingTeam?.clientReadOnlyMetadata) ??
+    input.userBillingPlanId;
 
   return {
     id: input.userId,
@@ -188,7 +205,7 @@ function authedUserFromParts(input: {
     selectedTeamId: input.selectedTeam?.id ?? null,
     teams: input.teams.map((team) => ({
       id: team.id,
-      billingPlanId: planIdFromMetadata(team.clientReadOnlyMetadata),
+      billingPlanId: team.billingPlanId ?? planIdFromMetadata(team.clientReadOnlyMetadata),
     })),
     teamIds,
     userBillingPlanId: input.userBillingPlanId,
@@ -218,6 +235,7 @@ type StackUserLike = {
 type TeamLike = {
   readonly id: string;
   readonly clientReadOnlyMetadata?: unknown;
+  readonly billingPlanId?: string | null;
 };
 
 function teamLike(value: unknown): TeamLike | null {
@@ -227,14 +245,12 @@ function teamLike(value: unknown): TeamLike | null {
   return {
     id,
     clientReadOnlyMetadata: (value as { clientReadOnlyMetadata?: unknown }).clientReadOnlyMetadata,
+    billingPlanId: planIdFromMetadata((value as { clientReadOnlyMetadata?: unknown }).clientReadOnlyMetadata),
   };
 }
 
 function planIdFromMetadata(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const value = (metadata as { cmuxVmPlan?: unknown; cmuxPlan?: unknown }).cmuxVmPlan ??
-    (metadata as { cmuxPlan?: unknown }).cmuxPlan;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  return vmBillingPlanIdFromMetadata(metadata);
 }
 
 function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {
