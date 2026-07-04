@@ -180,6 +180,15 @@ public final class TerminalSurface: Identifiable, ObservableObject {
     /// For MANUAL-I/O remote tmux display surfaces: whether to suppress
     /// ghostty primary-screen reflow on resize.
     var manualIONoReflow = true
+
+    /// For a collaboration mirror surface: the host's exact terminal grid size
+    /// (columns and rows). When set, the mirror's grid is capped to this size
+    /// regardless of the local pane geometry, so the same PTY bytes wrap
+    /// identically, the scrollback height matches, and the grid is 1:1 with the
+    /// host. That is what makes collaborator pointer/selection overlays land on
+    /// the same text cell as the host across differing window sizes. A larger
+    /// local pane letterboxes (blank margin + edge border); a smaller one clips.
+    public internal(set) var lockedMirrorGrid: (columns: Int, rows: Int)?
     /// Whether passive hover/enter/exit mouse positions should be kept out of the PTY input path.
     public var suppressPassiveMouseInput = false
     /// Retained userdata for the MANUAL-mode `io_write_cb`; released alongside

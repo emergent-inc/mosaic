@@ -6,6 +6,7 @@ export interface SessionMetadata {
 export interface SessionMetadataStorage {
   get<T>(key: string): Promise<T | undefined>;
   put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
 }
 
 export interface SessionMetadataCreateResult {
@@ -39,4 +40,8 @@ export async function createSessionMetadataIfAbsent(
 
 export async function readSessionMetadata(storage: SessionMetadataStorage): Promise<SessionMetadata | null> {
   return await storage.get<SessionMetadata>(METADATA_KEY) ?? null;
+}
+
+export async function deleteSessionMetadata(storage: SessionMetadataStorage): Promise<void> {
+  await storage.delete(METADATA_KEY);
 }

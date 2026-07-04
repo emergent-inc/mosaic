@@ -3,12 +3,15 @@ import { parsePeer } from "./protocol";
 import { CollaborationRelaySessionState } from "./session-state";
 import {
   createSessionMetadataIfAbsent,
+  deleteSessionMetadata,
   readSessionMetadata,
   type SessionMetadata,
   type SessionMetadataCreateResult,
 } from "./session-metadata";
 
 const HEARTBEAT_TIMEOUT_MS = 30_000;
+const EMPTY_SESSION_GRACE_MS = 10 * 60_000;
+const IDLE_CLEANUP_DUE_AT_KEY = "idleCleanupDueAt";
 const liveSessionStates = new Map<string, CollaborationRelaySessionState>();
 
 export class CollaborationSessionObject extends DurableObject {
@@ -19,6 +22,7 @@ export class CollaborationSessionObject extends DurableObject {
     if (this.metadata !== null) return { metadata: this.metadata, created: false };
     const result = await createSessionMetadataIfAbsent(this.ctx.storage, sessionCode);
     this.metadata = result.metadata;
+    if (this.state.peerCount === 0) await this.scheduleIdleCleanup();
     return result;
   }
 
@@ -56,21 +60,56 @@ export class CollaborationSessionObject extends DurableObject {
     const server = pair[1];
     const now = Date.now();
     server.accept();
+    await this.cancelIdleCleanup();
     state.addPeer(metadata.sessionID, peer, server, now);
     server.addEventListener("message", (event) => state.handleMessage(peer.peerID, event.data, Date.now()));
     server.addEventListener("close", () => this.dropPeer(metadata.sessionID, peer.peerID, "disconnect"));
     server.addEventListener("error", () => this.dropPeer(metadata.sessionID, peer.peerID, "disconnect"));
-    await this.ensureAlarm();
+    await this.ensureHeartbeatAlarm(now);
     return new Response(null, { status: 101, webSocket: client });
   }
 
   override async alarm(): Promise<void> {
-    this.state.expire(Date.now(), HEARTBEAT_TIMEOUT_MS);
-    if (this.state.peerCount > 0) await this.ensureAlarm();
+    const now = Date.now();
+    this.state.expire(now, HEARTBEAT_TIMEOUT_MS);
+    if (this.state.peerCount > 0) {
+      await this.cancelIdleCleanup();
+      await this.ensureHeartbeatAlarm(now);
+      return;
+    }
+    await this.runIdleCleanup(now);
   }
 
-  private async ensureAlarm(): Promise<void> {
-    await this.ctx.storage.setAlarm(Date.now() + HEARTBEAT_TIMEOUT_MS);
+  private async ensureHeartbeatAlarm(now = Date.now()): Promise<void> {
+    await this.ctx.storage.setAlarm(now + HEARTBEAT_TIMEOUT_MS);
+  }
+
+  private async scheduleIdleCleanup(now = Date.now()): Promise<void> {
+    const metadata = await this.loadMetadata();
+    if (metadata === null) return;
+    if (this.state.peerCount > 0) return;
+    const dueAt = now + EMPTY_SESSION_GRACE_MS;
+    await this.ctx.storage.put(IDLE_CLEANUP_DUE_AT_KEY, dueAt);
+    await this.ctx.storage.setAlarm(dueAt);
+  }
+
+  private async cancelIdleCleanup(): Promise<void> {
+    await this.ctx.storage.delete(IDLE_CLEANUP_DUE_AT_KEY);
+  }
+
+  private async runIdleCleanup(now: number): Promise<void> {
+    const dueAt = await this.ctx.storage.get<number>(IDLE_CLEANUP_DUE_AT_KEY);
+    if (dueAt === undefined) {
+      await this.scheduleIdleCleanup(now);
+      return;
+    }
+    if (now < dueAt) {
+      await this.ctx.storage.setAlarm(dueAt);
+      return;
+    }
+    await deleteSessionMetadata(this.ctx.storage);
+    await this.ctx.storage.delete(IDLE_CLEANUP_DUE_AT_KEY);
+    this.metadata = null;
   }
 
   private async loadMetadata(): Promise<SessionMetadata | null> {
@@ -98,6 +137,7 @@ export class CollaborationSessionObject extends DurableObject {
     state.dropPeer(peerID, reason);
     if (state.peerCount === 0) {
       liveSessionStates.delete(sessionID);
+      this.ctx.waitUntil(this.scheduleIdleCleanup());
     }
   }
 }

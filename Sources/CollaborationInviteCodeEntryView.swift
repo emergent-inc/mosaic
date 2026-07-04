@@ -79,7 +79,7 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        window?.makeFirstResponder(hiddenField)
+        focusForTextEntry()
         refreshAppearance()
     }
 
@@ -120,6 +120,14 @@ final class CollaborationInviteCodeEntryView: NSView, NSTextFieldDelegate {
         }
         updateSlots()
         onChange?(model.isComplete)
+    }
+
+    func focusForTextEntry() {
+        guard window != nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.window != nil else { return }
+            self.window?.makeFirstResponder(self.hiddenField)
+        }
     }
 
     private func setup(accessibilityLabel: String) {

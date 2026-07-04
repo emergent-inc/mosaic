@@ -49,7 +49,7 @@ Returns a static health response:
 
 ### `POST /v1/collaboration/sessions`
 
-Creates an in-memory relay session and returns:
+Creates a code-gated relay session and returns:
 
 ```json
 {
@@ -83,6 +83,14 @@ The relay treats non-heartbeat frames as opaque JSON envelopes with a string `ty
 - `terminal.close`
 
 `peer.heartbeat` updates liveness and is not forwarded.
+
+## Session Code Lifecycle
+
+Session codes are keyed by Durable Object name. Each object's storage holds a
+single `metadata` record that reserves the code; active peers and forwarded
+frames stay in Durable Object memory only. When a session has no peers, the
+worker schedules an idle cleanup alarm. If the session is still empty after the
+grace window, the `metadata` record is deleted and the short code can be reused.
 
 ## Phase 1 Non-Guarantees
 

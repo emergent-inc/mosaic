@@ -216,6 +216,27 @@ private struct CollaborationTerminalCloseWire: Codable {
     }
 }
 
+private struct TerminalGridSize: Equatable {
+    let columns: Int
+    let rows: Int
+}
+
+private struct CollaborationTerminalDimensionsWire: Codable {
+    let type: String
+    let terminalID: String
+    let columns: Int
+    let rows: Int
+    let recipientParticipantIDs: [String]?
+
+    init(type: String, terminalID: String, columns: Int, rows: Int, recipientParticipantIDs: [String]? = nil) {
+        self.type = type
+        self.terminalID = terminalID
+        self.columns = columns
+        self.rows = rows
+        self.recipientParticipantIDs = recipientParticipantIDs
+    }
+}
+
 private struct CollaborationAgentRoomEventWire: Codable {
     let type: String
     let event: ClaudeRoomEvent
@@ -665,6 +686,9 @@ final class CollaborationRuntime {
     private var terminalSessionRouter = CollaborationTerminalSessionRouter()
     private var hostedTerminalOutputSequencesByID: [String: UInt64] = [:]
     private var hostedTerminalOutputCaretSuppressionsByID: [String: TerminalOutputCaretSuppression] = [:]
+    /// Last host grid size broadcast per terminal, so a change is only sent to
+    /// peers when the host's grid (columns or rows) actually changes.
+    private var hostedTerminalBroadcastGridByID: [String: TerminalGridSize] = [:]
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalOwnerParticipantIDsByID: [String: String] = [:]
@@ -690,11 +714,38 @@ final class CollaborationRuntime {
     @ObservationIgnored private let productAnalytics = ProductAnalytics.shared
     private var latestAgentRoomID: String?
     private let agentRoomActiveDispatchPromptBuilder = AgentRoomActiveDispatchPromptBuilder()
+    @ObservationIgnored private var terminalSurfaceReadyObserver: NSObjectProtocol?
 
     private init() {
         let displayName = NSFullUserName().isEmpty ? Host.current().localizedName ?? "cmux" : NSFullUserName()
         localAvatarSeed = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? displayName
         peerIdentity = CollaborationPeerIdentity.persistedParticipant(displayName: displayName)
+        installTerminalSurfaceReadyObserver()
+    }
+
+    /// A mirrored terminal's ghostty surface is created lazily on the first AppKit
+    /// layout pass, which usually lands after the host's one-shot full render-grid
+    /// seed has already arrived. That seed is buffered/applied while the surface is
+    /// not yet presentable and is only nudged with an async refresh, so with no
+    /// follow-up traffic the pane can sit black until someone types. Force a
+    /// synchronous present once the mirror surface actually becomes ready — mirrors
+    /// the readiness re-arm that `RemoteTmuxSessionMirror` performs for its manual-IO
+    /// display surfaces.
+    private func installTerminalSurfaceReadyObserver() {
+        terminalSurfaceReadyObserver = NotificationCenter.default.addObserver(
+            forName: .terminalSurfaceDidBecomeReady,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let surfaceID = notification.userInfo?["surfaceId"] as? UUID else { return }
+            Task { @MainActor in self?.presentMirroredTerminalIfReady(surfaceID: surfaceID) }
+        }
+    }
+
+    private func presentMirroredTerminalIfReady(surfaceID: UUID) {
+        guard let terminalID = mirroredTerminalIDsBySurfaceID[surfaceID],
+              let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        panel.surface.forceRefresh(reason: "collaboration.mirrorReady")
     }
 
     private static func normalizedRelayURL(from value: String) -> String {
@@ -1331,6 +1382,12 @@ final class CollaborationRuntime {
                     recipientParticipantIDs: recipients,
                     via: connection
                 )
+                broadcastHostedTerminalDimensions(
+                    terminalID: terminalID,
+                    connection: connection,
+                    recipientParticipantIDs: recipients,
+                    force: true
+                )
             }
         }
     }
@@ -1352,6 +1409,7 @@ final class CollaborationRuntime {
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        hostedTerminalBroadcastGridByID.removeValue(forKey: terminalID)
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
@@ -1394,6 +1452,11 @@ final class CollaborationRuntime {
                 // render-grid path is used only for the cold-attach full seed.
                 try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data), via: connection)
             }
+        }
+        // A host resize produces redraw output; piggyback a column re-broadcast
+        // so peers re-lock their mirror width when the host grid changes.
+        if let connection = connection(forTerminalID: terminalID) {
+            broadcastHostedTerminalDimensions(terminalID: terminalID, connection: connection)
         }
     }
 
@@ -1493,14 +1556,20 @@ final class CollaborationRuntime {
         let normalizedRects: [CollaborationTerminalSelectionRectWire]
         if visible, bounds.width > 0, bounds.height > 0 {
             normalizedRects = rects.enumerated().compactMap { index, rect in
-                let clipped = rect.intersection(bounds)
-                guard !clipped.isNull, clipped.width > 0, clipped.height > 0 else { return nil }
                 let gridRect = gridRects.indices.contains(index) ? gridRects[index] : nil
+                let clipped = rect.intersection(bounds)
+                let hasValidClip = !clipped.isNull && clipped.width > 0 && clipped.height > 0
+                // Emit rows scrolled off the host's own viewport too: a row with
+                // absolute grid coordinates (rowFromBottom) must still travel so
+                // the peer can map it into its own (possibly taller/differently
+                // scrolled) viewport. The peer prefers the grid coordinates and
+                // ignores the normalized rect when they are present.
+                guard hasValidClip || gridRect?.rowFromBottom != nil else { return nil }
                 return CollaborationTerminalSelectionRectWire(
-                    x: Double(clipped.minX / bounds.width),
-                    y: Double(clipped.minY / bounds.height),
-                    width: Double(clipped.width / bounds.width),
-                    height: Double(clipped.height / bounds.height),
+                    x: hasValidClip ? Double(clipped.minX / bounds.width) : 0,
+                    y: hasValidClip ? Double(clipped.minY / bounds.height) : 0,
+                    width: hasValidClip ? Double(clipped.width / bounds.width) : 0,
+                    height: hasValidClip ? Double(clipped.height / bounds.height) : 0,
                     row: gridRect?.row,
                     column: gridRect?.column,
                     rowFromBottom: gridRect?.rowFromBottom,
@@ -2521,11 +2590,17 @@ final class CollaborationRuntime {
         alert.informativeText = CollaborationStrings.joinMessage
         alert.addButton(withTitle: CollaborationStrings.joinSession)
         alert.addButton(withTitle: CollaborationStrings.cancel)
+        let joinButton = alert.buttons[0]
 
         let entryView = CollaborationInviteCodeEntryView(
             accessibilityLabel: CollaborationStrings.sessionCodePlaceholder
         )
+        entryView.onSubmit = {
+            guard entryView.isComplete else { return }
+            joinButton.performClick(nil)
+        }
         alert.accessoryView = entryView
+        entryView.focusForTextEntry()
         guard alert.runModal() == .alertFirstButtonReturn else { return nil }
         guard entryView.isComplete else { return nil }
         let code = Self.normalizedSessionCode(from: entryView.code)
@@ -3002,6 +3077,7 @@ final class CollaborationRuntime {
                     requireLiveScrollbackBottom: false,
                     via: connection
                 )
+                broadcastHostedTerminalDimensions(terminalID: terminalID, connection: connection, force: true)
                 trackCollaboration(
                     .terminalShared,
                     shareKind: .terminal,
@@ -3175,6 +3251,13 @@ final class CollaborationRuntime {
                 mirroredTerminalRenderGridSequencesByID[terminalID] ?? 0,
                 frame.stateSeq
             )
+            // The full render-grid seed is a one-shot frame with no follow-up
+            // traffic. `processRemoteOutput` only issues an async refresh, which
+            // can sit on a blank first frame until unrelated output arrives, so
+            // force a synchronous present here to paint the seed immediately
+            // (mirrors the forced present in `handleRemoteTerminalInput`). No-ops
+            // safely when the surface is not yet live/in a window.
+            panel.surface.forceRefresh(reason: "collaboration.renderGridSeed")
         }
     }
 
@@ -3536,6 +3619,47 @@ final class CollaborationRuntime {
         }
     }
 
+    /// Broadcasts the host terminal's current column count so peers can lock
+    /// their mirror grid width. Sends only when the count changed (or `force`).
+    ///
+    /// - Parameters:
+    ///   - terminalID: The hosted terminal identifier.
+    ///   - connection: The relay connection to send over.
+    ///   - recipientParticipantIDs: Explicit recipients, or nil for the default set.
+    ///   - force: When true, sends even if the grid size is unchanged.
+    private func broadcastHostedTerminalDimensions(
+        terminalID: String,
+        connection: CollaborationRelayConnection,
+        recipientParticipantIDs: [String]? = nil,
+        force: Bool = false
+    ) {
+        guard let panel = hostedTerminalsByID[terminalID]?.panel,
+              let cells = panel.surface.gridCells(), cells.columns > 0, cells.rows > 0 else { return }
+        let grid = TerminalGridSize(columns: cells.columns, rows: cells.rows)
+        if !force, hostedTerminalBroadcastGridByID[terminalID] == grid { return }
+        hostedTerminalBroadcastGridByID[terminalID] = grid
+        let recipients = recipientParticipantIDs ?? recipientParticipantIDsForSending(
+            terminalID: terminalID,
+            connection: connection
+        )
+        Task {
+            try? await send(CollaborationTerminalDimensionsWire(
+                type: "terminal.dimensions",
+                terminalID: terminalID,
+                columns: grid.columns,
+                rows: grid.rows,
+                recipientParticipantIDs: recipients
+            ), via: connection)
+        }
+    }
+
+    private func handleRemoteTerminalDimensions(terminalID: String, columns: Int, rows: Int) {
+        guard columns > 0, rows > 0 else { return }
+        // Only mirrors lock their grid to the host; the host is authoritative.
+        guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        panel.surface.applyLockedMirrorGrid(columns: columns, rows: rows)
+    }
+
     private func handleRemoteTerminalClose(terminalID: String) {
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
         mirroredTerminalsByID.removeValue(forKey: terminalID)
@@ -3543,6 +3667,7 @@ final class CollaborationRuntime {
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        hostedTerminalBroadcastGridByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
@@ -3743,6 +3868,13 @@ final class CollaborationRuntime {
             let close = try decoder.decode(CollaborationTerminalCloseWire.self, from: data)
             handleRemoteTerminalClose(terminalID: close.terminalID)
             trackCollaborationLayoutSnapshot(reason: "pane_unshared", sessionCode: connection.sessionCode)
+        case "terminal.dimensions":
+            let dimensions = try decoder.decode(CollaborationTerminalDimensionsWire.self, from: data)
+            handleRemoteTerminalDimensions(
+                terminalID: dimensions.terminalID,
+                columns: dimensions.columns,
+                rows: dimensions.rows
+            )
         case "agent.room.event":
             let wire = try decoder.decode(CollaborationAgentRoomEventWire.self, from: data)
             let room = await agentRoomStore.apply(event: wire.event)
@@ -3927,6 +4059,17 @@ final class CollaborationRuntime {
             try await send(CollaborationTerminalCloseWire(
                 type: "terminal.close",
                 terminalID: terminalID,
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
+            ), via: connection)
+        case .terminalDimensions(let terminalID, let columns, let rows):
+            try await send(CollaborationTerminalDimensionsWire(
+                type: "terminal.dimensions",
+                terminalID: terminalID,
+                columns: columns,
+                rows: rows,
                 recipientParticipantIDs: recipientParticipantIDsForSending(
                     terminalID: terminalID,
                     connection: connection
