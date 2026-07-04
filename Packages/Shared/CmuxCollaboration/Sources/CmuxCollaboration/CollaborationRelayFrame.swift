@@ -20,6 +20,12 @@ public enum CollaborationRelayFrame: Codable, Equatable, Sendable {
     case terminalInput(terminalID: String, inputID: String, data: Data)
     /// A terminal share was closed.
     case terminalClose(terminalID: String)
+    /// The host's terminal grid size (columns and rows). Peers lock their
+    /// mirror grid to this exact size (letterboxing when their pane is larger)
+    /// so byte layout, wrapping, and scrollback height are identical to the
+    /// host, which keeps collaborator pointer/selection overlays anchored to
+    /// the same grid cell across differing window sizes.
+    case terminalDimensions(terminalID: String, columns: Int, rows: Int)
     /// A semantic event in a connected-Claude room.
     case agentRoomEvent(ClaudeRoomEvent)
     /// A full connected-Claude room snapshot.
