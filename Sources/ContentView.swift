@@ -33,8 +33,10 @@ import WebKit
 
 var fileDropOverlayKey: UInt8 = 0
 private var commandPaletteWindowOverlayKey: UInt8 = 0
+private var tutorialVideoWindowOverlayKey: UInt8 = 0
 private var tmuxWorkspacePaneWindowOverlayKey: UInt8 = 0
 let commandPaletteOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.commandPalette.overlay.container")
+let tutorialVideoOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.tutorialVideo.overlay.container")
 let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.tmuxWorkspacePane.overlay.container")
 
 private enum MosaicSidebarStyle {
@@ -635,6 +637,113 @@ private func commandPaletteWindowOverlayController(for window: NSWindow) -> Wind
 }
 
 @MainActor
+private final class WindowTutorialVideoOverlayController: NSObject {
+    private weak var window: NSWindow?
+    private let containerView = CommandPaletteOverlayContainerView(frame: .zero)
+    private let hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+    private let chromeComposition = AppWindowChromeComposition()
+    private var installConstraints: [NSLayoutConstraint] = []
+    private weak var installedContainerView: NSView?
+    private weak var installedReferenceView: NSView?
+    private var isVisible = false
+    private var hasMountedRootView = false
+
+    init(window: NSWindow) {
+        self.window = window
+        super.init()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.wantsLayer = true
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.isHidden = true
+        containerView.alphaValue = 0
+        containerView.capturesMouseEvents = false
+        containerView.identifier = tutorialVideoOverlayContainerIdentifier
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.addSubview(hostingView)
+        NSLayoutConstraint.activate([
+            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+        ])
+        _ = ensureInstalled()
+    }
+
+    @discardableResult
+    private func ensureInstalled() -> Bool {
+        guard let window,
+              let target = chromeComposition
+                .contentOverlayTargetResolver
+                .installationTarget(for: window) else { return false }
+
+        if containerView.superview !== target.container || installedReferenceView !== target.reference {
+            NSLayoutConstraint.deactivate(installConstraints)
+            installConstraints.removeAll()
+            containerView.removeFromSuperview()
+            target.container.addSubview(containerView, positioned: .above, relativeTo: nil)
+            installConstraints = [
+                containerView.topAnchor.constraint(equalTo: target.reference.topAnchor),
+                containerView.bottomAnchor.constraint(equalTo: target.reference.bottomAnchor),
+                containerView.leadingAnchor.constraint(equalTo: target.reference.leadingAnchor),
+                containerView.trailingAnchor.constraint(equalTo: target.reference.trailingAnchor),
+            ]
+            NSLayoutConstraint.activate(installConstraints)
+            installedContainerView = target.container
+            installedReferenceView = target.reference
+        }
+
+        return true
+    }
+
+    private func promoteOverlayAboveSiblingsIfNeeded() {
+        guard let container = installedContainerView,
+              containerView.superview === container else { return }
+        container.addSubview(containerView, positioned: .above, relativeTo: nil)
+    }
+
+    func update(
+        isVisible: Bool,
+        makeRootView: @MainActor () -> AnyView = { AnyView(EmptyView()) }
+    ) {
+        let wasVisible = self.isVisible
+        if !isVisible, !wasVisible, !hasMountedRootView, containerView.isHidden {
+            return
+        }
+
+        guard ensureInstalled() else { return }
+        self.isVisible = isVisible
+        if isVisible {
+            hostingView.rootView = makeRootView()
+            hasMountedRootView = true
+            containerView.capturesMouseEvents = true
+            containerView.isHidden = false
+            containerView.alphaValue = 1
+            if !wasVisible {
+                promoteOverlayAboveSiblingsIfNeeded()
+            }
+        } else {
+            hostingView.rootView = AnyView(EmptyView())
+            hasMountedRootView = false
+            containerView.capturesMouseEvents = false
+            containerView.alphaValue = 0
+            containerView.isHidden = true
+        }
+    }
+}
+
+@MainActor
+private func tutorialVideoWindowOverlayController(for window: NSWindow) -> WindowTutorialVideoOverlayController {
+    if let existing = objc_getAssociatedObject(window, &tutorialVideoWindowOverlayKey) as? WindowTutorialVideoOverlayController {
+        return existing
+    }
+    let controller = WindowTutorialVideoOverlayController(window: window)
+    objc_setAssociatedObject(window, &tutorialVideoWindowOverlayKey, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    return controller
+}
+
+@MainActor
 private final class WindowTmuxWorkspacePaneOverlayController: NSObject {
     private weak var window: NSWindow?
     private let containerView = PassthroughWindowOverlayContainerView(frame: .zero)
@@ -1077,6 +1186,7 @@ struct ContentView: View {
     @State private var commandPaletteResultsRevision: UInt64 = 0
     @State private var commandPaletteUsageHistoryByCommandId: [String: CommandPaletteUsageEntry] = [:]
     @State private var isFeedbackComposerPresented = false
+    @State private var isTutorialVideoPresented = false
     @AppStorage(AppCatalogSection().renameSelectsExistingName.userDefaultsKey)
     private var commandPaletteRenameSelectAllOnFocus = AppCatalogSection().renameSelectsExistingName.defaultValue
     @AppStorage(AppCatalogSection().commandPaletteSearchesAllSurfaces.userDefaultsKey)
@@ -2602,6 +2712,10 @@ struct ContentView: View {
             updateTitlebarText()
             syncTrafficLightInset()
 
+            if TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: observedWindow) {
+                presentTutorialVideo()
+            }
+
             // Startup recovery (#399): if session restore or a race condition leaves the
             // view in a broken state (empty tabs, no selection, unmounted workspaces),
             // detect and recover after a short delay.
@@ -3040,11 +3154,22 @@ struct ContentView: View {
             presentFeedbackComposer()
         })
 
+        view = AnyView(view.onReceive(NotificationCenter.default.publisher(for: .tutorialVideoPresentationRequested)) { notification in
+            let requestedWindow = notification.object as? NSWindow
+            guard TutorialVideoPresentationCenter.shared.consumePendingPresentation(
+                for: observedWindow,
+                requestedWindow: requestedWindow
+            ) else { return }
+            presentTutorialVideo()
+        })
+
         view = AnyView(view.background(WindowAccessor(dedupeByWindow: false) { window in
             let tmuxOverlayState = tmuxWorkspacePaneWindowOverlayState(for: window)
             tmuxWorkspacePaneWindowOverlayController(for: window, createIfNeeded: tmuxOverlayState != nil)?.update(state: tmuxOverlayState)
             let overlayController = commandPaletteWindowOverlayController(for: window)
             overlayController.update(isVisible: isCommandPalettePresented) { AnyView(commandPaletteOverlay) }
+            tutorialVideoWindowOverlayController(for: window)
+                .update(isVisible: isTutorialVideoPresented) { AnyView(tutorialVideoOverlay) }
         }))
 
         view = AnyView(view.onChange(of: bgGlassTintHex) { _ in
@@ -3207,14 +3332,16 @@ struct ContentView: View {
         })
 
         let commandPaletteOverlayView = AnyView(commandPaletteOverlay)
+        let tutorialVideoOverlayView = AnyView(tutorialVideoOverlay)
         let appKitWindowMutationID = appearance.appKitWindowMutationID(
             windowBackgroundPolicy: windowChrome.windowBackgroundPolicy
         )
-        let mainWindowAccessor = WindowAccessor(refreshID: appKitWindowMutationID) { [appearance, commandPaletteOverlayView] window in
+        let mainWindowAccessor = WindowAccessor(refreshID: appKitWindowMutationID) { [appearance, commandPaletteOverlayView, tutorialVideoOverlayView] window in
             configureMainWindowChrome(
                 window,
                 appearance: appearance,
-                commandPaletteOverlayView: commandPaletteOverlayView
+                commandPaletteOverlayView: commandPaletteOverlayView,
+                tutorialVideoOverlayView: tutorialVideoOverlayView
             )
         }
         view = AnyView(view.background(mainWindowAccessor))
@@ -3226,7 +3353,8 @@ struct ContentView: View {
     private func configureMainWindowChrome(
         _ window: NSWindow,
         appearance: WindowAppearanceSnapshot,
-        commandPaletteOverlayView: AnyView
+        commandPaletteOverlayView: AnyView,
+        tutorialVideoOverlayView: AnyView
     ) {
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
         window.isRestorable = false
@@ -3249,6 +3377,9 @@ struct ContentView: View {
                 syncCommandPaletteDebugStateForObservedWindow()
                 installSidebarResizerPointerMonitorIfNeeded()
                 updateSidebarResizerBandState()
+                if TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: window) {
+                    presentTutorialVideo()
+                }
             }
         }
 
@@ -3274,6 +3405,8 @@ struct ContentView: View {
             tmuxWorkspacePaneWindowOverlayController(for: window, createIfNeeded: tmuxOverlayState != nil)?.update(state: tmuxOverlayState)
             commandPaletteWindowOverlayController(for: window)
                 .update(isVisible: isCommandPalettePresented) { commandPaletteOverlayView }
+            tutorialVideoWindowOverlayController(for: window)
+                .update(isVisible: isTutorialVideoPresented) { tutorialVideoOverlayView }
             TerminalWindowPortalRegistry.scheduleExternalGeometrySynchronize(for: window)
             BrowserWindowPortalRegistry.scheduleExternalGeometrySynchronize(for: window)
         }
@@ -3463,6 +3596,37 @@ struct ContentView: View {
             cmuxDebugLog("ws.handoff.complete id=none reason=\(reason) retiring=\(debugShortWorkspaceId(retiring))")
         }
 #endif
+    }
+
+    private var tutorialVideoOverlay: some View {
+        GeometryReader { proxy in
+            let targetWidth = proxy.size.width
+            let targetHeight = min(620, max(300, proxy.size.height - 96))
+
+            ZStack {
+                Color.black.opacity(0.42)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        dismissTutorialVideo()
+                    }
+
+                TutorialVideoView(
+                    videoURL: TutorialVideoResource.videoURL(),
+                    cornerRadius: TutorialVideoStyle.cornerRadius,
+                    onClose: dismissTutorialVideo
+                )
+                .frame(width: targetWidth, height: targetHeight)
+                .shadow(color: Color.black.opacity(0.34), radius: 24, x: 0, y: 14)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .onExitCommand {
+            dismissTutorialVideo()
+        }
+        .transition(.opacity)
+        .accessibilityIdentifier("TutorialVideoPopup")
+        .zIndex(1900)
     }
 
     private var commandPaletteOverlay: some View {
@@ -8706,6 +8870,14 @@ struct ContentView: View {
         }
     }
 
+    private func presentTutorialVideo() {
+        isTutorialVideoPresented = true
+    }
+
+    private func dismissTutorialVideo() {
+        isTutorialVideoPresented = false
+    }
+
     static func shouldHandleCommandPaletteRequest(
         observedWindow: NSWindow?,
         requestedWindow: NSWindow?,
@@ -12975,7 +13147,7 @@ private struct SidebarTutorialVideoButton: View {
     var body: some View {
         TrackedButton("contentview_button_tutorial_video", action: {
             Task { @MainActor in
-                TutorialVideoWindowController.shared.show()
+                TutorialVideoPresentationCenter.shared.requestPresentation(in: NSApp.keyWindow ?? NSApp.mainWindow)
             }
         }) {
             CmuxSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)

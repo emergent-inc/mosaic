@@ -1902,8 +1902,7 @@ struct BrowserPanelView: View {
                 .cmuxFont(size: 13, weight: .medium)
                 .padding(.horizontal, 6)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
+            .buttonStyle(.mosaicAccent)
             .safeHelp(String(localized: "browser.reload", defaultValue: "Reload"))
             .accessibilityIdentifier("BrowserWebContentRecoveryButton")
         }
