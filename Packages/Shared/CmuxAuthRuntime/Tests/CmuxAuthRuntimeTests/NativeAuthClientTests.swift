@@ -46,6 +46,36 @@ struct NativeAuthClientTests {
     }
 
     @Test
+    func currentUserMapsMissingImageURLToNil() async throws {
+        let store = FlowInMemoryTokenStore()
+        await store.setTokens(accessToken: "access-1", refreshToken: "refresh-1")
+        let client = NativeAuthClient(
+            apiBaseURL: try #require(URL(string: "https://cmux.test")),
+            tokenStore: store,
+            session: Self.urlSession()
+        )
+
+        NativeAuthClientURLProtocol.handler = { _ in
+            // A /me response from a legacy token carries no imageURL field.
+            try Self.jsonResponse([
+                "user": [
+                    "id": "user_clerk",
+                    "displayName": "Clerk User",
+                    "primaryEmail": "clerk@example.com",
+                ],
+                "teams": [],
+                "selectedTeamId": NSNull(),
+            ])
+        }
+        defer { NativeAuthClientURLProtocol.reset() }
+
+        let user = try await client.currentUser(throwOnMissing: true)
+
+        #expect(user?.id == "user_clerk")
+        #expect(user?.imageURL == nil)
+    }
+
+    @Test
     func currentUserRefreshesExpiredAccessTokenAndPersistsNewPair() async throws {
         let store = FlowInMemoryTokenStore()
         await store.setTokens(accessToken: "expired-access", refreshToken: "refresh-1")

@@ -21,6 +21,11 @@ const peer = (peerID: string) => ({
   color: "#123456",
 });
 
+const peerWithImage = (peerID: string, imageURL: string) => ({
+  ...peer(peerID),
+  imageURL,
+});
+
 test("joined frame includes existing distinct peers", () => {
   const state = new CollaborationRelaySessionState();
   const first = new FakeSocket();
@@ -37,6 +42,33 @@ test("joined frame includes existing distinct peers", () => {
   expect(JSON.parse(first.sent.at(-1) ?? "{}")).toEqual({
     type: "peer.joined",
     peer: peer("p2"),
+  });
+});
+
+test("carries peer imageURL through the roster and join broadcasts", () => {
+  // The relay is the only path a remote collaborator's profile picture takes to
+  // reach other participants' sidebar/tab avatars, so imageURL must survive both
+  // the session.joined roster and the peer.joined broadcast verbatim.
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+
+  const host = peerWithImage("p1", "https://img.example/host.png");
+  const joiner = peerWithImage("p2", "https://img.example/joiner.png");
+  state.addPeer("ABCD-1234", host, first, 1000);
+  state.addPeer("ABCD-1234", joiner, second, 1000);
+
+  const roster = JSON.parse(second.sent[0] ?? "{}");
+  expect(roster).toEqual({
+    type: "session.joined",
+    sessionID: "ABCD-1234",
+    peers: [host, joiner],
+  });
+  expect(roster.peers[0].imageURL).toBe("https://img.example/host.png");
+
+  expect(JSON.parse(first.sent.at(-1) ?? "{}")).toEqual({
+    type: "peer.joined",
+    peer: joiner,
   });
 });
 
