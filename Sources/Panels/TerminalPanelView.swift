@@ -486,7 +486,11 @@ private struct TerminalCollaborationSessionPopoverContent: View {
 
             if let sessionCode {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(CollaborationStrings.sessionCodeLabel(code: sessionCode))
+                    // Directory-sharing plans lead with teammate sharing, so the
+                    // invite code is intentionally not the headline.
+                    Text(directorySharingEnabled
+                        ? CollaborationStrings.directorySessionActive
+                        : CollaborationStrings.sessionCodeLabel(code: sessionCode))
                         .cmuxFont(size: 11, weight: .semibold)
                         .textSelection(.enabled)
                     Text(isConnected ? CollaborationStrings.sessionConnectedDetail(peerSummary: peerSummary) : CollaborationStrings.sessionJoinedDetail)
@@ -535,6 +539,26 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 .buttonStyle(.mosaicSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            } else if directorySharingEnabled {
+                // Team/enterprise: directory sharing is the first-class create
+                // path. The primary action starts the session and immediately
+                // opens the org teammate picker (see presentPostCreateSharing).
+                VStack(alignment: .leading, spacing: 6) {
+                    TrackedButton("session_share_teammate_create", CollaborationStrings.shareWithTeammate) {
+                        onCreate()
+                    }
+                    .buttonStyle(.mosaicAccent)
+                    .keyboardShortcut(.defaultAction)
+
+                    // Team plans keep code joining for external/code sessions;
+                    // enterprise (org-locked) disables codes entirely.
+                    if codesEnabled {
+                        TrackedButton("session_join", CollaborationStrings.joinSession) {
+                            onJoin()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     TrackedButton("session_create", CollaborationStrings.createSession) {
@@ -556,6 +580,13 @@ private struct TerminalCollaborationSessionPopoverContent: View {
         }
         .padding(14)
         .frame(width: 220)
+        .onAppear {
+            // Pull the freshest inbox the moment the popover opens so the
+            // "Incoming sessions" badge doesn't lag the background poll.
+            Task { @MainActor in
+                await CollaborationRuntime.shared.refreshIncomingSharedSessions()
+            }
+        }
     }
 }
 
