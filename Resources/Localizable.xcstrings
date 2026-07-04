@@ -38475,6 +38475,39 @@
           }
         }
       }
+    },
+    "cli.agentRoom.reset.unexpectedArgument": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux agent-room reset: unexpected argument '%@'"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.reset.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Claude room state"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage: cmux agent-room <status|create|connect|disconnect|reset|post|digest>"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

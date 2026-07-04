@@ -123,6 +123,55 @@ struct ClaudeTranscriptFileParserTests {
     }
 
     @Test
+    func recentTurnsDropsTurnsOlderThanCutoffByTheirOwnTimestamp() throws {
+        let now = Date()
+        let fresh = ClaudeTranscriptFileTurn(
+            id: "fresh",
+            role: .user,
+            text: "the germans are coming",
+            timestamp: now.addingTimeInterval(-60)
+        )
+        let stale = ClaudeTranscriptFileTurn(
+            id: "stale",
+            role: .user,
+            text: "the british are coming",
+            timestamp: now.addingTimeInterval(-2 * 60 * 60)
+        )
+        let filtered = ClaudeTranscriptFileParser.recentTurns(
+            [stale, fresh],
+            notOlderThan: now.addingTimeInterval(-30 * 60),
+            fallbackDate: now
+        )
+        #expect(filtered.map(\.id) == ["fresh"])
+    }
+
+    @Test
+    func recentTurnsUsesFallbackDateForTurnsWithoutTimestamp() throws {
+        let now = Date()
+        let noTimestamp = ClaudeTranscriptFileTurn(
+            id: "no-ts",
+            role: .user,
+            text: "the british are coming",
+            timestamp: nil
+        )
+        // A stale file: its lines carry no timestamp and the file itself was
+        // last touched two hours ago, so the fallback excludes the turn.
+        let staleFileFiltered = ClaudeTranscriptFileParser.recentTurns(
+            [noTimestamp],
+            notOlderThan: now.addingTimeInterval(-30 * 60),
+            fallbackDate: now.addingTimeInterval(-2 * 60 * 60)
+        )
+        #expect(staleFileFiltered.isEmpty)
+        // A freshly written file keeps the same untimestamped turn.
+        let freshFileFiltered = ClaudeTranscriptFileParser.recentTurns(
+            [noTimestamp],
+            notOlderThan: now.addingTimeInterval(-30 * 60),
+            fallbackDate: now
+        )
+        #expect(freshFileFiltered.map(\.id) == ["no-ts"])
+    }
+
+    @Test
     func ingestedTurnsDedupeBySourceIDAcrossRepeatedBackfills() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1", deliveryPolicy: .semiLive)

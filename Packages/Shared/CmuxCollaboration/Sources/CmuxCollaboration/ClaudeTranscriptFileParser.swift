@@ -58,6 +58,23 @@ public enum ClaudeTranscriptFileParser {
         return parseTurns(jsonl: text, limit: limit)
     }
 
+    /// Drops turns older than `cutoff`, so wire-time backfill only shares
+    /// recent (pre-wire) context and never resurrects an ancient conversation
+    /// that happens to still live in a long-running / reused session's
+    /// transcript file.
+    ///
+    /// A turn's own `timestamp` is authoritative when present; turns without a
+    /// parseable timestamp fall back to `fallbackDate` (typically the transcript
+    /// file's modification date), so a stale file whose lines lack timestamps is
+    /// still excluded when the file itself has not been touched recently.
+    public static func recentTurns(
+        _ turns: [ClaudeTranscriptFileTurn],
+        notOlderThan cutoff: Date,
+        fallbackDate: Date
+    ) -> [ClaudeTranscriptFileTurn] {
+        turns.filter { ($0.timestamp ?? fallbackDate) >= cutoff }
+    }
+
     /// Parses the last `limit` conversational turns from JSONL content.
     ///
     /// Keeps only plain `user`/`assistant` conversation text:
