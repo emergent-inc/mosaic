@@ -311,10 +311,12 @@ struct TerminalPanelView: View {
 
     private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalShareButtonLabel(state: state)
-        // The "Viewing" pill (mirrored terminal) uses a lower-saturation orange so it
-        // reads as a passive presence indicator rather than an active share control.
-        let tint = state.isMirrored
-            ? Color(hue: 0.085, saturation: 0.5, brightness: 0.95)
+        let icon = terminalShareButtonIcon(state: state)
+        // All states share the orange tint; the passive "Viewing" (mirrored) and "Sharing"
+        // (hosted) states use a slightly lower-saturation orange, leaving the actionable
+        // "Share" call-to-action at full saturation.
+        let tint = (state.isMirrored || state.isHosted)
+            ? Color(hue: 0.085, saturation: 0.62, brightness: 0.98)
             : Color.orange
         return TrackedButton("terminal_share", action: {
             // "Viewing" is a read-only presence indicator in a shared session:
@@ -325,20 +327,24 @@ struct TerminalPanelView: View {
             }
             isTerminalRecipientPopoverPresented = true
         }) {
-            Text(label)
-                .cmuxFont(size: 10, weight: .semibold)
-                .lineLimit(1)
-                .foregroundStyle(tint)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background {
-                    Capsule()
-                        .fill(tint.opacity(state.isHosted ? 0.14 : 0.08))
-                }
-                .overlay {
-                    Capsule()
-                        .stroke(tint.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
-                }
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .semibold))
+                Text(label)
+                    .cmuxFont(size: 10, weight: .semibold)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background {
+                Capsule()
+                    .fill(tint.opacity(state.isHosted ? 0.14 : 0.08))
+            }
+            .overlay {
+                Capsule()
+                    .stroke(tint.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
+            }
         }
         .buttonStyle(.plain)
         .help(label)
@@ -361,6 +367,16 @@ struct TerminalPanelView: View {
                 }
             )
         }
+    }
+
+    private func terminalShareButtonIcon(state: CollaborationTerminalHeaderState) -> String {
+        if state.isMirrored {
+            return "eye"                 // Viewing: passive presence indicator
+        }
+        guard state.isHosted else {
+            return "arrow.up"            // Share: send/publish this terminal
+        }
+        return "record.circle"          // Sharing: live "recording"-style indicator
     }
 
     private func terminalShareButtonLabel(state: CollaborationTerminalHeaderState) -> String {
