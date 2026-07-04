@@ -9,6 +9,13 @@ process.env.CMUX_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirt
 const HANDOFF_COOKIE = "mosaic-native-auth-handoff";
 let handoffCookie: string | undefined;
 let userId: string | null;
+let memberships: readonly {
+  organization: {
+    id: string;
+    privateMetadata?: Record<string, unknown>;
+    publicMetadata?: Record<string, unknown>;
+  };
+}[];
 const getUser = mock(async (...args: unknown[]) => {
   const id = args[0] as string;
   return {
@@ -30,6 +37,7 @@ const GET = makeAfterSignInHandler({
     imageUrl: string;
     primaryEmailAddress: { emailAddress: string };
   }>,
+  listMemberships: async () => memberships,
   getCookieStore: async () => ({
     get: (name: string) => {
       if (name === HANDOFF_COOKIE && handoffCookie) return { value: handoffCookie };
@@ -62,6 +70,7 @@ describe("after sign-in native handoff", () => {
   beforeEach(() => {
     handoffCookie = undefined;
     userId = "user_1";
+    memberships = [];
   });
 
   test("keeps a fallback page for verified native auto-open handoffs", async () => {
@@ -105,6 +114,35 @@ describe("after sign-in native handoff", () => {
     expect(setCookie).toContain(`${HANDOFF_COOKIE}=;`);
     expect(setCookie).toContain("Max-Age=0");
     expect(setCookie).toContain("Path=/handler/after-sign-in");
+  });
+
+  test("includes team workspace metadata in native tokens", async () => {
+    handoffCookie = "handoff-nonce";
+    memberships = [{
+      organization: {
+        id: "org-1",
+        privateMetadata: {
+          mosaicWorkspaceType: "team",
+          mosaicPlan: "team",
+          mosaicUseType: "commercial",
+          billingStatus: "active",
+        },
+      },
+    }];
+    const nativeReturnTo = "mosaic://auth-callback?mosaic_auth_state=state-123";
+
+    const response = await GET(signInRequest(nativeReturnTo, "handoff-nonce"));
+    const callbackURL = new URL(returnHref(await response.text()));
+    const accessClaims = verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_access")!);
+
+    expect(accessClaims?.teamWorkspaces).toEqual([{
+      id: "org-1",
+      workspaceType: "team",
+      mosaicPlan: "team",
+      useType: "commercial",
+      billingStatus: "active",
+      vmBillingPlanId: "team",
+    }]);
   });
 
   test("keeps the manual return page when the handoff nonce is not verified", async () => {

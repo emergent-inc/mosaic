@@ -19,7 +19,17 @@ export function GET(request: Request) {
       primaryEmail: claims.primaryEmail,
       imageURL: claims.imageURL,
     },
-    teams: claims.teamIds.map((id) => ({ id, displayName: null })),
+    teams: claims.teamIds.map((id) => {
+      const workspace = claims.teamWorkspaces?.find((team) => team.id === id) ?? null;
+      return {
+        id,
+        displayName: null,
+        workspaceType: workspace?.workspaceType ?? null,
+        mosaicPlan: workspace?.mosaicPlan ?? null,
+        useType: workspace?.useType ?? null,
+        billingStatus: workspace?.billingStatus ?? null,
+      };
+    }),
     selectedTeamId: claims.selectedTeamId,
   });
 }

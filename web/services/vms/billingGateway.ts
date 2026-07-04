@@ -260,6 +260,7 @@ function firstConfiguredEnv(
 
 function normalizedPlanId(planId: string): string {
   const normalized = planId.trim().toLowerCase();
+  if (normalized === "hobby" || normalized === "personal") return "free";
   return normalized || "free";
 }
 
