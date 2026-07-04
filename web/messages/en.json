@@ -1999,9 +1999,9 @@
     "brandPage": "Brand assets"
   },
   "afterSignIn": {
-    "title": "Signed in to cmux",
-    "body": "If cmux did not open automatically, use the button below.",
-    "button": "Return to cmux"
+    "title": "Mosaic opened, you may close this tab",
+    "body": "",
+    "button": "Open Mosaic again"
   },
   "landing": {
     "bestTerminal": {
