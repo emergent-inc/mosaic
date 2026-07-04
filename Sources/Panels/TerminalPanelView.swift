@@ -1013,7 +1013,7 @@ private enum AgentRoomWireMetrics {
     /// How far the stem tucks up under the dot so the join looks continuous.
     static let stemOverlap: CGFloat = 2
     static var pinHeight: CGFloat { dotSize + stemHeight - stemOverlap }
-    static let pinColor = Color(red: 0.04, green: 0.52, blue: 1.0).opacity(0.60)
+    static let pinColor = Color(red: 0.04, green: 0.52, blue: 1.0).opacity(0.70)
 }
 
 /// The agent-room wire affordance: a solid blue pin (dot + stem) like a text-
