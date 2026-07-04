@@ -645,6 +645,7 @@ final class CollaborationRuntime {
     private(set) var connectionLabel = CollaborationStrings.disconnected
     private(set) var lastErrorMessage: String?
     private(set) var workspaceParticipantSnapshotRevision = 0
+    private(set) var agentRoomHeaderRevision = 0
 
     private var peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
@@ -1645,6 +1646,13 @@ final class CollaborationRuntime {
     }
 
     func agentRoomState(for panel: TerminalPanel) -> AgentRoomHeaderState {
+        // Establish a single, unconditional observation dependency so every
+        // connected surface's header re-renders on any membership change. Raw
+        // @Observable dictionary tracking is unreliable here: two back-to-back
+        // mutations (connect source, then target) across await hops can leave
+        // one surface's header subscribed to a stale read, so only one pill
+        // appears. Mirrors the workspaceParticipantSnapshotRevision pattern.
+        _ = agentRoomHeaderRevision
         if let roomID = agentRoomIDsBySurfaceID[panel.id] {
             return AgentRoomHeaderState(
                 isConnected: true,
@@ -1744,6 +1752,23 @@ final class CollaborationRuntime {
                 displayName: terminalPanel(surfaceID: targetUUID)?.displayTitle
             )
         }
+    }
+
+    /// Fallback for wire drags that no drop target accepted (empty drag
+    /// operation): when the release point sits on another surface's link
+    /// button anchor, connect the two surfaces anyway so the gesture never
+    /// silently drops the link.
+    func connectAgentRoomWireToLinkButton(near screenPoint: NSPoint, sourceSurfaceID: UUID) {
+        let hitRadius: CGFloat = 22
+        let candidate = agentRoomWireAnchorsBySurfaceID
+            .filter { $0.key != sourceSurfaceID && $0.value.window != nil }
+            .map { (surfaceID: $0.key, distance: hypot($0.value.screenPoint.x - screenPoint.x, $0.value.screenPoint.y - screenPoint.y)) }
+            .min { $0.distance < $1.distance }
+        guard let candidate, candidate.distance <= hitRadius else { return }
+        connectAgentRoomWire(
+            sourceSurfaceID: sourceSurfaceID.uuidString,
+            targetSurfaceID: candidate.surfaceID
+        )
     }
 
     func statusPayload() -> [String: Any] {
@@ -1963,11 +1988,24 @@ final class CollaborationRuntime {
             peerID: peerIdentity.peerID,
             displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle
         )
+        if let previousRoomID = agentRoomIDsBySurfaceID[surfaceID], previousRoomID != roomID {
+            // Moving to a different room must drop the old membership, or the
+            // store keeps routing digests/events to a surface that left.
+            if let previousRoom = await agentRoomStore.disconnect(
+                roomID: previousRoomID,
+                memberID: agentRoomMemberIDsBySurfaceID[surfaceID],
+                surfaceID: surfaceID.uuidString
+            ) {
+                cacheAgentRoom(previousRoom)
+                try? await send(.agentRoomSnapshot(previousRoom))
+            }
+        }
         agentRoomIDsBySurfaceID[surfaceID] = roomID
         agentRoomMemberIDsBySurfaceID[surfaceID] = member.id
         let room = await agentRoomStore.connect(member: member, to: roomID)
         latestAgentRoomID = roomID
         cacheAgentRoom(room)
+        reconcileAgentRoomMembership(with: room)
         try? await send(.agentRoomSnapshot(room))
         return agentRoomPayload(room)
     }
@@ -1990,9 +2028,13 @@ final class CollaborationRuntime {
     }
 
     func disconnectAgentRoomSurfaceForAutomation(roomID: String?, surfaceID: String?) async -> [String: Any] {
-        let targetRoomID = roomID ?? latestAgentRoomID
-        guard let targetRoomID else { return ["disconnected": false, "error": "No Claude room is active."] }
         let parsedSurfaceID = surfaceID.flatMap(UUID.init(uuidString:))
+        // The surface's own room wins over latestAgentRoomID: another surface
+        // may have created a newer room since this one connected.
+        let targetRoomID = roomID
+            ?? parsedSurfaceID.flatMap { agentRoomIDsBySurfaceID[$0] }
+            ?? latestAgentRoomID
+        guard let targetRoomID else { return ["disconnected": false, "error": "No Claude room is active."] }
         let memberID = parsedSurfaceID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
         let room = await agentRoomStore.disconnect(
             roomID: targetRoomID,
@@ -2002,9 +2044,11 @@ final class CollaborationRuntime {
         if let parsedSurfaceID {
             agentRoomIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
             agentRoomMemberIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
+            agentRoomHeaderRevision &+= 1
         }
         if let room {
             cacheAgentRoom(room)
+            reconcileAgentRoomMembership(with: room)
             try? await send(.agentRoomSnapshot(room))
             return agentRoomPayload(room)
         }
@@ -4078,6 +4122,24 @@ final class CollaborationRuntime {
 
     private func cacheAgentRoom(_ room: ClaudeRoomSnapshot) {
         agentRoomSnapshotsByID[room.id] = room
+    }
+
+    /// Mirrors authoritative room membership into the per-surface maps that
+    /// drive the header "Claude room" pill, so every locally connected surface
+    /// shows the tag no matter which entrypoint (click, wire drag, header
+    /// drop, CLI) mutated the room. Uses the shared pure reducer so the
+    /// invariant is unit-tested in one place.
+    private func reconcileAgentRoomMembership(with room: ClaudeRoomSnapshot) {
+        let reconciled = AgentRoomMembershipReducer.reconciled(
+            AgentRoomMembershipState(
+                roomIDsBySurfaceID: agentRoomIDsBySurfaceID,
+                memberIDsBySurfaceID: agentRoomMemberIDsBySurfaceID
+            ),
+            with: room
+        )
+        agentRoomIDsBySurfaceID = reconciled.roomIDsBySurfaceID
+        agentRoomMemberIDsBySurfaceID = reconciled.memberIDsBySurfaceID
+        agentRoomHeaderRevision &+= 1
     }
 
     private func cacheAgentRooms(_ rooms: [ClaudeRoomSnapshot]) {
