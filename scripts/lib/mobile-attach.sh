@@ -54,12 +54,12 @@ cmux_attach_socket_path() {
 
 # The locally-built tagged macOS Debug .app bundle path (cloud/local reloads both
 # download/install here). Both the DerivedData dir AND the .app basename use the
-# sanitized slug, matching reload.sh (`APP_NAME="cmux DEV ${TAG_SLUG}"`); the raw
+# sanitized slug, matching reload.sh (`APP_NAME="Mosaic DEV ${TAG_SLUG}"`); the raw
 # tag would miss for any tag whose slug differs (e.g. "Fix Foo" -> "fix-foo").
 cmux_attach_mac_app_path() {
   local slug
   slug="$(cmux_attach__slug "$1")"
-  printf '%s/Library/Developer/Xcode/DerivedData/cmux-%s/Build/Products/Debug/cmux DEV %s.app' \
+  printf '%s/Library/Developer/Xcode/DerivedData/cmux-%s/Build/Products/Debug/Mosaic DEV %s.app' \
     "$HOME" "$slug" "$slug"
 }
 
@@ -117,7 +117,7 @@ cmux_attach_ensure_mac() {
     fi
     echo "==> relaunching tagged Mac app to bind the pairing listener ($tag) [CMUX_ATTACH_ALLOW_RELAUNCH=1]" >&2
     # Scoped to this tag's executable only (never the stable app or other tags).
-    pkill -f "cmux DEV ${slug}.app/Contents/MacOS/cmux DEV" 2>/dev/null || true
+    pkill -f "Mosaic DEV ${slug}.app/Contents/MacOS/Mosaic DEV" 2>/dev/null || true
     for _i in $(seq 1 25); do [[ -S "$sock" ]] || break; sleep 0.2; done
   fi
 

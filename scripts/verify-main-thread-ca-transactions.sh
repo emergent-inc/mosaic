@@ -10,8 +10,8 @@ READY_TIMEOUT_SECONDS="${CMUX_CA_ASSERT_READY_TIMEOUT_SECONDS:-60}"
 APP_PID_FILE="${CMUX_CA_ASSERT_PID_FILE:-/tmp/cmux-ca-main-thread-${TAG}.pid}"
 
 if [ -z "$APP_PATH" ]; then
-  echo "usage: CMUX_APP_PATH=/path/to/cmux.app $0" >&2
-  echo "   or: $0 /path/to/cmux.app" >&2
+  echo "usage: CMUX_APP_PATH=/path/to/Mosaic.app $0" >&2
+  echo "   or: $0 /path/to/Mosaic.app" >&2
   echo "optional: CMUX_CA_ASSERT_SOCKET_PATH=/tmp/cmux-debug-<tag>.sock" >&2
   exit 2
 fi
@@ -22,14 +22,14 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 APP_BASENAME="$(basename "$APP_PATH")"
-if [ "$APP_BASENAME" = "cmux DEV.app" ] && [ "${CMUX_ALLOW_UNTAGGED_CA_REGRESSION:-0}" != "1" ]; then
-  echo "ERROR: refusing to launch untagged cmux DEV.app without CMUX_ALLOW_UNTAGGED_CA_REGRESSION=1" >&2
+if [ "$APP_BASENAME" = "Mosaic DEV.app" ] && [ "${CMUX_ALLOW_UNTAGGED_CA_REGRESSION:-0}" != "1" ]; then
+  echo "ERROR: refusing to launch untagged Mosaic DEV.app without CMUX_ALLOW_UNTAGGED_CA_REGRESSION=1" >&2
   exit 2
 fi
 
-BINARY="$APP_PATH/Contents/MacOS/cmux DEV"
+BINARY="$APP_PATH/Contents/MacOS/Mosaic DEV"
 if [ ! -x "$BINARY" ]; then
-  BINARY="$APP_PATH/Contents/MacOS/cmux"
+  BINARY="$APP_PATH/Contents/MacOS/Mosaic"
 fi
 
 if [ ! -x "$BINARY" ]; then

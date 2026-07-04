@@ -172,7 +172,7 @@ def get_cmux_pid_for_socket(socket_path: Optional[str]) -> Optional[int]:
                     return pid
 
     result = subprocess.run(
-        ["pgrep", "-f", r"cmux DEV.*\.app/Contents/MacOS/cmux DEV"],
+        ["pgrep", "-f", r"Mosaic DEV.*\.app/Contents/MacOS/Mosaic DEV"],
         capture_output=True,
         text=True,
     )

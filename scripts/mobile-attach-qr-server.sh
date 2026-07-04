@@ -125,16 +125,16 @@ def tagged_app_path() -> str:
         "Build",
         "Products",
         "Debug",
-        f"cmux DEV {TAG}.app",
+        f"Mosaic DEV {TAG}.app",
     )
 
 
 def tagged_app_executable() -> str:
-    return os.path.join(tagged_app_path(), "Contents", "MacOS", "cmux DEV")
+    return os.path.join(tagged_app_path(), "Contents", "MacOS", "Mosaic DEV")
 
 
 def app_info() -> dict:
-    """Single source of truth for what 'Open cmux DEV <tag>' actually does.
+    """Single source of truth for what 'Open Mosaic DEV <tag>' actually does.
     Returned to the page so the label always reflects reality (build mtime,
     on-disk presence, whether a process is currently running)."""
     app_path = tagged_app_path()
@@ -156,7 +156,7 @@ def app_info() -> dict:
         pass
     try:
         out = subprocess.run(
-            ["pgrep", "-f", f"cmux DEV {TAG}.app/Contents/MacOS/cmux DEV"],
+            ["pgrep", "-f", f"Mosaic DEV {TAG}.app/Contents/MacOS/Mosaic DEV"],
             check=False,
             timeout=2,
             stdout=subprocess.PIPE,
@@ -355,7 +355,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         with open(html_path, "rb") as fh:
             html = fh.read()
-        # Inject a meta refresh + a small banner + an "Open cmux DEV <tag>"
+        # Inject a meta refresh + a small banner + an "Open Mosaic DEV <tag>"
         # button that hits the CMUX Tag Opener at 127.0.0.1:17320.
         marker = b"</head>"
         injection = (
@@ -400,11 +400,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             + b'    var running=info.running_pid?(" \\u00b7 running pid "+info.running_pid):"";\n'
             + b'    if(info.exists){\n'
             + b'      btn.disabled=false;\n'
-            + b'      btn.innerHTML="Open <code>cmux DEV "+info.tag+"</code> \\u00b7 built "+built+running;\n'
+            + b'      btn.innerHTML="Open <code>Mosaic DEV "+info.tag+"</code> \\u00b7 built "+built+running;\n'
             + b'      btn.title=info.app_path;\n'
             + b'    }else{\n'
             + b'      btn.disabled=true;\n'
-            + b'      btn.innerHTML="<code>cmux DEV "+info.tag+"</code> not built";\n'
+            + b'      btn.innerHTML="<code>Mosaic DEV "+info.tag+"</code> not built";\n'
             + b'      btn.title="missing on disk: "+info.app_path;\n'
             + b'    }\n'
             + b'  }).catch(function(){});}\n'
