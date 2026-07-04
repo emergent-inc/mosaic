@@ -480,15 +480,15 @@ private final class AgentRoomWireOverlayView: NSView {
         NSGraphicsContext.saveGraphicsState()
         let shadow = NSShadow()
         shadow.shadowBlurRadius = 12
-        shadow.shadowColor = NSColor.controlAccentColor.withAlphaComponent(0.55)
+        shadow.shadowColor = NSColor.systemBlue.withAlphaComponent(0.55)
         shadow.set()
         path.lineWidth = 9
-        NSColor.controlAccentColor.withAlphaComponent(0.35).setStroke()
+        NSColor.systemBlue.withAlphaComponent(0.35).setStroke()
         path.stroke()
         NSGraphicsContext.restoreGraphicsState()
 
         path.lineWidth = 5
-        NSColor.controlAccentColor.setStroke()
+        NSColor.systemBlue.setStroke()
         path.stroke()
 
         path.lineWidth = 2
@@ -507,7 +507,7 @@ private final class AgentRoomWireOverlayView: NSView {
             height: radius * 2
         )
         let oval = NSBezierPath(ovalIn: rect)
-        NSColor.controlAccentColor.setFill()
+        NSColor.systemBlue.setFill()
         oval.fill()
         NSColor.white.withAlphaComponent(0.9).setStroke()
         oval.lineWidth = 2
@@ -4394,7 +4394,7 @@ enum CollaborationStrings {
     static var terminalRecipientsEmpty: String {
         String(
             localized: "collaboration.terminal.recipients.empty",
-            defaultValue: "Invite someone to this session, then choose who can view this terminal."
+            defaultValue: "No one's here yet. Invite people to share this terminal."
         )
     }
 
