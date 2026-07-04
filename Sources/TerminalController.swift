@@ -1194,6 +1194,12 @@ class TerminalController {
                 )
                 return .ok(payload)
             }
+        case "agent.room.reset":
+            let roomID = request.params["room_id"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.resetAgentRoomForAutomation(roomID: roomID)
+                return .ok(payload)
+            }
         case "agent.room.post":
             guard let text = request.params["text"] as? String, !text.isEmpty else {
                 return v2Result(
@@ -2202,6 +2208,7 @@ class TerminalController {
             "agent.room.create",
             "agent.room.connect_surface",
             "agent.room.disconnect_surface",
+            "agent.room.reset",
             "agent.room.post",
             "agent.room.digest",
             "agent.room.consume",

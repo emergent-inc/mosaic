@@ -81,6 +81,25 @@ public actor ClaudeRoomStore {
         rooms.values.sorted { $0.id < $1.id }
     }
 
+    /// Removes one room and its indexed transcript turns.
+    @discardableResult
+    public func removeRoom(id: String) -> ClaudeRoomSnapshot? {
+        let removed = rooms.removeValue(forKey: id)
+        transcriptTurnsByRoomID.removeValue(forKey: id)
+        if removed != nil {
+            persist()
+        }
+        return removed
+    }
+
+    /// Removes every room and indexed transcript turn.
+    public func clearAllRooms() {
+        guard !rooms.isEmpty || !transcriptTurnsByRoomID.isEmpty else { return }
+        rooms.removeAll()
+        transcriptTurnsByRoomID.removeAll()
+        persist()
+    }
+
     /// Upserts a member into a room, creating the room when needed.
     public func connect(member: ClaudeRoomMember, to roomID: String) -> ClaudeRoomSnapshot {
         var room = rooms[roomID] ?? ClaudeRoomSnapshot(id: roomID)
