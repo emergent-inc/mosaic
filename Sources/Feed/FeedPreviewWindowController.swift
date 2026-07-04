@@ -1,7 +1,7 @@
-import CmuxFoundation
+import MosaicFoundation
 #if DEBUG
 import AppKit
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import SwiftUI
 
 /// Debug-only window that renders every Feed item kind + state against
@@ -17,7 +17,7 @@ final class FeedPreviewWindowController: ReleasingWindowController {
             defer: false
         )
         window.title = "Feed Preview"
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.feedPreview")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.feedPreview")
         window.minSize = NSSize(width: 420, height: 500)
         window.center()
         window.contentView = NSHostingView(rootView: FeedPreviewRootView())
@@ -49,7 +49,7 @@ private struct FeedPreviewRootView: View {
     private var toolbar: some View {
         HStack(spacing: 12) {
             Text("Feed Preview · all kinds + states")
-                .cmuxFont(size: 12, weight: .semibold)
+                .mosaicFont(size: 12, weight: .semibold)
                 .foregroundColor(.secondary)
             Spacer()
             TrackedButton("feedpreviewwindowcontroller_button_55", "Inject all into Feed") {
@@ -64,7 +64,7 @@ private struct FeedPreviewRootView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(kind.label.uppercased())
-                    .cmuxFont(size: 11, weight: .heavy)
+                    .mosaicFont(size: 11, weight: .heavy)
                     .tracking(0.8)
                     .foregroundColor(.primary.opacity(0.9))
                 Rectangle()
@@ -91,7 +91,7 @@ private struct FeedPreviewRootView: View {
             }
         }()
         Text(label.uppercased())
-            .cmuxFont(size: 9, weight: .bold)
+            .mosaicFont(size: 9, weight: .bold)
             .tracking(0.6)
             .foregroundColor(color)
     }
@@ -187,7 +187,7 @@ enum FeedPreviewFixtures {
 
     static func item(kind: Kind, state: StateChoice) -> WorkstreamItem {
         let createdAt = Date().addingTimeInterval(-30)
-        let cwd = "/Users/lawrence/fun/cmuxterm-hq"
+        let cwd = "/Users/lawrence/fun/mosaicterm-hq"
         let (workstreamKind, payload): (WorkstreamKind, WorkstreamPayload) = makePayload(kind: kind)
         let statusValue: WorkstreamStatus = {
             if !workstreamKind.isActionable { return .telemetry }
@@ -271,7 +271,7 @@ enum FeedPreviewFixtures {
             3. Call ExitPlanMode with allowedPrompts entries so the user sees the Bash permission-request UI.
 
             **Requested permissions:**
-            - Bash: run ./scripts/reload.sh --tag <tag> for tagged macOS cmux dev builds
+            - Bash: run ./scripts/reload.sh --tag <tag> for tagged macOS mosaic dev builds
             """
             return (.exitPlan, .exitPlan(
                 requestId: "preview-plan",

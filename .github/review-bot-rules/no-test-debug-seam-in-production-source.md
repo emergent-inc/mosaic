@@ -4,7 +4,7 @@ Scope: production Swift source under `**/Sources/**` that is NOT under `**/Tests
 
 A test-only or debug-only seam does not belong inline in production source. If a unit test needs to observe internal state, the test target reaches that state through `@testable import` after widening the declaration from `private` to `internal`. Production source should not grow accessors, hooks, or `#if DEBUG` extensions that exist solely to let tests or a debugger peek at otherwise-private state. The compiled-out `#if DEBUG` guard does not make this acceptable: it still adds a test-shaped surface to the shipping file, encodes the test's needs into production code, and invites more of the same.
 
-The canonical case is https://github.com/emergent-inc/cmux/pull/6452: a `#if DEBUG` `debugQueuedRequestCount()` accessor was added to the production `MobileCoreRPCSession`/`MobileCoreRPCClient` sources so a test could read the actor's private writer-queue state. The correct fix removed the production seam entirely, widened the queue state `private` -> `internal`, and observed it from `CmuxMobileRPCTests` via `@testable import CmuxMobileRPC`.
+The canonical case is https://github.com/emergent-inc/mosaic/pull/6452: a `#if DEBUG` `debugQueuedRequestCount()` accessor was added to the production `MobileCoreRPCSession`/`MobileCoreRPCClient` sources so a test could read the actor's private writer-queue state. The correct fix removed the production seam entirely, widened the queue state `private` -> `internal`, and observed it from `MosaicMobileRPCTests` via `@testable import MosaicMobileRPC`.
 
 ## Fail
 
@@ -24,4 +24,4 @@ Flag a file under a production source path (`**/Sources/**`, not `**/Tests/**`) 
 
 ## Report
 
-When this rule fails, name the exact production source file and the test/debug member, state that a test-observability or debug seam was added to shipping source, and prescribe the smallest source-of-truth fix: move test scaffolding into the test target and reach internal state via `@testable import` (widening `private` -> `internal` as needed); if the facility is genuinely debug-only and unavoidable, isolate it in a dedicated debug file or folder. Cite https://github.com/emergent-inc/cmux/pull/6452 as the reference fix.
+When this rule fails, name the exact production source file and the test/debug member, state that a test-observability or debug seam was added to shipping source, and prescribe the smallest source-of-truth fix: move test scaffolding into the test target and reach internal state via `@testable import` (widening `private` -> `internal` as needed); if the facility is genuinely debug-only and unavoidable, isolate it in a dedicated debug file or folder. Cite https://github.com/emergent-inc/mosaic/pull/6452 as the reference fix.

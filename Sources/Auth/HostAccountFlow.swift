@@ -1,11 +1,11 @@
 import AppKit
-import CMUXAuthCore
-import CmuxAuthRuntime
-import CmuxSettingsUI
+import MosaicAuthCore
+import MosaicAuthRuntime
+import MosaicSettingsUI
 import Foundation
 
-/// Adapts the shared ``CmuxAuthRuntime/AuthCoordinator`` and the macOS
-/// ``HostBrowserSignInFlow`` to the `CmuxSettingsUI` `AccountFlow` protocol so
+/// Adapts the shared ``MosaicAuthRuntime/AuthCoordinator`` and the macOS
+/// ``HostBrowserSignInFlow`` to the `MosaicSettingsUI` `AccountFlow` protocol so
 /// the `AccountSection` can drive sign-in / sign-out / team selection without
 /// depending on the auth packages.
 ///
@@ -64,7 +64,7 @@ final class HostAccountFlow: AccountFlow {
         // stale the user signs in again (full browser round trip).
     }
 
-    private static func identity(from user: CMUXAuthUser?) -> AccountIdentity? {
+    private static func identity(from user: MosaicAuthUser?) -> AccountIdentity? {
         guard let user else { return nil }
         let trimmedImageURL = user.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let avatarURL = trimmedImageURL.isEmpty ? nil : URL(string: trimmedImageURL)

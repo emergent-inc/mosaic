@@ -1,9 +1,9 @@
-import CmuxWorkspaces
+import MosaicWorkspaces
 import Foundation
 
 // The focus-history value types (FocusHistoryEntry, FocusHistoryRecord,
 // FocusHistoryMenuDirection/Position/Item/Snapshot) and the snapshot merge
-// (FocusHistoryMenuSnapshot.recentlyFocused) live in CmuxWorkspaceNavigation.
+// (FocusHistoryMenuSnapshot.recentlyFocused) live in MosaicWorkspaceNavigation.
 // Only the localized menu formatting stays app-side.
 
 enum FocusHistoryMenuFormatter {

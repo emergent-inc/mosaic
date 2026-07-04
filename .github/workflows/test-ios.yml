@@ -22,7 +22,7 @@ on:
         required: false
         default: ""
       test_filter:
-        description: "UI test class or class/method, for example cmuxUITests/testSignInPairingAndWorkspaceShell"
+        description: "UI test class or class/method, for example mosaicUITests/testSignInPairingAndWorkspaceShell"
         required: false
         default: ""
       device_family:
@@ -137,15 +137,15 @@ jobs:
           export DEVELOPER_DIR="$XCODE_DIR"
           xcodebuild -version
 
-      - name: Run CMUXMobileCore package tests
+      - name: Run MosaicMobileCore package tests
         run: |
-          swift test --package-path Packages/Shared/CMUXMobileCore
+          swift test --package-path Packages/Shared/MosaicMobileCore
 
-      - name: Run CmuxSyncStore package tests
+      - name: Run MosaicSyncStore package tests
         run: |
           # Local-first sync store (raw SQLite3). Headless SwiftPM, no GhosttyKit
           # or app-target dependency, so it runs as a real CI gate here.
-          swift test --package-path Packages/Shared/CmuxSyncStore
+          swift test --package-path Packages/Shared/MosaicSyncStore
 
   ios-simulator:
     needs: detect-ios-changes
@@ -277,7 +277,7 @@ jobs:
               device_type = device_type or (device_types[-1] if device_types else None)
               if runtime is None or device_type is None:
                   raise SystemExit(f"No available {family} simulator or creatable iOS runtime/device type found")
-              created_name = f"cmux CI {device_type['name']}"
+              created_name = f"mosaic CI {device_type['name']}"
               udid = subprocess.check_output([
                   "xcrun",
                   "simctl",
@@ -303,7 +303,7 @@ jobs:
           DEVICE_FAMILY: ${{ matrix.family }}
         run: |
           set -euo pipefail
-          IOS_DERIVED_DATA="${RUNNER_TEMP:-$PWD/.tmp}/cmux-ios-${DEVICE_FAMILY}"
+          IOS_DERIVED_DATA="${RUNNER_TEMP:-$PWD/.tmp}/mosaic-ios-${DEVICE_FAMILY}"
           rm -rf "$IOS_DERIVED_DATA"
           mkdir -p "$IOS_DERIVED_DATA/logs"
           echo "IOS_DERIVED_DATA=$IOS_DERIVED_DATA" >> "$GITHUB_ENV"
@@ -311,8 +311,8 @@ jobs:
       - name: Resolve packages
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.device_family != 'both' && inputs.device_family != matrix.family) }}
         run: |
-          xcodebuild -workspace ios/cmux.xcworkspace \
-            -scheme cmux-ios \
+          xcodebuild -workspace ios/mosaic.xcworkspace \
+            -scheme mosaic-ios \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath "$IOS_DERIVED_DATA" \
             -resolvePackageDependencies
@@ -324,8 +324,8 @@ jobs:
         run: |
           set -euo pipefail
           XCODEBUILD_ARGS=(
-            -workspace ios/cmux.xcworkspace
-            -scheme cmux-ios
+            -workspace ios/mosaic.xcworkspace
+            -scheme mosaic-ios
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID"
             -derivedDataPath "$IOS_DERIVED_DATA"
           )
@@ -336,7 +336,7 @@ jobs:
             # on macos-26. Keep them runnable via workflow_dispatch +
             # test_filter, while the PR lane still builds the app and runs
             # non-UI iOS tests.
-            XCODEBUILD_ARGS+=(-skip-testing:cmuxUITests)
+            XCODEBUILD_ARGS+=(-skip-testing:mosaicUITests)
           fi
           XCODEBUILD_ARGS+=(test)
           selected_tests_passed_despite_xcodebuild_status() {
@@ -346,7 +346,7 @@ jobs:
             # section is not always flushed into the tee'd log, and without the
             # ✘ patterns a real Swift Testing failure exiting 65 was
             # misclassified as a runner cleanup failure and turned the job green.
-            grep -Eq "Test Suite 'Selected tests' passed|Test Suite 'cmuxUITests' passed" "$log_path" &&
+            grep -Eq "Test Suite 'Selected tests' passed|Test Suite 'mosaicUITests' passed" "$log_path" &&
               grep -Eq "Executed [1-9][0-9]* tests, with 0 failures \\(0 unexpected\\)" "$log_path" &&
               ! grep -Eq "Test Suite '.*' failed|Test Case '.*' failed|Assertion Failure|Failing tests:|with [1-9][0-9]* failures|with [0-9]+ failures \\([1-9][0-9]* unexpected\\)|✘ Test|✘ Suite" "$log_path"
           }

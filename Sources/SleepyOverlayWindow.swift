@@ -16,7 +16,7 @@ final class SleepyOverlayWindow: NSWindow {
     /// AppKit resolves command-key menu equivalents (Cmd-Q/Cmd-W/Cmd-H, …)
     /// before `keyDown`. While the screensaver is up and we promise "any key
     /// wakes it," consume those here so they dismiss Sleepy Mode instead of
-    /// quitting/hiding/closing cmux behind the cover.
+    /// quitting/hiding/closing mosaic behind the cover.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         onExit?()
         return true

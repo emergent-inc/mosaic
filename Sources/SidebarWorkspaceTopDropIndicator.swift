@@ -24,7 +24,7 @@ struct SidebarWorkspaceTopDropIndicator: View {
     var body: some View {
         if isVisible {
             Rectangle()
-                .fill(cmuxAccentColor())
+                .fill(mosaicAccentColor())
                 .frame(height: 2)
                 .padding(.leading, Self.horizontalPadding + max(leadingInset, 0))
                 .padding(.trailing, Self.horizontalPadding)

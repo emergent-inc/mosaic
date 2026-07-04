@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import Bonsplit
 import SwiftUI
 
@@ -91,7 +91,7 @@ struct NotificationsPage: View {
     private var header: some View {
         HStack {
             Text(String(localized: "notifications.title", defaultValue: "Notifications"))
-                .cmuxFont(.title2)
+                .mosaicFont(.title2)
                 .fontWeight(.semibold)
 
             Spacer()
@@ -115,7 +115,7 @@ struct NotificationsPage: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(localized: "notifications.forwardToPhone.title", defaultValue: "Forward notifications to my iPhone"))
                     Text(String(localized: "notifications.forwardToPhone.subtitle", defaultValue: "Send agent notifications to the mosaic iPhone app. Off by default; nothing is uploaded unless this is on."))
-                        .cmuxFont(.caption)
+                        .mosaicFont(.caption)
                         .foregroundColor(.secondary)
                 }
             }
@@ -132,17 +132,17 @@ struct NotificationsPage: View {
                     }
                     .pickerStyle(.menu)
                     .fixedSize()
-                    .cmuxFont(.caption)
+                    .mosaicFont(.caption)
                     if forwardToPhoneMode == PhoneForwardingMode.onlyWhenAway.rawValue {
                         Text(awayModeExplanation)
-                            .cmuxFont(.caption)
+                            .mosaicFont(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
                 .padding(.leading, 20)
                 Toggle(isOn: $hidePhoneNotificationContent) {
                     Text(String(localized: "notifications.forwardToPhone.hideContent", defaultValue: "Hide content (send a generic message instead of the terminal text)"))
-                        .cmuxFont(.caption)
+                        .mosaicFont(.caption)
                 }
                 .padding(.leading, 20)
             }
@@ -161,12 +161,12 @@ struct NotificationsPage: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            CmuxSystemSymbolImage(magnified: "bell.slash", pointSize: 32)
+            MosaicSystemSymbolImage(magnified: "bell.slash", pointSize: 32)
                 .foregroundColor(.secondary)
             Text(String(localized: "notifications.empty.title", defaultValue: "No notifications yet"))
-                .cmuxFont(.headline)
+                .mosaicFont(.headline)
             Text(String(localized: "notifications.empty.description", defaultValue: "Desktop notifications will appear here for quick review."))
-                .cmuxFont(.subheadline)
+                .mosaicFont(.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -174,10 +174,10 @@ struct NotificationsPage: View {
 
     private var workspaceUnreadIndicatorState: some View {
         VStack(spacing: 8) {
-            CmuxSystemSymbolImage(magnified: "bell.badge", pointSize: 32)
+            MosaicSystemSymbolImage(magnified: "bell.badge", pointSize: 32)
                 .foregroundColor(.secondary)
             Text(notificationStore.notificationMenuSnapshot.stateHintTitle)
-                .cmuxFont(.headline)
+                .mosaicFont(.headline)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -241,7 +241,7 @@ struct ShortcutAnnotation: View {
 
     private var badge: some View {
         Text(text)
-            .cmuxFont(size: 10, weight: .semibold, design: .rounded)
+            .mosaicFont(size: 10, weight: .semibold, design: .rounded)
             .foregroundStyle(.primary)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -278,35 +278,35 @@ struct NotificationRow: View, Equatable {
             TrackedButton("notificationspage_button_278", action: onOpen) {
                 HStack(alignment: .top, spacing: 12) {
                     Circle()
-                        .fill(notification.isRead ? Color.clear : cmuxAccentColor())
+                        .fill(notification.isRead ? Color.clear : mosaicAccentColor())
                         .frame(width: 8, height: 8)
                         .overlay(
                             Circle()
-                                .stroke(cmuxAccentColor().opacity(notification.isRead ? 0.2 : 1), lineWidth: 1)
+                                .stroke(mosaicAccentColor().opacity(notification.isRead ? 0.2 : 1), lineWidth: 1)
                         )
                         .padding(.top, 6)
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text(notification.title)
-                                .cmuxFont(.headline)
+                                .mosaicFont(.headline)
                                 .foregroundColor(.primary)
                             Spacer()
                             Text(notification.createdAt.formatted(date: .omitted, time: .shortened))
-                                .cmuxFont(.caption)
+                                .mosaicFont(.caption)
                                 .foregroundColor(.secondary)
                         }
 
                         if !notification.body.isEmpty {
                             Text(notification.body)
-                                .cmuxFont(.subheadline)
+                                .mosaicFont(.subheadline)
                                 .foregroundColor(.secondary)
                                 .lineLimit(3)
                         }
 
                         if let tabTitle {
                             Text(tabTitle)
-                                .cmuxFont(.caption)
+                                .mosaicFont(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -324,11 +324,11 @@ struct NotificationRow: View, Equatable {
             .modifier(DefaultActionModifier(isActive: isFocused))
 
             TrackedButton("notificationspage_button_326", action: onClear) {
-                CmuxSystemSymbolImage(systemName: "xmark.circle.fill", pointSize: 14)
+                MosaicSystemSymbolImage(systemName: "xmark.circle.fill", pointSize: 14)
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
-            // CmuxSystemSymbolImage renders an AppKit NSImage with no accessibility
+            // MosaicSystemSymbolImage renders an AppKit NSImage with no accessibility
             // description, so the icon-only button needs an explicit label (the prior
             // SwiftUI system-symbol path used to supply one implicitly).
             .accessibilityLabel(String(localized: "notifications.row.clear", defaultValue: "Clear notification"))

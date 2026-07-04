@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check cmux-owned Swift warnings against a checked-in budget."""
+"""Check mosaic-owned Swift warnings against a checked-in budget."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ import re
 import sys
 
 
-OWNED_ROOTS = ("Sources", "CLI", "Packages", "cmuxTests", "cmuxUITests")
+OWNED_ROOTS = ("Sources", "CLI", "Packages", "mosaicTests", "mosaicUITests")
 IGNORED_PATH_PARTS = (
     "/vendor/",
     "/ghostty/",
-    "/homebrew-cmux/",
+    "/homebrew-mosaic/",
     "/SourcePackages/",
     "/.ci-source-packages/",
 )
@@ -145,7 +145,7 @@ def load_budget(path: pathlib.Path) -> WarningBudget:
 def write_budget(path: pathlib.Path, budget: WarningBudget) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
-        handle.write("# cmux-owned Swift warning budget.\n")
+        handle.write("# mosaic-owned Swift warning budget.\n")
         handle.write("# Format: count<TAB>relative path<TAB>warning message\n")
         handle.write("# Reduce counts when warnings are fixed. CI fails if new warnings exceed this budget.\n")
         for (rel_path, message), count in sorted(budget.items()):
@@ -211,7 +211,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
 
     actual = collect_warnings(args.log)
-    print_budget_summary("Actual cmux-owned Swift warnings", actual)
+    print_budget_summary("Actual mosaic-owned Swift warnings", actual)
 
     if args.write_budget:
         write_budget(args.budget, actual)

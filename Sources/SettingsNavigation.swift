@@ -54,7 +54,7 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
         case .keyboardShortcuts:
             return String(localized: "settings.section.keyboardShortcuts", defaultValue: "Keyboard Shortcuts")
         case .settingsJSON:
-            return String(localized: "settings.section.settingsJSON", defaultValue: "cmux.json")
+            return String(localized: "settings.section.settingsJSON", defaultValue: "mosaic.json")
         case .reset:
             return String(localized: "settings.section.reset", defaultValue: "Reset")
         }
@@ -140,7 +140,7 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
 }
 
 enum SettingsNavigationRequest {
-    static let notificationName = Notification.Name("cmux.settings.navigate")
+    static let notificationName = Notification.Name("mosaic.settings.navigate")
     private static let targetKey = "target"
     private static let anchorKey = "anchor"
     private static let highlightKey = "highlight"
@@ -332,9 +332,9 @@ enum SettingsSearchIndex {
         setting(.app, "focus-pane-first-click", String(localized: "settings.app.paneFirstClickFocus", defaultValue: "Focus Pane on First Click"), "mouse click focus"),
         setting(.app, "file-drops", String(localized: "settings.app.fileDrop.defaultBehavior", defaultValue: "File Drops"), "drag drop files finder path text terminal editor split preview shift"),
         setting(.app, "preferred-editor", String(localized: "settings.app.preferredEditor", defaultValue: "Open Files With"), "editor code zed subl cmd click file"),
-        setting(.app, "supported-file-previews", String(localized: "settings.app.openSupportedFilesInCmux", defaultValue: "Open Supported Files in mosaic"), "cmd click file preview pdf image audio video quick look editor"),
+        setting(.app, "supported-file-previews", String(localized: "settings.app.openSupportedFilesInMosaic", defaultValue: "Open Supported Files in mosaic"), "cmd click file preview pdf image audio video quick look editor"),
         setting(.app, "terminal-config", String(localized: "settings.app.configWindow", defaultValue: "Terminal Config"), "ghostty config merged preview macos-option-as-alt option as alt left option right option alt key meta"),
-        setting(.app, "markdown-viewer", String(localized: "settings.app.openMarkdownInCmuxViewer", defaultValue: "Open Markdown in mosaic Viewer"), "md markdown viewer"),
+        setting(.app, "markdown-viewer", String(localized: "settings.app.openMarkdownInMosaicViewer", defaultValue: "Open Markdown in mosaic Viewer"), "md markdown viewer"),
         setting(.app, "markdown-font-size", String(localized: "settings.app.markdownFontSize", defaultValue: "Markdown Viewer Font Size"), "md markdown viewer font size points zoom scale text bigger smaller"),
         setting(.app, "markdown-font-family", String(localized: "settings.app.markdownFontFamily", defaultValue: "Markdown Viewer Font"), "markdown.fontFamily md markdown viewer font font-family family typeface system stack custom"),
         setting(.app, "markdown-max-width", String(localized: "settings.app.markdownMaxWidth", defaultValue: "Markdown Viewer Max Width"), "markdown.maxWidth md markdown viewer width column reading line length pixels px"),
@@ -427,8 +427,8 @@ enum SettingsSearchIndex {
         setting(.automation, "gemini", String(localized: "settings.automation.gemini", defaultValue: "Gemini CLI Integration"), "agent hooks notifications"),
         setting(.automation, "kiro", String(localized: "settings.automation.kiro", defaultValue: "Kiro CLI Integration"), "agent hooks notifications"),
         setting(.automation, "kiro-notification-level", String(localized: "settings.automation.kiro.notificationLevel", defaultValue: "Kiro Notification Level"), "agent hooks notifications verbosity tool events"),
-        setting(.automation, "port-base", String(localized: "settings.automation.portBase", defaultValue: "Port Base"), "CMUX_PORT start"),
-        setting(.automation, "port-range", String(localized: "settings.automation.portRange", defaultValue: "Port Range Size"), "CMUX_PORT_END workspace ports"),
+        setting(.automation, "port-base", String(localized: "settings.automation.portBase", defaultValue: "Port Base"), "MOSAIC_PORT start"),
+        setting(.automation, "port-range", String(localized: "settings.automation.portRange", defaultValue: "Port Range Size"), "MOSAIC_PORT_END workspace ports"),
         setting(.browser, "search-engine", String(localized: "settings.browser.searchEngine", defaultValue: "Default Search Engine"), "address bar query google duckduckgo bing kagi brave startpage perplexity exa yahoo ecosia qwant mojeek wikipedia github baidu yandex custom search provider"),
         setting(.browser, "enable-browser", String(localized: "settings.browser.enabled", defaultValue: "Enable mosaic Browser"), "webview tabs links"),
         setting(.browser, "search-suggestions", String(localized: "settings.browser.searchSuggestions", defaultValue: "Show Search Suggestions"), "browser address bar suggestions"),
@@ -454,8 +454,8 @@ enum SettingsSearchIndex {
         setting(.workspaceColors, "selection", String(localized: "settings.workspaceColors.selectionColor", defaultValue: "Selection Highlight"), "selected workspace background"),
         setting(.workspaceColors, "badge", String(localized: "settings.workspaceColors.notificationBadgeColor", defaultValue: "Notification Badge"), "unread notification color"),
         setting(.workspaceColors, "palette", String(localized: "settings.workspaceColors.resetPalette", defaultValue: "Reset Palette"), "named colors palette"),
-        setting(.settingsJSON, "open-file", String(localized: "settings.settingsJSON.openFile", defaultValue: "Open cmux.json"), "config json file editor dotfiles"),
-        setting(.settingsJSON, "documentation", String(localized: "settings.settingsJSON.documentation", defaultValue: "Documentation"), "cmux json schema reference docs"),
+        setting(.settingsJSON, "open-file", String(localized: "settings.settingsJSON.openFile", defaultValue: "Open mosaic.json"), "config json file editor dotfiles"),
+        setting(.settingsJSON, "documentation", String(localized: "settings.settingsJSON.documentation", defaultValue: "Documentation"), "mosaic json schema reference docs"),
         setting(.reset, "reset-all", String(localized: "settings.reset.resetAll", defaultValue: "Reset All Settings"), "restore defaults")
     ] + terminalScrollSpeedSettingEntries
 
@@ -481,8 +481,8 @@ enum SettingsSearchIndex {
         "fileDrop.defaultBehavior": settingID(for: .app, idSuffix: "file-drops"),
         "app.fileDropDefaultBehavior": settingID(for: .app, idSuffix: "file-drops"),
         "app.preferredEditor": settingID(for: .app, idSuffix: "preferred-editor"),
-        "app.openSupportedFilesInCmux": settingID(for: .app, idSuffix: "supported-file-previews"),
-        "app.openMarkdownInCmuxViewer": settingID(for: .app, idSuffix: "markdown-viewer"),
+        "app.openSupportedFilesInMosaic": settingID(for: .app, idSuffix: "supported-file-previews"),
+        "app.openMarkdownInMosaicViewer": settingID(for: .app, idSuffix: "markdown-viewer"),
         "markdown.fontSize": settingID(for: .app, idSuffix: "markdown-font-size"),
         "markdown.fontFamily": settingID(for: .app, idSuffix: "markdown-font-family"),
         "markdown.maxWidth": settingID(for: .app, idSuffix: "markdown-max-width"),
@@ -519,8 +519,8 @@ enum SettingsSearchIndex {
         "sidebar.showPullRequests": settingID(for: .sidebarAppearance, idSuffix: "show-pull-requests"),
         "sidebar.watchGitStatus": settingID(for: .sidebarAppearance, idSuffix: "watch-git-status"),
         "sidebar.makePullRequestsClickable": settingID(for: .sidebarAppearance, idSuffix: "make-pr-clickable"),
-        "sidebar.openPullRequestLinksInCmuxBrowser": settingID(for: .sidebarAppearance, idSuffix: "open-pr-links"),
-        "sidebar.openPortLinksInCmuxBrowser": settingID(for: .sidebarAppearance, idSuffix: "open-port-links"),
+        "sidebar.openPullRequestLinksInMosaicBrowser": settingID(for: .sidebarAppearance, idSuffix: "open-pr-links"),
+        "sidebar.openPortLinksInMosaicBrowser": settingID(for: .sidebarAppearance, idSuffix: "open-port-links"),
         "sidebar.showSSH": settingID(for: .sidebarAppearance, idSuffix: "show-ssh"),
         "sidebar.showPorts": settingID(for: .sidebarAppearance, idSuffix: "show-ports"),
         "sidebar.showLog": settingID(for: .sidebarAppearance, idSuffix: "show-log"),
@@ -568,8 +568,8 @@ enum SettingsSearchIndex {
         "browser.discardHiddenWebViews": settingID(for: .browser, idSuffix: "hidden-webview-discard"),
         "browser.hiddenWebViewDiscardDelaySeconds": settingID(for: .browser, idSuffix: "hidden-webview-discard-delay"),
         "browser.askWhereToSaveDownloads": settingID(for: .browser, idSuffix: "ask-where-to-save-downloads"),
-        "browser.openTerminalLinksInCmuxBrowser": settingID(for: .browser, idSuffix: "terminal-links"),
-        "browser.interceptTerminalOpenCommandInCmuxBrowser": settingID(for: .browser, idSuffix: "intercept-open"),
+        "browser.openTerminalLinksInMosaicBrowser": settingID(for: .browser, idSuffix: "terminal-links"),
+        "browser.interceptTerminalOpenCommandInMosaicBrowser": settingID(for: .browser, idSuffix: "intercept-open"),
         "browser.hostsToOpenInEmbeddedBrowser": settingID(for: .browser, idSuffix: "host-whitelist"),
         "browser.urlsToAlwaysOpenExternally": settingID(for: .browser, idSuffix: "external-patterns"),
         "browser.insecureHttpHostsAllowedInEmbeddedBrowser": settingID(for: .browser, idSuffix: "http-allowlist"),

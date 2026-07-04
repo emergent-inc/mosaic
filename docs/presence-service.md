@@ -1,7 +1,7 @@
 # Device presence service
 
-Realtime device presence for cmux: every team member sees which of the team's
-devices (Macs, iPhones, and their tagged cmux app instances) are online or
+Realtime device presence for mosaic: every team member sees which of the team's
+devices (Macs, iPhones, and their tagged mosaic app instances) are online or
 offline, live. Source: `workers/presence/`. Deploy: `.github/workflows/presence.yml`.
 
 ## Backend decision: Cloudflare Durable Objects (not RivetKit)
@@ -51,7 +51,7 @@ GET  /v1/presence/subscribe -> forward w/ verified team ------> WS (hibernation)
   server-owned and can change without shipping new host builds.
 - **Auth** (`src/auth.ts`): `Authorization: Bearer <Stack access token>`,
   verified against Stack's REST API (the same backend the web SDK wraps), with
-  team scoping via `X-Cmux-Team-Id` / `?teamId=` and a membership check,
+  team scoping via `X-Mosaic-Team-Id` / `?teamId=` and a membership check,
   mirroring `web/services/vms/auth.ts` + the device-registry route.
   Verification results are cached in isolate memory for at most 60s, bounded
   by the token's own expiry. The worker derives the DO id from the verified
@@ -80,7 +80,7 @@ GET  /v1/presence/subscribe -> forward w/ verified team ------> WS (hibernation)
 
 Presence is deliberately ephemeral. The durable source of device identity is
 the Aurora `devices` / `device_app_instances` registry
-(https://github.com/emergent-inc/cmux/pull/5626); this service adds no Aurora
+(https://github.com/emergent-inc/mosaic/pull/5626); this service adds no Aurora
 columns and therefore ships no Drizzle migration. DO storage keeps the live
 instance map plus a 24h offline tail for "last seen", pruned by the same
 alarm, and the durable per-device owner pins. Losing the service's storage
@@ -140,11 +140,11 @@ presence deploys can ship freely; only owner-pin schema changes need care.
   `CLOUDFLARE_ACCOUNT_ID`. One-time Worker secrets (survive deploys):
   `STACK_PROJECT_ID`, `STACK_PUBLISHABLE_CLIENT_KEY`.
 
-A dev/staging instance (`cmux-presence-dev`, dev Stack project) is live at
-`https://cmux-presence-dev.debussy.workers.dev` on the team Cloudflare
+A dev/staging instance (`mosaic-presence-dev`, dev Stack project) is live at
+`https://mosaic-presence-dev.debussy.workers.dev` on the team Cloudflare
 account; see `workers/presence/README.md` for how to redeploy it and point a
-dev Mac build at it. Production deploys serve `https://presence.cmux.dev`
-(a `custom_domain` route in `wrangler.toml`; the cmux.dev zone lives on the
+dev Mac build at it. Production deploys serve `https://presence.mosaic.dev`
+(a `custom_domain` route in `wrangler.toml`; the mosaic.dev zone lives on the
 same Cloudflare account, so the deploy provisions DNS + TLS). Flipping the
 Release clients' default service URL to that domain is a follow-up gated on
 the first production deploy and dogfood.
@@ -155,17 +155,17 @@ the first production deploy and dogfood.
   default on against the dev instance (dev Stack identity); Release defaults
   off until the production worker URL ships with its Settings surface. Both
   are explicitly overridable (`presenceHeartbeatEnabled` +
-  `presenceServiceURL` / `CMUX_PRESENCE_BASE_URL`). Follows the
+  `presenceServiceURL` / `MOSAIC_PRESENCE_BASE_URL`). Follows the
   `DeviceRegistryClient` / `PhonePushClient` pattern: same device UUID, same
   tag, best-effort, never disturbs the Mac. Every beat carries the full
   current attach-route set, a route change triggers one immediate
   out-of-cadence beat, and a clean quit sends a goodbye.
-- **iOS** (`Packages/iOS/CmuxMobileShell/Sources/CmuxMobileShell/PresenceClient.swift`):
+- **iOS** (`Packages/iOS/MosaicMobileShell/Sources/MosaicMobileShell/PresenceClient.swift`):
   typed WebSocket subscribe client. `MobileShellComposite` owns the
   subscription (starts on sign-in, blanks and stops on sign-out, backoff
   reconnect with snapshot-first resync), reduces frames into `PresenceMap`,
   overlays live online/offline on the device tree
-  (https://github.com/emergent-inc/cmux/pull/5648) rows, writes pushed routes
+  (https://github.com/emergent-inc/mosaic/pull/5648) rows, writes pushed routes
   through to the paired-Mac store, and kicks a reconnect when the active Mac
   comes online while the phone is disconnected.
 
@@ -181,10 +181,10 @@ bun run dev          # wrangler dev (needs .dev.vars or --var Stack config)
 Full lifecycle proof against real dev-Stack auth:
 
 ```bash
-set -a; source ~/.secrets/cmuxterm-dev.env; set +a
+set -a; source ~/.secrets/mosaicterm-dev.env; set +a
 STACK_PROJECT_ID="$NEXT_PUBLIC_STACK_PROJECT_ID" \
 STACK_PUBLISHABLE_CLIENT_KEY="$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY" \
-STACK_EMAIL="$CMUX_DOGFOOD_STACK_EMAIL" \
-STACK_PASSWORD="$CMUX_DOGFOOD_STACK_PASSWORD" \
+STACK_EMAIL="$MOSAIC_DOGFOOD_STACK_EMAIL" \
+STACK_PASSWORD="$MOSAIC_DOGFOOD_STACK_PASSWORD" \
 workers/presence/scripts/local-proof.sh
 ```

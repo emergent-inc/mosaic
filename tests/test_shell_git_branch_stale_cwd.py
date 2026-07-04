@@ -2,10 +2,10 @@
 """
 Regression coverage for stale shell-side git branch payloads after cwd changes.
 
-When a cmux shell leaves a git repository for a non-git directory, an async
+When a mosaic shell leaves a git repository for a non-git directory, an async
 reporter still holding the OLD repository path (the background HEAD-watch loop or
 a deferred prompt probe) must not repopulate the sidebar branch. The integrations
-guard every git-branch payload with ``_cmux_git_report_path_is_active`` so a
+guard every git-branch payload with ``_mosaic_git_report_path_is_active`` so a
 report whose target path no longer matches the shell's current cwd is dropped.
 
 Each case drives that guard through the real integration functions: after the
@@ -61,33 +61,33 @@ def _shell_command(kind: str) -> str:
     if kind == "zsh":
         return textwrap.dedent(
             """\
-            source "$CMUX_TEST_SCRIPT"
+            source "$MOSAIC_TEST_SCRIPT"
             precmd_functions=()
             preexec_functions=()
-            _cmux_send() { print -r -- "$1" >> "$CMUX_TEST_SEND_LOG"; }
-            cd "$CMUX_TEST_NONREPO"
+            _mosaic_send() { print -r -- "$1" >> "$MOSAIC_TEST_SEND_LOG"; }
+            cd "$MOSAIC_TEST_NONREPO"
             setopt noclobber
-            _cmux_set_git_active_pwd "$PWD"
+            _mosaic_set_git_active_pwd "$PWD"
             unsetopt noclobber
-            _cmux_report_git_branch_for_path "$CMUX_TEST_REPO" &
+            _mosaic_report_git_branch_for_path "$MOSAIC_TEST_REPO" &
             wait
-            _cmux_report_git_branch_for_path "$PWD"
+            _mosaic_report_git_branch_for_path "$PWD"
             """
         )
 
     if kind == "bash":
         return textwrap.dedent(
             """\
-            source "$CMUX_TEST_SCRIPT"
-            _cmux_send() { printf '%s\\n' "$1" >> "$CMUX_TEST_SEND_LOG"; }
-            _cmux_send_bg() { _cmux_send "$1"; }
-            cd "$CMUX_TEST_NONREPO"
+            source "$MOSAIC_TEST_SCRIPT"
+            _mosaic_send() { printf '%s\\n' "$1" >> "$MOSAIC_TEST_SEND_LOG"; }
+            _mosaic_send_bg() { _mosaic_send "$1"; }
+            cd "$MOSAIC_TEST_NONREPO"
             set -C
-            _cmux_set_git_active_pwd "$PWD"
+            _mosaic_set_git_active_pwd "$PWD"
             set +C
-            _cmux_report_git_branch_for_path "$CMUX_TEST_REPO" &
+            _mosaic_report_git_branch_for_path "$MOSAIC_TEST_REPO" &
             wait
-            _cmux_report_git_branch_for_path "$PWD"
+            _mosaic_report_git_branch_for_path "$PWD"
             """
         )
 
@@ -109,7 +109,7 @@ def _run_case(
 ) -> tuple[int, str]:
     repo = base / shell / "repo"
     nonrepo = base / shell / "nonrepo"
-    socket_path = base / shell / "cmux.sock"
+    socket_path = base / shell / "mosaic.sock"
     send_log = base / shell / "send.log"
     head_file = repo / ".git" / "HEAD"
 
@@ -118,16 +118,16 @@ def _run_case(
     head_file.write_text("ref: refs/heads/old-branch\n", encoding="utf-8")
 
     env = dict(os.environ)
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_TAB_ID"] = "00000000-0000-0000-0000-000000000001"
-    env["CMUX_PANEL_ID"] = "00000000-0000-0000-0000-000000000002"
-    env["CMUX_TEST_SCRIPT"] = str(script)
-    env["CMUX_TEST_REPO"] = str(repo)
-    env["CMUX_TEST_NONREPO"] = str(nonrepo)
-    env["CMUX_TEST_SEND_LOG"] = str(send_log)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_TAB_ID"] = "00000000-0000-0000-0000-000000000001"
+    env["MOSAIC_PANEL_ID"] = "00000000-0000-0000-0000-000000000002"
+    env["MOSAIC_TEST_SCRIPT"] = str(script)
+    env["MOSAIC_TEST_REPO"] = str(repo)
+    env["MOSAIC_TEST_NONREPO"] = str(nonrepo)
+    env["MOSAIC_TEST_SEND_LOG"] = str(send_log)
     # Don't leak an inherited marker path into the integration; let it create its
     # own secure temp marker so the force-clobber write is what's under test.
-    env.pop("_CMUX_GIT_ACTIVE_PWD_FILE", None)
+    env.pop("_MOSAIC_GIT_ACTIVE_PWD_FILE", None)
 
     with BoundUnixSocket(socket_path):
         try:
@@ -163,25 +163,25 @@ def _same_repo_shell_command(kind: str) -> str:
     if kind == "zsh":
         return textwrap.dedent(
             """\
-            source "$CMUX_TEST_SCRIPT"
+            source "$MOSAIC_TEST_SCRIPT"
             precmd_functions=()
             preexec_functions=()
-            _cmux_send() { print -r -- "$1" >> "$CMUX_TEST_SEND_LOG"; }
-            cd "$CMUX_TEST_REPO/pkg"
-            _cmux_set_git_active_pwd "$PWD"
-            _cmux_report_git_branch_for_path "$CMUX_TEST_REPO"
+            _mosaic_send() { print -r -- "$1" >> "$MOSAIC_TEST_SEND_LOG"; }
+            cd "$MOSAIC_TEST_REPO/pkg"
+            _mosaic_set_git_active_pwd "$PWD"
+            _mosaic_report_git_branch_for_path "$MOSAIC_TEST_REPO"
             """
         )
 
     if kind == "bash":
         return textwrap.dedent(
             """\
-            source "$CMUX_TEST_SCRIPT"
-            _cmux_send() { printf '%s\\n' "$1" >> "$CMUX_TEST_SEND_LOG"; }
-            _cmux_send_bg() { _cmux_send "$1"; }
-            cd "$CMUX_TEST_REPO/pkg"
-            _cmux_set_git_active_pwd "$PWD"
-            _cmux_report_git_branch_for_path "$CMUX_TEST_REPO"
+            source "$MOSAIC_TEST_SCRIPT"
+            _mosaic_send() { printf '%s\\n' "$1" >> "$MOSAIC_TEST_SEND_LOG"; }
+            _mosaic_send_bg() { _mosaic_send "$1"; }
+            cd "$MOSAIC_TEST_REPO/pkg"
+            _mosaic_set_git_active_pwd "$PWD"
+            _mosaic_report_git_branch_for_path "$MOSAIC_TEST_REPO"
             """
         )
 
@@ -196,7 +196,7 @@ def _run_same_repo_case(
     script: Path,
 ) -> tuple[int, str]:
     repo = base / f"{shell}-samerepo" / "repo"
-    socket_path = base / f"{shell}-samerepo" / "cmux.sock"
+    socket_path = base / f"{shell}-samerepo" / "mosaic.sock"
     send_log = base / f"{shell}-samerepo" / "send.log"
     head_file = repo / ".git" / "HEAD"
 
@@ -205,13 +205,13 @@ def _run_same_repo_case(
     head_file.write_text("ref: refs/heads/feature-x\n", encoding="utf-8")
 
     env = dict(os.environ)
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_TAB_ID"] = "00000000-0000-0000-0000-000000000001"
-    env["CMUX_PANEL_ID"] = "00000000-0000-0000-0000-000000000002"
-    env["CMUX_TEST_SCRIPT"] = str(script)
-    env["CMUX_TEST_REPO"] = str(repo)
-    env["CMUX_TEST_SEND_LOG"] = str(send_log)
-    env.pop("_CMUX_GIT_ACTIVE_PWD_FILE", None)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_TAB_ID"] = "00000000-0000-0000-0000-000000000001"
+    env["MOSAIC_PANEL_ID"] = "00000000-0000-0000-0000-000000000002"
+    env["MOSAIC_TEST_SCRIPT"] = str(script)
+    env["MOSAIC_TEST_REPO"] = str(repo)
+    env["MOSAIC_TEST_SEND_LOG"] = str(send_log)
+    env.pop("_MOSAIC_GIT_ACTIVE_PWD_FILE", None)
 
     with BoundUnixSocket(socket_path):
         try:
@@ -248,22 +248,22 @@ def _run_zsh_chpwd_keeps_watch(base: Path, *, script: Path) -> tuple[int, str]:
 
     command = textwrap.dedent(
         """\
-        source "$CMUX_TEST_SCRIPT"
+        source "$MOSAIC_TEST_SCRIPT"
         precmd_functions=()
         preexec_functions=()
         sleep 5 &
         watch_pid=$!
-        _CMUX_GIT_HEAD_WATCH_PID=$watch_pid
-        cd "$CMUX_TEST_NONREPO"
+        _MOSAIC_GIT_HEAD_WATCH_PID=$watch_pid
+        cd "$MOSAIC_TEST_NONREPO"
         if kill -0 "$watch_pid" 2>/dev/null; then print -r -- WATCH_ALIVE; else print -r -- WATCH_DEAD; fi
         kill "$watch_pid" 2>/dev/null || true
         """
     )
 
     env = dict(os.environ)
-    env["CMUX_TEST_SCRIPT"] = str(script)
-    env["CMUX_TEST_NONREPO"] = str(nonrepo)
-    env.pop("_CMUX_GIT_ACTIVE_PWD_FILE", None)
+    env["MOSAIC_TEST_SCRIPT"] = str(script)
+    env["MOSAIC_TEST_NONREPO"] = str(nonrepo)
+    env.pop("_MOSAIC_GIT_ACTIVE_PWD_FILE", None)
 
     try:
         result = subprocess.run(
@@ -285,11 +285,11 @@ def _run_zsh_chpwd_keeps_watch(base: Path, *, script: Path) -> tuple[int, str]:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     cases = [
-        ("zsh", ["-f", "-c"], root / "Resources/shell-integration/cmux-zsh-integration.zsh"),
-        ("bash", ["--noprofile", "--norc", "-c"], root / "Resources/shell-integration/cmux-bash-integration.bash"),
+        ("zsh", ["-f", "-c"], root / "Resources/shell-integration/mosaic-zsh-integration.zsh"),
+        ("bash", ["--noprofile", "--norc", "-c"], root / "Resources/shell-integration/mosaic-bash-integration.bash"),
     ]
 
-    base = Path("/tmp") / f"cmux_shell_git_branch_stale_cwd_{os.getpid()}"
+    base = Path("/tmp") / f"mosaic_shell_git_branch_stale_cwd_{os.getpid()}"
     try:
         shutil.rmtree(base, ignore_errors=True)
         base.mkdir(parents=True, exist_ok=True)

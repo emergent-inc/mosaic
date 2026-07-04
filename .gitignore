@@ -29,8 +29,8 @@ GhosttyKit.xcframework
 GhosttyKit.xcframework.bak-*/
 
 # Release artifacts
-cmux-*.zip
-cmux-macos.dmg
+mosaic-*.zip
+mosaic-macos.dmg
 mosaic-macos.dmg
 appcast.xml
 

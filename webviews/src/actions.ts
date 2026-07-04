@@ -13,11 +13,11 @@ export function resolveDiffNavigationURL(rawURL: string): string {
   try {
     const target = new URL(rawURL, window.location.href);
     if (
-      window.location.protocol === "cmux-diff-viewer:" &&
+      window.location.protocol === "mosaic-diff-viewer:" &&
       (target.protocol === "http:" || target.protocol === "https:")
     ) {
       const rest = target.pathname.split("/").filter(Boolean).slice(1).join("/");
-      return `cmux-diff-viewer://${window.location.host}/${rest}`;
+      return `mosaic-diff-viewer://${window.location.host}/${rest}`;
     }
     return target.href;
   } catch {
@@ -26,7 +26,7 @@ export function resolveDiffNavigationURL(rawURL: string): string {
 }
 
 // Whether `url` begins with an explicit `scheme://` or `scheme:` prefix (e.g.
-// `http://`, `cmux-diff-viewer://`, `data:`). A root-relative path (`/foo?x`)
+// `http://`, `mosaic-diff-viewer://`, `data:`). A root-relative path (`/foo?x`)
 // or a protocol-relative/relative path has no scheme and is left for the
 // browser to resolve against the current document.
 function hasURLScheme(url: string): boolean {
@@ -77,11 +77,11 @@ export async function copyGitApplyCommand(
 
 function safeGitApplyDelimiter(patch: string): string {
   const lines = new Set(patch.split(/\r?\n/));
-  let delimiter = "CMUX_DIFF_PATCH";
+  let delimiter = "MOSAIC_DIFF_PATCH";
   let index = 0;
   while (lines.has(delimiter)) {
     index += 1;
-    delimiter = `CMUX_DIFF_PATCH_${index}`;
+    delimiter = `MOSAIC_DIFF_PATCH_${index}`;
   }
   return delimiter;
 }

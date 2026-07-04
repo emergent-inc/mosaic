@@ -5,18 +5,18 @@ extension Notification.Name {
     /// Posted on the main thread whenever the macOS system proxy settings
     /// change.
     static let browserSystemProxySettingsDidChange =
-        Notification.Name("cmux.browser.systemProxySettingsDidChange")
+        Notification.Name("mosaic.browser.systemProxySettingsDidChange")
 }
 
 /// Watches the SystemConfiguration dynamic store for system proxy changes so
 /// local-workspace browser panes can refresh their mirrored proxy
 /// configuration live (e.g. the user toggles a global proxy app on or off
-/// while cmux is running, or the active network location changes).
+/// while mosaic is running, or the active network location changes).
 ///
 /// Without this, a pane would hold a stale mirror until its next webview
 /// rebind: a cleared system proxy would leave traffic pointed at a dead
 /// proxy, and a newly enabled one would reintroduce the loopback bug
-/// (https://github.com/emergent-inc/cmux/issues/5888).
+/// (https://github.com/emergent-inc/mosaic/issues/5888).
 @MainActor
 final class BrowserSystemProxyWatcher {
     static let shared = BrowserSystemProxyWatcher()
@@ -40,7 +40,7 @@ final class BrowserSystemProxyWatcher {
 
         guard let store = SCDynamicStoreCreate(
             nil,
-            "cmux.browser.system-proxy-watch" as CFString,
+            "mosaic.browser.system-proxy-watch" as CFString,
             callback,
             nil
         ) else { return }

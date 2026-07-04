@@ -172,7 +172,7 @@ jobs:
         run: |
           ./scripts/install-rust-ci.sh
           ./scripts/install-zig-ci.sh
-          CMUX_NODE_BIN="$(command -v node)"
+          MOSAIC_NODE_BIN="$(command -v node)"
           export npm_config_prefix="$RUNNER_TEMP/npm-global"
           mkdir -p "$npm_config_prefix"
           npm install --global "create-dmg@${CREATE_DMG_VERSION}"
@@ -180,7 +180,7 @@ jobs:
           mkdir -p "$wrapper_dir"
           cat > "$wrapper_dir/create-dmg" <<EOF
           #!/usr/bin/env bash
-          exec "$CMUX_NODE_BIN" "$npm_config_prefix/lib/node_modules/create-dmg/cli.js" "\$@"
+          exec "$MOSAIC_NODE_BIN" "$npm_config_prefix/lib/node_modules/create-dmg/cli.js" "\$@"
           EOF
           chmod +x "$wrapper_dir/create-dmg"
           echo "$wrapper_dir" >> "$GITHUB_PATH"
@@ -195,7 +195,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .spm-cache
-          key: spm-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ hashFiles('mosaic.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-
 
       - name: Sanitize Swift package cache
@@ -226,15 +226,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ci-artifacts
-          HELPER_LOG="ci-artifacts/cmux-nightly-ghostty-helper.log"
-          APP_LOG="ci-artifacts/cmux-nightly-xcodebuild.log"
+          HELPER_LOG="ci-artifacts/mosaic-nightly-ghostty-helper.log"
+          APP_LOG="ci-artifacts/mosaic-nightly-xcodebuild.log"
           HELPER_STATUS=0
           set +e
           (
             set -euo pipefail
             export DEVELOPER_DIR="$HELPER_DEVELOPER_DIR"
-            ./scripts/build-ghostty-cli-helper.sh --universal --output /tmp/cmux-ghostty-helper-universal
-            ARCHS_OUT="$(lipo -archs /tmp/cmux-ghostty-helper-universal)"
+            ./scripts/build-ghostty-cli-helper.sh --universal --output /tmp/mosaic-ghostty-helper-universal
+            ARCHS_OUT="$(lipo -archs /tmp/mosaic-ghostty-helper-universal)"
             echo "Universal Ghostty CLI helper architectures: $ARCHS_OUT"
             case " $ARCHS_OUT " in *" arm64 "*) ;; *) echo "helper missing arm64 slice" >&2; exit 1 ;; esac
             case " $ARCHS_OUT " in *" x86_64 "*) ;; *) echo "helper missing x86_64 slice" >&2; exit 1 ;; esac
@@ -251,7 +251,7 @@ jobs:
           set +e
           # Skip only the in-Xcode helper build; the background helper process
           # above built the real universal Zig helper, not the CI stub.
-          CMUX_SKIP_ZIG_BUILD=1 xcodebuild -scheme cmux -configuration Release -derivedDataPath build-universal \
+          MOSAIC_SKIP_ZIG_BUILD=1 xcodebuild -scheme mosaic -configuration Release -derivedDataPath build-universal \
             -destination 'generic/platform=macOS' \
             -clonedSourcePackagesDirPath .spm-cache \
             -jobs 2 \
@@ -274,7 +274,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cmux-nightly-build-diagnostics-${{ github.run_id }}
+          name: mosaic-nightly-build-diagnostics-${{ github.run_id }}
           path: ci-artifacts/*.log
           if-no-files-found: ignore
 
@@ -289,14 +289,14 @@ jobs:
           fi
           DEST="$APP_DIR/Contents/Resources/bin/ghostty"
           mkdir -p "$(dirname "$DEST")"
-          install -m 755 /tmp/cmux-ghostty-helper-universal "$DEST"
+          install -m 755 /tmp/mosaic-ghostty-helper-universal "$DEST"
           echo "Injected Ghostty CLI helper architectures: $(lipo -archs "$DEST")"
 
       - name: Run bundled Ghostty theme picker helper regression
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          CMUX_APP_PATH="build-universal/Build/Products/Release/Mosaic.app" \
+          MOSAIC_APP_PATH="build-universal/Build/Products/Release/Mosaic.app" \
             ./tests/test_bundled_ghostty_theme_picker_helper.sh
 
       - name: Verify nightly binary architectures
@@ -304,7 +304,7 @@ jobs:
         run: |
           set -euo pipefail
           APP_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/MacOS/Mosaic"
-          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/mosaic"
           HELPER_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/ghostty"
           APP_ARCHS="$(lipo -archs "$APP_BINARY")"
           CLI_ARCHS="$(lipo -archs "$CLI_BINARY")"
@@ -320,9 +320,9 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
           set -euo pipefail
-          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/cmux"
-          [ -x "$CLI_BINARY" ] || { echo "cmux CLI binary not found at $CLI_BINARY" >&2; exit 1; }
-          CMUX_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
+          CLI_BINARY="build-universal/Build/Products/Release/Mosaic.app/Contents/Resources/bin/mosaic"
+          [ -x "$CLI_BINARY" ] || { echo "mosaic CLI binary not found at $CLI_BINARY" >&2; exit 1; }
+          MOSAIC_CLI_BIN="$CLI_BINARY" python3 tests/test_cli_version_memory_guard.py
 
       - name: Check whether build commit is still current main HEAD after build
         if: needs.decide.outputs.should_publish == 'true' && steps.current_head_prebuild.outputs.still_current == 'true'
@@ -394,8 +394,8 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :SUFeedURL string ${feed_url}" "$app_plist"
             /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NIGHTLY_MARKETING_VERSION}" "$app_plist"
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NIGHTLY_BUILD}" "$app_plist"
-            /usr/libexec/PlistBuddy -c "Delete :CMUXCommit" "$app_plist" >/dev/null 2>&1 || true
-            /usr/libexec/PlistBuddy -c "Add :CMUXCommit string ${SHORT_SHA}" "$app_plist"
+            /usr/libexec/PlistBuddy -c "Delete :MosaicCommit" "$app_plist" >/dev/null 2>&1 || true
+            /usr/libexec/PlistBuddy -c "Add :MosaicCommit string ${SHORT_SHA}" "$app_plist"
             mv "$app_dir/Mosaic.app" "$app_dir/Mosaic NIGHTLY.app"
           }
 
@@ -453,8 +453,8 @@ jobs:
 
           APP_PATH="build-universal/Build/Products/Release/Mosaic NIGHTLY.app"
           PROFILE_PATH="$APP_PATH/Contents/embedded.provisionprofile"
-          TMP_PROFILE="$(mktemp /tmp/cmux-nightly-profile.XXXXXX)"
-          TMP_PLIST="$(mktemp /tmp/cmux-nightly-profile.XXXXXX.plist)"
+          TMP_PROFILE="$(mktemp /tmp/mosaic-nightly-profile.XXXXXX)"
+          TMP_PLIST="$(mktemp /tmp/mosaic-nightly-profile.XXXXXX.plist)"
           trap 'rm -f "$TMP_PROFILE" "$TMP_PLIST"' EXIT
 
           echo "$APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$TMP_PROFILE"
@@ -502,10 +502,10 @@ jobs:
           do
             ENTITLEMENTS="$RUNNER_TEMP/mosaic.nightly.entitlements"
             ./scripts/resolve-app-entitlements.sh \
-              cmux.nightly.entitlements \
+              mosaic.nightly.entitlements \
               "$ENTITLEMENTS" \
               "mosaic.com.emergent.app.nightly"
-            ./scripts/sign-cmux-bundle.sh \
+            ./scripts/sign-mosaic-bundle.sh \
               "$APP_PATH" \
               "$ENTITLEMENTS" \
               "$APPLE_SIGNING_IDENTITY"
@@ -543,8 +543,8 @@ jobs:
             xcrun stapler staple "$app_path"
             xcrun stapler validate "$app_path"
             spctl -a -vv --type execute "$app_path"
-            CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI=1 CMUX_SMOKE_DEBUG_LOGS=1 CMUX_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$app_path"
-            CMUX_SMOKE_DIRECT_EXEC=1 CMUX_SMOKE_DEBUG_LOGS=1 CMUX_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$app_path"
+            MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI=1 MOSAIC_SMOKE_DEBUG_LOGS=1 MOSAIC_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$app_path"
+            MOSAIC_SMOKE_DIRECT_EXEC=1 MOSAIC_SMOKE_DEBUG_LOGS=1 MOSAIC_SMOKE_STARTUP_TIMEOUT_SECONDS=30 ./scripts/smoke-launch-macos-app.sh "$app_path"
             ./scripts/verify-app-bundle-channel-metadata.sh "$app_path" nightly
             ./scripts/smoke-installable-artifact.sh --channel nightly "$app_path"
             rm -f "$zip_submit"
@@ -590,7 +590,7 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: emergent.inc
-          SENTRY_PROJECT: cmuxterm-macos
+          SENTRY_PROJECT: mosaicterm-macos
         run: |
           if [ -z "$SENTRY_AUTH_TOKEN" ]; then
             echo "SENTRY_AUTH_TOKEN not set, skipping dSYM upload"
@@ -619,7 +619,7 @@ jobs:
         if: needs.decide.outputs.should_publish != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cmux-nightly-${{ needs.decide.outputs.short_sha }}
+          name: mosaic-nightly-${{ needs.decide.outputs.short_sha }}
           path: |
             mosaic-nightly-macos*.dmg
             appcast.xml
@@ -650,7 +650,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 ./scripts/prune_nightly_release_assets.py \
-            --repo emergent-inc/cmux \
+            --repo emergent-inc/mosaic \
             --release-tag nightly \
             --keep-builds 100 \
             --execute

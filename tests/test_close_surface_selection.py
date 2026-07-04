@@ -16,10 +16,10 @@ import sys
 import time
 from typing import List, Optional, Tuple
 
-# Add the directory containing cmux.py to the path
+# Add the directory containing mosaic.py to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux
+from mosaic import mosaic
 
 
 class TestResult:
@@ -44,7 +44,7 @@ def _focused(surfaces: List[SurfaceTuple]) -> Optional[SurfaceTuple]:
     return next((s for s in surfaces if s[2]), None)
 
 
-def _wait_focused_index(client: cmux, index: int, timeout: float = 4.0) -> bool:
+def _wait_focused_index(client: mosaic, index: int, timeout: float = 4.0) -> bool:
     start = time.time()
     while time.time() - start < timeout:
         surfaces = client.list_surfaces()
@@ -56,7 +56,7 @@ def _wait_focused_index(client: cmux, index: int, timeout: float = 4.0) -> bool:
 
 
 def _wait_focused_id(
-    client: cmux,
+    client: mosaic,
     expected_id: str,
     expected_index: Optional[int] = None,
     timeout: float = 4.0,
@@ -81,7 +81,7 @@ def _wait_focused_id(
     return last
 
 
-def _ensure_surfaces(client: cmux, count: int) -> None:
+def _ensure_surfaces(client: mosaic, count: int) -> None:
     surfaces = client.list_surfaces()
     while len(surfaces) < count:
         client.new_surface(panel_type="terminal")
@@ -89,7 +89,7 @@ def _ensure_surfaces(client: cmux, count: int) -> None:
         surfaces = client.list_surfaces()
 
 
-def test_close_middle_keeps_index(client: cmux) -> TestResult:
+def test_close_middle_keeps_index(client: mosaic) -> TestResult:
     result = TestResult("Close Focused Middle Surface Keeps Index")
     try:
         # Isolate from developer state: use a fresh workspace.
@@ -133,7 +133,7 @@ def test_close_middle_keeps_index(client: cmux) -> TestResult:
     return result
 
 
-def test_close_last_selects_previous(client: cmux) -> TestResult:
+def test_close_last_selects_previous(client: mosaic) -> TestResult:
     result = TestResult("Close Focused Last Surface Selects Previous")
     try:
         ws_id = client.new_workspace()
@@ -172,7 +172,7 @@ def test_close_last_selects_previous(client: cmux) -> TestResult:
 
 def run_tests() -> int:
     results = []
-    with cmux() as client:
+    with mosaic() as client:
         results.append(test_close_middle_keeps_index(client))
         results.append(test_close_last_selects_previous(client))
 

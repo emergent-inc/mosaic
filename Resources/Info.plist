@@ -12,8 +12,8 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
-	<key>CMUXSidebarExtensionPointIdentifier</key>
-	<string>$(CMUX_SIDEBAR_EXTENSION_POINT_ID)</string>
+	<key>MosaicSidebarExtensionPointIdentifier</key>
+	<string>$(MOSAIC_SIDEBAR_EXTENSION_POINT_ID)</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -62,7 +62,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSDockTilePlugIn</key>
-	<string>CmuxDockTilePlugin.plugin</string>
+	<string>MosaicDockTilePlugin.plugin</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
 	<key>LSArchitecturePriority</key>
@@ -106,7 +106,7 @@
 			<string>Default</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>$(CMUX_AUTH_CALLBACK_SCHEME)</string>
+				<string>$(MOSAIC_AUTH_CALLBACK_SCHEME)</string>
 			</array>
 		</dict>
 		<dict>
@@ -127,7 +127,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>OSAScriptingDefinition</key>
-	<string>cmux.sdef</string>
+	<string>mosaic.sdef</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
@@ -204,7 +204,7 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.cmux.sidebar-tab-reorder</string>
+			<string>com.mosaic.sidebar-tab-reorder</string>
 			<key>UTTypeDescription</key>
 			<string>Mosaic Sidebar Tab Reorder</string>
 			<key>UTTypeConformsTo</key>
@@ -214,7 +214,7 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.cmux.filepreview.transfer</string>
+			<string>com.mosaic.filepreview.transfer</string>
 			<key>UTTypeDescription</key>
 			<string>Mosaic File Preview Transfer</string>
 			<key>UTTypeConformsTo</key>
@@ -224,7 +224,7 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.cmux.agent-room-wire</string>
+			<string>com.mosaic.agent-room-wire</string>
 			<key>UTTypeDescription</key>
 			<string>Mosaic Agent Room Wire</string>
 			<key>UTTypeConformsTo</key>
@@ -239,7 +239,7 @@
 		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>cmux-loopback.localtest.me</key>
+			<key>mosaic-loopback.localtest.me</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>

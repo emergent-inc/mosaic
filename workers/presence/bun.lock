@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "cmux-presence-worker",
+      "name": "mosaic-presence-worker",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260525.0",
         "@types/bun": "^1.3.14",

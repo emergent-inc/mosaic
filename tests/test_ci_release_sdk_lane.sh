@@ -54,7 +54,7 @@ require_job_contains \
   "CI release-build must compile the app on macOS 26 using the release-specific runner variable"
 
 for workflow in "$CI_FILE" "$RELEASE_FILE"; do
-  if ! grep -Fq "CMUX_SKIP_ZIG_BUILD=1 xcodebuild" "$workflow"; then
+  if ! grep -Fq "MOSAIC_SKIP_ZIG_BUILD=1 xcodebuild" "$workflow"; then
     echo "FAIL: $(basename "$workflow") must skip the in-build Zig helper on macOS 26" >&2
     exit 1
   fi

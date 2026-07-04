@@ -46,7 +46,7 @@ enum AuthEnvironment {
         registeredURLSchemes: [String],
         isDebugBuild: Bool
     ) -> String {
-        if let overridden = environment["CMUX_AUTH_CALLBACK_SCHEME"]?
+        if let overridden = environment["MOSAIC_AUTH_CALLBACK_SCHEME"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !overridden.isEmpty {
             return overridden
@@ -55,7 +55,7 @@ enum AuthEnvironment {
             // Untagged Debug builds register mosaic-dev:// so they can coexist
             // with the installed stable app. Tagged Debug builds use
             // mosaic-dev-<tag>://.
-            if let tag = environment["CMUX_TAG"]?
+            if let tag = environment["MOSAIC_TAG"]?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
                !tag.isEmpty,
                let schemeTag = sanitizedCallbackSchemeTag(tag) {
@@ -130,7 +130,7 @@ enum AuthEnvironment {
 
     static var websiteOrigin: URL {
         resolvedURL(
-            environmentKey: "CMUX_WWW_ORIGIN",
+            environmentKey: "MOSAIC_WWW_ORIGIN",
             fallback: "https://mosaic.inc"
         )
     }
@@ -138,7 +138,7 @@ enum AuthEnvironment {
     static var signInWebsiteOrigin: URL {
         canonicalizedLoopbackURL(
             resolvedURL(
-                environmentKey: "CMUX_AUTH_WWW_ORIGIN",
+                environmentKey: "MOSAIC_AUTH_WWW_ORIGIN",
                 fallback: defaultAuthWebOrigin
             )
         )
@@ -147,40 +147,40 @@ enum AuthEnvironment {
     static var apiBaseURL: URL {
         canonicalizedLoopbackURL(
             resolvedURL(
-                environmentKey: "CMUX_API_BASE_URL",
+                environmentKey: "MOSAIC_API_BASE_URL",
                 fallback: defaultAPIBaseURL
             )
         )
     }
 
-    /// Base URL for the cmux-owned cloud VM backend (`/api/vm`).
+    /// Base URL for the mosaic-owned cloud VM backend (`/api/vm`).
     ///
     /// Resolution order (first hit wins):
-    ///   1. process env `CMUX_VM_API_BASE_URL` — works when the app is launched from a shell.
-    ///   2. `~/.cmux-dev.env` file `CMUX_VM_API_BASE_URL=...` line — works regardless of how
+    ///   1. process env `MOSAIC_VM_API_BASE_URL` — works when the app is launched from a shell.
+    ///   2. `~/.mosaic-dev.env` file `MOSAIC_VM_API_BASE_URL=...` line — works regardless of how
     ///      the app was launched (click-through, Dock, `open`, etc.). Only honored in DEBUG.
-    ///   3. VM backend dev origin (`http://localhost:$CMUX_PORT` in Debug, mosaic.inc in Release).
+    ///   3. VM backend dev origin (`http://localhost:$MOSAIC_PORT` in Debug, mosaic.inc in Release).
     static var vmAPIBaseURL: URL {
-        if let overridden = ProcessInfo.processInfo.environment["CMUX_VM_API_BASE_URL"]?
+        if let overridden = ProcessInfo.processInfo.environment["MOSAIC_VM_API_BASE_URL"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !overridden.isEmpty,
            let url = URL(string: overridden) {
             return canonicalizedLoopbackURL(url)
         }
-        if let override = devOverride(key: "CMUX_VM_API_BASE_URL"),
+        if let override = devOverride(key: "MOSAIC_VM_API_BASE_URL"),
            let url = URL(string: override) {
             return canonicalizedLoopbackURL(url)
         }
         return canonicalizedLoopbackURL(URL(string: defaultVMAPIOrigin)!)
     }
 
-    /// Look up `key=value` in `~/.cmux-dev.env` for the DEBUG build. Returns nil in Release.
+    /// Look up `key=value` in `~/.mosaic-dev.env` for the DEBUG build. Returns nil in Release.
     /// Kept tiny on purpose — this is a "drop a file, restart the app, it picks up" override,
     /// not a real config system.
     private static func devOverride(key: String) -> String? {
         #if DEBUG
         guard let home = ProcessInfo.processInfo.environment["HOME"] else { return nil }
-        let path = (home as NSString).appendingPathComponent(".cmux-dev.env")
+        let path = (home as NSString).appendingPathComponent(".mosaic-dev.env")
         guard let data = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
         for raw in data.split(separator: "\n") {
             let line = raw.trimmingCharacters(in: .whitespaces)
@@ -198,12 +198,12 @@ enum AuthEnvironment {
         #endif
     }
 
-    private static var cmuxPort: String {
-        resolvedCmuxPort(environment: ProcessInfo.processInfo.environment)
+    private static var mosaicPort: String {
+        resolvedMosaicPort(environment: ProcessInfo.processInfo.environment)
     }
 
-    private static func resolvedCmuxPort(environment: [String: String]) -> String {
-        environmentPort("CMUX_PORT", environment: environment)
+    private static func resolvedMosaicPort(environment: [String: String]) -> String {
+        environmentPort("MOSAIC_PORT", environment: environment)
             ?? environmentPort("PORT", environment: environment)
             ?? "3777"
     }
@@ -228,7 +228,7 @@ enum AuthEnvironment {
     }
 
     private static func resolvedDefaultWebOrigin(environment: [String: String]) -> String {
-        if let origin = environment["CMUX_WWW_ORIGIN"]?
+        if let origin = environment["MOSAIC_WWW_ORIGIN"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !origin.isEmpty {
             return origin
@@ -241,7 +241,7 @@ enum AuthEnvironment {
     }
 
     private static func resolvedDefaultAuthWebOrigin(environment: [String: String]) -> String {
-        if let origin = environment["CMUX_AUTH_WWW_ORIGIN"]?
+        if let origin = environment["MOSAIC_AUTH_WWW_ORIGIN"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !origin.isEmpty {
             return origin
@@ -251,14 +251,14 @@ enum AuthEnvironment {
 
     private static var defaultVMAPIOrigin: String {
         #if DEBUG
-        return "http://localhost:\(cmuxPort)"
+        return "http://localhost:\(mosaicPort)"
         #else
         return "https://mosaic.inc"
         #endif
     }
 
     private static var defaultAPIBaseURL: String {
-        if let url = ProcessInfo.processInfo.environment["CMUX_API_BASE_URL"]?
+        if let url = ProcessInfo.processInfo.environment["MOSAIC_API_BASE_URL"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !url.isEmpty {
             return url
@@ -268,14 +268,14 @@ enum AuthEnvironment {
 
     static var stackBaseURL: URL {
         resolvedURL(
-            environmentKey: "CMUX_STACK_BASE_URL",
+            environmentKey: "MOSAIC_STACK_BASE_URL",
             fallback: "https://api.stack-auth.com"
         )
     }
 
     static var stackProjectID: String {
         let environment = ProcessInfo.processInfo.environment
-        if let projectID = environment["CMUX_STACK_PROJECT_ID"]?
+        if let projectID = environment["MOSAIC_STACK_PROJECT_ID"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !projectID.isEmpty {
             return projectID
@@ -289,7 +289,7 @@ enum AuthEnvironment {
 
     static var stackPublishableClientKey: String {
         let environment = ProcessInfo.processInfo.environment
-        if let clientKey = environment["CMUX_STACK_PUBLISHABLE_CLIENT_KEY"]?
+        if let clientKey = environment["MOSAIC_STACK_PUBLISHABLE_CLIENT_KEY"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !clientKey.isEmpty {
             return clientKey
@@ -308,7 +308,7 @@ enum AuthEnvironment {
 
     static func resolvedAfterSignInOrigin(environment: [String: String]) -> URL {
         resolvedURL(
-            environmentKey: "CMUX_AUTH_WWW_ORIGIN",
+            environmentKey: "MOSAIC_AUTH_WWW_ORIGIN",
             fallback: resolvedDefaultAuthWebOrigin(environment: environment),
             environment: environment
         )

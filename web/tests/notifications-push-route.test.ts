@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 const envKeys = [
   "SKIP_ENV_VALIDATION",
   "VERCEL",
-  "CMUX_PUSH_RATE_LIMIT_ID",
+  "MOSAIC_PUSH_RATE_LIMIT_ID",
 ] as const;
 const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<
   (typeof envKeys)[number],
@@ -12,7 +12,7 @@ const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[ke
 
 process.env.SKIP_ENV_VALIDATION = "1";
 process.env.VERCEL = "1";
-process.env.CMUX_PUSH_RATE_LIMIT_ID = "cmux-push-test";
+process.env.MOSAIC_PUSH_RATE_LIMIT_ID = "mosaic-push-test";
 
 const getUser = mock(async () => ({
   id: "user-1",
@@ -61,7 +61,7 @@ beforeEach(() => {
   // the route skip rate-limiting and flaked this suite in CI.
   process.env.SKIP_ENV_VALIDATION = "1";
   process.env.VERCEL = "1";
-  process.env.CMUX_PUSH_RATE_LIMIT_ID = "cmux-push-test";
+  process.env.MOSAIC_PUSH_RATE_LIMIT_ID = "mosaic-push-test";
   getUser.mockClear();
   checkRateLimit.mockClear();
   checkRateLimit.mockResolvedValue({ rateLimited: true, error: null });
@@ -71,7 +71,7 @@ beforeEach(() => {
 describe("notifications push route", () => {
   test("applies the Vercel user limiter before body parsing or DB access", async () => {
     const response = await pushRoute.POST(
-      new Request("https://cmux.test/api/notifications/push", {
+      new Request("https://mosaic.test/api/notifications/push", {
         method: "POST",
         headers: {
           authorization: "Bearer access-token",
@@ -88,7 +88,7 @@ describe("notifications push route", () => {
     const calls = (checkRateLimit as unknown as {
       mock: { calls: Array<[string, { rateLimitKey: string }]> };
     }).mock.calls;
-    expect(calls[0]?.[0]).toBe("cmux-push-test");
+    expect(calls[0]?.[0]).toBe("mosaic-push-test");
     expect(calls[0]?.[1]).toMatchObject({
       rateLimitKey: "user-1",
     });

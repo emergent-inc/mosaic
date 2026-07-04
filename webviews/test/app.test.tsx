@@ -156,7 +156,7 @@ test("layout toggle persists user choice while explicit payload layout wins", as
 
   expect(dom.window.document.documentElement.dataset.layout).toBe("unified");
   dom.window.document.getElementById("layout-toggle")?.click();
-  await waitFor(() => dom?.window.localStorage.getItem("cmux.diffViewer.layout") === "split");
+  await waitFor(() => dom?.window.localStorage.getItem("mosaic.diffViewer.layout") === "split");
   expect(dom.window.document.documentElement.dataset.layout).toBe("split");
   flushSync(() => root?.unmount());
   root = null;
@@ -228,7 +228,7 @@ function copyGitApplyButton(): HTMLButtonElement | undefined {
 }
 
 function contentFilesWidth(): string | undefined {
-  return dom?.window.document.getElementById("content")?.style.getPropertyValue("--cmux-diff-files-width");
+  return dom?.window.document.getElementById("content")?.style.getPropertyValue("--mosaic-diff-files-width");
 }
 
 async function waitFor(predicate: () => boolean): Promise<void> {

@@ -1,4 +1,4 @@
-// Pure presence state machine for the cmux device presence service.
+// Pure presence state machine for the mosaic device presence service.
 //
 // One team's presence is a map of app instances keyed by (deviceId, tag).
 // Hosts POST heartbeats every HEARTBEAT_INTERVAL_MS; an instance that misses
@@ -29,10 +29,10 @@ export const PRUNE_AFTER_MS = 24 * 60 * 60 * 1000;
 export type PresenceRoute = Record<string, unknown>;
 
 export interface PresenceInstance {
-  /** cmux-generated persisted device UUID (same identity as the Aurora
+  /** mosaic-generated persisted device UUID (same identity as the Aurora
    * `devices.device_uuid` registry column). */
   deviceId: string;
-  /** Build tag of the running cmux app instance ("default" for stable). */
+  /** Build tag of the running mosaic app instance ("default" for stable). */
   tag: string;
   /** "mac" | "ios" | "linux" | ... free-form, mirrors the registry. */
   platform: string;

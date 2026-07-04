@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import postgres, { type Sql } from "postgres";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 let sql: Sql | null = null;
@@ -10,7 +10,7 @@ beforeAll(() => {
   if (!runDbTests) return;
   const databaseURL = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseURL) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   sql = postgres(databaseURL, { max: 1 });
 });
@@ -39,7 +39,7 @@ describe("Cloud VM database schema", () => {
         'user-1',
         'e2b',
         'provider-vm-1',
-        'cmuxd-ws:test',
+        'mosaicd-ws:test',
         '2026-04-24.1',
         'running',
         'idem-1'
@@ -51,7 +51,7 @@ describe("Cloud VM database schema", () => {
     try {
       await sql`
         insert into cloud_vms (user_id, provider, image_id, status, idempotency_key)
-        values ('user-1', 'e2b', 'cmuxd-ws:test', 'provisioning', 'idem-1')
+        values ('user-1', 'e2b', 'mosaicd-ws:test', 'provisioning', 'idem-1')
       `;
     } catch (err) {
       duplicateError = err;
@@ -60,7 +60,7 @@ describe("Cloud VM database schema", () => {
 
     await sql`
       insert into cloud_vms (user_id, provider, image_id, status, idempotency_key)
-      values ('user-2', 'e2b', 'cmuxd-ws:test', 'provisioning', 'idem-1')
+      values ('user-2', 'e2b', 'mosaicd-ws:test', 'provisioning', 'idem-1')
     `;
 
     await sql`
@@ -76,7 +76,7 @@ describe("Cloud VM database schema", () => {
     `;
     await sql`
       insert into cloud_vm_usage_events (user_id, vm_id, event_type, provider, image_id, metadata)
-      values ('user-1', ${vm.id}, 'vm.created', 'e2b', 'cmuxd-ws:test', '{"source":"test"}'::jsonb)
+      values ('user-1', ${vm.id}, 'vm.created', 'e2b', 'mosaicd-ws:test', '{"source":"test"}'::jsonb)
     `;
 
     await sql`delete from cloud_vms where id = ${vm.id}`;

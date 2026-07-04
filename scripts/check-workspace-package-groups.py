@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate / verify the SPM package grouping in cmux.xcworkspace.
+"""Generate / verify the SPM package grouping in mosaic.xcworkspace.
 
 The on-disk folder layout is the single source of truth. Every Swift package
 lives physically under exactly one group directory:
@@ -29,17 +29,17 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SCRIPT_DIR)
 
 PACKAGES_DIR = os.path.join(ROOT, "Packages")
-WORKSPACE_DATA = os.path.join(ROOT, "cmux.xcworkspace", "contents.xcworkspacedata")
+WORKSPACE_DATA = os.path.join(ROOT, "mosaic.xcworkspace", "contents.xcworkspacedata")
 
 # Group directories, in the order they appear in the workspace.
 GROUPS = ["Shared", "iOS", "macOS"]
 
 # Structural workspace entries that are not Packages/<group>/* folders; kept
 # verbatim so regeneration only ever touches package membership.
-TOP_LEVEL_PROJECTS = ["group:cmux.xcodeproj", "group:ios/cmux-ios.xcodeproj"]
+TOP_LEVEL_PROJECTS = ["group:mosaic.xcodeproj", "group:ios/mosaic-ios.xcodeproj"]
 # The iOS app's own SwiftPM package lives outside Packages/; it heads the iOS
 # group.
-IOS_APP_PACKAGE_REF = "container:ios/cmuxPackage"
+IOS_APP_PACKAGE_REF = "container:ios/mosaicPackage"
 # The Examples group is curated by hand and lives under a different container.
 EXAMPLES_GROUP = (
     "container:Examples",
@@ -47,7 +47,7 @@ EXAMPLES_GROUP = (
     [
         "group:TabsVisibleSidebar/TabsVisibleSidebar.xcodeproj",
         "group:SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj",
-        "group:CmuxExtensionSidebarExamples",
+        "group:MosaicExtensionSidebarExamples",
     ],
 )
 

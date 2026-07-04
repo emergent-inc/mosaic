@@ -1,4 +1,4 @@
-# Flaky-test audit — cmux `feat-fix-flaky-tests`
+# Flaky-test audit — mosaic `feat-fix-flaky-tests`
 
 Consolidated discovery from the in-session dynamic workflow (`.flaky-audit/verify-sweep.mjs`): 20 parallel agents triaged the **419** test files carrying a flakiness signal (of 2080 total), hunting residual flakiness on the already-de-flaked branch plus any regression the first de-flake pass introduced.
 
@@ -11,357 +11,357 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ---
 
-## Packages/Shared/CmuxAgentChat  (3)
+## Packages/Shared/MosaicAgentChat  (3)
 
-### `Packages/Shared/CmuxAgentChat/Tests/CmuxAgentChatTests/ChatConversationStoreTests.swift` :: `replayOverlappingHistoryDeduplicates`
+### `Packages/Shared/MosaicAgentChat/Tests/MosaicAgentChatTests/ChatConversationStoreTests.swift` :: `replayOverlappingHistoryDeduplicates`
 - **async-race** · severity low · confidence medium
 - **Evidence:** Line 554: `_ = await TestPoller.waitUntil { Self.snapshots(store.rows).count > 100 }`. The poller result is discarded. The condition (`count > 100`) represents the BROKEN behavior, so on a correct store it always times out after 400 iterations (~4 seconds of busy polling + sleep), making this test consistently slow and masking the timeout as normal.
 - **Why flaky:** Not flaky in correctness terms, but the always-timeout path burns ~4 seconds of CI time per run. More importantly, if the store is temporarily slow to apply events (GC pause, scheduler starvation), the poller exits at false and the subsequent `#expect(count == 100)` could race a still-in-flight apply, reading a transient count.
 - **Suggested fix:** Replace the discard pattern with `#expect(!(await TestPoller.waitUntil { Self.snapshots(store.rows).count > 100 }))` to explicitly assert the condition was never met, or better: poll for `count == 100` with `#expect` directly after the emit, which gives the store time to settle and asserts the correct final state.
 
-### `Packages/Shared/CmuxAgentChat/Tests/CmuxAgentChatTests/ChatConversationStoreTests.swift` :: `failedPendingSurvivesForeignEchoes`
+### `Packages/Shared/MosaicAgentChat/Tests/MosaicAgentChatTests/ChatConversationStoreTests.swift` :: `failedPendingSurvivesForeignEchoes`
 - **async-race** · severity low · confidence low
 - **Evidence:** Lines 597 and 607: `_ = await TestPoller.waitUntil { Self.pendingItems(store.rows).count == 2 }` and `_ = await TestPoller.waitUntil { Self.pendingItems(store.rows).count == 1 }`. Both discard the boolean return. If either poll times out, subsequent assertions run against stale/intermediate state.
 - **Why flaky:** If line 597's poll times out before the second pending is registered (extremely unlikely since `store.send` is `@MainActor` and completes synchronously), the test proceeds with only 1 pending and the echo logic is never exercised — the test would pass silently without actually verifying the failing-row-survives-foreign-echoes invariant. Under normal CI load this is extremely unlikely but remains a theoretical false-pass path.
 - **Suggested fix:** Change both discards to `#expect(await TestPoller.waitUntil { ... })` so a timeout is reported as a test failure instead of silently continuing with incorrect preconditions.
 
-### `Packages/Shared/CmuxAgentChat/Tests/CmuxAgentChatTests/ChatConversationStoreTests.swift` :: `slashCommandEchoDoesNotEatAttachmentPending`
+### `Packages/Shared/MosaicAgentChat/Tests/MosaicAgentChatTests/ChatConversationStoreTests.swift` :: `slashCommandEchoDoesNotEatAttachmentPending`
 - **async-race** · severity low · confidence low
 - **Evidence:** Lines 627 and 637: `_ = await TestPoller.waitUntil { Self.pendingItems(store.rows).count == 2 }` and `_ = await TestPoller.waitUntil { Self.pendingItems(store.rows).count == 1 }`. Same discard pattern. Line 640 `#expect(Self.pendingItems(store.rows).first?.text.isEmpty == true)` runs against whatever the current count is if polls timeout.
 - **Why flaky:** If line 637's poll times out before the slash-echo reconciliation completes (both sends still pending), `pendingItems.first` returns the attachment-only send (text is empty), and line 640 passes trivially — the test does not witness the echo consuming the slash-command pending as intended.
 - **Suggested fix:** Replace `_ = await TestPoller.waitUntil` with `#expect(await TestPoller.waitUntil)` on both lines so a timeout is a test failure, forcing the test to wait for the correct precondition before asserting.
 
 
-## Packages/Shared/CmuxAuthRuntime  (2)
+## Packages/Shared/MosaicAuthRuntime  (2)
 
-### `Packages/Shared/CmuxAuthRuntime/Tests/CmuxAuthRuntimeTests/AuthCoordinatorTests.swift` :: `signOutJoinsAndCancelsSlowTeardownAtDeadline`
+### `Packages/Shared/MosaicAuthRuntime/Tests/MosaicAuthRuntimeTests/AuthCoordinatorTests.swift` :: `signOutJoinsAndCancelsSlowTeardownAtDeadline`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Line 252: `teardownTimeout: .milliseconds(50)`. The coordinator is created via `makeCoordinator(client: client)` with no explicit clock, so it defaults to `ContinuousClock()` (real wall time). The 50ms deadline sleeps on the real clock while the hook's `markStarted()` must run first.
 - **Why flaky:** On a loaded CI runner, the cooperative task that calls `outcome.markStarted()` inside the onSignedOut hook may not be scheduled before the 50ms real-time teardown deadline fires and cancels the group. The assertion `#expect(await outcome.started)` would then fail because the hook was cancelled before it reached `markStarted()`.
 - **Suggested fix:** Pass the `ManualTestClock` (already used in the sibling `AuthCoordinatorTimeoutTests`) to this test's coordinator, then use `clock.waitUntilSleepers()` + `clock.advance(by: .milliseconds(50))` to drive the deadline deterministically. This removes the real-time dependency entirely.
 
-### `Packages/Shared/CmuxAuthRuntime/Tests/CmuxAuthRuntimeTests/HostBrowserSignInFlowTests.swift` :: `slowSignInSurfacesBrowserFallback`
+### `Packages/Shared/MosaicAuthRuntime/Tests/MosaicAuthRuntimeTests/HostBrowserSignInFlowTests.swift` :: `slowSignInSurfacesBrowserFallback`
 - **sleep-as-sync** · severity medium · confidence high
 - **Evidence:** Lines 232-256: harness created with `slowSignInThreshold: 0.05` (50 ms real wall-clock), then the test polls `harness.flow.signInIsSlow` up to 200 * 10 ms = 2 s using `Task.sleep(for: .milliseconds(10))` against `ContinuousClock`. The same pattern repeats at lines 249-256 waiting for the flag to clear.
 - **Why flaky:** Under CI VM load the 50 ms real-timer fires late and the 2-second poll window can expire before the flag flips, producing a false failure. All other timeout tests in this file correctly use ManualTestClock; this is the sole remaining real-timer path.
 - **Suggested fix:** Pass a ManualTestClock to makeHarness and drive the slowSignInThreshold off the virtual clock (the same pattern as abandonedBrowserAttemptTimesOut), replacing the two polling loops with clock.advance + Task.yield until the property changes.
 
 
-## Packages/Shared/CmuxSyncStore  (1)
+## Packages/Shared/MosaicSyncStore  (1)
 
-### `Packages/Shared/CmuxSyncStore/Tests/CmuxSyncStoreTests/SyncFrameAndProtocolTests.swift` :: `FlagTests.envOverrideWins`
+### `Packages/Shared/MosaicSyncStore/Tests/MosaicSyncStoreTests/SyncFrameAndProtocolTests.swift` :: `FlagTests.envOverrideWins`
 - **shared-global-state** · severity low · confidence medium
 - **Evidence:** Lines 385-386: `UserDefaults(suiteName: "flag-1")` and `UserDefaults(suiteName: "flag-2")` are accessed without calling `removePersistentDomain` first. The sibling test `debugDefaultsOnReleaseDefaultsOff` (line 390-391) correctly calls `removePersistentDomain` for `flag-3`.
 - **Why flaky:** If a prior test run left values in the flag-1 or flag-2 suites, subsequent runs read stale defaults. While the environment-key override is tested here (the env key wins regardless of defaults), any future expansion of these tests that reads the defaults layer could produce a silent false-pass from leftover state.
 - **Suggested fix:** Add `UserDefaults(suiteName: "flag-1")!.removePersistentDomain(forName: "flag-1")` and the same for flag-2 at the start of envOverrideWins, mirroring the hygiene already applied to flag-3.
 
 
-## Packages/iOS/CmuxMobileRPC  (1)
+## Packages/iOS/MosaicMobileRPC  (1)
 
-### `Packages/iOS/CmuxMobileRPC/Tests/CmuxMobileRPCTests/MobileCoreRPCClientTests.swift` :: `cancelledQueuedRPCIsNotWrittenAfterEarlierSendCompletes`
+### `Packages/iOS/MosaicMobileRPC/Tests/MosaicMobileRPCTests/MobileCoreRPCClientTests.swift` :: `cancelledQueuedRPCIsNotWrittenAfterEarlierSendCompletes`
 - **async-race** · severity high · confidence high
 - **Evidence:** Lines 105-108: after enqueuing `queuedTask`, the test spins exactly 100 `Task.yield()` calls then immediately cancels, assuming the task has advanced into the sendRequest queue. Lines 116-121 similarly poll with bounded yields+sleep to assert absence of a second send.
 - **Why flaky:** If the cooperative scheduler does not schedule queuedTask within 100 yields (plausible under load), cancellation fires before the task reaches the queue gate. The test then asserts the cancellation succeeded (trivially true -- before queuing) and the real invariant (cancelled-while-queued is never written) is never exercised, turning the test into a false-pass. The absence check at lines 116-121 has a symmetric race: if the system is slow, the loop exits before the write path could have completed, also silently passing.
 - **Suggested fix:** Expose an awaitQueuedRequestCount signal on QueuedCancellationProbeTransport (a CheckedContinuation that parks until N senders have entered the blocked send), analogous to the existing waitForSentRequestCount, and cancel only after that signal resolves.
 
 
-## Packages/iOS/CmuxMobileTransport  (1)
+## Packages/iOS/MosaicMobileTransport  (1)
 
-### `Packages/iOS/CmuxMobileTransport/Tests/CmuxMobileTransportTests/TailscaleStatusTests.swift` :: `staleEvaluationCannotOverwriteFresherRefresh`
+### `Packages/iOS/MosaicMobileTransport/Tests/MosaicMobileTransportTests/TailscaleStatusTests.swift` :: `staleEvaluationCannotOverwriteFresherRefresh`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Lines 165-176: `staleInstant = ContinuousClock.now` is captured immediately before `monitor.refresh()`. The refresh call internally stamps its own evaluation with ContinuousClock.now. On a coarse-grained clock both reads can return the same value.
 - **Why flaky:** If staleInstant equals the refresh stamp (same ContinuousClock tick), the stale-guard comparison fails to reject the stale apply, monitor.apply(.active, evaluatedAt: staleInstant) at line 172 overwrites the expected .inactiveOrNotInstalled status, and the test incorrectly passes the wrong assertion silently.
 - **Suggested fix:** Capture staleInstant before creating the monitor (guaranteeing it predates all internal stamps), or inject a monotonic sequence counter into TailscaleStatusMonitor for test use, eliminating the reliance on ContinuousClock tick granularity.
 
 
-## Packages/macOS/CmuxBrowser  (1)
+## Packages/macOS/MosaicBrowser  (1)
 
-### `Packages/macOS/CmuxBrowser/Tests/CmuxBrowserTests/Omnibar/BrowserOmnibarPageFocusRepositoryTests.swift` :: `invalidateAbortsPendingRetry`
+### `Packages/macOS/MosaicBrowser/Tests/MosaicBrowserTests/Omnibar/BrowserOmnibarPageFocusRepositoryTests.swift` :: `invalidateAbortsPendingRetry`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Lines 98-114: `drainUntil(deadlineSeconds: 2.0)` polls `outcome != nil` by comparing `Date()` to a wall-clock deadline while calling `Task.yield()` repeatedly. The production code schedules via `DispatchQueue.main.asyncAfter(deadline: .now() + 0.0)`.
 - **Why flaky:** In a Swift Testing async context, `Task.yield()` drains the cooperative Swift runtime pool but does not guarantee that a `DispatchQueue.main.asyncAfter` block fires, because the GCD main queue and the Swift concurrency main executor are distinct. If the asyncAfter block has not fired by the time the 2s wall-clock deadline expires, `outcome` stays nil, the loop exits silently, and `#expect(outcome == false)` asserts `nil == false`, which is a false failure rather than a false pass -- but under sustained CI load the 2s window may not be sufficient.
 - **Suggested fix:** Inject the scheduling function used for retries so tests can call it synchronously (e.g. a `(_ delay: TimeInterval, _ work: @escaping () -> Void) -> Void` closure), eliminating reliance on asyncAfter and the wall-clock drain loop.
 
 
-## Packages/macOS/CmuxCommandPalette  (5)
+## Packages/macOS/MosaicCommandPalette  (5)
 
-### `Packages/macOS/CmuxCommandPalette/Tests/CmuxCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `largeWorkspaceSwitcherSearchBenchmarkAvoidsPerQueryPreparationCost`
+### `Packages/macOS/MosaicCommandPalette/Tests/MosaicCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `largeWorkspaceSwitcherSearchBenchmarkAvoidsPerQueryPreparationCost`
 - **wall-clock-timing-assert** · severity high · confidence high
 - **Evidence:** Lines 1113-1129: asserts #expect(optimizedMs < referenceMs * 0.80), requiring the optimized path to be at least 20% faster. This is the tightest threshold of the three benchmark tests (only 800 large entries, 3 repetitions each). On a loaded CI runner the gap between reference and optimized shrinks or can briefly invert.
 - **Why flaky:** A 20% relative speedup is well within OS scheduling noise on shared CI VMs. Even a single GC pause or background process burst during one of the two measurement windows can violate the assertion.
 - **Suggested fix:** Either remove the #expect and keep the print as informational, or convert to an absolute deadline (e.g. < 500ms total) that catches catastrophic O(n^2) regressions but not scheduling noise.
 
-### `Packages/macOS/CmuxCommandPalette/Tests/CmuxCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `commandSearchBenchmarkBeatsLegacyPipeline`
+### `Packages/macOS/MosaicCommandPalette/Tests/MosaicCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `commandSearchBenchmarkBeatsLegacyPipeline`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 1024-1039: benchmarkElapsedMs uses DispatchTime.now().uptimeNanoseconds to measure both reference and optimized pipelines, then asserts #expect(optimizedMs < referenceMs * 1.25). Under CI/VM load the two sequential measurements compete for CPU, and thermal/scheduling jitter can cause the optimized path to appear slower than the 1.25x threshold.
 - **Why flaky:** Both timing measurements run on the same thread in sequence; CPU contention, thermal throttling, or OS scheduling between the two blocks can invert or compress the ratio, causing a spurious failure even when the optimized path is genuinely faster on average.
 - **Suggested fix:** Either skip this as a test (benchmark-only, no #expect) or use a fixed absolute ceiling (e.g. #expect(optimizedMs < 200)) that can only fail for a genuine regression, not a scheduling artifact. Alternatively wrap in a retry with a tolerance band wider than CI jitter.
 
-### `Packages/macOS/CmuxCommandPalette/Tests/CmuxCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `switcherSearchBenchmarkBeatsLegacyPipeline`
+### `Packages/macOS/MosaicCommandPalette/Tests/MosaicCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `switcherSearchBenchmarkBeatsLegacyPipeline`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 1064-1079: same benchmarkElapsedMs pattern, asserts #expect(optimizedMs < referenceMs * 1.25) for the switcher corpus (400 entries, 96 queries).
 - **Why flaky:** Same root cause as commandSearchBenchmarkBeatsLegacyPipeline: sequential wall-clock measurements on a shared CPU are sensitive to scheduling, yielding a non-deterministic ratio.
 - **Suggested fix:** Remove the hard #expect ratio assertion from the test body or widen the threshold to 2x (to detect only real O(n^2) regressions), keeping the print statement for diagnostic purposes only.
 
-### `Packages/macOS/CmuxCommandPalette/Tests/CmuxCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `fastTypingPreviewSearchBenchmarkReportsEstimatedDroppedFrames`
+### `Packages/macOS/MosaicCommandPalette/Tests/MosaicCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `fastTypingPreviewSearchBenchmarkReportsEstimatedDroppedFrames`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 1212-1226: four #expect assertions compare cumulative wall-clock durations: cappedFullMs < fullMs, cappedFullDroppedFrames <= fullDroppedFrames, previewMs < cappedFullMs, previewDroppedFrames <= cappedFullDroppedFrames. All four are derived from benchmarkElapsedMs measurements taken in independent loops.
 - **Why flaky:** With 800 entries and short per-query runtimes, the absolute difference between cappedFull and full (or preview and cappedFull) is small; CPU contention during any one loop can make the 'faster' variant appear slower on a given run.
 - **Suggested fix:** Convert relative comparisons to print-only diagnostics and replace #expect with an absolute ceiling (e.g. no single query exceeds 8ms) that distinguishes algorithmic regressions from scheduling noise.
 
-### `Packages/macOS/CmuxCommandPalette/Tests/CmuxCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `nucleoExactPartialResultsDoNotRunSwiftSingleEditFallback`
+### `Packages/macOS/MosaicCommandPalette/Tests/MosaicCommandPaletteTests/CommandPaletteSearchEngineTests.swift` :: `nucleoExactPartialResultsDoNotRunSwiftSingleEditFallback`
 - **logic-bug** · severity low · confidence medium
 - **Evidence:** Line 781: #expect(cancellationChecks == 2) pins the exact number of times the shouldCancel closure is invoked. This count is an internal implementation detail of resolvedSearchMatches, not a public API contract.
 - **Why flaky:** Not timing-flaky, but fragile: any refactor that changes the number of shouldCancel probe calls (e.g. adding an early-exit check, changing loop structure) will fail this assertion even when the observable behavior is correct. It silently tests internal call count rather than the stated contract (that Swift fallback is not run when nucleo results fill the page).
 - **Suggested fix:** Replace #expect(cancellationChecks == 2) with #expect(cancellationChecks >= 1) or remove the count assertion entirely, keeping only the #expect(matches.first?.commandID == ...) check which tests the actual behavioral contract.
 
 
-## Packages/macOS/CmuxLiveEval  (1)
+## Packages/macOS/MosaicLiveEval  (1)
 
-### `Packages/macOS/CmuxLiveEval/Tests/CmuxLiveEvalTests/HostingInvalidationTests.swift` :: `countMutationReEvaluatesOnlyCounterTextStub, textMutationReEvaluatesOnlyTextReadingStubs, typedNSEventsRoundTripThroughRealTextField`
+### `Packages/macOS/MosaicLiveEval/Tests/MosaicLiveEvalTests/HostingInvalidationTests.swift` :: `countMutationReEvaluatesOnlyCounterTextStub, textMutationReEvaluatesOnlyTextReadingStubs, typedNSEventsRoundTripThroughRealTextField`
 - **async-race** · severity medium · confidence medium
 - **Evidence:** Lines 16-21: the `pump(until:)` helper drives `RunLoop.main.run(until: Date().addingTimeInterval(0.02))` in a 3-second deadline loop, relying on SwiftUI invalidating an offscreen `NSHostingView` within that window. In headless CI environments (no display server, no display link ticks), an offscreen `NSHostingView` may never call its SwiftUI body because `CADisplayLink` / the render server are not present, causing `pump` to spin the full 3 seconds and exit silently with an empty `recorder.labels`. The subsequent `#expect(recorder.labels.contains(...))` then soft-fails instead of crashing, so the test can produce false failures in headless CI.
 - **Why flaky:** An offscreen NSHostingView in a headless macOS CI process may not receive render-server callbacks that drive SwiftUI state invalidation. The 3-second deadline is wall-clock only, so on a slow or display-less host the pump exits vacuously without the condition ever being met, and downstream assertions fail non-deterministically.
 - **Suggested fix:** Use a `@testable` hook or observer on `LiveEvalEngine`/`EvalRecorder` to drive evaluation imperatively in tests rather than relying on the SwiftUI render loop. Alternatively, call `hosting.layoutSubtreeIfNeeded()` after each `store.box(...).value = ...` mutation and assert synchronously, bypassing the RunLoop timer entirely.
 
 
-## Packages/macOS/CmuxRemoteWorkspace  (2)
+## Packages/macOS/MosaicRemoteWorkspace  (2)
 
-### `Packages/macOS/CmuxRemoteWorkspace/Tests/CmuxRemoteWorkspaceTests/RemoteProxyBrokerTests.swift` :: `releaseTearsDownAndAbsorbsStaleWakeup`
+### `Packages/macOS/MosaicRemoteWorkspace/Tests/MosaicRemoteWorkspaceTests/RemoteProxyBrokerTests.swift` :: `releaseTearsDownAndAbsorbsStaleWakeup`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 354-357: after `clock.fireOldestSleep()` the test spins for exactly 300ms wall-clock time (`let deadline = Date().addingTimeInterval(0.3); while Date() < deadline { usleep(10_000) }`) and then immediately asserts `provider.tunnels.count == 1`. This is a negative assertion ("the stale restart must NOT have happened") backed solely by elapsed wall time. Under CI load the broker's async Task may not have had a chance to run, so the assertion passes vacuously on a busy machine (the restart is queued but hasn't executed yet), giving a false green.
 - **Why flaky:** A negative-presence assertion that relies on 300ms wall-clock to drain async side-effects is inherently racy. On a slow or loaded CI host the broker restart Task may not have scheduled within that window, causing a false pass; on an unusually fast host it may execute before the assertion, causing a false fail.
 - **Suggested fix:** Add an observable signal that confirms the broker's teardown path ran fully (e.g. a `didAbortStaleRestart` callback on the broker, or check that the stale tunnel's `stopCount > 0` which is a positive observable fact). Assert on that positive signal with a bounded wait rather than assuming absence after a fixed sleep.
 
-### `Packages/macOS/CmuxRemoteWorkspace/Tests/CmuxRemoteWorkspaceTests/RemoteCLIRelayServerTests.swift` :: `authAndForwardRoundTrip, wrongMACRejected`
+### `Packages/macOS/MosaicRemoteWorkspace/Tests/MosaicRemoteWorkspaceTests/RemoteCLIRelayServerTests.swift` :: `authAndForwardRoundTrip, wrongMACRejected`
 - **network-or-port** · severity low · confidence low
 - **Evidence:** Lines 48-66: `FakeUnixSocketServer.init` calls `socket(AF_UNIX, ...)`, `bind(...)`, and `listen(...)` on a temp-dir path; bind failure triggers `precondition(bound == 0, "bind failed errno=\(errno)")` which crashes the test runner. The relay server itself binds an ephemeral TCP port via `try server.start()`. Both operations succeed in practice but have no retry on EADDRINUSE or EMFILE. The client poll loop at line 126-136 uses `usleep(20_000)` (20ms) with a 5-second wall-clock deadline - benign but noted.
 - **Why flaky:** A `precondition` in test setup (not a graceful `Issue.record`) crashes the entire test-runner process if the Unix socket path collides (e.g. `/tmp` full or path already exists from a killed test run). The TCP port binding failure would surface as a thrown error through `server.start()` which is correctly propagated, so that path is safe.
 - **Suggested fix:** Replace the `precondition` calls in `FakeUnixSocketServer.init` with `throw`-able errors so a socket collision records a test failure rather than crashing the test process.
 
 
-## Packages/macOS/CmuxSettings  (1)
+## Packages/macOS/MosaicSettings  (1)
 
-### `Packages/macOS/CmuxSettings/Tests/CmuxSettingsTests/JSONConfigStoreTests.swift` :: `withTimeout (shared helper, used by observesExternalEdit)`
+### `Packages/macOS/MosaicSettings/Tests/MosaicSettingsTests/JSONConfigStoreTests.swift` :: `withTimeout (shared helper, used by observesExternalEdit)`
 - **logic-bug** · severity medium · confidence medium
 - **Evidence:** Lines 180-194: `withTimeout` uses `for await result in group { if let result { ... } }` with a `fatalError` fallthrough. If the timeout task fires first and returns `nil`, the loop skips the `if let`, then waits for the work task. If the work task is cancelled by external group cancellation before it can return its value (e.g. CI kills the test process partway), the group exhausts without ever entering the `if let` branch, and `fatalError` is reached -- crashing the test process rather than recording a clean failure. Additionally the writer loop in `observesExternalEdit` (line 97-107) re-writes the file every 50ms in a `while !Task.isCancelled` loop and relies on `withTimeout` calling `group.cancelAll()` to stop it; if `group.cancelAll()` is delayed past the outer 8-second timeout, the file is re-touched after the assertion window, producing a non-deterministic second delivery to the observer.
 - **Why flaky:** The `fatalError` path is hit when the work task is cancelled or never resumes (e.g. a stuck async actor under CI load), crashing the process instead of recording a test failure. The 50ms polling writer loop extends past the observation window if group cancellation is slow, potentially causing the observer to collect extra values and fail the `collected.last == 'injected'` assertion.
 - **Suggested fix:** Replace `fatalError` with `Issue.record(...)` and a safe default return, or restructure to return an `Optional` and `#require` at the call site. Cancel the writer Task unconditionally in a `defer` block rather than relying on TaskGroup cancellation propagation timing.
 
 
-## Packages/macOS/CmuxSidebarInterpreterService  (1)
+## Packages/macOS/MosaicSidebarInterpreterService  (1)
 
-### `Packages/macOS/CmuxSidebarInterpreterService/Tests/CmuxSidebarInterpreterClientTests/RenderWorkerClientTests.swift` :: `survivesAWorkerCrashAndReannouncesContext (lines 58-83) and discardsAHungWorkerAndRecovers (lines 89-127)`
+### `Packages/macOS/MosaicSidebarInterpreterService/Tests/MosaicSidebarInterpreterClientTests/RenderWorkerClientTests.swift` :: `survivesAWorkerCrashAndReannouncesContext (lines 58-83) and discardsAHungWorkerAndRecovers (lines 89-127)`
 - **async-race** · severity medium · confidence medium
 - **Evidence:** Lines 72-75: `for _ in 0..<20 where all.count < 2 { await client.updateScene(...); all = await collector.waitForEvents(count: 2, deadline: .milliseconds(500)) }`. The recovery loop sends at most 20 scene ticks, each with a 500 ms deadline, giving a total budget of ~10 s, but both the crash detection and process relaunch must complete within this budget. In `discardsAHungWorkerAndRecovers`, `waitForContextReset` (lines 129-144) similarly polls with `Task.sleep(for: .milliseconds(50))` up to a 5 s wall-clock budget.
 - **Why flaky:** On a heavily loaded CI runner, spawning the fixture executable, reading its stdout pipe, and propagating the new context announcement through the AsyncStream can exceed the per-iteration 500 ms budget. If 20 iterations are exhausted before re-announcement, `all.count < 2` is never satisfied and the test silently passes with `all.count == 1`, then the `guard case` at line 78 triggers `Issue.record` with no explicit test failure (Swift Testing `Issue.record` does not stop the test). `discardsAHungWorkerAndRecovers` has the same issue: `recoveryContext == nil` after 20 × 500 ms will call `Issue.record("expected recovery context after hang")` but the test function does not return early, so the final `#expect` on line 127 evaluates `nil != nil` and passes silently.
 - **Suggested fix:** After the recovery loop, add an explicit `#require(all.count >= 2)` / `#require(recoveryContext != nil)` before the structural guard so the test fails hard rather than recording a soft issue. Consider increasing `deadline` per iteration to 1 s on slower machines.
 
 
-## cmuxTests  (24)
+## mosaicTests  (24)
 
-### `cmuxTests/CMUXCLIErrorOutputRegressionTests.swift` :: `testThemesSetTargetsResolvedTaggedSocketWhenBundleEnvironmentIsStale`
+### `mosaicTests/MosaicCLIErrorOutputRegressionTests.swift` :: `testThemesSetTargetsResolvedTaggedSocketWhenBundleEnvironmentIsStale`
 - **network-or-port** · severity high · confidence high
-- **Evidence:** Line 660: `let socketPath = "/tmp/cmux-debug-active-theme.sock"` is hardcoded with no UUID suffix. It is set as `CMUX_SOCKET_PATH` in the subprocess environment. Any concurrent test run or leftover bound socket from a previous run on the same machine will cause EADDRINUSE or the wrong responder answering the CLI, making the test assert against bad data or time out.
+- **Evidence:** Line 660: `let socketPath = "/tmp/mosaic-debug-active-theme.sock"` is hardcoded with no UUID suffix. It is set as `MOSAIC_SOCKET_PATH` in the subprocess environment. Any concurrent test run or leftover bound socket from a previous run on the same machine will cause EADDRINUSE or the wrong responder answering the CLI, making the test assert against bad data or time out.
 - **Why flaky:** Two parallel CI workers running the same test suite bind or probe the same socket path simultaneously; one gets EADDRINUSE or connects to the other worker's mock, producing a wrong assertion. A crashed prior run that did not unlink the socket file has the same effect.
-- **Suggested fix:** Replace the hardcoded path with a UUID-suffixed temp path, e.g. `let socketPath = "/tmp/cmux-debug-theme-\(UUID().uuidString).sock"`, and pass that to both the CLI subprocess and any listener.
+- **Suggested fix:** Replace the hardcoded path with a UUID-suffixed temp path, e.g. `let socketPath = "/tmp/mosaic-debug-theme-\(UUID().uuidString).sock"`, and pass that to both the CLI subprocess and any listener.
 
-### `cmuxTests/CmuxEventBusTests.swift` :: `testWorkspaceReorderSocketMapperDoesNotDuplicateLifecycleEvent, testPublishV2ReadTextResponseDoesNotAccumulateOnLongLivedThread, testBulkNotificationClearPublishesClearedWithoutRemovedDuplicates, testV1NotifySurfacePublishesSurfaceIdWithoutWorkspaceId, testV1MapperIgnoresNonSuccessResponses`
+### `mosaicTests/MosaicEventBusTests.swift` :: `testWorkspaceReorderSocketMapperDoesNotDuplicateLifecycleEvent, testPublishV2ReadTextResponseDoesNotAccumulateOnLongLivedThread, testBulkNotificationClearPublishesClearedWithoutRemovedDuplicates, testV1NotifySurfacePublishesSurfaceIdWithoutWorkspaceId, testV1MapperIgnoresNonSuccessResponses`
 - **shared-global-state** · severity high · confidence high
-- **Evidence:** Multiple tests call `CmuxEventBus.shared.resetForTesting()` at the start and in a `defer` block. `TerminalNotificationStore.shared` is also mutated. If XCTest runs test *classes* in parallel (the default for distinct XCTestCase subclasses), another class that also touches these singletons will race against the reset, observing events it was not expecting or missing events it needs.
+- **Evidence:** Multiple tests call `MosaicEventBus.shared.resetForTesting()` at the start and in a `defer` block. `TerminalNotificationStore.shared` is also mutated. If XCTest runs test *classes* in parallel (the default for distinct XCTestCase subclasses), another class that also touches these singletons will race against the reset, observing events it was not expecting or missing events it needs.
 - **Why flaky:** The `defer { resetForTesting() }` guard only protects within one test method's call stack; it does not prevent a concurrently running test in a different class from seeing stale or mid-reset singleton state. Even within the file, if the tests somehow run in parallel the reset at the beginning of test B can fire while test A is mid-assertion.
-- **Suggested fix:** Instantiate a private `CmuxEventBus` and `TerminalNotificationStore` per test instead of using `.shared`, and pass those instances to the code under test. If production code only accepts the shared instance, add a thread-safe per-test override mechanism and hold an exclusive lock for the duration of each test body.
+- **Suggested fix:** Instantiate a private `MosaicEventBus` and `TerminalNotificationStore` per test instead of using `.shared`, and pass those instances to the code under test. If production code only accepts the shared instance, add a thread-safe per-test override mechanism and hold an exclusive lock for the duration of each test body.
 
-### `cmuxTests/FeedCoordinatorTests.swift` :: `blockingIngestExpiresItemWhenHookTimesOut, blockingIngestSkipsNotificationWhenPermissionResolvesBeforeDisplay, blockingIngestSurfacesNeedsInputAttentionForPermissionRequest`
+### `mosaicTests/FeedCoordinatorTests.swift` :: `blockingIngestExpiresItemWhenHookTimesOut, blockingIngestSkipsNotificationWhenPermissionResolvesBeforeDisplay, blockingIngestSurfacesNeedsInputAttentionForPermissionRequest`
 - **shared-global-state** · severity high · confidence high
 - **Evidence:** Each test calls `FeedCoordinator.shared.install(store:)` and sets test hooks on `FeedCoordinatorTestHooks` (also global). Cleanup is via `resetFeedCoordinatorTestHooks()` in `defer`. If another test class runs concurrently, it can install a different store or observe hook callbacks intended for this test, producing spurious assertion failures or missed signals.
 - **Why flaky:** XCTest parallel execution across classes has no ordering guarantee. The global `FeedCoordinator.shared` store gets replaced mid-test by a concurrent installer, leaving the first test reading from or writing to the wrong store.
 - **Suggested fix:** Add a per-test `FeedCoordinator` instance injected via a parameter or override; avoid mutating `.shared` in tests. At minimum, serialize all FeedCoordinator tests with `@Suite(.serialized)` or wrap the shared mutation in an exclusive lock held for the entire test body.
 
-### `cmuxTests/ShellStartupMatrixTests.swift` :: `generatedSshBootstrapStartupStaysUnderPerformanceBudget`
+### `mosaicTests/ShellStartupMatrixTests.swift` :: `generatedSshBootstrapStartupStaysUnderPerformanceBudget`
 - **wall-clock-timing-assert** · severity high · confidence high
 - **Evidence:** Line 186: `result.process.duration < 1.0` where `duration` is `Date().timeIntervalSince(start)` measured around a real subprocess execution. The test runs for 8 shells (zsh/bash/fish/sh/dash/ksh/tcsh/csh) each asserting the same 1.0s budget. On a loaded CI VM spawning 8 subprocesses in sequence, each inherits the runner's scheduler pressure and can easily exceed 1s.
 - **Why flaky:** Wall-clock budget assertion (`< 1.0s`) around subprocess launch and shell startup. A busy CI runner, a slow home directory scan, or a cold filesystem cache can push any shell's startup time past 1s, causing a false failure with no relation to the correctness of the behavior under test.
 - **Suggested fix:** Remove the wall-clock budget assertion entirely or relax the budget to 5s. The real regression signal is whether the bootstrap produces correct output (`result.capture`), not whether it completes in under a second. If performance regression detection is needed, use a dedicated nightly benchmark rather than a correctness CI gate.
 
-### `cmuxTests/ShellStartupMatrixTests.swift` :: `generatedSshBootstrapDoesNotBlockOnRelayCliWarmup`
+### `mosaicTests/ShellStartupMatrixTests.swift` :: `generatedSshBootstrapDoesNotBlockOnRelayCliWarmup`
 - **wall-clock-timing-assert** · severity high · confidence high
-- **Evidence:** Line 204: `result.process.duration < 1.0` where the test injects a `fakeCmuxDelay: 2` (2-second fake CLI delay) and asserts the bootstrap completes in under 1s by not waiting for that path. Same `Date()`-based wall-clock measurement. On a loaded runner, even the non-blocking path can easily exceed 1s.
+- **Evidence:** Line 204: `result.process.duration < 1.0` where the test injects a `fakeMosaicDelay: 2` (2-second fake CLI delay) and asserts the bootstrap completes in under 1s by not waiting for that path. Same `Date()`-based wall-clock measurement. On a loaded runner, even the non-blocking path can easily exceed 1s.
 - **Why flaky:** Same pattern as above: wall-clock budget on subprocess execution. Even with the 2s delay bypassed, shell startup on a cold, loaded runner can exceed 1s budget.
 - **Suggested fix:** Replace the `duration < 1.0` assertion with a behavioral check: verify that the bootstrap subprocess does not `wait` on the fake CLI (e.g., check that the fake CLI was never exec'd or that the output marker appears without the delay). Use a process-level signal rather than a timing budget.
 
-### `cmuxTests/TerminalAndGhosttyTests.swift` :: `testLargePlainTextPasteStaysFastWhenRichTextTypesAreAlsoPresent`
+### `mosaicTests/TerminalAndGhosttyTests.swift` :: `testLargePlainTextPasteStaysFastWhenRichTextTypesAreAlsoPresent`
 - **wall-clock-timing-assert** · severity high · confidence high
 - **Evidence:** The test measures `elapsed = ProcessInfo.processInfo.systemUptime - startedAt` around a synchronous paste plan execution and asserts `XCTAssertLessThan(elapsed, 0.5, ...)`. The 0.5s budget is tight relative to scheduler jitter on a heavily loaded CI runner, GC pauses, and first-run JIT cost.
 - **Why flaky:** Any scheduler pause (GC, competing test work, OS background activity) that stalls the main thread for >500ms causes a false failure. The test verifies optimization correctness (avoiding expensive RTF/HTML decoding), not raw speed, so the wall-clock assertion adds no safety net beyond what the behavioral assertion already provides.
 - **Suggested fix:** Replace the timing assertion with a structural check: verify that the returned paste plan does NOT contain any step that decoded HTML or RTF (e.g., assert the plan's steps only contain plain-text operations). This tests the actual optimization without relying on wall-clock time.
 
-### `cmuxTests/AppDelegateShortcutRoutingTests.swift` :: `keyWindowFocusIsReliable (static lazy probe, lines 177-194)`
+### `mosaicTests/AppDelegateShortcutRoutingTests.swift` :: `keyWindowFocusIsReliable (static lazy probe, lines 177-194)`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 186-188: `let deadline = Date(timeIntervalSinceNow: 0.75)` / `while Date() < deadline, NSApp.keyWindow !== probe { RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02)) }`. The probe uses a 750ms wall-clock budget to determine whether the window server is reliable, then caches the result in a `static let`.
 - **Why flaky:** On a heavily loaded CI machine the 0.75 s budget may not be enough for the window server to promote the probe window to key, so `keyWindowFocusIsReliable` evaluates to `false` and every focus-routing test is wrongly skipped (false pass / silent suppression). Because the result is `static let`, a race in the first test that initialises it poisons every subsequent test in the suite.
 - **Suggested fix:** Replace the hard wall-clock budget with a deterministic environment probe (e.g. check `GITHUB_ACTIONS` / `CI` env vars, or use `XCTestCase.testEnvironment`) so the skip decision is stable regardless of machine load. If the current wall-clock approach is kept, increase the budget to at least 2 s to reduce false negatives.
 
-### `cmuxTests/BrowserPanelTests.swift` :: `testRestoredDiscardedHiddenWebViewGetsRestoreHostBeforeOffscreenCapture (lines 316-319)`
+### `mosaicTests/BrowserPanelTests.swift` :: `testRestoredDiscardedHiddenWebViewGetsRestoreHostBeforeOffscreenCapture (lines 316-319)`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 316-319: `let deadline = Date().addingTimeInterval(1.0)` / `while panel.webView.isLoading, RunLoop.main.run(mode: .default, before: deadline), Date() < deadline {}` / `XCTAssertFalse(panel.webView.isLoading, "Timed out waiting for about:blank to finish loading")`. If `about:blank` does not finish loading within 1 s the test asserts false and continues, leaving `webView.isLoading == true` when the subsequent `discardHiddenWebViewForMemory` is called.
 - **Why flaky:** On a slow or sandboxed CI runner `about:blank` load completion may exceed 1 s, causing either a spurious assertion failure or incorrect state for all assertions that follow. The test does not bail out after the timeout assertion.
 - **Suggested fix:** Use an `XCTestExpectation` fulfilled by the WKNavigationDelegate `didFinish` callback (a delegate helper already exists in this file: `BrowserPanelTestNavigationDelegate`) instead of a busy-wait loop.
 
-### `cmuxTests/CLICodexHookTimeoutRegressionTests.swift` :: `codexInstalledHookReturnsBeforeSlowCmuxCommandFinishes (lines 117-120)`
+### `mosaicTests/CLICodexHookTimeoutRegressionTests.swift` :: `codexInstalledHookReturnsBeforeSlowMosaicCommandFinishes (lines 117-120)`
 - **async-race** · severity medium · confidence medium
 - **Evidence:** Lines 117-120: `waitForFile(capturedStdin, containing: payload, timeout: 1)` / `waitForFile(capturedArgs, ..., timeout: 1)` / `waitForFile(capturedPID, ..., timeout: 1)` / `waitForFile(doneFile, ..., timeout: 3)`. The `waitForFile` helper (lines 716-725) polls with `Thread.sleep(forTimeInterval: 0.02)`. The nohup background child process writes these files asynchronously after the parent hook script has already returned.
 - **Why flaky:** The 1 s and 3 s polling windows are wall-clock-relative and can fail under CI load if the nohup subprocess is delayed by the OS scheduler. The 20 ms poll interval means up to ~50 misses before declaring failure, providing no signal on partial write or fsync delay.
 - **Suggested fix:** These timeouts are intentionally generous and the 20 ms polling increment is appropriate for this category of async process test. The risk is low to medium; no change strictly required. If failures are observed, increase the `timeout` for `doneFile` to 5 s.
 
-### `cmuxTests/CMUXOpenCommandTests.swift` :: `testDiffCommandUsesTaggedSocketAppAssetsAndServer`
+### `mosaicTests/MosaicOpenCommandTests.swift` :: `testDiffCommandUsesTaggedSocketAppAssetsAndServer`
 - **shared-global-state** · severity medium · confidence medium
-- **Evidence:** The test reads and writes a `.server-state` file under `/tmp/cmux-diff-viewer-<getuid()>/`. The path is keyed by the OS user ID, not a UUID, so concurrent runs by the same user (parallel CI workers on the same host, or a re-run before the previous run's cleanup) share the directory and can corrupt each other's state file.
+- **Evidence:** The test reads and writes a `.server-state` file under `/tmp/mosaic-diff-viewer-<getuid()>/`. The path is keyed by the OS user ID, not a UUID, so concurrent runs by the same user (parallel CI workers on the same host, or a re-run before the previous run's cleanup) share the directory and can corrupt each other's state file.
 - **Why flaky:** On a CI host running multiple jobs as the same user, two jobs write conflicting state to the same file, causing one test to read stale or wrong server state and fail the assertion.
 - **Suggested fix:** Append a `UUID().uuidString` component to the temp directory path so each test invocation gets an isolated directory. Clean it up with a `defer`.
 
-### `cmuxTests/CmuxTopProcessCPUTests.swift` :: `testBusyChildProcessReportsNonZeroCPUPercent`
+### `mosaicTests/MosaicTopProcessCPUTests.swift` :: `testBusyChildProcessReportsNonZeroCPUPercent`
 - **wall-clock-timing-assert** · severity medium · confidence medium
-- **Evidence:** The test spawns a shell busy-loop (`while :; do :; done`) and expects `CmuxTopProcessSnapshot.capture` to return a CPU percent > 0.1 for that PID within a 5-second polling window. On heavily throttled macOS CI runners (shared vCPU, nested virtualisation, or energy-saving governors), a shell process may not accumulate enough CPU time in 5 seconds to exceed the threshold, or the sampling interval may not align with the process's active window.
+- **Evidence:** The test spawns a shell busy-loop (`while :; do :; done`) and expects `MosaicTopProcessSnapshot.capture` to return a CPU percent > 0.1 for that PID within a 5-second polling window. On heavily throttled macOS CI runners (shared vCPU, nested virtualisation, or energy-saving governors), a shell process may not accumulate enough CPU time in 5 seconds to exceed the threshold, or the sampling interval may not align with the process's active window.
 - **Why flaky:** The assertion is `cpuPercent > 0.1`, and the 5-second deadline is a hard wall-clock budget. Any CI runner where the guest vCPU is significantly throttled or preempted during the sampling window can return 0.0 CPU for the child, failing the assertion non-deterministically.
 - **Suggested fix:** Use a tighter busy-loop in a compiled language (or a tight Swift/ObjC loop) rather than a shell process, and increase the assertion timeout or lower the threshold. Alternatively, use `XCTSkip` if the runner cannot reliably measure CPU above the threshold, similar to how other snapshot tests use `XCTSkip` on proc_pid_rusage failures.
 
-### `cmuxTests/CmuxWebViewContextMenuLinkCaptureTests.swift` :: `openLinkInDefaultBrowserOpensTheLinkUnderTheRightClick, staleCaptureFromPreviousClickIsNotReusedForALaterMenu, syntheticContextMenuEventCannotPlantDecoyLink`
+### `mosaicTests/MosaicWebViewContextMenuLinkCaptureTests.swift` :: `openLinkInDefaultBrowserOpensTheLinkUnderTheRightClick, staleCaptureFromPreviousClickIsNotReusedForALaterMenu, syntheticContextMenuEventCannotPlantDecoyLink`
 - **async-race** · severity medium · confidence medium
 - **Evidence:** Each test fires a JS `dispatchEvent` then calls `try await Task.sleep(nanoseconds: 200_000_000)` (200 ms) before invoking `willOpenMenu`. The comment says the sleep lets the capture report arrive; if the WKWebView JS bridge round-trip takes longer than 200 ms on a slow or heavily-loaded runner, the capture has not arrived yet and the test uses the wrong code path (falls back to hit-test), producing a wrong assertion without failing loudly.
 - **Why flaky:** WKWebView JS evaluation is asynchronous and its completion timing depends on the WebContent process. On throttled CI the round-trip can exceed 200 ms, causing the capture to arrive after the menu is opened. The test then uses the coordinate fallback and returns `example.test/decoy` instead of `example.test/clicked`, which is a silent wrong result, not an explicit timeout failure.
 - **Suggested fix:** Instead of sleeping a fixed 200 ms, poll (with a deadline) for the capture to arrive, or expose a test hook that resolves a continuation when the capture is stored. This eliminates the timing dependency entirely.
 
-### `cmuxTests/CommandPaletteShortcutCustomizationTests.swift` :: `testRemappedCommandPalettePreviousShortcutDoesNotConsumeControlP, testUnboundCommandPalettePreviousShortcutLetsControlPPassThrough, testChordedCommandPaletteNextShortcutMovesSelection`
+### `mosaicTests/CommandPaletteShortcutCustomizationTests.swift` :: `testRemappedCommandPalettePreviousShortcutDoesNotConsumeControlP, testUnboundCommandPalettePreviousShortcutLetsControlPPassThrough, testChordedCommandPaletteNextShortcutMovesSelection`
 - **shared-global-state** · severity medium · confidence medium
 - **Evidence:** `setUp` saves then removes `UserDefaults.standard` keys for `commandPaletteNext` and `commandPalettePrevious`, and `KeyboardShortcutSettings.settingsFileStore` is swapped to a per-test directory. If XCTest runs this class in parallel with another class that reads `KeyboardShortcutSettings`, the default-store removal and the per-test file store swap leave the global shortcuts in an undefined state for the concurrent reader. The `withTemporaryCommandPaletteShortcut` helper also mutates and restores `KeyboardShortcutSettings` synchronously, with no protection if another thread reads between the mutation and the restore.
 - **Why flaky:** Parallel test classes that read `KeyboardShortcutSettings.shortcut(for:)` mid-setUp or mid-withTemporaryCommandPaletteShortcut see an inconsistent default, causing shortcut lookups to return nil or a stale value.
 - **Suggested fix:** Guard the entire setUp/tearDown and shortcut mutation blocks with a process-wide mutex, or serialize all shortcut-dependent tests with `@Suite(.serialized)` on a shared suite.
 
-### `cmuxTests/GhosttyNotificationDispatcherTests.swift` :: `testSignalAcrossSeparateBurstsPostsMultipleNotifications`
+### `mosaicTests/GhosttyNotificationDispatcherTests.swift` :: `testSignalAcrossSeparateBurstsPostsMultipleNotifications`
 - **async-race** · severity medium · confidence high
 - **Evidence:** Lines 77-78: `DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.signal(dispatcher, ...) }`. The test asserts two signals arrive in separate debounce bursts by scheduling the second signal 50ms after the first. The debounce interval is 10ms (0.01s). If the main queue is saturated under CI load, the first dispatch block (carrying signal #1) may not execute until after the 50ms window expires, so both signals land in the same burst and the debounce fires only once — but the test asserts 2 notifications.
 - **Why flaky:** The correctness invariant is that 50ms > 10ms debounce, but the margin collapses under a loaded main queue where both asyncAfter blocks can execute back-to-back within a single debounce window.
 - **Suggested fix:** Replace the wall-clock asyncAfter separation with an injected `Scheduler` seam on the dispatcher, so the test can control when each burst ends. Alternatively, increase the inter-signal delay significantly (e.g., 0.5s) and use an XCTestExpectation waited with a longer timeout instead of relying on asyncAfter scheduling precision.
 
-### `cmuxTests/MobileHostAuthorizationTests.swift` :: `testIdleTimeoutStartsAfterUnauthorizedFrameResponse (and related idle-timeout tests)`
+### `mosaicTests/MobileHostAuthorizationTests.swift` :: `testIdleTimeoutStartsAfterUnauthorizedFrameResponse (and related idle-timeout tests)`
 - **sleep-as-sync** · severity medium · confidence medium
 - **Evidence:** Line 997: `try await Task.sleep(nanoseconds: 25_000_000)` (25ms). This sleep is used to wait for the unauthorized frame's response to be processed before calling `debugStartIdleTimeoutAfterFrameForTesting()`. The comment says 'give the response time to be processed', confirming this is synchronization-by-sleep rather than signaling.
 - **Why flaky:** Under a slow CI VM, the 25ms may expire before the async response processing completes, causing `debugStartIdleTimeoutAfterFrameForTesting()` to be called before the system is in the expected state, resulting in a test timeout or spurious failure.
 - **Suggested fix:** Replace the sleep with a polling loop or an `AsyncTestSignal`/continuation that fires when the unauthorized-frame response handler actually completes, analogous to the `AsyncTestSignal` pattern already used elsewhere in the same file.
 
-### `cmuxTests/WorkspacePullRequestSidebarTests.swift` :: `testPullRequestRefreshRepositoryDiscoveryDoesNotBlockMainRunLoop`
+### `mosaicTests/WorkspacePullRequestSidebarTests.swift` :: `testPullRequestRefreshRepositoryDiscoveryDoesNotBlockMainRunLoop`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Line 629-633: `XCTAssertLessThan(maxTickGap, allowedMainThreadGap, ...)` where `allowedMainThreadGap = 2.0` seconds. `maxTickGap` is the largest interval between two consecutive 10ms timer ticks on the main run loop. A loaded CI runner can suppress the main thread for >2s (GC, disk I/O, swap, competing jobs). The comment acknowledges this: 'Generous bound far above macOS CI scheduling noise... A 2.0s bound still fails under extreme CI contention.'
 - **Why flaky:** While the comment sets `allowedMainThreadGap` to 2.0s as a 'generous' bound, macOS CI shared runners can stall the main thread for several seconds during GC or disk pressure. The deterministic signal (git ran off-main) is fine; the wall-clock gap check is the flaky part.
 - **Suggested fix:** Drop the `maxTickGap < allowedMainThreadGap` assertion entirely. The test already has a deterministic regression signal: `XCTAssertFalse(gitThreadObservation.observedOnMainThread, ...)` which catches the actual regression without any timing dependency. The timing check provides no additional safety.
 
-### `cmuxTests/WorkspacePullRequestSidebarTests.swift` :: `testNoIndexLockTouchDuringSidebarGitMetadataRefreshWindow`
+### `mosaicTests/WorkspacePullRequestSidebarTests.swift` :: `testNoIndexLockTouchDuringSidebarGitMetadataRefreshWindow`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Line 670-675: `DispatchQueue.main.asyncAfter(deadline: .now() + 90.5)` schedules the test completion. `XCTWaiter().wait(for: [completedRefreshWindow], timeout: 92)`. The test runs for ~90 seconds and relies on wall-clock scheduling to fire the refresh window timer at consistent intervals. On a loaded CI runner, `asyncAfter` can fire significantly late, extending the test beyond 92s and causing a timeout.
 - **Why flaky:** 90-second wall-clock test using `asyncAfter` for timing control. `asyncAfter` on the main queue is not cancellable and can fire late under load. If the 90.5s fire is delayed by runner scheduling, `XCTWaiter().wait(for:, timeout: 92)` expires before the expectation fulfills.
 - **Suggested fix:** Replace the 90s wall-clock window with a cycle-count approach: run N refresh cycles synchronously (e.g., 100 calls to `refreshTrackedWorkspaceGitMetadataForTesting()` in a loop) and assert the invariant holds for all cycles. This makes the test fast, deterministic, and free of wall-clock dependencies.
 
-### `cmuxTests/WorkspacePullRequestSidebarTests.swift` :: `testUnrelatedDefaultsChangeDoesNotRestartGitMetadataRefreshes`
+### `mosaicTests/WorkspacePullRequestSidebarTests.swift` :: `testUnrelatedDefaultsChangeDoesNotRestartGitMetadataRefreshes`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Line 1070: `waitForCondition(timeout: 12.0)` waits up to 12 seconds for `activeWorkspaceGitProbePanelIdsForTesting` to become empty. 12s is 4x the normal 3s default, strongly suggesting this waits for async background work to settle. On an extremely loaded CI runner, background work may not complete within 12 seconds.
 - **Why flaky:** 12-second wall-clock wait for async state to settle. The condition checks that background git probes have finished, but under heavy CI load those probes could be delayed beyond the 12s window. Additionally, `waitForCondition` uses `DispatchQueue.main.asyncAfter` polling which accumulates non-cancellable dispatches.
 - **Suggested fix:** Provide an explicit synchronization point: add a testing API that drains or cancels pending git probes synchronously before asserting, instead of polling with a wall-clock timeout.
 
-### `cmuxTests/AgentHibernationTests.swift` :: `testSocketLifecycleRejectsUnsupportedStatusKey (line 27-31)`
+### `mosaicTests/AgentHibernationTests.swift` :: `testSocketLifecycleRejectsUnsupportedStatusKey (line 27-31)`
 - **shared-global-state** · severity low · confidence medium
 - **Evidence:** Line 28: `TerminalController.shared.handleSocketLine("set_agent_lifecycle fake-agent idle")`. This calls directly into the process-global `TerminalController.shared` singleton without any isolation or teardown of the shared state it may modify.
 - **Why flaky:** If another test in the suite concurrently modifies `TerminalController.shared` state (e.g. `testSocketLifecycleAcceptsRegisteredCustomAgentKey` at line 34 which calls `setActiveTabManager`), the response string assertion at line 30 could be affected. The risk is low when tests run serially on `@MainActor`, but the lack of explicit serialization guarantees makes this fragile under test-parallelism changes.
 - **Suggested fix:** Add `@MainActor` annotation to this test to ensure it serializes with the rest of the `@MainActor` tests in the class, or wrap the shared singleton call in a setUp/tearDown that saves and restores the active tab manager.
 
-### `cmuxTests/BrowserWindowPortalRegistryNotificationTests.swift` :: `registryDoesNotNotifyForUnchangedPortalVisibility / unchangedPortalVisibilityDoesNotDriveWorkspaceLayoutFollowUp (lines 27-33)`
+### `mosaicTests/BrowserWindowPortalRegistryNotificationTests.swift` :: `registryDoesNotNotifyForUnchangedPortalVisibility / unchangedPortalVisibilityDoesNotDriveWorkspaceLayoutFollowUp (lines 27-33)`
 - **wall-clock-timing-assert** · severity low · confidence medium
 - **Evidence:** Lines 27-28 (`realizeWindowLayout`) and line 32 (`advanceAnimations`): both helper methods call `RunLoop.current.run(until: Date().addingTimeInterval(0.05))` to let animations settle. Test correctness depends on 50 ms being enough for the AppKit layout/animation cycle.
 - **Why flaky:** Under VM or CI load, 50 ms may be insufficient for the window layout pass to complete, causing assertions on `notificationCount` or `layoutPassCount` to read stale values. The failure mode is a false negative (count is 0 when 1 is expected) rather than a hang.
 - **Suggested fix:** Drive the layout deterministically by calling `contentView.layoutSubtreeIfNeeded()` and `CATransaction.flush()` after mutations instead of relying on a fixed time budget.
 
-### `cmuxTests/FileSearchRipgrepParserTests.swift` :: `waitForSearchRequestCount (helper used by multiple tests)`
+### `mosaicTests/FileSearchRipgrepParserTests.swift` :: `waitForSearchRequestCount (helper used by multiple tests)`
 - **wall-clock-timing-assert** · severity low · confidence low
 - **Evidence:** The `waitForSearchRequestCount` helper uses a `Date().addingTimeInterval(1)` deadline (1 second) with 10ms `Task.sleep` polling. Under a heavily loaded CI worker, an actor hop or thread-pool stall can delay the async search dispatch past the 1-second window, causing the expectation to timeout and the test to fail spuriously.
 - **Why flaky:** 1-second deadline is tight for an integration helper that may cross actor isolation boundaries. Confirmed by the repo memory noting this file as part of a flakiness sweep.
 - **Suggested fix:** Increase the timeout to 5 seconds, matching the broader test suite convention, or add a dedicated notification/callback when the search request count is incremented.
 
-### `cmuxTests/GhosttyDECCKMArrowKeyTests.swift` :: `testArrowKeysSendEscapeSequencesWhenDECCKMEnabled (and sibling tests)`
+### `mosaicTests/GhosttyDECCKMArrowKeyTests.swift` :: `testArrowKeysSendEscapeSequencesWhenDECCKMEnabled (and sibling tests)`
 - **sleep-as-sync** · severity low · confidence low
 - **Evidence:** Line approximately 120-130 (GhosttyDECCKMArrowKeyTests): `RunLoop.current.run(until: Date().addingTimeInterval(0.2))` used as a 200ms unconditional sleep after detecting the terminal-ready marker, before sending arrow key sequences. This is a fixed delay to let the terminal settle before input is sent.
 - **Why flaky:** If the test runs on a slow CI host where the terminal process is not yet ready to process input after 200ms, the arrow key sequences may be consumed before the DECCKM mode flag is active. Confidence is low because the marker detection mitigates most of the race; this is a belt-and-suspenders sleep that could still fail under extreme load.
 - **Suggested fix:** After the ready marker is detected, poll for a terminal-state signal (e.g., a sentinel response to a DECCKM status query via `DECRQM`) rather than sleeping 200ms. If that is too invasive, document the 200ms as a minimum and increase it to 500ms to reduce CI sensitivity.
 
-### `cmuxTests/MarkdownPanelTests.swift` :: `testMarkdownRemoteImageCopyURLButtonShowsCopiedFeedback (or similar clipboard-feedback test)`
+### `mosaicTests/MarkdownPanelTests.swift` :: `testMarkdownRemoteImageCopyURLButtonShowsCopiedFeedback (or similar clipboard-feedback test)`
 - **sleep-as-sync** · severity low · confidence medium
 - **Evidence:** Line 998 (approximate): `try await Task.sleep(nanoseconds: 100_000_000)` (100ms) used after programmatically clicking a clipboard copy button, waiting for the WKWebView JS to update the button label to 'Copied'. The `waitForRemoteImageButtonRevert` helper (lines 1440-1481) polls the DOM to detect the revert, but the initial 100ms sleep before the first check is an unconditional delay.
 - **Why flaky:** If the WKWebView JS executes the label change faster than 100ms (common on a fast machine) the sleep is wasteful but harmless; if it takes longer than 100ms on a slow CI machine the subsequent assertion can fire before the state updates. Low severity because the `waitForRemoteImageButtonRevert` helper correctly polls — the main risk is only for the intermediate 'Copied' assertion immediately after the sleep.
 - **Suggested fix:** Replace the 100ms sleep with a poll loop (similar to `waitForRemoteImageButtonRevert`) that checks for the 'Copied' button label directly.
 
-### `cmuxTests/TabManagerUnitTests.swift` :: `multiple tests using waitForCondition`
+### `mosaicTests/TabManagerUnitTests.swift` :: `multiple tests using waitForCondition`
 - **async-race** · severity low · confidence medium
 - **Evidence:** Lines 33-68: `waitForCondition` uses `DispatchQueue.main.asyncAfter(deadline: .now() + pollInterval)` in a recursive chain. When the condition does not become true before `deadline`, the chain stops scheduling but previously scheduled callbacks continue to fire after the deadline (they check `Date() < deadline` before re-scheduling, but the last-fired callback executes its `condition()` call unconditionally). These stale callbacks can run into the next test's setup on the main queue. `testRemoteSplitSkipsInitialGitMetadataProbe` uses `waitForCondition(timeout: 12.0)` which can leave up to ~12s worth of queued callbacks after test completion.
 - **Why flaky:** Non-cancellable `asyncAfter` cascades from one test's `waitForCondition` call can execute `condition()` during the next test's body, potentially observing partially-constructed state from the next test and causing spurious `XCTFail` calls attributed to a wrong test.
 - **Suggested fix:** Replace the `asyncAfter`-based polling with `XCTNSPredicateExpectation` which has proper cancellation semantics, or use `await fulfillment(of:)` with a `Task`-based polling loop that can be properly cancelled on timeout.
 
 
-## cmuxUITests  (10)
+## mosaicUITests  (10)
 
-### `cmuxUITests/BrowserFixtureInteractionUITests.swift` :: `BrowserFixtureSocketTestCase.waitForSocketPong (used by all BrowserFixtureInteractionUITests and BrowserReliabilityRegressionUITests subclasses)`
+### `mosaicUITests/BrowserFixtureInteractionUITests.swift` :: `BrowserFixtureSocketTestCase.waitForSocketPong (used by all BrowserFixtureInteractionUITests and BrowserReliabilityRegressionUITests subclasses)`
 - **async-race** · severity high · confidence high
 - **Evidence:** Lines 274-297: `waitForSocketPong` creates an `XCTNSPredicateExpectation` whose predicate opens a Darwin socket connection and calls `ControlSocketClient(path:responseTimeout:1.0).sendLine("ping")` — blocking I/O inside a non-KVO closure. `XCTNSPredicateExpectation` evaluates the predicate once, then re-evaluates on a run-loop timer; that timer can be starved under `XCTWaiter.wait`, so a single early `false` (listener bound but accept loop not yet answering, a sub-second window) causes the waiter to sit idle on the stale result for the full timeout. `ControlSocketReadinessUITestSupport.swift` documents this exact failure mode at lines 33-47 and explicitly states 'This deliberately does *not* use XCTNSPredicateExpectation' — yet `waitForSocketPong` still does.
 - **Why flaky:** The run-loop starvation documented in ControlSocketReadinessUITestSupport.swift for issue #5414 applies here identically. The predicate blocks for up to 1s per evaluation on a Darwin socket; after the first false the timer never fires again under XCTWaiter.wait, so the full timeout elapses even though the socket becomes responsive milliseconds later. This was the confirmed CI flake mechanism in BrowserPaneNavigationKeybindUITests before the prior de-flake pass; BrowserFixtureSocketTestCase still carries the same bug.
 - **Suggested fix:** Replace the `XCTNSPredicateExpectation` in `waitForSocketPong` with `waitForControlSocketReady(socketPath:pingTimeout:pingReturnsPong:)` from `ControlSocketReadinessUITestSupport`, exactly as `BrowserPaneNavigationKeybindUITests.waitForSocketPong` was fixed (line 1358-1362 of that file). Phase 1 waits for the socket file; phase 2 polls ping in a deadline loop.
 
-### `cmuxUITests/MultiWindowNotificationsUITests.swift` :: `testNotifyCLIDoesNotStealFocusAcrossWindows`
+### `mosaicUITests/MultiWindowNotificationsUITests.swift` :: `testNotifyCLIDoesNotStealFocusAcrossWindows`
 - **wall-clock-timing-assert** · severity high · confidence high
-- **Evidence:** Lines 382-386: `RunLoop.current.run(until: Date().addingTimeInterval(0.5))` is the entire observation window before `XCTAssertFalse(app.state == .runningForeground, ...)`. If cmux steals focus more than 0.5s after the notify CLI completes, the test passes silently.
+- **Evidence:** Lines 382-386: `RunLoop.current.run(until: Date().addingTimeInterval(0.5))` is the entire observation window before `XCTAssertFalse(app.state == .runningForeground, ...)`. If mosaic steals focus more than 0.5s after the notify CLI completes, the test passes silently.
 - **Why flaky:** App activation on macOS under a loaded VM is not guaranteed to complete within 500ms. A late NSRunningApplication state transition or a deferred `[NSApp activateIgnoringOtherApps:]` call can arrive after the window has already closed. The test is checking a negative safety property (no focus theft) but gives only a 500ms window to observe it.
 - **Suggested fix:** Replace with a polling negative-assertion loop that samples `app.state` every ~50ms for at least 2 seconds after the notify command, failing immediately if it ever transitions to `.runningForeground`. A helper like `XCTAssertNever(timeout: 2.0) { app.state == .runningForeground }` captures the intent.
 
-### `cmuxUITests/BrowserPaneNavigationKeybindUITests.swift` :: `waitForCondition (all callers via waitForDataMatch: e.g. testCmdFFindsInTerminalAndBrowserPanesWithSeparateQueries, testFindOwnerRestoredAfterWorkspaceRoundTrip, testCmdCtrlHMovesLeftWhenWebViewFocused, etc.)`
+### `mosaicUITests/BrowserPaneNavigationKeybindUITests.swift` :: `waitForCondition (all callers via waitForDataMatch: e.g. testCmdFFindsInTerminalAndBrowserPanesWithSeparateQueries, testFindOwnerRestoredAfterWorkspaceRoundTrip, testCmdCtrlHMovesLeftWhenWebViewFocused, etc.)`
 - **async-race** · severity medium · confidence high
 - **Evidence:** Lines 1563-1569: `waitForCondition` wraps arbitrary file-I/O predicates (JSON reads from `dataPath`) in `XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)`. The `object: nil` form is not KVO-observable; `XCTNSPredicateExpectation` evaluates once then schedules a polling timer on the run loop. Under `XCTWaiter.wait` that timer can be starved by UI test framework activity, preventing re-evaluation for the full timeout even after the file appears. Called by `waitForDataMatch` (line 1504) and `selectWorkspace` (line 1402) throughout the test.
 - **Why flaky:** Identical starvation mechanism to the documented socket-ping flake. The predicates are non-KVO closures that read a JSON file on disk; a first false (file not yet written) can freeze the waiter for the full timeout on a loaded CI runner. The test has 6s timeouts for focus and data checks — enough for correct behavior but too short if the waiter stalls due to run-loop starvation.
 - **Suggested fix:** Replace `waitForCondition` with a deadline poll loop using `RunLoop.current.run(until:)` between iterations, matching the pattern in `pollControlSocketCondition` in ControlSocketReadinessUITestSupport.swift. For the `waitForNonExistence` helper at line 1543 (KVO-bound to an XCUIElement), `XCTNSPredicateExpectation` is fine and does not need changing.
 
-### `cmuxUITests/FindSelectionShortcutUITests.swift` :: `waitForCondition (all callers via waitForDataMatch: testRepeatedCmdFPreservesOpenTerminalAndBrowserFindCaretAndSelection, testEscapeClosesTerminalAndBrowserFindAfterQuery)`
+### `mosaicUITests/FindSelectionShortcutUITests.swift` :: `waitForCondition (all callers via waitForDataMatch: testRepeatedCmdFPreservesOpenTerminalAndBrowserFindCaretAndSelection, testEscapeClosesTerminalAndBrowserFindAfterQuery)`
 - **async-race** · severity medium · confidence high
 - **Evidence:** Lines 311-317: `waitForCondition` wraps file-I/O predicates in `XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)`. `waitForDataMatch` (called with 6s timeouts at lines 29, 53, 103, 116, 124, 130, 161, 173, etc.) delegates to this helper. Same non-KVO, non-retried closure pattern as BrowserPaneNavigationKeybindUITests.
 - **Why flaky:** Same run-loop starvation mechanism. The predicate reads a JSON file on each evaluation; under XCTWaiter.wait with a nil object, a single false result can strand the waiter idle for the full 6s timeout even when the file is updated a moment later. Tests that chain multiple `waitForDataMatch` calls (both test methods) accumulate this risk across each step.
 - **Suggested fix:** Replace `waitForCondition` with a deadline poll loop: `let deadline = Date().addingTimeInterval(timeout); repeat { if predicate() { return true }; RunLoop.current.run(until: Date().addingTimeInterval(0.1)) } while Date() < deadline; return predicate()`. This matches `pollControlSocketCondition` in ControlSocketReadinessUITestSupport.swift.
 
-### `cmuxUITests/MenuKeyEquivalentRoutingUITests.swift` :: `testBrowserFirstFindShortcutDoesNotReplayUnclaimedCmdEIntoWebContentTwice`
+### `mosaicUITests/MenuKeyEquivalentRoutingUITests.swift` :: `testBrowserFirstFindShortcutDoesNotReplayUnclaimedCmdEIntoWebContentTwice`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Line 166: `RunLoop.current.run(until: Date().addingTimeInterval(0.5))` immediately followed by XCTAssertEqual asserting that the page title did NOT change to 'cmde-2'. The 0.5s window is the entire negative observation period.
 - **Why flaky:** If the second Cmd+E replay is delayed past 0.5s by VM load (context switching, process scheduling, WKWebView navigation callback latency), the assertion fires before the replay occurs and the test passes silently even when the bug is present.
 - **Suggested fix:** Replace with a repeated-sampling negative check: poll the page title 3+ times over the 0.5s window and fail immediately on any sample that shows 'cmde-2'. This turns a fail-open timeout into a fail-fast sentinel.
 
-### `cmuxUITests/SidebarPullRequestInteractivityUITests.swift` :: `testSidebarPullRequestClickFallsThroughByDefault / testSidebarPullRequestClickFallsThroughWhenClickabilityDisabled`
+### `mosaicUITests/SidebarPullRequestInteractivityUITests.swift` :: `testSidebarPullRequestClickFallsThroughByDefault / testSidebarPullRequestClickFallsThroughWhenClickabilityDisabled`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** Lines 114-121: `waitForSurfaceCountToStay(initialSurfaceCount, workspaceId:, timeout: 1.5)` asserts that no new browser surface opens within 1.5s. The `pollUntil` helper in this file uses `Date().addingTimeInterval` rather than monotonic `systemUptime`, compounding the issue.
 - **Why flaky:** If a browser surface opens after 1.5s due to app startup latency or scheduling delays under VM load, the function returns `true` (no change observed) and the test silently passes even when the click-through bug is present. The 1.5s window is also the deadline for the wait, not a minimum observation time.
 - **Suggested fix:** Increase the timeout to at least 3s. Additionally, fix the `pollUntil` helper to use `ProcessInfo.processInfo.systemUptime` instead of `Date()` for monotonic timing. Consider adding a subsequent positive assertion (e.g., workspace was navigated correctly) to ensure the test is checking the right preconditions.
 
-### `cmuxUITests/TerminalCmdClickUITests.swift` :: `testCmdClickPngOpensInCmuxFilePreviewWhenEnabled, testCmdClickMarketingSkillMarkdownPathWithTrailingPeriodOpensMarkdownViewer, testCmdClickQuotedAbsoluteMarkdownPathWithTrailingPeriodOpensMarkdownViewer, and invalid-offset variants`
+### `mosaicUITests/TerminalCmdClickUITests.swift` :: `testCmdClickPngOpensInMosaicFilePreviewWhenEnabled, testCmdClickMarketingSkillMarkdownPathWithTrailingPeriodOpensMarkdownViewer, testCmdClickQuotedAbsoluteMarkdownPathWithTrailingPeriodOpensMarkdownViewer, and invalid-offset variants`
 - **wall-clock-timing-assert** · severity medium · confidence medium
 - **Evidence:** `waitForOpenCountToStay(0, timeout: 0.75)` used as the sole gate for asserting no external opener was called. 750ms is the entire observation window for the negative assertion.
 - **Why flaky:** If the external-opener dispatch is delayed past 750ms by VM scheduling (e.g., the Cmd+Click handler is queued behind other work), the test passes silently before the unwanted open fires. Under CI load this is plausible given that the Cmd+Click → file routing path involves multiple async hops.
 - **Suggested fix:** Increase the observation window to at least 1.5s, ideally 2s. Additionally introduce a positive synchronization point before the negative check: wait for the file-preview panel to appear (or for a known socket response confirming the click was processed) before starting the `waitForOpenCountToStay` observation window.
 
-### `cmuxUITests/UpdatePillUITests.swift` :: `testUpdatePillShowsForNoUpdateThenDismisses`
+### `mosaicUITests/UpdatePillUITests.swift` :: `testUpdatePillShowsForNoUpdateThenDismisses`
 - **wall-clock-timing-assert** · severity medium · confidence high
 - **Evidence:** Lines 116-118: `XCTAssertGreaterThanOrEqual(hiddenAt - shownAt, 4.8)` where both timestamps are `Date()` values written by app code into a JSON file. The margin over the expected 5s display duration is only 0.2s.
 - **Why flaky:** Timer jitter, process scheduling delays, and JSON file write latency on a loaded CI runner can easily consume 200ms or more, causing `hiddenAt - shownAt` to be 4.6-4.9s when the feature is working correctly. This creates spurious CI failures that look like regressions but are pure timing variance.
 - **Suggested fix:** Widen the lower bound to account for realistic CI variance: use `>= 3.5` (or drop the lower bound entirely) and keep only the ordering assertion `XCTAssertGreaterThan(hiddenAt, shownAt)`. The auto-dismiss behavior is already verified by the ordering assertion; the timing magnitude is fragile to assert precisely.
 
-### `cmuxUITests/BrowserReliabilityRegressionUITests.swift` :: `testWaitLoadStateOnNeverNavigatedSurfaceReturnsPromptly`
+### `mosaicUITests/BrowserReliabilityRegressionUITests.swift` :: `testWaitLoadStateOnNeverNavigatedSurfaceReturnsPromptly`
 - **wall-clock-timing-assert** · severity low · confidence low
 - **Evidence:** Lines 29-53: `let start = Date(); let envelope = socketEnvelope(...); let elapsed = Date().timeIntervalSince(start); XCTAssertLessThan(elapsed, durationBound)` where `durationBound = 1.5 + 12.0 = 13.5s`. The comment acknowledges this is intentionally generous to only catch unbounded hangs.
 - **Why flaky:** On an extremely loaded CI runner, a WebKit content process spin-up plus socket round trip could theoretically exceed 13.5s wall-clock. The generous bound makes this unlikely in practice, but it is a true wall-clock assertion rather than a structural check.
 - **Suggested fix:** No change required given the 13.5s bound is already very generous. If it ever fires spuriously, increase `responseTimeout` from 12s to something like 20s so the bound scales up automatically.
 
-### `cmuxUITests/MenuKeyEquivalentRoutingUITests.swift` :: `clickBrowserPane (shared helper used by multiple tests)`
+### `mosaicUITests/MenuKeyEquivalentRoutingUITests.swift` :: `clickBrowserPane (shared helper used by multiple tests)`
 - **sleep-as-sync** · severity low · confidence medium
 - **Evidence:** Line 480: `RunLoop.current.run(until: Date().addingTimeInterval(0.15))` after a coordinate click, used as the sole guard for focus routing to complete before subsequent keyboard shortcuts are sent.
 - **Why flaky:** 150ms is a common heuristic that can fail under CI VM load; if focus routing has not completed when the caller sends keyboard input, the shortcut is delivered to the wrong first responder. The existing `refocusWebView` helper already shows how to wait for `webViewFocused` key — the same pattern could be applied here.
@@ -390,15 +390,15 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests/test_ghostty_zsh_job_table_saturation_guard.py` :: `_capture_saturated_session`
 - **wall-clock-timing-assert** · severity high · confidence high
-- **Evidence:** Line 87-92: `_send(master, f'for i in {{1..1100}}; do sleep {BACKGROUND_SLEEP_SECONDS} & done\n')` followed by `_read_available(master, output, time.time() + 8.0)`. After the 8s window, `_send(master, 'print __CMUX_AFTER_FILL__\n')` is sent and `_read_available(master, output, time.time() + 1.0)` reads for only 1 more second. Line 178: `if b'__CMUX_AFTER_FILL__' not in output: ... FAIL`.
-- **Why flaky:** On a loaded CI machine, spawning 1100 background processes inside zsh can take longer than 8 seconds. If the for loop completes at 9-10 seconds, the echo runs after the 1-second follow-up read window closes, so `__CMUX_AFTER_FILL__` is never captured, causing a spurious FAIL.
-- **Suggested fix:** Increase the for-loop wait window from 8.0 to at least 20 seconds, or drive the transition off the actual `__CMUX_AFTER_FILL__` marker appearing in output rather than a fixed elapsed time, mirroring the marker-driven approach in `test_ghostty_zsh_prompt_redraw_uses_prompt_start.py`.
+- **Evidence:** Line 87-92: `_send(master, f'for i in {{1..1100}}; do sleep {BACKGROUND_SLEEP_SECONDS} & done\n')` followed by `_read_available(master, output, time.time() + 8.0)`. After the 8s window, `_send(master, 'print __MOSAIC_AFTER_FILL__\n')` is sent and `_read_available(master, output, time.time() + 1.0)` reads for only 1 more second. Line 178: `if b'__MOSAIC_AFTER_FILL__' not in output: ... FAIL`.
+- **Why flaky:** On a loaded CI machine, spawning 1100 background processes inside zsh can take longer than 8 seconds. If the for loop completes at 9-10 seconds, the echo runs after the 1-second follow-up read window closes, so `__MOSAIC_AFTER_FILL__` is never captured, causing a spurious FAIL.
+- **Suggested fix:** Increase the for-loop wait window from 8.0 to at least 20 seconds, or drive the transition off the actual `__MOSAIC_AFTER_FILL__` marker appearing in output rather than a fixed elapsed time, mirroring the marker-driven approach in `test_ghostty_zsh_prompt_redraw_uses_prompt_start.py`.
 
 ### `tests/test_omp_extension_install.py` :: `main (log verification block, lines 442-445)`
 - **sleep-as-sync** · severity high · confidence high
-- **Evidence:** Line 362: fake_cmux script has `sleep 3` before writing logs. Lines 443-445: `wait_for_text(fake_args_log, 3)`, `wait_for_text(fake_stdin_log, 6)`, `wait_for_text(fake_env_log, 12)` all default to `timeout=5.0`. If the JS extension fires the three hook invocations serially, each fake_cmux process takes 3s, giving 9s total before all three logs are written -- the 5s window expires first and `wait_for_text` returns incomplete content.
-- **Why flaky:** The `wait_for_text` 5-second timeout is shorter than the worst-case serial execution time of three 3-second fake_cmux processes (9s). Whether hooks fire in parallel or serially depends on the extension's internal awaiting strategy; if serially, the log assertions silently succeed on incomplete data or incorrectly fail.
-- **Suggested fix:** Increase `wait_for_text` timeout to at least 15s when `expected_count > 1` with a `sleep`-heavy fake binary, or remove the `sleep 3` from fake_cmux (it is not needed to prove asynchrony since the extension fires-and-forgets the cmux call).
+- **Evidence:** Line 362: fake_mosaic script has `sleep 3` before writing logs. Lines 443-445: `wait_for_text(fake_args_log, 3)`, `wait_for_text(fake_stdin_log, 6)`, `wait_for_text(fake_env_log, 12)` all default to `timeout=5.0`. If the JS extension fires the three hook invocations serially, each fake_mosaic process takes 3s, giving 9s total before all three logs are written -- the 5s window expires first and `wait_for_text` returns incomplete content.
+- **Why flaky:** The `wait_for_text` 5-second timeout is shorter than the worst-case serial execution time of three 3-second fake_mosaic processes (9s). Whether hooks fire in parallel or serially depends on the extension's internal awaiting strategy; if serially, the log assertions silently succeed on incomplete data or incorrectly fail.
+- **Suggested fix:** Increase `wait_for_text` timeout to at least 15s when `expected_count > 1` with a `sleep`-heavy fake binary, or remove the `sleep 3` from fake_mosaic (it is not needed to prove asynchrony since the extension fires-and-forgets the mosaic call).
 
 ### `tests/test_session_relaunch_resumes_agent_sessions.py` :: `main (post-relaunch workspace checks, lines 354-399)`
 - **order-dependence** · severity high · confidence high
@@ -410,7 +410,7 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 - **shared-global-state** · severity high · confidence high
 - **Evidence:** Lines 380-427: the test writes a hook into `~/.zprofile` (the real user shell profile), relies on cleanup in `finally`. If the test process is killed hard (SIGKILL from CI timeout), or two instances run concurrently, the hook line persists permanently in the real user's `.zprofile`.
 - **Why flaky:** A leftover hook referencing a deleted `hook_file` path is a no-op but is still noise in the user's shell startup. More critically, concurrent test runs append the hook twice; `content.replace(hook_line, '')` at line 422 replaces only the first occurrence when `str.replace` removes all occurrences — both are gone — but if one run crashes after the first append and before cleanup, the next run appends again and leaves a stale entry.
-- **Suggested fix:** Use a temporary zprofile in a per-test tempdir passed via `ZDOTDIR` env override to the launched cmux process, instead of mutating the real `~/.zprofile`.
+- **Suggested fix:** Use a temporary zprofile in a per-test tempdir passed via `ZDOTDIR` env override to the launched mosaic process, instead of mutating the real `~/.zprofile`.
 
 ### `tests/test_browser_custom_keybinds.py` :: `test_cmd_ctrl_h_goto_split_left_from_webview / test_cmd_opt_left_arrow_goto_split_left_from_webview`
 - **sleep-as-sync** · severity medium · confidence high
@@ -426,7 +426,7 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests/test_cli_socket_operation_deadline.py` :: `main (no-reply socket elapsed check)`
 - **wall-clock-timing-assert** · severity medium · confidence medium
-- **Evidence:** Line 155: CMUXTERM_CLI_RESPONSE_TIMEOUT_SEC is set to '0.2', meaning the CLI times out after 200ms. Line 209: `if result.elapsed > 1.5:` fails the test if the total wall-clock time for the subprocess exceeds 1.5s. On a loaded macOS CI runner a Swift binary cold start is 0.3-0.8s; adding the 0.2s CLI wait gives a realistic maximum of about 1.0-1.2s, which is only 25-50% below the 1.5s threshold.
+- **Evidence:** Line 155: MOSAICTERM_CLI_RESPONSE_TIMEOUT_SEC is set to '0.2', meaning the CLI times out after 200ms. Line 209: `if result.elapsed > 1.5:` fails the test if the total wall-clock time for the subprocess exceeds 1.5s. On a loaded macOS CI runner a Swift binary cold start is 0.3-0.8s; adding the 0.2s CLI wait gives a realistic maximum of about 1.0-1.2s, which is only 25-50% below the 1.5s threshold.
 - **Why flaky:** On heavily loaded CI runners (memory pressure, concurrent jobs), Swift binary launch time and OS scheduling jitter can push the elapsed past 1.5s even though the CLI itself is functioning correctly and respecting the 200ms deadline.
 - **Suggested fix:** Either raise the elapsed ceiling to 3.0s (the response timeout is already constrained to 0.2s so the important deadline is still enforced), or switch from a wall-clock assertion to checking only that the CLI exited with a timeout error, dropping the elapsed check entirely.
 
@@ -450,9 +450,9 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests/test_ctrl_socket.py` :: `run_tests (socket path check)`
 - **shared-global-state** · severity medium · confidence high
-- **Evidence:** Line 280: `socket_path = cmux.DEFAULT_SOCKET_PATH`. `DEFAULT_SOCKET_PATH` is a class-level attribute frozen at module import time (cmux.py line 236: `DEFAULT_SOCKET_PATH = _default_socket_path()`). Without `CMUX_TAG` or `CMUX_SOCKET_PATH`, `_default_socket_path()` resolves to `/tmp/cmux-debug.sock` (cmux.py line 157), which is the developer's live running instance.
-- **Why flaky:** Without CMUX_TAG, the test sends real `sleep 30`, `cat`, and Python subprocesses to the user's production terminal session. The CLAUDE.md policy explicitly forbids running socket tests against the default socket for this reason. On CI where no cmux instance is running the test exits early (graceful), but a stale socket file can cause it to connect to an unexpected instance.
-- **Suggested fix:** Change line 280 to call `cmux.default_socket_path()` (the dynamic method) rather than the import-time class attribute, and add an explicit assertion that `CMUX_TAG` or `CMUX_SOCKET_PATH` is set before proceeding, or gate the test with a CI environment check.
+- **Evidence:** Line 280: `socket_path = mosaic.DEFAULT_SOCKET_PATH`. `DEFAULT_SOCKET_PATH` is a class-level attribute frozen at module import time (mosaic.py line 236: `DEFAULT_SOCKET_PATH = _default_socket_path()`). Without `MOSAIC_TAG` or `MOSAIC_SOCKET_PATH`, `_default_socket_path()` resolves to `/tmp/mosaic-debug.sock` (mosaic.py line 157), which is the developer's live running instance.
+- **Why flaky:** Without MOSAIC_TAG, the test sends real `sleep 30`, `cat`, and Python subprocesses to the user's production terminal session. The CLAUDE.md policy explicitly forbids running socket tests against the default socket for this reason. On CI where no mosaic instance is running the test exits early (graceful), but a stale socket file can cause it to connect to an unexpected instance.
+- **Suggested fix:** Change line 280 to call `mosaic.default_socket_path()` (the dynamic method) rather than the import-time class attribute, and add an explicit assertion that `MOSAIC_TAG` or `MOSAIC_SOCKET_PATH` is set before proceeding, or gate the test with a CI environment check.
 
 ### `tests/test_restore_session_relaunches_codex_resume.py` :: `main (restored() closure, lines 261-266)`
 - **order-dependence** · severity medium · confidence high
@@ -472,9 +472,9 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 - **Why flaky:** Under CI/VM load, spawning a new Python subprocess and having it print 'WAITING' can easily exceed 2 s, causing the test to report 'Process didn't start properly' even though it did. The response-wait loop (lines 86-90) has the same 2 s ceiling for 'SIGINT_RECEIVED'.
 - **Suggested fix:** Replace the fixed-count loops with a deadline-based polling loop (e.g. `deadline = time.time() + 5.0; while time.time() < deadline: ...`) with the same `select` call inside, breaking on the sentinel.
 
-### `tests/test_socket_access.py` :: `_launch_cmux (called from every phase transition)`
+### `tests/test_socket_access.py` :: `_launch_mosaic (called from every phase transition)`
 - **sleep-as-sync** · severity medium · confidence high
-- **Evidence:** Line 239: `time.sleep(8)` after `_wait_for_socket` returns, unconditionally applied every time the app is launched. Also `_kill_cmux` at line 215: `time.sleep(1.5)` after pkill.
+- **Evidence:** Line 239: `time.sleep(8)` after `_wait_for_socket` returns, unconditionally applied every time the app is launched. Also `_kill_mosaic` at line 215: `time.sleep(1.5)` after pkill.
 - **Why flaky:** 8 s is used as a proxy for 'app fully initialized and ready to accept classified commands'. On a slow CI runner the app may still be initializing responder chain / socket mode at that point, causing the immediately-following `test_external_rejected` to see wrong behavior. On a fast runner the 8 s is just dead time. Neither bound is principled.
 - **Suggested fix:** After the socket appears, issue a `ping` command in a retry loop until it returns a response (any response, including 'Access denied'), treating that as the ready signal instead of a wall-clock wait.
 
@@ -486,9 +486,9 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests/test_terminal_focus_routing.py` :: `_assert_routed_to_surface (module-level shared path)`
 - **shared-global-state** · severity medium · confidence high
-- **Evidence:** Line 25: `FOCUS_FILE = Path('/tmp/cmux_focus_routing.txt')` — hardcoded path with no PID or random suffix. Lines 93-95 and 100-103 read and write this path during every assertion.
-- **Why flaky:** If two parallel CI jobs run this test simultaneously, they share the same file. One run's `echo $CMUX_SURFACE_ID > FOCUS_FILE` can overwrite the other's, causing either a false pass (wrong surface ID accepted) or a false failure (file contains a stale ID from the other run).
-- **Suggested fix:** Generate the path with a PID/random suffix: `FOCUS_FILE = Path(f'/tmp/cmux_focus_routing_{os.getpid()}.txt')`, and unlink it at module teardown.
+- **Evidence:** Line 25: `FOCUS_FILE = Path('/tmp/mosaic_focus_routing.txt')` — hardcoded path with no PID or random suffix. Lines 93-95 and 100-103 read and write this path during every assertion.
+- **Why flaky:** If two parallel CI jobs run this test simultaneously, they share the same file. One run's `echo $MOSAIC_SURFACE_ID > FOCUS_FILE` can overwrite the other's, causing either a false pass (wrong surface ID accepted) or a false failure (file contains a stale ID from the other run).
+- **Suggested fix:** Generate the path with a PID/random suffix: `FOCUS_FILE = Path(f'/tmp/mosaic_focus_routing_{os.getpid()}.txt')`, and unlink it at module teardown.
 
 ### `tests/test_browser_back_forward.py` :: `test_cmd_bracket_noop_on_terminal`
 - **sleep-as-sync** · severity low · confidence medium
@@ -498,7 +498,7 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests/test_browser_custom_keybinds.py` :: `test_cmd_opt_left_arrow_goto_split_left_from_webview`
 - **shared-global-state** · severity low · confidence medium
-- **Evidence:** Lines 91-128: creates a workspace with `client.new_workspace()` but never calls `client.close_workspace(ws_id)`. The test runs before test_cmd_ctrl_h_goto_split_left_from_webview (which also creates a workspace), so workspaces accumulate in the live cmux instance across the two tests.
+- **Evidence:** Lines 91-128: creates a workspace with `client.new_workspace()` but never calls `client.close_workspace(ws_id)`. The test runs before test_cmd_ctrl_h_goto_split_left_from_webview (which also creates a workspace), so workspaces accumulate in the live mosaic instance across the two tests.
 - **Why flaky:** Accumulated open workspaces can affect pane-count assertions in subsequent tests (line 60: `if len(panes) != 2`) if the window context bleeds across workspaces, and increase overall app state complexity. If the first test leaves a broken browser pane, the second test may inherit unexpected focus state.
 - **Suggested fix:** Add a `try/finally` block in both test functions to call `client.close_workspace(ws_id)` on exit, mirroring the cleanup pattern used in test_browser_goto_split.py.
 
@@ -525,7 +525,7 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests_v2/test_cli_new_workspace_external_git_branch_refresh.py` :: `module-level`
 - **logic-bug** · severity high · confidence high
-- **Evidence:** Lines 20-29: `SOCKET_PATH = _resolve_socket_path()` is executed at import time and unconditionally raises `cmuxError` if `CMUX_SOCKET_PATH` is unset or does not match `/tmp/cmux-debug-[^/]+\.sock`. All 20 peer files use `os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")` and accept the default socket.
+- **Evidence:** Lines 20-29: `SOCKET_PATH = _resolve_socket_path()` is executed at import time and unconditionally raises `mosaicError` if `MOSAIC_SOCKET_PATH` is unset or does not match `/tmp/mosaic-debug-[^/]+\.sock`. All 20 peer files use `os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")` and accept the default socket.
 - **Why flaky:** Any test runner that imports this file without a correctly-named tagged socket will get a hard import-time error rather than a skip or skip-able runtime check, making the test fail in environments (local dev, default CI) that legitimately use the untagged debug socket.
 - **Suggested fix:** Move the socket validation out of module-level code into `main()`, or change the guard to emit a warning/skip rather than raise, matching the pattern used by all peer test files.
 
@@ -549,7 +549,7 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests_v2/test_pane_resize_preserves_visible_content.py` :: `_run_once`
 - **logic-bug** · severity high · confidence high
-- **Evidence:** Line 74: `time.sleep(0.1)` is called after `client.focus_surface(surface_id)`. The file imports only `os`, `secrets`, `sys`, `pathlib.Path`, `cmux`, and members of `pane_resize_test_support`. `import time` is absent. `pane_resize_test_support` does import `time` internally but the selective `from ... import (...)` at lines 13-23 does not re-export it into this module's namespace.
+- **Evidence:** Line 74: `time.sleep(0.1)` is called after `client.focus_surface(surface_id)`. The file imports only `os`, `secrets`, `sys`, `pathlib.Path`, `mosaic`, and members of `pane_resize_test_support`. `import time` is absent. `pane_resize_test_support` does import `time` internally but the selective `from ... import (...)` at lines 13-23 does not re-export it into this module's namespace.
 - **Why flaky:** Every run crashes with `NameError: name 'time' is not defined` at line 74, so the test never reaches any assertion. It appears to be an omission introduced during the de-flake refactor when the import list was narrowed.
 - **Suggested fix:** Add `import time` to the top-level imports (after `import secrets`).
 
@@ -573,21 +573,21 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ### `tests_v2/test_terminal_focus_routing.py` :: `main (all assertions via _assert_routed_to_surface)`
 - **shared-global-state** · severity high · confidence high
-- **Evidence:** Line 25: FOCUS_FILE = Path("/tmp/cmux_focus_routing.txt") is a hardcoded module-level constant. Lines 93-103: the file is deleted, a shell command writes the focused surface ID into it, then the test reads it back. No process-unique or run-unique suffix is used.
+- **Evidence:** Line 25: FOCUS_FILE = Path("/tmp/mosaic_focus_routing.txt") is a hardcoded module-level constant. Lines 93-103: the file is deleted, a shell command writes the focused surface ID into it, then the test reads it back. No process-unique or run-unique suffix is used.
 - **Why flaky:** If two instances of this test run concurrently (parallel CI workers, re-runs, or another test that happens to write the same path), they share and corrupt the same sentinel file. One instance can read the stale value written by the other, causing false pass or false fail. The stress loop (10 iterations of new_split + close) makes concurrent collision more likely.
-- **Suggested fix:** Replace the hardcoded path with a per-run unique path: FOCUS_FILE = Path(tempfile.mktemp(prefix='cmux_focus_routing_', suffix='.txt')) inside main(), or at minimum suffix with os.getpid() and a secrets token.
+- **Suggested fix:** Replace the hardcoded path with a per-run unique path: FOCUS_FILE = Path(tempfile.mktemp(prefix='mosaic_focus_routing_', suffix='.txt')) inside main(), or at minimum suffix with os.getpid() and a secrets token.
 
 ### `tests_v2/test_tmux_compat_matrix.py` :: `main (pipe-pane block, lines 163-166)`
 - **async-race** · severity high · confidence high
-- **Evidence:** Line 163-165: pipe_file = ... / f'cmux_pipe_pane_{stamp}.log'; _run_cli(cli, ['pipe-pane', ..., f'cat > {pipe_file}']); piped = pipe_file.read_text() if pipe_file.exists() else ''. The read is unconditional immediately after the CLI returns.
+- **Evidence:** Line 163-165: pipe_file = ... / f'mosaic_pipe_pane_{stamp}.log'; _run_cli(cli, ['pipe-pane', ..., f'cat > {pipe_file}']); piped = pipe_file.read_text() if pipe_file.exists() else ''. The read is unconditional immediately after the CLI returns.
 - **Why flaky:** pipe-pane starts an asynchronous subprocess (cat > file) in the app. The CLI returning does not mean the subprocess has started, let alone flushed any bytes to disk. Under any load, the file either does not exist yet or is empty, so piped is '' and the _must(capture_token in piped) assertion always fails.
 - **Suggested fix:** Poll the file until it contains the capture_token, using the existing _wait_for helper: _wait_for(lambda: pipe_file.exists() and capture_token in pipe_file.read_text(), timeout_s=5.0) before the _must assertion.
 
 ### `tests_v2/test_background_workspace_idle_thread_footprint.py` :: `main (entire test)`
 - **other** · severity medium · confidence high
-- **Evidence:** Line 18: `SOCKET_PATH = os.environ.get('CMUX_SOCKET', '/tmp/cmux-debug.sock')`. The env var name is `CMUX_SOCKET`, but the standard harness sets `CMUX_SOCKET_PATH`. Every other test in both `tests/` and `tests_v2/` reads `CMUX_SOCKET_PATH`.
-- **Why flaky:** When run via the standard CI harness that exports `CMUX_SOCKET_PATH=...`, this test silently falls back to `/tmp/cmux-debug.sock` — the main (non-tagged) dev socket. The test then fires `vmmap` and thread-count assertions against the live instance, not the tagged build under test, giving false passes when no tagged socket is active and potentially flaky results depending on what the user's running cmux is doing.
-- **Suggested fix:** Change line 18 to `os.environ.get('CMUX_SOCKET_PATH', '/tmp/cmux-debug.sock')` to match the convention used by all other tests.
+- **Evidence:** Line 18: `SOCKET_PATH = os.environ.get('MOSAIC_SOCKET', '/tmp/mosaic-debug.sock')`. The env var name is `MOSAIC_SOCKET`, but the standard harness sets `MOSAIC_SOCKET_PATH`. Every other test in both `tests/` and `tests_v2/` reads `MOSAIC_SOCKET_PATH`.
+- **Why flaky:** When run via the standard CI harness that exports `MOSAIC_SOCKET_PATH=...`, this test silently falls back to `/tmp/mosaic-debug.sock` — the main (non-tagged) dev socket. The test then fires `vmmap` and thread-count assertions against the live instance, not the tagged build under test, giving false passes when no tagged socket is active and potentially flaky results depending on what the user's running mosaic is doing.
+- **Suggested fix:** Change line 18 to `os.environ.get('MOSAIC_SOCKET_PATH', '/tmp/mosaic-debug.sock')` to match the convention used by all other tests.
 
 ### `tests_v2/test_browser_custom_keybinds.py` :: `test_cmd_ctrl_h_goto_split_left_from_webview, test_cmd_opt_left_arrow_goto_split_left_from_webview`
 - **sleep-as-sync** · severity medium · confidence high
@@ -629,11 +629,11 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 - **logic-bug** · severity medium · confidence high
 - **Evidence:** Lines 153-182: `_wait_for_tmp_write` tries two timed loops and a direct-send fallback, then at line 181 prints `WARN: Timed out waiting for tmp file write: ...; continuing in v2 VM mode` and `return`s without raising. The caller at line 241 (`_wait_for_tmp_write(c, new_id, tmp, token)`) discards the return value and proceeds to print `PASS: new tab is interactive after many splits`. If the shell never writes the file, all 6 iterations silently pass.
 - **Why flaky:** The function is the primary behavioral assertion (the new terminal executed a command), yet it fails open. Under VM load or when the shell is genuinely stuck, the test reports PASS while the regression it is guarding against has actually fired.
-- **Suggested fix:** Add a boolean return value to `_wait_for_tmp_write` (True on success, False on timeout) and raise `cmuxError` at the call site if it returns False, or convert the WARN print to a `raise cmuxError(...)` in the final timeout branch so the test result accurately reflects execution failure.
+- **Suggested fix:** Add a boolean return value to `_wait_for_tmp_write` (True on success, False on timeout) and raise `mosaicError` at the call site if it returns False, or convert the WARN print to a `raise mosaicError(...)` in the final timeout branch so the test result accurately reflects execution failure.
 
 ### `tests_v2/test_ssh_remote_last_surface_clears_remote_state.py` :: `test_ssh_remote_last_surface_clears_remote_state`
 - **wall-clock-timing-assert** · severity medium · confidence high
-- **Evidence:** Line 129: `token = f"__CMUX_{token_prefix}_{int(time.time() * 1000)}__"` uses millisecond wall-clock time as the uniquifier for a probe token. All other tests in this suite use `secrets.token_hex(6)` for the same purpose.
+- **Evidence:** Line 129: `token = f"__MOSAIC_{token_prefix}_{int(time.time() * 1000)}__"` uses millisecond wall-clock time as the uniquifier for a probe token. All other tests in this suite use `secrets.token_hex(6)` for the same purpose.
 - **Why flaky:** If `_run_surface_probe` is called more than once within the same millisecond (possible under fast CI), both probes produce the same token. The regex match then also hits the prior probe's echo still in the terminal scrollback, causing the test to return stale output and either false-pass or false-fail depending on the terminal state.
 - **Suggested fix:** Replace `int(time.time() * 1000)` with `secrets.token_hex(6)` to match the pattern used by all other tests in the suite.
 
@@ -667,17 +667,17 @@ Categories: `wall-clock-timing-assert` 36, `sleep-as-sync` 20, `async-race` 17, 
 
 ## Fix outcome (team-fix workflow `.flaky-audit/team-fix.mjs`)
 
-Coordinated area-teams adversarially verified the candidates above, then applied only genuinely-flaky, safely-fixable, statically-validated changes. Validation: `py_compile` (Python), `bash -n` (shell), `swift build --build-tests` (package Swift, compiles tests without running them); app-target Swift (`cmuxTests`/`cmuxUITests`) is CI-compiled. No test was executed against a live socket.
+Coordinated area-teams adversarially verified the candidates above, then applied only genuinely-flaky, safely-fixable, statically-validated changes. Validation: `py_compile` (Python), `bash -n` (shell), `swift build --build-tests` (package Swift, compiles tests without running them); app-target Swift (`mosaicTests`/`mosaicUITests`) is CI-compiled. No test was executed against a live socket.
 
 **38 findings fixed.** 37 are purely test-only. The 38th (`MobileCoreRPCClientTests` cancelled-while-queued race) genuinely cannot be made deterministic from the test alone — the writer-gate queue state is private to the production `MobileCoreRPCSession` actor — so it is fixed with a `#if DEBUG`, read-only `debugQueuedRequestCount()` accessor on the session and client, added to the file's existing `#if DEBUG` test-support extension (which already exposes `debugWithRequestTimeout`). It is compiled out of Release builds, changes no shipping-build behavior, and the test now waits on that real gate signal instead of spinning a fixed `Task.yield()` count.
 
 ### Refuted / skipped by the verification gate
 
-- `test_command_palette_switcher_surface_precedence.py` — The prescribed fix is unsafe and counterproductive. (1) The primary path uses a server method that does not exist: I grepped the registered socket methods in Packages/macOS/CmuxControlSocket/.../Contr
+- `test_command_palette_switcher_surface_precedence.py` — The prescribed fix is unsafe and counterproductive. (1) The primary path uses a server method that does not exist: I grepped the registered socket methods in Packages/macOS/MosaicControlSocket/.../Contr
 - `test_codex_hook_agent_ports.py` — The fix instruction is self-refuting and concludes "Mark skipped / no code change is needed." Verified against the file: the duplicate-port guard the instruction relies on already exists at lines 325-
 - `test_socket_access.py` — No edit needed: the prescribed minimal fallback fix is already present in the file. The instruction's safe minimum was "generate a unique hook_file path using os.getpid()". In test_internal_process_al
 - `TailscaleStatusTests.swift` — Finding [1]'s stated mechanism is factually wrong. It claims staleInstant (line 165, call it T1) could equal refresh()'s internal stamp (line 71, T2) and thereby let the stale apply(.active, evaluated
-- `SyncFrameAndProtocolTests.swift` — Finding [1] is not genuinely flaky. In FlagTests.envOverrideWins (lines 385-386) both #expect calls pass a non-empty CMUX_MOBILE_DEVICE_LIST_LOCAL_FIRST env value ("1" and "0"). resolved() checks the
+- `SyncFrameAndProtocolTests.swift` — Finding [1] is not genuinely flaky. In FlagTests.envOverrideWins (lines 385-386) both #expect calls pass a non-empty MOSAIC_MOBILE_DEVICE_LIST_LOCAL_FIRST env value ("1" and "0"). resolved() checks the
 - `BrowserOmnibarPageFocusRepositoryTests.swift` — Finding [1] (invalidateAbortsPendingRetry) is not genuinely flaky and the only proposed fix is a risky production change. The test is @MainActor async, so the main actor executor IS the main dispatch
 - `JSONConfigStoreTests.swift` — Finding [1] is not a genuine flake. (a) fatalError in withTimeout is unreachable in normal runs: the work child task returns non-optional T wrapped as T? (always non-nil); if the timeout task returns
 - `HostingInvalidationTests.swift` — Finding [1] (async-race in the three @Test methods via the pump(until:) helper) is refuted; no safe behavior-preserving fix exists, so I made no edit.

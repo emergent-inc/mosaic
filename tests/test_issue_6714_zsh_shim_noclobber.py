@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Regression coverage for https://github.com/emergent-inc/cmux/issues/6714.
+Regression coverage for https://github.com/emergent-inc/mosaic/issues/6714.
 
-When a user enables ``setopt noclobber`` in their interactive zsh, cmux's shell
+When a user enables ``setopt noclobber`` in their interactive zsh, mosaic's shell
 integration prints a spurious error on startup:
 
-    _cmux_install_cli_command_shim:13: file exists: \
-        /var/folders/.../T//cmux-cli-shims/<surface-id>/claude
+    _mosaic_install_cli_command_shim:13: file exists: \
+        /var/folders/.../T//mosaic-cli-shims/<surface-id>/claude
 
-Root cause: ``Resources/shell-integration/cmux-zsh-integration.zsh`` writes a
+Root cause: ``Resources/shell-integration/mosaic-zsh-integration.zsh`` writes a
 per-surface CLI shim with a plain ``>`` redirection::
 
     } >"$shim_path" 2>/dev/null || return 0
 
-``_cmux_install_cli_command_shim`` runs more than once per shell (once at source
-time via the top-level ``_cmux_install_cli_wrapper claude`` call, and again on
-the first prompt via the ``_cmux_fix_path`` precmd hook). The second write
+``_mosaic_install_cli_command_shim`` runs more than once per shell (once at source
+time via the top-level ``_mosaic_install_cli_wrapper claude`` call, and again on
+the first prompt via the ``_mosaic_fix_path`` precmd hook). The second write
 targets a shim that already exists, so under ``noclobber`` zsh refuses to
 overwrite the file and emits ``file exists``. The ``2>/dev/null`` does not
 suppress the message because the no-clobber failure is reported by the shell's
@@ -23,7 +23,7 @@ redirection machinery on the compound-command redirect itself, and the
 ``|| return 0`` then *skips* the write entirely -- so the shim is also left
 stale (not refreshed to the latest wrapper path).
 
-The fix is zsh's explicit clobber redirection (``>|``) for this cmux-owned
+The fix is zsh's explicit clobber redirection (``>|``) for this mosaic-owned
 generated file, which overwrites regardless of the user's global ``noclobber``
 setting -- the same operator the rest of this integration already uses for its
 own generated marker/cache files.
@@ -44,25 +44,25 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-INTEGRATION = REPO_ROOT / "Resources/shell-integration/cmux-zsh-integration.zsh"
+INTEGRATION = REPO_ROOT / "Resources/shell-integration/mosaic-zsh-integration.zsh"
 
 # Drive the real shim writer twice under noclobber. The first call creates the
-# shim; the second must overwrite the existing file (cmux owns it) without
+# shim; the second must overwrite the existing file (mosaic owns it) without
 # tripping noclobber. We embed two *different* wrapper paths so we can prove the
 # second write actually refreshed the file rather than silently no-op'ing.
 #
-# Sourcing the integration with no CMUX_SHELL_INTEGRATION_DIR makes the
-# top-level `_cmux_install_cli_wrapper claude` early-return (no shim written at
+# Sourcing the integration with no MOSAIC_SHELL_INTEGRATION_DIR makes the
+# top-level `_mosaic_install_cli_wrapper claude` early-return (no shim written at
 # source time), so the only writes are our two explicit calls. The precmd hooks
 # the integration registers never fire under `zsh -c` (non-interactive, no
 # prompt), keeping the scenario focused on the shim writer.
 DRIVER = r"""
 setopt noclobber
-source "$CMUX_ZSH_INTEGRATION" 2>/dev/null
-export TMPDIR="$CMUX_TEST_TMPDIR"
-export CMUX_SURFACE_ID="$CMUX_TEST_SURFACE_ID"
-_cmux_install_cli_command_shim claude "$CMUX_TEST_WRAPPER_A"
-_cmux_install_cli_command_shim claude "$CMUX_TEST_WRAPPER_B"
+source "$MOSAIC_ZSH_INTEGRATION" 2>/dev/null
+export TMPDIR="$MOSAIC_TEST_TMPDIR"
+export MOSAIC_SURFACE_ID="$MOSAIC_TEST_SURFACE_ID"
+_mosaic_install_cli_command_shim claude "$MOSAIC_TEST_WRAPPER_A"
+_mosaic_install_cli_command_shim claude "$MOSAIC_TEST_WRAPPER_B"
 """
 
 
@@ -75,22 +75,22 @@ def _run_driver(tmp: Path) -> subprocess.CompletedProcess[str]:
     wrapper_a.chmod(0o755)
     wrapper_b.chmod(0o755)
 
-    # Clean env: drop ambient CMUX_* so nothing the integration reads leaks in,
+    # Clean env: drop ambient MOSAIC_* so nothing the integration reads leaks in,
     # and explicitly disable the socket/ghostty paths so sourcing stays quiet.
-    env = {key: value for key, value in os.environ.items() if not key.startswith("CMUX")}
+    env = {key: value for key, value in os.environ.items() if not key.startswith("MOSAIC")}
     env.update(
         {
             "LC_ALL": "C",
             "LANG": "C",
-            "CMUX_ZSH_INTEGRATION": str(INTEGRATION),
-            "CMUX_TEST_TMPDIR": str(tmp),
-            "CMUX_TEST_SURFACE_ID": "issue-6714-shim",
-            "CMUX_TEST_WRAPPER_A": str(wrapper_a),
-            "CMUX_TEST_WRAPPER_B": str(wrapper_b),
+            "MOSAIC_ZSH_INTEGRATION": str(INTEGRATION),
+            "MOSAIC_TEST_TMPDIR": str(tmp),
+            "MOSAIC_TEST_SURFACE_ID": "issue-6714-shim",
+            "MOSAIC_TEST_WRAPPER_A": str(wrapper_a),
+            "MOSAIC_TEST_WRAPPER_B": str(wrapper_b),
             # Keep sourcing side-effect-free: no socket sends, no nested ghostty
             # integration.
-            "CMUX_SOCKET_PATH": "",
-            "CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION": "0",
+            "MOSAIC_SOCKET_PATH": "",
+            "MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION": "0",
             "GHOSTTY_RESOURCES_DIR": "",
         }
     )
@@ -108,7 +108,7 @@ def _run_driver(tmp: Path) -> subprocess.CompletedProcess[str]:
 def test_zsh_shim_refresh_is_silent_and_refreshes_under_noclobber() -> None:
     assert INTEGRATION.exists(), f"missing integration file: {INTEGRATION}"
 
-    with tempfile.TemporaryDirectory(prefix="cmux-6714-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-6714-") as td:
         tmp = Path(td)
         proc = _run_driver(tmp)
         debug = (
@@ -120,17 +120,17 @@ def test_zsh_shim_refresh_is_silent_and_refreshes_under_noclobber() -> None:
         # The reported symptom: zsh prints `file exists` from the shim writer
         # when it refuses to clobber the existing shim.
         assert "file exists" not in proc.stderr.lower(), (
-            "cmux printed a noclobber 'file exists' error while refreshing its own "
+            "mosaic printed a noclobber 'file exists' error while refreshing its own "
             "generated shim" + debug
         )
         # Locale-independent guard: no error should be attributed to the shim
         # writer at all (the noclobber failure carries this function name).
-        assert "_cmux_install_cli_command_shim" not in proc.stderr, (
+        assert "_mosaic_install_cli_command_shim" not in proc.stderr, (
             "the shim writer reported an error to stderr while refreshing the shim"
             + debug
         )
 
-        shim_path = tmp / "cmux-cli-shims" / "issue-6714-shim" / "claude"
+        shim_path = tmp / "mosaic-cli-shims" / "issue-6714-shim" / "claude"
         assert shim_path.exists(), f"shim was not created at {shim_path}" + debug
         assert os.access(shim_path, os.X_OK), (
             f"shim is not executable: {shim_path}" + debug
@@ -142,12 +142,12 @@ def test_zsh_shim_refresh_is_silent_and_refreshes_under_noclobber() -> None:
         contents = shim_path.read_text(encoding="utf-8")
         wrapper_b = str(tmp / "wrapper-b")
         wrapper_a = str(tmp / "wrapper-a")
-        assert f'cmux_wrapper="{wrapper_b}"' in contents, (
-            "cmux did not refresh its generated shim on the second write under "
+        assert f'mosaic_wrapper="{wrapper_b}"' in contents, (
+            "mosaic did not refresh its generated shim on the second write under "
             f"noclobber (expected wrapper {wrapper_b!r}).\n--- shim ---\n{contents}"
             + debug
         )
-        assert f'cmux_wrapper="{wrapper_a}"' not in contents, (
+        assert f'mosaic_wrapper="{wrapper_a}"' not in contents, (
             "stale wrapper path from the first write survived the refresh.\n"
             f"--- shim ---\n{contents}" + debug
         )
@@ -155,4 +155,4 @@ def test_zsh_shim_refresh_is_silent_and_refreshes_under_noclobber() -> None:
 
 if __name__ == "__main__":
     test_zsh_shim_refresh_is_silent_and_refreshes_under_noclobber()
-    print("PASS: cmux refreshes its zsh CLI shim silently under noclobber")
+    print("PASS: mosaic refreshes its zsh CLI shim silently under noclobber")

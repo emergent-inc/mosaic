@@ -10,9 +10,9 @@ import type { DiffViewerConfig } from "../types";
 import { installWebviewStyles } from "./installWebviewStyles";
 
 function readConfig(): DiffViewerConfig {
-  const element = document.getElementById("cmux-diff-viewer-config");
+  const element = document.getElementById("mosaic-diff-viewer-config");
   if (!element?.textContent) {
-    throw new Error("Missing cmux diff viewer config");
+    throw new Error("Missing mosaic diff viewer config");
   }
   return JSON.parse(element.textContent);
 }

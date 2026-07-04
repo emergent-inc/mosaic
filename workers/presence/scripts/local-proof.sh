@@ -12,7 +12,7 @@
 # Optional second same-team account to prove the device-owner guard
 # (a co-member's heartbeat for someone else's device is rejected):
 #   STACK_EMAIL_2, STACK_PASSWORD_2
-# Optional explicit team to scope every request to (X-Cmux-Team-Id); both
+# Optional explicit team to scope every request to (X-Mosaic-Team-Id); both
 # accounts must be members:
 #   PROOF_TEAM_ID
 set -euo pipefail
@@ -96,7 +96,7 @@ DEVICE_ID=$(uuidgen | tr 'A-Z' 'a-z')
 AUTH_CFG="$WORK/auth1.curlrc"
 printf 'header = "authorization: Bearer %s"\n' "$ACCESS_TOKEN" >"$AUTH_CFG"
 if [ -n "${PROOF_TEAM_ID:-}" ]; then
-  printf 'header = "x-cmux-team-id: %s"\n' "$PROOF_TEAM_ID" >>"$AUTH_CFG"
+  printf 'header = "x-mosaic-team-id: %s"\n' "$PROOF_TEAM_ID" >>"$AUTH_CFG"
 fi
 AUTH=(-K "$AUTH_CFG")
 beat() { # beat <tag> [extra-json-fields]
@@ -111,7 +111,7 @@ curl -Ns "$BASE/v1/presence/subscribe" "${AUTH[@]}" >"$SSE_LOG" &
 PIDS+=($!)
 PRESENCE_TOKEN="$ACCESS_TOKEN" PRESENCE_TEAM_ID="${PROOF_TEAM_ID:-}" bun -e '
   const headers = { authorization: `Bearer ${process.env.PRESENCE_TOKEN}` };
-  if (process.env.PRESENCE_TEAM_ID) headers["x-cmux-team-id"] = process.env.PRESENCE_TEAM_ID;
+  if (process.env.PRESENCE_TEAM_ID) headers["x-mosaic-team-id"] = process.env.PRESENCE_TEAM_ID;
   const ws = new WebSocket("ws://127.0.0.1:'"$PORT"'/v1/presence/subscribe", { headers });
   ws.onmessage = (e) => console.log(String(e.data));
   ws.onerror = (e) => console.error("ws error", e?.message ?? e);
@@ -139,7 +139,7 @@ if [ -n "${STACK_EMAIL_2:-}" ] && [ -n "${STACK_PASSWORD_2:-}" ]; then
   else
     AUTH2_CFG="$WORK/auth2.curlrc"
     printf 'header = "authorization: Bearer %s"\n' "$ACCESS_TOKEN_2" >"$AUTH2_CFG"
-    printf 'header = "x-cmux-team-id: %s"\n' "$TEAM_ID" >>"$AUTH2_CFG"
+    printf 'header = "x-mosaic-team-id: %s"\n' "$TEAM_ID" >>"$AUTH2_CFG"
     CODE=$(curl -s -o "$WORK/owner.json" -w '%{http_code}' -X POST "$BASE/v1/presence/heartbeat" \
       -K "$AUTH2_CFG" \
       -H "content-type: application/json" \

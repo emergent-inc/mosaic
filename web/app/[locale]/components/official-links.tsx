@@ -35,7 +35,7 @@ function CommunityLink({
 }
 
 /**
- * The official cmux links (Discord, GitHub, X, YouTube, LinkedIn) rendered as a
+ * The official mosaic links (Discord, GitHub, X, YouTube, LinkedIn) rendered as a
  * responsive card grid. Shared between the Community page and the download
  * confirmation page so both stay in sync. Reads copy from the `community`
  * message namespace. Pass `heading={false}` to omit the section title.
@@ -64,7 +64,7 @@ export function OfficialLinks({ heading = true }: { heading?: boolean }) {
         />
 
         <CommunityLink
-          href="https://github.com/emergent-inc/cmux"
+          href="https://github.com/emergent-inc/mosaic"
           name="GitHub"
           action={t("githubAction")}
           description={t("githubDesc")}

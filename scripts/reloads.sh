@@ -3,30 +3,30 @@ set -euo pipefail
 
 APP_NAME="Mosaic STAGING"
 BUNDLE_ID="mosaic.com.emergent.app.staging"
-BASE_APP_NAME="cmux"
+BASE_APP_NAME="mosaic"
 DERIVED_DATA=""
 NAME_SET=0
 BUNDLE_SET=0
 DERIVED_SET=0
 TAG=""
-# Matches CmuxStateDirectory (non-TCC ~/.local/state/cmux) where the app/CLI now
-# read the last-socket-path markers (https://github.com/emergent-inc/cmux/issues/5146).
+# Matches MosaicStateDirectory (non-TCC ~/.local/state/mosaic) where the app/CLI now
+# read the last-socket-path markers (https://github.com/emergent-inc/mosaic/issues/5146).
 # Resolve the real account home via getpwuid (the same syscall
 # homeDirectoryForCurrentUser uses) rather than $HOME, which a shell can override.
 # perl ships with macOS and returns the full home path even when it contains spaces;
 # `dscl ... | awk` mis-parses such paths because dscl wraps a value with spaces onto
 # a second line. `|| true` keeps the lookup from aborting the script under
 # `set -euo pipefail`; an empty result falls back to $HOME.
-_cmux_account_home="$(perl -e 'print((getpwuid($<))[7])' 2>/dev/null || true)"
-LAST_SOCKET_PATH_DIR="${_cmux_account_home:-$HOME}/.local/state/cmux"
+_mosaic_account_home="$(perl -e 'print((getpwuid($<))[7])' 2>/dev/null || true)"
+LAST_SOCKET_PATH_DIR="${_mosaic_account_home:-$HOME}/.local/state/mosaic"
 
 write_last_socket_path() {
   local socket_path="$1"
   local marker_name="staging-last-socket-path"
-  local tmp_marker="/tmp/cmux-staging-last-socket-path"
+  local tmp_marker="/tmp/mosaic-staging-last-socket-path"
   if [[ -n "${STAGING_SLUG:-}" ]]; then
     marker_name="staging-${STAGING_SLUG}-last-socket-path"
-    tmp_marker="/tmp/cmux-staging-${STAGING_SLUG}-last-socket-path"
+    tmp_marker="/tmp/mosaic-staging-${STAGING_SLUG}-last-socket-path"
   fi
   mkdir -p "$LAST_SOCKET_PATH_DIR"
   echo "$socket_path" > "${LAST_SOCKET_PATH_DIR}/${marker_name}" || true
@@ -47,7 +47,7 @@ usage() {
 Usage: ./scripts/reloads.sh [options]
 
 Release build with isolated "Mosaic STAGING" identity. Runs side-by-side with
-the production cmux app.
+the production mosaic app.
 
 Options:
   --tag <name>           Short tag for parallel builds (e.g., feature-xyz-lol).
@@ -139,13 +139,13 @@ if [[ -n "$TAG" ]]; then
     BUNDLE_ID="mosaic.com.emergent.app.staging.${TAG_ID}"
   fi
   if [[ "$DERIVED_SET" -eq 0 ]]; then
-    DERIVED_DATA="/tmp/cmux-staging-${TAG_SLUG}"
+    DERIVED_DATA="/tmp/mosaic-staging-${TAG_SLUG}"
   fi
 fi
 
 XCODEBUILD_ARGS=(
-  -project cmux.xcodeproj
-  -scheme cmux
+  -project mosaic.xcodeproj
+  -scheme mosaic
   -configuration Release
   -destination 'platform=macOS'
 )
@@ -205,7 +205,7 @@ fi
 
 # Staging always copies the built app and patches the plist to set an isolated
 # socket path, bundle id, and display name. This prevents conflicts with the
-# production cmux app.
+# production mosaic app.
 STAGING_APP_PATH="$(dirname "$APP_PATH")/${APP_NAME}.app"
 rm -rf "$STAGING_APP_PATH"
 cp -R "$APP_PATH" "$STAGING_APP_PATH"
@@ -221,30 +221,30 @@ if [[ -f "$INFO_PLIST" ]]; then
   # Inject staging socket paths via LSEnvironment so the Release binary
   # (which defaults to the per-user stable socket) uses isolated sockets instead.
   STAGING_SLUG="$(staging_slug_from_bundle_id "$BUNDLE_ID")"
-  APP_SUPPORT_DIR="$HOME/Library/Application Support/cmux"
+  APP_SUPPORT_DIR="$HOME/Library/Application Support/mosaic"
   if [[ -n "$STAGING_SLUG" ]]; then
-    CMUXD_SOCKET="${APP_SUPPORT_DIR}/cmuxd-${STAGING_SLUG}.sock"
-    CMUX_SOCKET_PATH_VALUE="/tmp/cmux-staging-${STAGING_SLUG}.sock"
+    MOSAICD_SOCKET="${APP_SUPPORT_DIR}/mosaicd-${STAGING_SLUG}.sock"
+    MOSAIC_SOCKET_PATH_VALUE="/tmp/mosaic-staging-${STAGING_SLUG}.sock"
   else
-    CMUXD_SOCKET="${APP_SUPPORT_DIR}/cmuxd-staging.sock"
-    CMUX_SOCKET_PATH_VALUE="/tmp/cmux-staging.sock"
+    MOSAICD_SOCKET="${APP_SUPPORT_DIR}/mosaicd-staging.sock"
+    MOSAIC_SOCKET_PATH_VALUE="/tmp/mosaic-staging.sock"
   fi
-  write_last_socket_path "$CMUX_SOCKET_PATH_VALUE"
+  write_last_socket_path "$MOSAIC_SOCKET_PATH_VALUE"
   /usr/libexec/PlistBuddy -c "Add :LSEnvironment dict" "$INFO_PLIST" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUX_BUNDLE_ID \"${BUNDLE_ID}\"" "$INFO_PLIST" 2>/dev/null \
-    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUX_BUNDLE_ID string \"${BUNDLE_ID}\"" "$INFO_PLIST"
-  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUXD_UNIX_PATH \"${CMUXD_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
-    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUXD_UNIX_PATH string \"${CMUXD_SOCKET}\"" "$INFO_PLIST"
-  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUX_SOCKET_PATH \"${CMUX_SOCKET_PATH_VALUE}\"" "$INFO_PLIST" 2>/dev/null \
-    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUX_SOCKET_PATH string \"${CMUX_SOCKET_PATH_VALUE}\"" "$INFO_PLIST"
-  if [[ -S "$CMUXD_SOCKET" ]]; then
-    for PID in $(lsof -t "$CMUXD_SOCKET" 2>/dev/null); do
+  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:MOSAIC_BUNDLE_ID \"${BUNDLE_ID}\"" "$INFO_PLIST" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:MOSAIC_BUNDLE_ID string \"${BUNDLE_ID}\"" "$INFO_PLIST"
+  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:MOSAICD_UNIX_PATH \"${MOSAICD_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:MOSAICD_UNIX_PATH string \"${MOSAICD_SOCKET}\"" "$INFO_PLIST"
+  /usr/libexec/PlistBuddy -c "Set :LSEnvironment:MOSAIC_SOCKET_PATH \"${MOSAIC_SOCKET_PATH_VALUE}\"" "$INFO_PLIST" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:MOSAIC_SOCKET_PATH string \"${MOSAIC_SOCKET_PATH_VALUE}\"" "$INFO_PLIST"
+  if [[ -S "$MOSAICD_SOCKET" ]]; then
+    for PID in $(lsof -t "$MOSAICD_SOCKET" 2>/dev/null); do
       kill "$PID" 2>/dev/null || true
     done
-    rm -f "$CMUXD_SOCKET"
+    rm -f "$MOSAICD_SOCKET"
   fi
-  if [[ -S "$CMUX_SOCKET_PATH_VALUE" ]]; then
-    rm -f "$CMUX_SOCKET_PATH_VALUE"
+  if [[ -S "$MOSAIC_SOCKET_PATH_VALUE" ]]; then
+    rm -f "$MOSAIC_SOCKET_PATH_VALUE"
   fi
   /usr/bin/codesign --force --sign - --timestamp=none --generate-entitlement-der "$STAGING_APP_PATH" >/dev/null 2>&1 || true
 fi
@@ -256,33 +256,33 @@ sleep 0.3
 # Kill any running staging instance; allow side-by-side with the main and dev apps.
 pkill -f "${APP_NAME}.app/Contents/MacOS/${BASE_APP_NAME}" || true
 sleep 0.3
-CMUXD_SRC="$PWD/cmuxd/zig-out/bin/cmuxd"
-if [[ -d "$PWD/cmuxd" ]]; then
-  (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
+MOSAICD_SRC="$PWD/mosaicd/zig-out/bin/mosaicd"
+if [[ -d "$PWD/mosaicd" ]]; then
+  (cd "$PWD/mosaicd" && zig build -Doptimize=ReleaseFast)
 fi
-if [[ -x "$CMUXD_SRC" ]]; then
+if [[ -x "$MOSAICD_SRC" ]]; then
   BIN_DIR="$APP_PATH/Contents/Resources/bin"
   mkdir -p "$BIN_DIR"
-  cp "$CMUXD_SRC" "$BIN_DIR/cmuxd"
-  chmod +x "$BIN_DIR/cmuxd"
+  cp "$MOSAICD_SRC" "$BIN_DIR/mosaicd"
+  chmod +x "$BIN_DIR/mosaicd"
 fi
-# Avoid inheriting cmux/ghostty environment variables from the terminal that
-# runs this script (often inside another cmux instance), which can cause
+# Avoid inheriting mosaic/ghostty environment variables from the terminal that
+# runs this script (often inside another mosaic instance), which can cause
 # socket and resource-path conflicts.
 OPEN_CLEAN_ENV=(
   env
-  -u CMUX_SOCKET_PATH
-  -u CMUX_TAB_ID
-  -u CMUX_PANEL_ID
-  -u CMUXD_UNIX_PATH
-  -u CMUX_TAG
-  -u CMUX_BUNDLE_ID
-  -u CMUX_SHELL_INTEGRATION
+  -u MOSAIC_SOCKET_PATH
+  -u MOSAIC_TAB_ID
+  -u MOSAIC_PANEL_ID
+  -u MOSAICD_UNIX_PATH
+  -u MOSAIC_TAG
+  -u MOSAIC_BUNDLE_ID
+  -u MOSAIC_SHELL_INTEGRATION
   -u GHOSTTY_BIN_DIR
   -u GHOSTTY_RESOURCES_DIR
   -u GHOSTTY_SHELL_FEATURES
   # Dev shells (including CI/Codex) often force-disable paging by exporting these.
-  # Don't leak that into cmux, otherwise `git diff` won't page even with PAGER=less.
+  # Don't leak that into mosaic, otherwise `git diff` won't page even with PAGER=less.
   -u GIT_PAGER
   -u GH_PAGER
   -u TERMINFO
@@ -291,7 +291,7 @@ OPEN_CLEAN_ENV=(
 
 # Always inject staging socket paths via env to ensure they take effect
 # (LSEnvironment requires app restart to pick up plist changes).
-"${OPEN_CLEAN_ENV[@]}" CMUX_BUNDLE_ID="$BUNDLE_ID" CMUX_SOCKET_PATH="$CMUX_SOCKET_PATH_VALUE" CMUXD_UNIX_PATH="$CMUXD_SOCKET" open -g "$APP_PATH"
+"${OPEN_CLEAN_ENV[@]}" MOSAIC_BUNDLE_ID="$BUNDLE_ID" MOSAIC_SOCKET_PATH="$MOSAIC_SOCKET_PATH_VALUE" MOSAICD_UNIX_PATH="$MOSAICD_SOCKET" open -g "$APP_PATH"
 
 # Safety: ensure only one instance is running.
 sleep 0.2

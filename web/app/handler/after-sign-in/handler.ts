@@ -57,9 +57,9 @@ function isLocalRequest(request: NextRequest): boolean {
 
 function localAllowedNativeSchemes(): Set<string> {
   const values = [
-    process.env.CMUX_AUTH_CALLBACK_SCHEME,
-    process.env.CMUX_ALLOWED_NATIVE_CALLBACK_SCHEMES,
-    process.env.CMUX_DEV_NATIVE_CALLBACK_SCHEMES,
+    process.env.MOSAIC_AUTH_CALLBACK_SCHEME,
+    process.env.MOSAIC_ALLOWED_NATIVE_CALLBACK_SCHEMES,
+    process.env.MOSAIC_DEV_NATIVE_CALLBACK_SCHEMES,
   ];
   const schemes = new Set<string>();
   for (const value of values) {

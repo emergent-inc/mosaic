@@ -35,7 +35,7 @@ afterAll(() => {
 });
 
 function analyticsRequest(body: unknown): Request {
-  return new Request("https://cmux.test/api/analytics/events", {
+  return new Request("https://mosaic.test/api/analytics/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -86,7 +86,7 @@ describe("analytics route", () => {
     const response = await route.POST(analyticsRequest({
       batch: [
         {
-          event: "cmux_daily_active",
+          event: "mosaic_daily_active",
           distinct_id: "mac_anon_install_123",
           properties: {
             day_utc: "2026-07-02",
@@ -102,7 +102,7 @@ describe("analytics route", () => {
     }).mock.calls;
     const body = JSON.parse(String(calls[0]?.[1].body));
     expect(body.batch[0]).toEqual({
-      event: "cmux_daily_active",
+      event: "mosaic_daily_active",
       distinct_id: "mac_anon_install_123",
       properties: {
         day_utc: "2026-07-02",

@@ -190,12 +190,12 @@ enum PanelOverlayRingMetrics {
 }
 
 #if DEBUG
-func cmuxFlashDebugID(_ id: UUID?) -> String {
+func mosaicFlashDebugID(_ id: UUID?) -> String {
     guard let id else { return "nil" }
     return String(id.uuidString.prefix(6))
 }
 
-func cmuxFlashDebugRect(_ rect: CGRect?) -> String {
+func mosaicFlashDebugRect(_ rect: CGRect?) -> String {
     guard let rect else { return "nil" }
     return String(
         format: "%.1f,%.1f %.1fx%.1f",
@@ -206,7 +206,7 @@ func cmuxFlashDebugRect(_ rect: CGRect?) -> String {
     )
 }
 
-func cmuxFlashDebugBool(_ value: Bool) -> Int {
+func mosaicFlashDebugBool(_ value: Bool) -> Int {
     value ? 1 : 0
 }
 #endif

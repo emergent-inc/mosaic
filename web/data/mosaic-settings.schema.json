@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/emergent-inc/mosaic/main/web/data/mosaic-settings.schema.json",
+  "$ref": "https://raw.githubusercontent.com/emergent-inc/mosaic/main/web/data/mosaic.schema.json",
+  "description": "Compatibility schema URL for existing configs. Use mosaic.schema.json for new mosaic.json files."
+}

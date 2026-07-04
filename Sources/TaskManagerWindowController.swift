@@ -7,7 +7,7 @@ import SwiftUI
 final class TaskManagerWindowController: ReleasingWindowController {
     static let shared = TaskManagerWindowController()
 
-    private let model = CmuxTaskManagerModel()
+    private let model = MosaicTaskManagerModel()
 
     private override init() {
         super.init()
@@ -25,10 +25,10 @@ final class TaskManagerWindowController: ReleasingWindowController {
             backing: .buffered,
             defer: false
         )
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.taskManager")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.taskManager")
         window.title = String(localized: "taskManager.windowTitle", defaultValue: "Task Manager")
         window.center()
-        window.contentView = NSHostingView(rootView: CmuxTaskManagerView(model: model))
+        window.contentView = NSHostingView(rootView: MosaicTaskManagerView(model: model))
         AppDelegate.shared?.applyWindowDecorations(to: window)
         return window
     }
@@ -51,13 +51,13 @@ final class TaskManagerWindowController: ReleasingWindowController {
 
 @MainActor
 @Observable
-final class CmuxTaskManagerModel {
-    private(set) var snapshot = CmuxTaskManagerSnapshot.empty {
+final class MosaicTaskManagerModel {
+    private(set) var snapshot = MosaicTaskManagerSnapshot.empty {
         didSet { updateSortedRows() }
     }
     private(set) var isRefreshing = false
     private(set) var errorMessage: String?
-    private(set) var sortOrder = CmuxTaskManagerSortOrder.defaultOrder {
+    private(set) var sortOrder = MosaicTaskManagerSortOrder.defaultOrder {
         didSet { updateSortedRows() }
     }
     var includesProcesses = false {
@@ -73,10 +73,10 @@ final class CmuxTaskManagerModel {
     private let refreshInterval: TimeInterval = 3.0
     private let terminationGraceInterval: TimeInterval = 2.0
 
-    private(set) var sortedRows: [CmuxTaskManagerRow] = []
-    private(set) var sortedAgentRows: [CmuxTaskManagerRow] = []
-    private(set) var sortedAggregateRows: [CmuxTaskManagerRow] = []
-    private(set) var sortedChildMemoryRows: [CmuxTaskManagerRow] = []
+    private(set) var sortedRows: [MosaicTaskManagerRow] = []
+    private(set) var sortedAgentRows: [MosaicTaskManagerRow] = []
+    private(set) var sortedAggregateRows: [MosaicTaskManagerRow] = []
+    private(set) var sortedChildMemoryRows: [MosaicTaskManagerRow] = []
 
     init() {
         updateSortedRows()
@@ -90,7 +90,7 @@ final class CmuxTaskManagerModel {
         snapshot.hasLoadedResourceUsage
     }
 
-    func sort(by column: CmuxTaskManagerSortOrder.Column) {
+    func sort(by column: MosaicTaskManagerSortOrder.Column) {
         sortOrder = sortOrder.toggled(for: column)
     }
 
@@ -134,13 +134,13 @@ final class CmuxTaskManagerModel {
             do {
                 let payload = try await TerminalController.shared.taskManagerTopPayload(includeProcesses: includeProcesses)
                 guard !Task.isCancelled else { return }
-                let snapshot = CmuxTaskManagerSnapshot(payload: payload)
+                let snapshot = MosaicTaskManagerSnapshot(payload: payload)
                 self?.snapshot = snapshot
                 self?.errorMessage = nil
             } catch {
                 guard !Task.isCancelled else { return }
                 #if DEBUG
-                cmuxDebugLog("taskManager.refresh.error \(String(describing: error))")
+                mosaicDebugLog("taskManager.refresh.error \(String(describing: error))")
                 #endif
                 self?.errorMessage = String(
                     localized: "taskManager.refresh.error",
@@ -154,7 +154,7 @@ final class CmuxTaskManagerModel {
         }
     }
 
-    func viewBestTarget(for row: CmuxTaskManagerRow) {
+    func viewBestTarget(for row: MosaicTaskManagerRow) {
         if row.canViewTerminal {
             viewTerminal(for: row)
         } else if row.canViewWorkspace {
@@ -162,7 +162,7 @@ final class CmuxTaskManagerModel {
         }
     }
 
-    func viewWorkspace(for row: CmuxTaskManagerRow) {
+    func viewWorkspace(for row: MosaicTaskManagerRow) {
         guard let workspaceId = row.workspaceId,
               let appDelegate = AppDelegate.shared,
               let manager = appDelegate.tabManagerFor(tabId: workspaceId) else { return }
@@ -178,7 +178,7 @@ final class CmuxTaskManagerModel {
         flashSelection(workspaceId: workspaceId, surfaceId: row.surfaceId)
     }
 
-    func viewTerminal(for row: CmuxTaskManagerRow) {
+    func viewTerminal(for row: MosaicTaskManagerRow) {
         guard let workspaceId = row.workspaceId,
               let terminalSurfaceId = row.terminalSurfaceId,
               let appDelegate = AppDelegate.shared,
@@ -195,7 +195,7 @@ final class CmuxTaskManagerModel {
         flashSelection(workspaceId: workspaceId, surfaceId: terminalSurfaceId)
     }
 
-    func killProcess(for row: CmuxTaskManagerRow) {
+    func killProcess(for row: MosaicTaskManagerRow) {
         let processIds = row.killableProcessIds
         guard !processIds.isEmpty else { return }
         guard confirmKillProcess(row: row, processIds: processIds) else { return }
@@ -237,7 +237,7 @@ final class CmuxTaskManagerModel {
         }
     }
 
-    private func confirmKillProcess(row: CmuxTaskManagerRow, processIds: [Int]) -> Bool {
+    private func confirmKillProcess(row: MosaicTaskManagerRow, processIds: [Int]) -> Bool {
         let alert = NSAlert()
         if processIds.count == 1, let processId = processIds.first {
             alert.messageText = String(localized: "taskManager.killProcess.title.one", defaultValue: "Kill process?")

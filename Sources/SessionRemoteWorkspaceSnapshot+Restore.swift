@@ -1,5 +1,5 @@
 import Foundation
-import CmuxCore
+import MosaicCore
 #if canImport(Security)
 import Security
 #endif

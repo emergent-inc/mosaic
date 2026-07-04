@@ -14,7 +14,7 @@ import Foundation
 /// (`Workspace.isApplyingTabSelection`) is *per-instance*, a cycle that bounces
 /// through SwiftUI body re-evaluation and across different `Workspace` instances
 /// (command-palette focus restore + cross-workspace handoff) was unbounded. That is
-/// the 426s main-thread hang in https://github.com/emergent-inc/cmux/issues/5100.
+/// the 426s main-thread hang in https://github.com/emergent-inc/mosaic/issues/5100.
 ///
 /// ## Contract
 ///
@@ -59,7 +59,7 @@ final class FocusSurfaceBroadcaster {
     static let shared = FocusSurfaceBroadcaster(
         onDrainBoundExceeded: { payload in
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.broadcast.drain.exceeded workspace=\(payload.workspaceId.uuidString.prefix(5)) " +
                 "panel=\(payload.panelId.uuidString.prefix(5)) explicit=\(payload.explicitFocusIntent ? 1 : 0)"
             )

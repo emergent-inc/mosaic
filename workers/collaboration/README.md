@@ -1,6 +1,6 @@
-# cmux Collaboration Relay
+# mosaic Collaboration Relay
 
-This Worker is the Phase 1 cmux Multiplayer relay. It is deliberately small: it creates code-gated sessions, accepts WebSocket peers, forwards opaque collaboration frames, and drops peers that stop heartbeating.
+This Worker is the Phase 1 mosaic Multiplayer relay. It is deliberately small: it creates code-gated sessions, accepts WebSocket peers, forwards opaque collaboration frames, and drops peers that stop heartbeating.
 
 ## Local Development
 
@@ -11,7 +11,7 @@ bun test
 bun run dev
 ```
 
-Downloadable cmux builds default to the production relay at `https://cmux-collaboration-worker.dorsa-rohani.workers.dev`. For local development, override the relay URL with `http://localhost:8787` in the collaboration dialog or with `cmux collaboration create --relay-url http://localhost:8787`.
+Downloadable mosaic builds default to the production relay at `https://mosaic-collaboration-worker.dorsa-rohani.workers.dev`. For local development, override the relay URL with `http://localhost:8787` in the collaboration dialog or with `mosaic collaboration create --relay-url http://localhost:8787`.
 
 ## Deploy
 
@@ -22,7 +22,7 @@ bun run check
 bun run deploy
 ```
 
-The deploy job requires repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. `wrangler.toml` binds the `COLLABORATION_SESSIONS` Durable Object namespace and exposes the production custom domain `cmux-collaboration-worker.dorsa-rohani.workers.dev`; the macOS client converts `https://` relay URLs to `wss://` for WebSocket joins.
+The deploy job requires repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. `wrangler.toml` binds the `COLLABORATION_SESSIONS` Durable Object namespace and exposes the production custom domain `mosaic-collaboration-worker.dorsa-rohani.workers.dev`; the macOS client converts `https://` relay URLs to `wss://` for WebSocket joins.
 
 After deployment, smoke-test the public relay:
 
@@ -30,11 +30,11 @@ After deployment, smoke-test the public relay:
 bun run smoke:relay
 ```
 
-The smoke test performs a real health check, session creation, two WebSocket peer joins, heartbeat handling, and document frame forwarding. Set `CMUX_COLLABORATION_RELAY_URL` or pass a URL to test another relay:
+The smoke test performs a real health check, session creation, two WebSocket peer joins, heartbeat handling, and document frame forwarding. Set `MOSAIC_COLLABORATION_RELAY_URL` or pass a URL to test another relay:
 
 ```bash
-CMUX_COLLABORATION_RELAY_URL=http://localhost:8787 bun run smoke:relay
-bun run smoke:relay https://cmux-collaboration-worker.dorsa-rohani.workers.dev
+MOSAIC_COLLABORATION_RELAY_URL=http://localhost:8787 bun run smoke:relay
+bun run smoke:relay https://mosaic-collaboration-worker.dorsa-rohani.workers.dev
 ```
 
 ## HTTP API
@@ -44,7 +44,7 @@ bun run smoke:relay https://cmux-collaboration-worker.dorsa-rohani.workers.dev
 Returns a static health response:
 
 ```json
-{ "ok": true, "service": "cmux-collaboration" }
+{ "ok": true, "service": "mosaic-collaboration" }
 ```
 
 ### `POST /v1/collaboration/sessions`
@@ -68,13 +68,13 @@ Upgrades to WebSocket. Required query parameters:
 
 ### `GET /v1/collaboration/admin/sessions`
 
-Lists recently indexed session codes. Requires the `x-cmux-admin-token` header
+Lists recently indexed session codes. Requires the `x-mosaic-admin-token` header
 to match the `COLLABORATION_ADMIN_TOKEN` Worker secret. Each row includes the
 Durable Object ID derived from `COLLABORATION_SESSIONS.idFromName(sessionCode)`.
 
 ### `GET /v1/collaboration/admin/sessions/:sessionCode`
 
-Describes one code. Requires the `x-cmux-admin-token` header. The response
+Describes one code. Requires the `x-mosaic-admin-token` header. The response
 reports whether the code is indexed, whether the per-code Durable Object still
 has active metadata, and the Durable Object ID that maps to the code.
 

@@ -1,5 +1,5 @@
 import Foundation
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 
 nonisolated enum TerminalStartupShellQuoting {
     static func singleQuoted(_ value: String) -> String {
@@ -37,7 +37,7 @@ nonisolated enum TerminalStartupWorkingDirectoryPrefix {
         guard let workingDirectory = normalized(workingDirectory) else { return nil }
         let quoted = TerminalStartupShellQuoting.singleQuoted(workingDirectory)
         // No POSIX `{ …; }` grouping: this runs verbatim in the user's login shell
-        // (cmux spawns via `/usr/bin/login → $SHELL`), which may be fish — fish has no
+        // (mosaic spawns via `/usr/bin/login → $SHELL`), which may be fish — fish has no
         // brace grouping and errors before the agent launches (issue #6285). `&&`/`||`
         // are a left-associative, equal-precedence AND-OR list in sh/bash/zsh/fish, so
         // `cd … || [ ! -d … ] && cmd` == `(cd || test) && cmd` in every shell.
@@ -313,7 +313,7 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        registrationOverride: CmuxVaultAgentRegistration? = nil,
+        registrationOverride: MosaicVaultAgentRegistration? = nil,
         includeWorkingDirectoryPrefix: Bool = true
     ) -> String? {
         let customRegistration = registrationOverride
@@ -344,7 +344,7 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        registrationOverride: CmuxVaultAgentRegistration? = nil,
+        registrationOverride: MosaicVaultAgentRegistration? = nil,
         includeWorkingDirectoryPrefix: Bool = true
     ) -> String? {
         let customRegistration = registrationOverride
@@ -375,7 +375,7 @@ enum AgentResumeCommandBuilder {
         kind: RestorableAgentKind,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        customRegistration: CmuxVaultAgentRegistration?,
+        customRegistration: MosaicVaultAgentRegistration?,
         includeWorkingDirectoryPrefix: Bool
     ) -> String {
         var commandParts: [String] = []
@@ -396,7 +396,7 @@ enum AgentResumeCommandBuilder {
             )
             : commandParts
         // Render the claude/codex executable as the wrapper shim token so the
-        // executed command routes through cmux's `claude`/`codex` wrapper
+        // executed command routes through mosaic's `claude`/`codex` wrapper
         // (re-injecting the agent hooks) even inside the `$SHELL -lic` restore
         // launcher, where the shell integration's PATH shim / shell function are
         // not active and an `env`-prefixed invocation would otherwise hit the
@@ -407,7 +407,7 @@ enum AgentResumeCommandBuilder {
         // shell (fish/csh/tcsh included), so token-bearing commands are wrapped in
         // `/bin/sh -c '…'` to parse everywhere; the cwd guard stays outside so
         // cd-prefix rewriting keeps composing.
-        // https://github.com/emergent-inc/cmux/issues/5639
+        // https://github.com/emergent-inc/mosaic/issues/5639
         let shellCommand: String
         switch kind {
         case .claude:
@@ -460,9 +460,9 @@ enum AgentResumeCommandBuilder {
             }
         }
         if !preservedClaudeAuthSelectionEnvironmentKeys.isEmpty {
-            environmentParts.append("CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV=1")
+            environmentParts.append("MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV=1")
             environmentParts.append(
-                "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS=\(preservedClaudeAuthSelectionEnvironmentKeys.joined(separator: ","))"
+                "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS=\(preservedClaudeAuthSelectionEnvironmentKeys.joined(separator: ","))"
             )
         }
         return environmentParts
@@ -473,7 +473,7 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        customRegistration: CmuxVaultAgentRegistration?
+        customRegistration: MosaicVaultAgentRegistration?
     ) -> [String]? {
         switch AgentResumeArgv().launcherResolution(
             launcher: launchCommand?.launcher,
@@ -489,7 +489,7 @@ enum AgentResumeCommandBuilder {
 
         if case .custom = kind {
             guard let customRegistration else { return nil }
-            if customRegistration.id == CmuxVaultAgentRegistration.builtInAntigravity.id {
+            if customRegistration.id == MosaicVaultAgentRegistration.builtInAntigravity.id {
                 return resumeWithOption(
                     kind: "antigravity",
                     launchCommand: launchCommand,
@@ -520,13 +520,13 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        customRegistration: CmuxVaultAgentRegistration?
+        customRegistration: MosaicVaultAgentRegistration?
     ) -> [String]? {
         switch launchCommand?.launcher {
         case "claudeTeams":
             let original = commandParts(
                 launchCommand: launchCommand,
-                fallbackExecutable: "cmux"
+                fallbackExecutable: "mosaic"
             )
             var args = original.tail
             if args.first == "claude-teams" {
@@ -537,7 +537,7 @@ enum AgentResumeCommandBuilder {
         case "codexTeams":
             let original = commandParts(
                 launchCommand: launchCommand,
-                fallbackExecutable: "cmux"
+                fallbackExecutable: "mosaic"
             )
             var args = original.tail
             if args.first == "codex-teams" {
@@ -548,7 +548,7 @@ enum AgentResumeCommandBuilder {
         case "omo":
             let original = commandParts(
                 launchCommand: launchCommand,
-                fallbackExecutable: "cmux"
+                fallbackExecutable: "mosaic"
             )
             var args = original.tail
             if args.first == "omo" {
@@ -567,8 +567,8 @@ enum AgentResumeCommandBuilder {
             let original = commandParts(launchCommand: launchCommand, fallbackExecutable: "claude")
             guard let preserved = AgentLaunchSanitizer.preservedArguments(kind: "claude", args: original.tail) else { return nil }
             // Mirror the resume path: route through the `claude` wrapper (not the
-            // captured real binary) so cmux hooks fire on the forked session.
-            // See https://github.com/emergent-inc/cmux/issues/5427.
+            // captured real binary) so mosaic hooks fire on the forked session.
+            // See https://github.com/emergent-inc/mosaic/issues/5427.
             return ["claude", "--resume", sessionId, "--fork-session"] + preserved
         case .codex:
             let original = commandParts(launchCommand: launchCommand, fallbackExecutable: "codex")
@@ -593,7 +593,7 @@ enum AgentResumeCommandBuilder {
     }
 
     private static func customResumeArguments(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?
@@ -608,7 +608,7 @@ enum AgentResumeCommandBuilder {
     }
 
     private static func customForkArguments(
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?
@@ -625,7 +625,7 @@ enum AgentResumeCommandBuilder {
 
     private static func customTemplateArguments(
         template: String,
-        registration: CmuxVaultAgentRegistration,
+        registration: MosaicVaultAgentRegistration,
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?
@@ -772,7 +772,7 @@ struct SessionRestorableAgentSnapshot: Codable, Sendable {
     var sessionId: String
     var workingDirectory: String?
     var launchCommand: AgentLaunchCommandSnapshot?
-    var registration: CmuxVaultAgentRegistration? = nil
+    var registration: MosaicVaultAgentRegistration? = nil
 
     var resumeCommand: String? {
         AgentResumeCommandBuilder.resumeShellCommand(
@@ -887,7 +887,7 @@ extension SessionRestorableAgentSnapshot {
 }
 
 private enum AgentResumeScriptStore {
-    private static let directoryName = "cmux-agent-resume"
+    private static let directoryName = "mosaic-agent-resume"
     private static let scriptTTL: TimeInterval = 24 * 60 * 60
 
     static func writeLauncherScript(
@@ -1047,7 +1047,7 @@ struct RestorableAgentSessionIndex: Sendable {
         homeDirectory: String = NSHomeDirectory(),
         fileManager: FileManager = .default
     ) -> RestorableAgentSessionIndex {
-        let registry = CmuxVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
+        let registry = MosaicVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
         return load(
             homeDirectory: homeDirectory,
             fileManager: fileManager,
@@ -1072,7 +1072,7 @@ struct RestorableAgentSessionIndex: Sendable {
         homeDirectory: String = NSHomeDirectory(),
         fileManager: FileManager = .default
     ) -> RestorableAgentSessionIndex {
-        let registry = CmuxVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
+        let registry = MosaicVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
         let detectedSnapshots = processDetectedSnapshots(
             registry: registry,
             fileManager: fileManager
@@ -1088,10 +1088,10 @@ struct RestorableAgentSessionIndex: Sendable {
     static func load(
         homeDirectory: String,
         fileManager: FileManager,
-        registry: CmuxVaultAgentRegistry,
+        registry: MosaicVaultAgentRegistry,
         detectedSnapshots: [PanelKey: ProcessDetectedSnapshotEntry],
-        processArgumentsProvider: (Int) -> CmuxTopProcessArguments? = {
-            CmuxTopProcessSnapshot.processArgumentsAndEnvironment(for: $0)
+        processArgumentsProvider: (Int) -> MosaicTopProcessArguments? = {
+            MosaicTopProcessSnapshot.processArgumentsAndEnvironment(for: $0)
         }
     ) -> RestorableAgentSessionIndex {
         let decoder = JSONDecoder()
@@ -1101,7 +1101,7 @@ struct RestorableAgentSessionIndex: Sendable {
             fileManager: fileManager
         )
         let builtInKindIDs = Set(RestorableAgentKind.allCases.map(\.rawValue))
-        let hookKinds: [(kind: RestorableAgentKind, registration: CmuxVaultAgentRegistration?)] =
+        let hookKinds: [(kind: RestorableAgentKind, registration: MosaicVaultAgentRegistration?)] =
             RestorableAgentKind.allCases.map { (kind: $0, registration: nil) }
             + registry.registrations.compactMap { registration in
                 builtInKindIDs.contains(registration.id)
@@ -1255,7 +1255,7 @@ struct RestorableAgentSessionIndex: Sendable {
 
     /// Drops launch captures that cannot describe this agent kind: a capture
     /// inherited from a different agent's session (codex started under claude
-    /// carries claude's `CMUX_AGENT_LAUNCH_*`) or the hook dispatch shell's own
+    /// carries claude's `MOSAIC_AGENT_LAUNCH_*`) or the hook dispatch shell's own
     /// argv. Resume/fork then fall back to the kind's bare verbs instead of
     /// rendering the foreign binary. Existing poisoned records heal on load.
     private static func trustedLaunchCommand(
@@ -1463,7 +1463,7 @@ struct RestorableAgentSessionIndex: Sendable {
         return false
     }
 
-    /// The directory cmux must `cd` into to resume or fork this session.
+    /// The directory mosaic must `cd` into to resume or fork this session.
     ///
     /// Many agents store their session under a directory derived from the cwd the session was
     /// *launched* in (Claude `projects/<encode(cwd)>/`, plus the Grok/Pi/Gemini/Cursor/Qoder
@@ -1477,7 +1477,7 @@ struct RestorableAgentSessionIndex: Sendable {
     private static func restorableWorkingDirectory(
         for record: RestorableAgentHookSessionRecord,
         kind: RestorableAgentKind,
-        registration: CmuxVaultAgentRegistration?,
+        registration: MosaicVaultAgentRegistration?,
         fileManager: FileManager,
         lookup: ClaudeTranscriptLookupCache
     ) -> String? {
@@ -1784,18 +1784,18 @@ struct RestorableAgentSessionIndex: Sendable {
         kind: RestorableAgentKind,
         workspaceId: UUID,
         panelId: UUID,
-        processArgumentsProvider: (Int) -> CmuxTopProcessArguments?
+        processArgumentsProvider: (Int) -> MosaicTopProcessArguments?
     ) -> Int? {
         guard let pid = record.pid else {
             return nil
         }
         guard pid > 0,
               let process = processArgumentsProvider(pid),
-              process.matchesCMUXScope(workspaceId: workspaceId, surfaceId: panelId) else {
+              process.matchesMosaicScope(workspaceId: workspaceId, surfaceId: panelId) else {
             return nil
         }
 
-        if let liveKind = normalizedProcessValue(process.environment["CMUX_AGENT_LAUNCH_KIND"]),
+        if let liveKind = normalizedProcessValue(process.environment["MOSAIC_AGENT_LAUNCH_KIND"]),
            liveKind.compare(kind.rawValue, options: [.caseInsensitive, .literal]) != .orderedSame {
             return nil
         }
@@ -1929,8 +1929,8 @@ struct ProcessDetectedResumeIndexes: Sendable {
         fileManager: FileManager = .default
     ) -> ProcessDetectedResumeIndexes {
         let capturedAt = Date().timeIntervalSince1970
-        let processSnapshot = CmuxTopProcessSnapshot.capture(includeProcessDetails: true)
-        let registry = CmuxVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
+        let processSnapshot = MosaicTopProcessSnapshot.capture(includeProcessDetails: true)
+        let registry = MosaicVaultAgentRegistry.load(homeDirectory: homeDirectory, fileManager: fileManager)
         let detectedSnapshots = RestorableAgentSessionIndex.processDetectedSnapshots(
             registry: registry,
             fileManager: fileManager,
@@ -1955,7 +1955,7 @@ struct ProcessDetectedResumeIndexes: Sendable {
     }
 }
 
-private extension CmuxTopProcessArguments {
+private extension MosaicTopProcessArguments {
     func environmentUUID(forKey key: String) -> UUID? {
         guard let rawValue = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
               !rawValue.isEmpty else {

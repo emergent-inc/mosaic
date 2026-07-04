@@ -1,5 +1,5 @@
-import CmuxFoundation
-import CMUXProjectModel
+import MosaicFoundation
+import MosaicProjectModel
 import SwiftUI
 
 /// Targets tab inside ``ProjectPanelView``.
@@ -27,7 +27,7 @@ struct ProjectTargetsTabView: View {
                 ForEach(model.modules) { module in
                     if model.modules.count > 1 {
                         Text(module.displayName)
-                            .cmuxFont(size: 11, weight: .semibold)
+                            .mosaicFont(size: 11, weight: .semibold)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
                             .padding(.top, 8)
@@ -53,10 +53,10 @@ struct ProjectTargetsTabView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(target.displayName)
-                            .cmuxFont(size: 12, weight: .semibold)
+                            .mosaicFont(size: 12, weight: .semibold)
                         Spacer()
                         Text(target.productType.rawValue)
-                            .cmuxFont(size: 10)
+                            .mosaicFont(size: 10)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
                             .background(
@@ -76,7 +76,7 @@ struct ProjectTargetsTabView: View {
                             metadata("bundle", bundle)
                         }
                         Text("deps: \(target.dependencies.count)")
-                            .cmuxFont(size: 10)
+                            .mosaicFont(size: 10)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -92,7 +92,7 @@ struct ProjectTargetsTabView: View {
     @ViewBuilder
     private func metadata(_ label: String, _ value: String) -> some View {
         Text("\(label): \(value)")
-            .cmuxFont(size: 10)
+            .mosaicFont(size: 10)
             .foregroundStyle(.secondary)
     }
 
@@ -103,13 +103,13 @@ struct ProjectTargetsTabView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 8) {
                         Image(systemName: glyph(for: selected.target.productType))
-                            .cmuxFont(size: 18)
+                            .mosaicFont(size: 18)
                             .foregroundStyle(Color.accentColor)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(selected.target.displayName)
-                                .cmuxFont(size: 14, weight: .semibold)
+                                .mosaicFont(size: 14, weight: .semibold)
                             Text(selected.target.productType.rawValue)
-                                .cmuxFont(size: 10)
+                                .mosaicFont(size: 10)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -158,7 +158,7 @@ struct ProjectTargetsTabView: View {
     private func dependencySection(for selected: (module: ProjectModule, target: TargetSummary), module: ProjectModule) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Dependencies")
-                .cmuxFont(size: 12, weight: .semibold)
+                .mosaicFont(size: 12, weight: .semibold)
                 .foregroundStyle(.secondary)
             ForEach(selected.target.dependencies, id: \.rawValue) { depID in
                 let label = module.target(for: depID)?.displayName ?? String(depID.rawValue.prefix(10))
@@ -166,7 +166,7 @@ struct ProjectTargetsTabView: View {
                     Image(systemName: "link")
                         .foregroundStyle(.secondary)
                     Text(label)
-                        .cmuxFont(size: 12)
+                        .mosaicFont(size: 12)
                 }
             }
         }
@@ -189,13 +189,13 @@ struct ProjectTargetsTabView: View {
         if configCount > 0 || totalKeys > 0 {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Build")
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 12) {
                     Label("\(configCount) configurations", systemImage: "slider.horizontal.3")
-                        .cmuxFont(size: 11)
+                        .mosaicFont(size: 11)
                     Label("\(totalKeys) target overrides", systemImage: "wrench.and.screwdriver")
-                        .cmuxFont(size: 11)
+                        .mosaicFont(size: 11)
                 }
                 .foregroundStyle(.secondary)
                 TrackedButton("projecttargetstabview_button_201", action: {
@@ -203,7 +203,7 @@ struct ProjectTargetsTabView: View {
                     panel.activeTab = .buildSettings
                 }) {
                     Label("Open in Build Settings", systemImage: "arrow.right.circle")
-                        .cmuxFont(size: 11, weight: .medium)
+                        .mosaicFont(size: 11, weight: .medium)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
@@ -215,11 +215,11 @@ struct ProjectTargetsTabView: View {
     private func row(label: String, value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
-                .cmuxFont(size: 11, weight: .semibold)
+                .mosaicFont(size: 11, weight: .semibold)
                 .foregroundStyle(.secondary)
                 .frame(width: 80, alignment: .leading)
             Text(value)
-                .cmuxFont(size: 11, design: .monospaced)
+                .mosaicFont(size: 11, design: .monospaced)
                 .textSelection(.enabled)
         }
     }

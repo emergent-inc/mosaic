@@ -76,7 +76,7 @@ export default function SessionRestoreBlogPage() {
           code: (chunks) => <code>{chunks}</code>,
         })}
       </p>
-      <CodeBlock lang="bash">{`cmux hooks setup`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic hooks setup`}</CodeBlock>
       <p>{t("agentP2")}</p>
 
       <h2>{t("implementationTitle")}</h2>

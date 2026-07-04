@@ -2,7 +2,7 @@
 
 Last updated: June 30, 2026
 
-This document defines the supported ways to build cmux from this repository:
+This document defines the supported ways to build mosaic from this repository:
 
 1. A tagged isolated Debug app for local development and agent verification.
 2. The signed, notarized macOS DMG that real users download and run.
@@ -102,7 +102,7 @@ Create and push a stable semver tag:
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
-gh run watch --repo emergent-inc/cmux
+gh run watch --repo emergent-inc/mosaic
 ```
 
 The public release path is tag-triggered. `workflow_dispatch` on `release.yml` is useful for dry-run artifacts, but it does not publish the public GitHub Release in the same way as a `v*` tag push.
@@ -117,12 +117,12 @@ The public release path is tag-triggered. `workflow_dispatch` on `release.yml` i
 
 - `mosaic-macos.dmg`
 - `appcast.xml`
-- `cmuxd-remote-darwin-arm64`
-- `cmuxd-remote-darwin-amd64`
-- `cmuxd-remote-linux-arm64`
-- `cmuxd-remote-linux-amd64`
-- `cmuxd-remote-checksums.txt`
-- `cmuxd-remote-manifest.json`
+- `mosaicd-remote-darwin-arm64`
+- `mosaicd-remote-darwin-amd64`
+- `mosaicd-remote-linux-arm64`
+- `mosaicd-remote-linux-amd64`
+- `mosaicd-remote-checksums.txt`
+- `mosaicd-remote-manifest.json`
 
 If every immutable asset already exists for the tag, CI skips rebuild/upload. If only some assets exist, CI fails and requires manual cleanup or a new tag. Do not overwrite release assets casually; a published DMG and appcast are part of the update contract.
 
@@ -172,7 +172,7 @@ T342J8UQGV.mosaic.com.emergent.app
 The app is signed with:
 
 ```bash
-./scripts/sign-cmux-bundle.sh "$APP_PATH" cmux.release.entitlements "$APPLE_SIGNING_IDENTITY"
+./scripts/sign-mosaic-bundle.sh "$APP_PATH" mosaic.release.entitlements "$APPLE_SIGNING_IDENTITY"
 ```
 
 The signing certificate is imported into an ephemeral `build.keychain`, and Apple Developer ID intermediate certificates are imported before signing.
@@ -182,7 +182,7 @@ The signing certificate is imported into an ephemeral `build.keychain`, and Appl
 CI submits a zip of `Mosaic.app` to Apple notarization:
 
 ```bash
-xcrun notarytool submit cmux-notary.zip --wait
+xcrun notarytool submit mosaic-notary.zip --wait
 ```
 
 After Apple accepts it, CI staples and validates the app:
@@ -198,8 +198,8 @@ spctl -a -vv --type execute "$APP_PATH"
 The workflow verifies the app before packaging:
 
 ```bash
-CMUX_SMOKE_ALLOW_UNSUPPORTED_GUI=1 CMUX_SMOKE_DEBUG_LOGS=1 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
-CMUX_SMOKE_DIRECT_EXEC=1 CMUX_SMOKE_DEBUG_LOGS=1 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
+MOSAIC_SMOKE_ALLOW_UNSUPPORTED_GUI=1 MOSAIC_SMOKE_DEBUG_LOGS=1 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
+MOSAIC_SMOKE_DIRECT_EXEC=1 MOSAIC_SMOKE_DEBUG_LOGS=1 ./scripts/smoke-launch-macos-app.sh "$APP_PATH"
 ./scripts/verify-app-bundle-channel-metadata.sh "$APP_PATH" stable
 ./scripts/smoke-installable-artifact.sh --channel stable "$APP_PATH"
 ```
@@ -212,7 +212,7 @@ CI creates the drag-to-install disk image:
 
 ```bash
 create-dmg --no-code-sign "$APP_PATH" .
-mv ./cmux*.dmg mosaic-macos.dmg
+mv ./mosaic*.dmg mosaic-macos.dmg
 ```
 
 Then it signs and notarizes the DMG container itself:
@@ -270,7 +270,7 @@ Backport tags do not overwrite the stable R2 appcast.
 
 ### 12. Update Homebrew
 
-After the release workflow succeeds, `.github/workflows/update-homebrew.yml` updates the `emergent-inc/homebrew-cmux` cask. The cask points at:
+After the release workflow succeeds, `.github/workflows/update-homebrew.yml` updates the `emergent-inc/homebrew-mosaic` cask. The cask points at:
 
 ```text
 https://download.mosaic.inc/releases/v#{version}/mosaic-macos.dmg
@@ -289,7 +289,7 @@ The relay lives in `workers/collaboration` and deploys through `.github/workflow
 Downloadable builds default to:
 
 ```text
-https://cmux-collaboration-worker.dorsa-rohani.workers.dev
+https://mosaic-collaboration-worker.dorsa-rohani.workers.dev
 ```
 
 The macOS client converts `https://` relay URLs to `wss://` for WebSocket joins.
@@ -330,13 +330,13 @@ The smoke test performs:
 Manual smoke against production:
 
 ```bash
-bun run --cwd workers/collaboration smoke:relay https://cmux-collaboration-worker.dorsa-rohani.workers.dev
+bun run --cwd workers/collaboration smoke:relay https://mosaic-collaboration-worker.dorsa-rohani.workers.dev
 ```
 
 Manual smoke against local Wrangler:
 
 ```bash
-CMUX_COLLABORATION_RELAY_URL=http://localhost:8787 bun run --cwd workers/collaboration smoke:relay
+MOSAIC_COLLABORATION_RELAY_URL=http://localhost:8787 bun run --cwd workers/collaboration smoke:relay
 ```
 
 ## Local Manual Release Fallback
@@ -350,7 +350,7 @@ Prefer tag-triggered CI for public releases. The local fallback is:
 It expects:
 
 ```bash
-source ~/.secrets/cmuxterm.env
+source ~/.secrets/mosaicterm.env
 export SPARKLE_PRIVATE_KEY
 ```
 
@@ -366,7 +366,7 @@ and requires these tools on the local machine:
 
 The local script handles GhosttyKit build, Release app build, Sparkle key injection, codesigning, app notarization, DMG creation, DMG notarization, appcast generation, GitHub release upload, and Homebrew cask update.
 
-Use the local script only when intentionally doing a maintainer-local release. CI and local release behavior are similar but not identical: CI embeds the release provisioning profile, uses `cmux.release.entitlements`, enforces release asset guarding, downloads prebuilt GhosttyKit, and runs the current artifact smoke checks.
+Use the local script only when intentionally doing a maintainer-local release. CI and local release behavior are similar but not identical: CI embeds the release provisioning profile, uses `mosaic.release.entitlements`, enforces release asset guarding, downloads prebuilt GhosttyKit, and runs the current artifact smoke checks.
 
 ## Nightly Installable
 
@@ -388,7 +388,7 @@ Nightly uses:
 
 - bundle ID `mosaic.com.emergent.app.nightly`
 - app display name `Mosaic NIGHTLY`
-- `cmux.nightly.entitlements`
+- `mosaic.nightly.entitlements`
 - `APPLE_NIGHTLY_PROVISIONING_PROFILE_BASE64`
 - Sparkle feed `https://updates.mosaic.inc/nightly/appcast.xml`
 
@@ -405,7 +405,7 @@ Use a tagged Debug reload when validating source changes locally:
 The tag creates an isolated app name, bundle ID, socket, sidebar extension point, and derived data path. For the `run-current` tag, the expected build product is:
 
 ```text
-~/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/Mosaic DEV run-current.app
+~/Library/Developer/Xcode/DerivedData/mosaic-run-current/Build/Products/Debug/Mosaic DEV run-current.app
 ```
 
 If `xcode-select -p` points at Command Line Tools, `xcodebuild` will fail with:
@@ -426,24 +426,24 @@ A successful run prints:
 ==> reload succeeded
 
 App path:
-  /Users/dorsa/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/Mosaic DEV run-current.app
+  /Users/dorsa/Library/Developer/Xcode/DerivedData/mosaic-run-current/Build/Products/Debug/Mosaic DEV run-current.app
 ```
 
 To share the launched app in chat, convert that `App path:` line to a `file://` URL and URL-encode spaces as `%20`:
 
 ```markdown
-[run-current: file:///Users/dorsa/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/cmux%20DEV%20run-current.app](file:///Users/dorsa/Library/Developer/Xcode/DerivedData/cmux-run-current/Build/Products/Debug/cmux%20DEV%20run-current.app)
+[run-current: file:///Users/dorsa/Library/Developer/Xcode/DerivedData/mosaic-run-current/Build/Products/Debug/mosaic%20DEV%20run-current.app](file:///Users/dorsa/Library/Developer/Xcode/DerivedData/mosaic-run-current/Build/Products/Debug/mosaic%20DEV%20run-current.app)
 ```
 
 Do not hardcode the path for other tags or machines. Always use the path printed by `reload.sh`.
 
-For tagged CLI dogfood, set `CMUX_TAG=<tag>` and use:
+For tagged CLI dogfood, set `MOSAIC_TAG=<tag>` and use:
 
 ```bash
-CMUX_TAG=<tag> scripts/cmux-debug-cli.sh list-workspaces
+MOSAIC_TAG=<tag> scripts/mosaic-debug-cli.sh list-workspaces
 ```
 
-Do not use `/tmp/cmux-cli` for tagged dogfood.
+Do not use `/tmp/mosaic-cli` for tagged dogfood.
 
 ## Local Debug DMG For Trusted Sharing
 
@@ -474,15 +474,15 @@ Stage the rebuilt `.app` as the only root entry, then create a compressed read-o
 
 ```bash
 TAG="session-code-ui"
-APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG}/Build/Products/Debug/Mosaic DEV ${TAG}.app"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/mosaic-${TAG}/Build/Products/Debug/Mosaic DEV ${TAG}.app"
 OUT_DIR="build/local-dmg"
 STAGING="$OUT_DIR/${TAG}-v1-style-staging"
-DMG="$OUT_DIR/cmux-${TAG}-v1-style.dmg"
+DMG="$OUT_DIR/mosaic-${TAG}-v1-style.dmg"
 
 rm -rf "$STAGING" "$DMG"
 mkdir -p "$STAGING"
 ditto "$APP_PATH" "$STAGING/Mosaic DEV ${TAG}.app"
-hdiutil create -volname "cmux ${TAG//-/ }" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+hdiutil create -volname "mosaic ${TAG//-/ }" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
 rm -rf "$STAGING"
 shasum -a 256 "$DMG"
 ```
@@ -501,11 +501,11 @@ hdiutil detach /dev/diskXsY
 Mount the new DMG and validate the app inside the mounted image, not just the DerivedData source app:
 
 ```bash
-hdiutil attach -readonly -nobrowse "build/local-dmg/cmux-session-code-ui-v1-style.dmg"
-CMUX_INSTALLABLE_REQUIRE_NOTARIZATION=0 CMUX_INSTALLABLE_REQUIRE_SPCTL=0 \
+hdiutil attach -readonly -nobrowse "build/local-dmg/mosaic-session-code-ui-v1-style.dmg"
+MOSAIC_INSTALLABLE_REQUIRE_NOTARIZATION=0 MOSAIC_INSTALLABLE_REQUIRE_SPCTL=0 \
   ./scripts/smoke-installable-artifact.sh --channel debug \
-  "/Volumes/cmux session code ui/Mosaic DEV session-code-ui.app"
-open -n "/Volumes/cmux session code ui/Mosaic DEV session-code-ui.app"
+  "/Volumes/mosaic session code ui/Mosaic DEV session-code-ui.app"
+open -n "/Volumes/mosaic session code ui/Mosaic DEV session-code-ui.app"
 ```
 
 The debug artifact smoke should report:
@@ -514,7 +514,7 @@ The debug artifact smoke should report:
 installable artifact smoke OK: bundle=mosaic.com.emergent.app.debug.<tag> version=<version> build=<build>
 ```
 
-If Finder reports `kLSNoExecutableErr`, compare the mounted app's `Info.plist` `CFBundleExecutable` with the file in `Contents/MacOS/`, verify it is executable (`0755`), detach all stale cmux volumes, and retry with a new DMG filename and volume name.
+If Finder reports `kLSNoExecutableErr`, compare the mounted app's `Info.plist` `CFBundleExecutable` with the file in `Contents/MacOS/`, verify it is executable (`0755`), detach all stale mosaic volumes, and retry with a new DMG filename and volume name.
 
 ## Verification Checklist
 
@@ -552,10 +552,10 @@ Possibly there are two concurrent builds running in the same filesystem location
 Wait for any existing build using the same tag to finish:
 
 ```bash
-while pgrep -f 'xcodebuild .*cmux-run-current' >/dev/null; do sleep 5; done
+while pgrep -f 'xcodebuild .*mosaic-run-current' >/dev/null; do sleep 5; done
 ```
 
-Then rerun the tagged reload command. Avoid starting a second build against the same `cmux-<tag>` derived data path while another one is active.
+Then rerun the tagged reload command. Avoid starting a second build against the same `mosaic-<tag>` derived data path while another one is active.
 
 ### Partial Release Assets
 

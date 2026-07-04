@@ -11,7 +11,7 @@ Fail when user-facing text includes:
 
 Expected shape:
 
-- State what happened in cmux/product terms.
+- State what happened in mosaic/product terms.
 - Give one or two concrete next actions the user can take.
 - Put only safe, minimal diagnostics in `details`.
 - Keep provider, billing, database, and auth implementation details in sanitized logs or internal telemetry, not in user-visible text.

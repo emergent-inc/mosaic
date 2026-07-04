@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: the generated OMP extension is importable and emits cmux hook calls with complete payloads.
+Regression test: the generated OMP extension is importable and emits mosaic hook calls with complete payloads.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import time
 import threading
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -35,7 +35,7 @@ def wait_for_text(path: Path, expected_count: int, timeout: float = 5.0) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-class MockCmuxSocket:
+class MockMosaicSocket:
     def __init__(self, path: Path, workspace_id: str, surface_id: str) -> None:
         self.path = path
         self.workspace_id = workspace_id
@@ -46,7 +46,7 @@ class MockCmuxSocket:
         self._server: socket.socket | None = None
         self._thread: threading.Thread | None = None
 
-    def __enter__(self) -> "MockCmuxSocket":
+    def __enter__(self) -> "MockMosaicSocket":
         try:
             self.path.unlink()
         except FileNotFoundError:
@@ -154,7 +154,7 @@ def verify_hook_persistence(cli_path: str, root: Path, base_env: dict[str, str])
     workspace_id = "11111111-1111-1111-1111-111111111111"
     surface_id = "22222222-2222-2222-2222-222222222222"
     session_id = "omp-hook-session-123"
-    socket_path = Path("/tmp") / f"cmux-omp-hook-{os.getpid()}-{time.monotonic_ns()}.sock"
+    socket_path = Path("/tmp") / f"mosaic-omp-hook-{os.getpid()}-{time.monotonic_ns()}.sock"
     launch_argv = [
         "/Users/example/.bun/bin/omp",
         "--resume",
@@ -168,17 +168,17 @@ def verify_hook_persistence(cli_path: str, root: Path, base_env: dict[str, str])
     hook_env.update(
         {
             "PWD": str(workspace),
-            "CMUX_SOCKET_PATH": str(socket_path),
-            "CMUX_WORKSPACE_ID": workspace_id,
-            "CMUX_SURFACE_ID": surface_id,
-            "CMUX_AGENT_HOOK_STATE_DIR": str(hook_state_dir),
-            "CMUX_AGENT_LAUNCH_KIND": "omp",
-            "CMUX_AGENT_LAUNCH_EXECUTABLE": launch_argv[0],
-            "CMUX_AGENT_LAUNCH_ARGV_B64": base64.b64encode(
+            "MOSAIC_SOCKET_PATH": str(socket_path),
+            "MOSAIC_WORKSPACE_ID": workspace_id,
+            "MOSAIC_SURFACE_ID": surface_id,
+            "MOSAIC_AGENT_HOOK_STATE_DIR": str(hook_state_dir),
+            "MOSAIC_AGENT_LAUNCH_KIND": "omp",
+            "MOSAIC_AGENT_LAUNCH_EXECUTABLE": launch_argv[0],
+            "MOSAIC_AGENT_LAUNCH_ARGV_B64": base64.b64encode(
                 b"".join(value.encode("utf-8") + b"\0" for value in launch_argv)
             ).decode("ascii"),
-            "CMUX_AGENT_LAUNCH_CWD": str(workspace),
-            "CMUX_CLI_SENTRY_DISABLED": "1",
+            "MOSAIC_AGENT_LAUNCH_CWD": str(workspace),
+            "MOSAIC_CLI_SENTRY_DISABLED": "1",
             "PI_CONFIG_DIR": ".custom-omp",
             "OPENAI_API_KEY": "secret-should-not-persist",
         }
@@ -192,7 +192,7 @@ def verify_hook_persistence(cli_path: str, root: Path, base_env: dict[str, str])
         separators=(",", ":"),
     )
 
-    with MockCmuxSocket(socket_path, workspace_id=workspace_id, surface_id=surface_id) as server:
+    with MockMosaicSocket(socket_path, workspace_id=workspace_id, surface_id=surface_id) as server:
         result = subprocess.run(
             [cli_path, "hooks", "omp", "session-start"],
             input=hook_input,
@@ -288,25 +288,25 @@ def main() -> int:
         return 0
 
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-omp-extension-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-omp-extension-") as td:
         root = Path(td)
         home = root / "home"
         home.mkdir()
         shared_agent_dir = root / "shared-agent-dir"
-        shared_pi_extension = shared_agent_dir / "extensions" / "cmux-session.ts"
+        shared_pi_extension = shared_agent_dir / "extensions" / "mosaic-session.ts"
         shared_pi_extension.parent.mkdir(parents=True)
-        shared_pi_extension.write_text("// cmux-pi-session-extension-marker v1\n", encoding="utf-8")
+        shared_pi_extension.write_text("// mosaic-pi-session-extension-marker v1\n", encoding="utf-8")
 
         env = os.environ.copy()
         env["HOME"] = str(home)
         # OMP treats PI_CODING_AGENT_DIR as the full agent directory override.
         # Install the OMP extension there while proving it does not collide with
-        # Pi's different cmux-session.ts filename in the same extensions folder.
+        # Pi's different mosaic-session.ts filename in the same extensions folder.
         env["PI_CODING_AGENT_DIR"] = str(shared_agent_dir)
 
         install = subprocess.run(
@@ -324,15 +324,15 @@ def main() -> int:
             print(f"stderr={install.stderr.strip()}")
             return 1
 
-        extension_path = shared_agent_dir / "extensions" / "cmux-omp-session.ts"
+        extension_path = shared_agent_dir / "extensions" / "mosaic-omp-session.ts"
         if not extension_path.exists():
             print(f"FAIL: expected extension at {extension_path}")
             return 1
         extension_text = extension_path.read_text(encoding="utf-8")
-        if "cmux-omp-session-extension-marker" not in extension_text:
-            print(f"FAIL: expected cmux marker in {extension_path}")
+        if "mosaic-omp-session-extension-marker" not in extension_text:
+            print(f"FAIL: expected mosaic marker in {extension_path}")
             return 1
-        if shared_pi_extension.read_text(encoding="utf-8") != "// cmux-pi-session-extension-marker v1\n":
+        if shared_pi_extension.read_text(encoding="utf-8") != "// mosaic-pi-session-extension-marker v1\n":
             print("FAIL: OMP install modified the Pi extension in PI_CODING_AGENT_DIR")
             return 1
 
@@ -351,41 +351,41 @@ def main() -> int:
             print(f"stderr={reinstall.stderr.strip()}")
             return 1
 
-        fake_cmux = root / "fake-cmux"
-        fake_args_log = root / "fake-cmux-args.log"
-        fake_stdin_log = root / "fake-cmux-stdin.log"
-        fake_env_log = root / "fake-cmux-env.log"
+        fake_mosaic = root / "fake-mosaic"
+        fake_args_log = root / "fake-mosaic-args.log"
+        fake_stdin_log = root / "fake-mosaic-stdin.log"
+        fake_env_log = root / "fake-mosaic-env.log"
         make_executable(
-            fake_cmux,
+            fake_mosaic,
             """#!/usr/bin/env bash
 set -euo pipefail
 sleep 3
-printf '%s\n' "$*" >> "$FAKE_CMUX_ARGS_LOG"
-cat >> "$FAKE_CMUX_STDIN_LOG"
-printf '\n---\n' >> "$FAKE_CMUX_STDIN_LOG"
+printf '%s\n' "$*" >> "$FAKE_MOSAIC_ARGS_LOG"
+cat >> "$FAKE_MOSAIC_STDIN_LOG"
+printf '\n---\n' >> "$FAKE_MOSAIC_STDIN_LOG"
 {
-  printf 'kind=%s\n' "${CMUX_AGENT_LAUNCH_KIND-}"
-  printf 'cwd=%s\n' "${CMUX_AGENT_LAUNCH_CWD-}"
-  printf 'argv=%s\n' "${CMUX_AGENT_LAUNCH_ARGV_B64-}"
+  printf 'kind=%s\n' "${MOSAIC_AGENT_LAUNCH_KIND-}"
+  printf 'cwd=%s\n' "${MOSAIC_AGENT_LAUNCH_CWD-}"
+  printf 'argv=%s\n' "${MOSAIC_AGENT_LAUNCH_ARGV_B64-}"
   if [ "${AMP_API_KEY-}" = "amp-secret" ]; then
     printf 'amp=present\n'
   else
     printf 'amp=missing\n'
   fi
-} >> "$FAKE_CMUX_ENV_LOG"
+} >> "$FAKE_MOSAIC_ENV_LOG"
 """,
         )
 
         check_env = env.copy()
-        check_env["CMUX_TEST_OMP_EXTENSION_PATH"] = str(extension_path)
-        check_env["CMUX_SURFACE_ID"] = "surface-omp-test"
-        check_env["CMUX_OMP_CMUX_BIN"] = str(fake_cmux)
-        check_env["FAKE_CMUX_ARGS_LOG"] = str(fake_args_log)
-        check_env["FAKE_CMUX_STDIN_LOG"] = str(fake_stdin_log)
-        check_env["FAKE_CMUX_ENV_LOG"] = str(fake_env_log)
+        check_env["MOSAIC_TEST_OMP_EXTENSION_PATH"] = str(extension_path)
+        check_env["MOSAIC_SURFACE_ID"] = "surface-omp-test"
+        check_env["MOSAIC_OMP_MOSAIC_BIN"] = str(fake_mosaic)
+        check_env["FAKE_MOSAIC_ARGS_LOG"] = str(fake_args_log)
+        check_env["FAKE_MOSAIC_STDIN_LOG"] = str(fake_stdin_log)
+        check_env["FAKE_MOSAIC_ENV_LOG"] = str(fake_env_log)
         check_env["AMP_API_KEY"] = "amp-secret"
         check_source = """
-const extensionPath = process.env.CMUX_TEST_OMP_EXTENSION_PATH;
+const extensionPath = process.env.MOSAIC_TEST_OMP_EXTENSION_PATH;
 const mod = await import(extensionPath);
 if (typeof mod.default !== "function") throw new Error("missing default export");
 const handlers = new Map();
@@ -517,13 +517,13 @@ if (elapsed > 2000) throw new Error(`handlers blocked for ${elapsed}ms`);
             timeout=20,
         )
         if uninstall_foreign.returncode != 0 or not foreign_path.exists() or "Refusing to remove" not in uninstall_foreign.stdout:
-            print("FAIL: omp extension uninstall did not preserve non-cmux file")
+            print("FAIL: omp extension uninstall did not preserve non-mosaic file")
             print(f"exit={uninstall_foreign.returncode}")
             print(f"stdout={uninstall_foreign.stdout.strip()}")
             print(f"stderr={uninstall_foreign.stderr.strip()}")
             return 1
 
-        invalid_extension_bytes = b"\xff\xfe\x00cmux-not-utf8"
+        invalid_extension_bytes = b"\xff\xfe\x00mosaic-not-utf8"
         foreign_path.write_bytes(invalid_extension_bytes)
         install_invalid = subprocess.run(
             [cli_path, "hooks", "omp", "install", "--yes"],
@@ -540,7 +540,7 @@ if (elapsed > 2000) throw new Error(`handlers blocked for ${elapsed}ms`);
             print(f"stderr={install_invalid.stderr.strip()}")
             return 1
         install_invalid_output = install_invalid.stdout + install_invalid.stderr
-        if "Failed to read" not in install_invalid_output or "not a cmux extension" in install_invalid_output:
+        if "Failed to read" not in install_invalid_output or "not a mosaic extension" in install_invalid_output:
             print("FAIL: omp extension install did not report unreadable file distinctly")
             print(f"stdout={install_invalid.stdout.strip()}")
             print(f"stderr={install_invalid.stderr.strip()}")
@@ -560,7 +560,7 @@ if (elapsed > 2000) throw new Error(`handlers blocked for ${elapsed}ms`);
             print(f"stderr={uninstall_invalid.stderr.strip()}")
             return 1
         uninstall_invalid_output = uninstall_invalid.stdout + uninstall_invalid.stderr
-        if "Failed to read" not in uninstall_invalid_output or "not a cmux extension" in uninstall_invalid_output:
+        if "Failed to read" not in uninstall_invalid_output or "not a mosaic extension" in uninstall_invalid_output:
             print("FAIL: omp extension uninstall did not report unreadable file distinctly")
             print(f"stdout={uninstall_invalid.stdout.strip()}")
             print(f"stderr={uninstall_invalid.stderr.strip()}")
@@ -580,7 +580,7 @@ if (elapsed > 2000) throw new Error(`handlers blocked for ${elapsed}ms`);
             env=config_env,
             timeout=20,
         )
-        config_extension_path = config_override / "agent" / "extensions" / "cmux-omp-session.ts"
+        config_extension_path = config_override / "agent" / "extensions" / "mosaic-omp-session.ts"
         if config_install.returncode != 0 or not config_extension_path.exists():
             print("FAIL: omp extension install did not respect absolute PI_CONFIG_DIR")
             print(f"exit={config_install.returncode}")
@@ -601,7 +601,7 @@ if (elapsed > 2000) throw new Error(`handlers blocked for ${elapsed}ms`);
             print(f"stdout={config_uninstall.stdout.strip()}")
             print(f"stderr={config_uninstall.stderr.strip()}")
             return 1
-    print("PASS: generated OMP extension installs, emits complete cmux hook payloads, and persists hook sessions")
+    print("PASS: generated OMP extension installs, emits complete mosaic hook payloads, and persists hook sessions")
     return 0
 
 

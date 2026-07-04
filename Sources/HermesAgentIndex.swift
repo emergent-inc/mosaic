@@ -1,4 +1,4 @@
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import Foundation
 
 extension SessionIndexStore {

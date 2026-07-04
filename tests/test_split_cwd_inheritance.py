@@ -6,11 +6,11 @@ Verifies that new split panes and new workspace tabs inherit the current
 working directory from the source terminal.
 
 Requires:
-  - cmux running with allowAll socket mode
-  - bash shell integration sourced (cmux-bash-integration.bash)
+  - mosaic running with allowAll socket mode
+  - bash shell integration sourced (mosaic-bash-integration.bash)
 
 Run with a tagged instance:
-  CMUX_TAG=<tag> python3 tests/test_split_cwd_inheritance.py
+  MOSAIC_TAG=<tag> python3 tests/test_split_cwd_inheritance.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux  # noqa: E402
+from mosaic import mosaic  # noqa: E402
 
 
 def _parse_sidebar_state(text: str) -> dict[str, str]:
@@ -56,7 +56,7 @@ def _wait_for(predicate, timeout: float, interval: float, label: str):
 
 
 def _wait_for_focused_cwd(
-    client: cmux,
+    client: mosaic,
     expected: str,
     timeout: float = 12.0,
     panel: str | None = None,
@@ -86,7 +86,7 @@ def _wait_for_focused_cwd(
 
 
 def _send_cd_and_wait(
-    client: cmux,
+    client: mosaic,
     target: str,
     timeout: float = 12.0,
     surface: str | int | None = None,
@@ -99,7 +99,7 @@ def _send_cd_and_wait(
     return _wait_for_focused_cwd(client, target, timeout=timeout)
 
 
-def _focus_first_surface(client: cmux) -> str:
+def _focus_first_surface(client: mosaic) -> str:
     surfaces = client.list_surfaces()
     if not surfaces:
         raise AssertionError("Current tab has no surfaces")
@@ -109,17 +109,17 @@ def _focus_first_surface(client: cmux) -> str:
 
 
 def main() -> int:
-    tag = os.environ.get("CMUX_TAG", "")
+    tag = os.environ.get("MOSAIC_TAG", "")
 
     socket_path = None
     if tag:
-        socket_path = f"/tmp/cmux-debug-{tag}.sock"
-    client = cmux(socket_path=socket_path)
+        socket_path = f"/tmp/mosaic-debug-{tag}.sock"
+    client = mosaic(socket_path=socket_path)
     client.connect()
 
     # Use resolved paths to avoid /tmp -> /private/tmp symlink mismatch on macOS
-    test_dir_a = str(Path("/tmp/cmux_split_cwd_test_a").resolve())
-    test_dir_b = str(Path("/tmp/cmux_split_cwd_test_b").resolve())
+    test_dir_a = str(Path("/tmp/mosaic_split_cwd_test_a").resolve())
+    test_dir_b = str(Path("/tmp/mosaic_split_cwd_test_b").resolve())
     os.makedirs(test_dir_a, exist_ok=True)
     os.makedirs(test_dir_b, exist_ok=True)
 

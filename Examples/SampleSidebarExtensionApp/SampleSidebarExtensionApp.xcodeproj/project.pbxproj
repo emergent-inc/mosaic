@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A3685C2E2FCA3B3700009F1B /* CMUX ExtKit Sample Sidebar Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = A3685C242FCA3B2500009F1B /* CMUX ExtKit Sample Sidebar Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C0DE47000000000000000001 /* CmuxExtensionKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE47000000000000000002 /* CmuxExtensionKit */; };
+		A3685C2E2FCA3B3700009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = A3685C242FCA3B2500009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C0DE47000000000000000001 /* MosaicExtensionKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE47000000000000000002 /* MosaicExtensionKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,7 +42,7 @@
 			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
 			dstSubfolderSpec = 16;
 			files = (
-				A3685C2E2FCA3B3700009F1B /* CMUX ExtKit Sample Sidebar Extension.appex in Embed ExtensionKit Extensions */,
+				A3685C2E2FCA3B3700009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex in Embed ExtensionKit Extensions */,
 			);
 			name = "Embed ExtensionKit Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -50,10 +50,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		A3685BE92FCA3AEE00009F1B /* SampleSidebarExtensionApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = SampleSidebarExtensionApp.app; path = "CMUX ExtKit Sample Sidebar.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A3685BE92FCA3AEE00009F1B /* SampleSidebarExtensionApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = SampleSidebarExtensionApp.app; path = "MOSAIC ExtKit Sample Sidebar.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3685BF62FCA3AF000009F1B /* SampleSidebarExtensionAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SampleSidebarExtensionAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3685C002FCA3AF000009F1B /* SampleSidebarExtensionAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SampleSidebarExtensionAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		A3685C242FCA3B2500009F1B /* CMUX ExtKit Sample Sidebar Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "CMUX ExtKit Sample Sidebar Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A3685C242FCA3B2500009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "MOSAIC ExtKit Sample Sidebar Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -118,7 +118,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C0DE47000000000000000001 /* CmuxExtensionKit in Frameworks */,
+				C0DE47000000000000000001 /* MosaicExtensionKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,7 +143,7 @@
 				A3685BE92FCA3AEE00009F1B /* SampleSidebarExtensionApp.app */,
 				A3685BF62FCA3AF000009F1B /* SampleSidebarExtensionAppTests.xctest */,
 				A3685C002FCA3AF000009F1B /* SampleSidebarExtensionAppUITests.xctest */,
-				A3685C242FCA3B2500009F1B /* CMUX ExtKit Sample Sidebar Extension.appex */,
+				A3685C242FCA3B2500009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -245,10 +245,10 @@
 			);
 			name = SampleSidebarExtension;
 			packageProductDependencies = (
-				C0DE47000000000000000002 /* CmuxExtensionKit */,
+				C0DE47000000000000000002 /* MosaicExtensionKit */,
 			);
 			productName = SampleSidebarExtension;
-			productReference = A3685C242FCA3B2500009F1B /* CMUX ExtKit Sample Sidebar Extension.appex */;
+			productReference = A3685C242FCA3B2500009F1B /* MOSAIC ExtKit Sample Sidebar Extension.appex */;
 			productType = "com.apple.product-type.extensionkit-extension";
 		};
 /* End PBXNativeTarget section */
@@ -287,7 +287,7 @@
 			mainGroup = A3685BE02FCA3AEE00009F1B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/CmuxExtensionKit" */,
+				C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/MosaicExtensionKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A3685BEA2FCA3AEE00009F1B /* Products */;
@@ -508,7 +508,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CMUX_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.cmux.sidebar;
+				MOSAIC_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.mosaic.sidebar;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -525,9 +525,9 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				CMUX_BUNDLE_ID_SUFFIX = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.CMUXExtKitSampleSidebarApp$(CMUX_BUNDLE_ID_SUFFIX)";
-				PRODUCT_NAME = "CMUX ExtKit Sample Sidebar";
+				MOSAIC_BUNDLE_ID_SUFFIX = "";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.MosaicExtKitSampleSidebarApp$(MOSAIC_BUNDLE_ID_SUFFIX)";
+				PRODUCT_NAME = "MOSAIC ExtKit Sample Sidebar";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -543,7 +543,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CMUX_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.cmux.sidebar;
+				MOSAIC_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.mosaic.sidebar;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -560,9 +560,9 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				CMUX_BUNDLE_ID_SUFFIX = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.CMUXExtKitSampleSidebarApp$(CMUX_BUNDLE_ID_SUFFIX)";
-				PRODUCT_NAME = "CMUX ExtKit Sample Sidebar";
+				MOSAIC_BUNDLE_ID_SUFFIX = "";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.MosaicExtKitSampleSidebarApp$(MOSAIC_BUNDLE_ID_SUFFIX)";
+				PRODUCT_NAME = "MOSAIC ExtKit Sample Sidebar";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -657,14 +657,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CMUX_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.cmux.sidebar;
+				MOSAIC_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.mosaic.sidebar;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7WLXT3NR37;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SampleSidebarExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "CMUX ExtKit Sample Sidebar$(CMUX_DISPLAY_NAME_SUFFIX)";
+				INFOPLIST_KEY_CFBundleDisplayName = "MOSAIC ExtKit Sample Sidebar$(MOSAIC_DISPLAY_NAME_SUFFIX)";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -673,10 +673,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				CMUX_BUNDLE_ID_SUFFIX = "";
-				CMUX_DISPLAY_NAME_SUFFIX = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.CMUXExtKitSampleSidebarApp$(CMUX_BUNDLE_ID_SUFFIX).Extension";
-				PRODUCT_NAME = "CMUX ExtKit Sample Sidebar Extension";
+				MOSAIC_BUNDLE_ID_SUFFIX = "";
+				MOSAIC_DISPLAY_NAME_SUFFIX = "";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.MosaicExtKitSampleSidebarApp$(MOSAIC_BUNDLE_ID_SUFFIX).Extension";
+				PRODUCT_NAME = "MOSAIC ExtKit Sample Sidebar Extension";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -691,14 +691,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CMUX_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.cmux.sidebar;
+				MOSAIC_SIDEBAR_EXTENSION_POINT_ID = mosaic.com.emergent.app.mosaic.sidebar;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7WLXT3NR37;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SampleSidebarExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "CMUX ExtKit Sample Sidebar$(CMUX_DISPLAY_NAME_SUFFIX)";
+				INFOPLIST_KEY_CFBundleDisplayName = "MOSAIC ExtKit Sample Sidebar$(MOSAIC_DISPLAY_NAME_SUFFIX)";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -707,10 +707,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				CMUX_BUNDLE_ID_SUFFIX = "";
-				CMUX_DISPLAY_NAME_SUFFIX = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.CMUXExtKitSampleSidebarApp$(CMUX_BUNDLE_ID_SUFFIX).Extension";
-				PRODUCT_NAME = "CMUX ExtKit Sample Sidebar Extension";
+				MOSAIC_BUNDLE_ID_SUFFIX = "";
+				MOSAIC_DISPLAY_NAME_SUFFIX = "";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.emergent.inc.MosaicExtKitSampleSidebarApp$(MOSAIC_BUNDLE_ID_SUFFIX).Extension";
+				PRODUCT_NAME = "MOSAIC ExtKit Sample Sidebar Extension";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -773,17 +773,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/CmuxExtensionKit" */ = {
+		C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/MosaicExtensionKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/macOS/CmuxExtensionKit;
+			relativePath = ../../Packages/macOS/MosaicExtensionKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C0DE47000000000000000002 /* CmuxExtensionKit */ = {
+		C0DE47000000000000000002 /* MosaicExtensionKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/CmuxExtensionKit" */;
-			productName = CmuxExtensionKit;
+			package = C0DE47000000000000000003 /* XCLocalSwiftPackageReference "../../Packages/macOS/MosaicExtensionKit" */;
+			productName = MosaicExtensionKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

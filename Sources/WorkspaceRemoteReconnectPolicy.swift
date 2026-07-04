@@ -1,7 +1,7 @@
 import Foundation
 
 /// Pure decision logic for the SSH remote workspace auto-reconnect loop
-/// (https://github.com/emergent-inc/cmux/issues/5734).
+/// (https://github.com/emergent-inc/mosaic/issues/5734).
 ///
 /// While the host stays reachable the loop keeps its existing exponential
 /// backoff behavior. Once consecutive reachability probes keep failing, the

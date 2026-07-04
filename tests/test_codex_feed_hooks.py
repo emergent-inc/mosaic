@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 CODEX_HOOK_EVENT_LABELS = {
@@ -43,13 +43,13 @@ CODEX_HOOK_EVENTS_WITH_MATCHERS = {
     "SubagentStop",
 }
 
-CMUX_CODEX_HOOK_SUBCOMMANDS = (
+MOSAIC_CODEX_HOOK_SUBCOMMANDS = (
     "session-start",
     "prompt-submit",
     "stop",
 )
 
-CMUX_CODEX_FEED_EVENTS = (
+MOSAIC_CODEX_FEED_EVENTS = (
     "PreToolUse",
     "PermissionRequest",
     "PostToolUse",
@@ -71,7 +71,7 @@ def _toml_line_count(content: str, line: str) -> int:
     return sum(1 for raw in content.splitlines() if raw.strip() == line)
 
 
-class FakeCmuxSocket:
+class FakeMosaicSocket:
     def __init__(
         self,
         path: Path,
@@ -89,7 +89,7 @@ class FakeCmuxSocket:
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
-    def __enter__(self) -> "FakeCmuxSocket":
+    def __enter__(self) -> "FakeMosaicSocket":
         self.path.unlink(missing_ok=True)
         self._thread.start()
         if not self._ready.wait(timeout=3):
@@ -205,7 +205,7 @@ def assert_monitor_remains_present(session_id: str, *, duration: float) -> None:
 
 
 def test_codex_stop_reaps_transcript_monitor(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux-monitor.sock"
+    socket_path = root / "mosaic-monitor.sock"
     state_dir = root / "hook-state"
     transcript_path = root / "codex-session.jsonl"
     state_dir.mkdir()
@@ -214,12 +214,12 @@ def test_codex_stop_reaps_transcript_monitor(cli_path: str, root: Path) -> None:
     session_id = f"codex-monitor-reap-session-{os.getpid()}"
     turn_id = f"codex-monitor-reap-turn-{os.getpid()}"
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(state_dir)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_SURFACE_ID"] = FAKE_SURFACE_ID
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    env["MOSAIC_AGENT_HOOK_STATE_DIR"] = str(state_dir)
 
-    with FakeCmuxSocket(socket_path, None):
+    with FakeMosaicSocket(socket_path, None):
         prompt = {
             "session_id": session_id,
             "turn_id": turn_id,
@@ -270,7 +270,7 @@ def test_codex_stop_reaps_transcript_monitor(cli_path: str, root: Path) -> None:
 
 
 def test_codex_stop_without_turn_keeps_session_wide_monitor(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux-monitor-session-wide.sock"
+    socket_path = root / "mosaic-monitor-session-wide.sock"
     state_dir = root / "hook-state-session-wide"
     transcript_path = root / "codex-session-wide.jsonl"
     state_dir.mkdir()
@@ -278,12 +278,12 @@ def test_codex_stop_without_turn_keeps_session_wide_monitor(cli_path: str, root:
 
     session_id = f"codex-monitor-session-wide-session-{os.getpid()}"
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(state_dir)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_SURFACE_ID"] = FAKE_SURFACE_ID
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    env["MOSAIC_AGENT_HOOK_STATE_DIR"] = str(state_dir)
 
-    with FakeCmuxSocket(socket_path, None):
+    with FakeMosaicSocket(socket_path, None):
         try:
             prompt = {
                 "session_id": session_id,
@@ -348,7 +348,7 @@ def test_codex_stop_without_turn_keeps_session_wide_monitor(cli_path: str, root:
 
 
 def test_codex_prompt_submit_starts_monitor_when_lease_write_fails(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux-monitor-lease-failure.sock"
+    socket_path = root / "mosaic-monitor-lease-failure.sock"
     transcript_path = root / "codex-session-lease-failure.jsonl"
     state_dir = root / "hook-state-lease-failure"
     state_dir.mkdir()
@@ -358,12 +358,12 @@ def test_codex_prompt_submit_starts_monitor_when_lease_write_fails(cli_path: str
     session_id = f"codex-monitor-lease-failure-session-{os.getpid()}"
     turn_id = f"codex-monitor-lease-failure-turn-{os.getpid()}"
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(state_dir)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_SURFACE_ID"] = FAKE_SURFACE_ID
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    env["MOSAIC_AGENT_HOOK_STATE_DIR"] = str(state_dir)
 
-    with FakeCmuxSocket(socket_path, None):
+    with FakeMosaicSocket(socket_path, None):
         try:
             prompt = {
                 "session_id": session_id,
@@ -392,7 +392,7 @@ def test_codex_prompt_submit_starts_monitor_when_lease_write_fails(cli_path: str
 
 
 def test_codex_monitor_exits_when_workspace_has_no_surfaces(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux-monitor-empty-surfaces.sock"
+    socket_path = root / "mosaic-monitor-empty-surfaces.sock"
     state_dir = root / "hook-state-empty-surfaces"
     transcript_path = root / "codex-session-empty-surfaces.jsonl"
     state_dir.mkdir()
@@ -400,11 +400,11 @@ def test_codex_monitor_exits_when_workspace_has_no_surfaces(cli_path: str, root:
 
     session_id = f"codex-monitor-empty-surfaces-session-{os.getpid()}"
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(state_dir)
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    env["MOSAIC_AGENT_HOOK_STATE_DIR"] = str(state_dir)
 
-    with FakeCmuxSocket(socket_path, None, surfaces=[]) as fake:
+    with FakeMosaicSocket(socket_path, None, surfaces=[]) as fake:
         try:
             result = subprocess.run(
                 [
@@ -439,7 +439,7 @@ def test_codex_monitor_exits_when_workspace_has_no_surfaces(cli_path: str, root:
 
 
 def test_codex_monitor_survives_transient_owner_rpc_timeout(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux-monitor-timeout.sock"
+    socket_path = root / "mosaic-monitor-timeout.sock"
     transcript_path = root / "codex-session-timeout.jsonl"
     turn_id = f"codex-monitor-timeout-turn-{os.getpid()}"
     transcript_lines = [
@@ -454,10 +454,10 @@ def test_codex_monitor_survives_transient_owner_rpc_timeout(cli_path: str, root:
 
     session_id = f"codex-monitor-timeout-session-{os.getpid()}"
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = str(socket_path)
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    env["MOSAIC_SOCKET_PATH"] = str(socket_path)
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
 
-    with FakeCmuxSocket(socket_path, None, drop_first_surface_list=True) as fake:
+    with FakeMosaicSocket(socket_path, None, drop_first_surface_list=True) as fake:
         result = subprocess.run(
             [
                 cli_path,
@@ -501,9 +501,9 @@ def run_feed_hook_optional_frame(
     source: str = "codex",
 ) -> tuple[dict, dict | None]:
     env = os.environ.copy()
-    env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
-    env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    with FakeCmuxSocket(socket_path, decision) as fake:
+    env["MOSAIC_SURFACE_ID"] = FAKE_SURFACE_ID
+    env["MOSAIC_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
+    with FakeMosaicSocket(socket_path, decision) as fake:
         result = subprocess.run(
             [
                 cli_path,
@@ -589,34 +589,34 @@ def codex_command_hook_hash(
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
 
 
-def cmux_codex_hook_command(subcommand: str) -> str:
+def mosaic_codex_hook_command(subcommand: str) -> str:
     routed_arguments = f"hooks codex {subcommand}"
     return (
-        'cmux_cli="${CMUX_BUNDLED_CLI_PATH:-}"; if [ -z "$cmux_cli" ] || [ ! -x "$cmux_cli" ]; '
-        'then cmux_cli="$(command -v cmux 2>/dev/null || true)"; fi; if [ -n "$CMUX_SURFACE_ID" ] '
-        '&& [ "$CMUX_CODEX_HOOKS_DISABLED" != "1" ] && [ -n "$cmux_cli" ]; then { '
-        f'if [ -n "${{CMUX_SOCKET_PATH:-}}" ]; then "$cmux_cli" --socket "$CMUX_SOCKET_PATH" {routed_arguments}; '
-        f'else "$cmux_cli" {routed_arguments}; fi; '
+        'mosaic_cli="${MOSAIC_BUNDLED_CLI_PATH:-}"; if [ -z "$mosaic_cli" ] || [ ! -x "$mosaic_cli" ]; '
+        'then mosaic_cli="$(command -v mosaic 2>/dev/null || true)"; fi; if [ -n "$MOSAIC_SURFACE_ID" ] '
+        '&& [ "$MOSAIC_CODEX_HOOKS_DISABLED" != "1" ] && [ -n "$mosaic_cli" ]; then { '
+        f'if [ -n "${{MOSAIC_SOCKET_PATH:-}}" ]; then "$mosaic_cli" --socket "$MOSAIC_SOCKET_PATH" {routed_arguments}; '
+        f'else "$mosaic_cli" {routed_arguments}; fi; '
         "} || echo '{}'; else echo '{}'; fi"
     )
 
 
-def cmux_codex_feed_command(agent_event: str) -> str:
+def mosaic_codex_feed_command(agent_event: str) -> str:
     routed_arguments = f"hooks feed --source codex --event {agent_event}"
     noop_command = "{ cat >/dev/null 2>/dev/null || true; echo '{}'; }"
     return (
-        'cmux_cli="${CMUX_BUNDLED_CLI_PATH:-}"; if [ -z "$cmux_cli" ] || [ ! -x "$cmux_cli" ]; '
-        'then cmux_cli="$(command -v cmux 2>/dev/null || true)"; fi; if [ -n "$CMUX_SURFACE_ID" ] '
-        '&& [ "$CMUX_CODEX_HOOKS_DISABLED" != "1" ] && [ -n "$cmux_cli" ]; then { '
-        f'if [ -n "${{CMUX_SOCKET_PATH:-}}" ]; then "$cmux_cli" --socket "$CMUX_SOCKET_PATH" {routed_arguments}; '
-        f'else "$cmux_cli" {routed_arguments}; fi; '
+        'mosaic_cli="${MOSAIC_BUNDLED_CLI_PATH:-}"; if [ -z "$mosaic_cli" ] || [ ! -x "$mosaic_cli" ]; '
+        'then mosaic_cli="$(command -v mosaic 2>/dev/null || true)"; fi; if [ -n "$MOSAIC_SURFACE_ID" ] '
+        '&& [ "$MOSAIC_CODEX_HOOKS_DISABLED" != "1" ] && [ -n "$mosaic_cli" ]; then { '
+        f'if [ -n "${{MOSAIC_SOCKET_PATH:-}}" ]; then "$mosaic_cli" --socket "$MOSAIC_SOCKET_PATH" {routed_arguments}; '
+        f'else "$mosaic_cli" {routed_arguments}; fi; '
         f"}} || {noop_command}; else {noop_command}; fi"
     )
 
 
-def is_cmux_codex_hook_command(command: str) -> bool:
-    hook_commands = {cmux_codex_hook_command(subcommand) for subcommand in CMUX_CODEX_HOOK_SUBCOMMANDS}
-    feed_commands = {cmux_codex_feed_command(agent_event) for agent_event in CMUX_CODEX_FEED_EVENTS}
+def is_mosaic_codex_hook_command(command: str) -> bool:
+    hook_commands = {mosaic_codex_hook_command(subcommand) for subcommand in MOSAIC_CODEX_HOOK_SUBCOMMANDS}
+    feed_commands = {mosaic_codex_feed_command(agent_event) for agent_event in MOSAIC_CODEX_FEED_EVENTS}
     return command in hook_commands or command in feed_commands
 
 
@@ -688,7 +688,7 @@ def codex_hook_trust_state(config_toml: str) -> dict[str, dict[str, str]]:
     return state
 
 
-def expected_cmux_codex_hook_trust(hooks: dict, hooks_path: Path) -> dict[str, str]:
+def expected_mosaic_codex_hook_trust(hooks: dict, hooks_path: Path) -> dict[str, str]:
     expected: dict[str, str] = {}
     hooks_path = hooks_path.resolve()
     for event_name, groups in hooks.get("hooks", {}).items():
@@ -699,7 +699,7 @@ def expected_cmux_codex_hook_trust(hooks: dict, hooks_path: Path) -> dict[str, s
             matcher = group.get("matcher") if event_name in CODEX_HOOK_EVENTS_WITH_MATCHERS else None
             for handler_index, hook in enumerate(group.get("hooks", [])):
                 command = hook.get("command", "")
-                if not is_cmux_codex_hook_command(command):
+                if not is_mosaic_codex_hook_command(command):
                     continue
                 key = f"{hooks_path}:{event_label}:{group_index}:{handler_index}"
                 expected[key] = codex_command_hook_hash(
@@ -750,12 +750,12 @@ def test_install_adds_codex_permission_request_hook(cli_path: str, root: Path) -
             raise AssertionError(f"missing {event_name} hook group: {hooks!r}")
         if groups[-1]["hooks"][0].get("timeout") != 5:
             raise AssertionError(f"wrong {event_name} timeout: {groups[-1]!r}")
-    for event_name in CMUX_CODEX_FEED_EVENTS:
+    for event_name in MOSAIC_CODEX_FEED_EVENTS:
         groups = hook_groups.get(event_name)
         if not groups:
             raise AssertionError(f"missing {event_name} hook group: {hooks!r}")
         command = groups[-1]["hooks"][0]["command"]
-        if command != cmux_codex_feed_command(event_name):
+        if command != mosaic_codex_feed_command(event_name):
             raise AssertionError(f"wrong {event_name} feed command: {command!r}")
         if groups[-1]["hooks"][0].get("timeout") != 5:
             raise AssertionError(f"wrong {event_name} timeout: {groups[-1]!r}")
@@ -766,9 +766,9 @@ def test_install_adds_codex_permission_request_hook(cli_path: str, root: Path) -
     if "codex_hooks" in config_toml:
         raise AssertionError(f"deprecated codex_hooks feature was written: {config_toml!r}")
     state = codex_hook_trust_state(config_toml)
-    expected_trust = expected_cmux_codex_hook_trust(hooks, codex_home / "hooks.json")
+    expected_trust = expected_mosaic_codex_hook_trust(hooks, codex_home / "hooks.json")
     if not expected_trust:
-        raise AssertionError(f"expected cmux Codex trust entries, got {expected_trust!r}")
+        raise AssertionError(f"expected mosaic Codex trust entries, got {expected_trust!r}")
     for key, trusted_hash in expected_trust.items():
         if state.get(key, {}).get("trusted_hash") != trusted_hash:
             raise AssertionError(
@@ -798,9 +798,9 @@ def test_install_escapes_codex_hook_trust_state_keys(cli_path: str, root: Path) 
     hooks = json.loads((codex_home / "hooks.json").read_text(encoding="utf-8"))
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
     state = codex_hook_trust_state(config_toml)
-    expected_trust = expected_cmux_codex_hook_trust(hooks, codex_home / "hooks.json")
+    expected_trust = expected_mosaic_codex_hook_trust(hooks, codex_home / "hooks.json")
     if not expected_trust:
-        raise AssertionError(f"expected cmux Codex trust entries, got {expected_trust!r}")
+        raise AssertionError(f"expected mosaic Codex trust entries, got {expected_trust!r}")
     for key, trusted_hash in expected_trust.items():
         if state.get(key, {}).get("trusted_hash") != trusted_hash:
             raise AssertionError(
@@ -811,7 +811,7 @@ def test_install_escapes_codex_hook_trust_state_keys(cli_path: str, root: Path) 
 def test_install_preserves_codex_hook_position_with_third_party_hooks(cli_path: str, root: Path) -> None:
     codex_home = root / "codex-home-third-party"
     codex_home.mkdir()
-    cmux_pre_tool = cmux_codex_feed_command("PreToolUse")
+    mosaic_pre_tool = mosaic_codex_feed_command("PreToolUse")
     orca_hook = (
         "if [ -x '/Users/lawrence/Library/Application Support/orca/agent-hooks/codex-hook.sh' ]; "
         "then /bin/sh '/Users/lawrence/Library/Application Support/orca/agent-hooks/codex-hook.sh'; fi"
@@ -821,7 +821,7 @@ def test_install_preserves_codex_hook_position_with_third_party_hooks(cli_path: 
             {
                 "hooks": {
                     "PreToolUse": [
-                        {"hooks": [{"type": "command", "command": cmux_pre_tool, "timeout": 120000}]},
+                        {"hooks": [{"type": "command", "command": mosaic_pre_tool, "timeout": 120000}]},
                         {"hooks": [{"type": "command", "command": orca_hook}]},
                     ]
                 }
@@ -850,10 +850,10 @@ def test_install_preserves_codex_hook_position_with_third_party_hooks(cli_path: 
     groups = hooks["hooks"]["PreToolUse"]
     first_command = groups[0]["hooks"][0]["command"]
     second_command = groups[1]["hooks"][0]["command"]
-    if first_command != cmux_pre_tool:
-        raise AssertionError(f"cmux hook did not keep its existing position: {groups!r}")
+    if first_command != mosaic_pre_tool:
+        raise AssertionError(f"mosaic hook did not keep its existing position: {groups!r}")
     if second_command != orca_hook:
-        raise AssertionError(f"third-party hook was not preserved after cmux hook: {groups!r}")
+        raise AssertionError(f"third-party hook was not preserved after mosaic hook: {groups!r}")
 
 
 def test_install_deduplicates_interleaved_codex_hook_positions(
@@ -861,7 +861,7 @@ def test_install_deduplicates_interleaved_codex_hook_positions(
 ) -> None:
     codex_home = root / "codex-home-interleaved"
     codex_home.mkdir()
-    cmux_pre_tool = cmux_codex_feed_command("PreToolUse")
+    mosaic_pre_tool = mosaic_codex_feed_command("PreToolUse")
     user_hook_before = "printf before"
     user_hook_middle = "printf middle"
     user_hook_after = "printf after"
@@ -871,9 +871,9 @@ def test_install_deduplicates_interleaved_codex_hook_positions(
                 "hooks": {
                     "PreToolUse": [
                         {"hooks": [{"type": "command", "command": user_hook_before}]},
-                        {"hooks": [{"type": "command", "command": cmux_pre_tool, "timeout": 120000}]},
+                        {"hooks": [{"type": "command", "command": mosaic_pre_tool, "timeout": 120000}]},
                         {"hooks": [{"type": "command", "command": user_hook_middle}]},
-                        {"hooks": [{"type": "command", "command": cmux_pre_tool, "timeout": 120000}]},
+                        {"hooks": [{"type": "command", "command": mosaic_pre_tool, "timeout": 120000}]},
                         {"hooks": [{"type": "command", "command": user_hook_after}]},
                     ]
                 }
@@ -902,18 +902,18 @@ def test_install_deduplicates_interleaved_codex_hook_positions(
     commands = [group["hooks"][0]["command"] for group in hooks["hooks"]["PreToolUse"]]
     expected = [
         user_hook_before,
-        cmux_pre_tool,
+        mosaic_pre_tool,
         user_hook_middle,
         user_hook_after,
     ]
     if commands != expected:
-        raise AssertionError(f"interleaved cmux hook dedupe changed: {commands!r}")
+        raise AssertionError(f"interleaved mosaic hook dedupe changed: {commands!r}")
 
 
 def test_install_collapses_consecutive_codex_hook_positions(cli_path: str, root: Path) -> None:
     codex_home = root / "codex-home-consecutive"
     codex_home.mkdir()
-    cmux_pre_tool = cmux_codex_feed_command("PreToolUse")
+    mosaic_pre_tool = mosaic_codex_feed_command("PreToolUse")
     user_hook_before = "printf before"
     user_hook_after = "printf after"
     (codex_home / "hooks.json").write_text(
@@ -922,8 +922,8 @@ def test_install_collapses_consecutive_codex_hook_positions(cli_path: str, root:
                 "hooks": {
                     "PreToolUse": [
                         {"hooks": [{"type": "command", "command": user_hook_before}]},
-                        {"hooks": [{"type": "command", "command": cmux_pre_tool, "timeout": 120000}]},
-                        {"hooks": [{"type": "command", "command": cmux_pre_tool, "timeout": 120000}]},
+                        {"hooks": [{"type": "command", "command": mosaic_pre_tool, "timeout": 120000}]},
+                        {"hooks": [{"type": "command", "command": mosaic_pre_tool, "timeout": 120000}]},
                         {"hooks": [{"type": "command", "command": user_hook_after}]},
                     ]
                 }
@@ -952,11 +952,11 @@ def test_install_collapses_consecutive_codex_hook_positions(cli_path: str, root:
     commands = [group["hooks"][0]["command"] for group in hooks["hooks"]["PreToolUse"]]
     expected = [
         user_hook_before,
-        cmux_pre_tool,
+        mosaic_pre_tool,
         user_hook_after,
     ]
     if commands != expected:
-        raise AssertionError(f"consecutive cmux hooks were not collapsed: {commands!r}")
+        raise AssertionError(f"consecutive mosaic hooks were not collapsed: {commands!r}")
 
 
 def test_install_replaces_legacy_codex_hook_commands(cli_path: str, root: Path) -> None:
@@ -967,14 +967,14 @@ def test_install_replaces_legacy_codex_hook_commands(cli_path: str, root: Path) 
             {
                 "hooks": {
                     "Stop": [
-                        {"hooks": [{"type": "command", "command": "cmux codex-hook stop"}]},
+                        {"hooks": [{"type": "command", "command": "mosaic codex-hook stop"}]},
                     ],
                     "PreToolUse": [
                         {
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "cmux feed-hook --source codex --event PreToolUse",
+                                    "command": "mosaic feed-hook --source codex --event PreToolUse",
                                 }
                             ]
                         },
@@ -1003,11 +1003,11 @@ def test_install_replaces_legacy_codex_hook_commands(cli_path: str, root: Path) 
 
     hooks = json.loads((codex_home / "hooks.json").read_text(encoding="utf-8"))
     commands = codex_hook_commands(hooks)
-    if any("cmux codex-hook" in command or "cmux feed-hook --source" in command for command in commands):
-        raise AssertionError(f"legacy cmux hook commands were not removed: {commands!r}")
-    if cmux_codex_hook_command("stop") not in commands:
+    if any("mosaic codex-hook" in command or "mosaic feed-hook --source" in command for command in commands):
+        raise AssertionError(f"legacy mosaic hook commands were not removed: {commands!r}")
+    if mosaic_codex_hook_command("stop") not in commands:
         raise AssertionError(f"current Stop hook was not installed: {commands!r}")
-    if cmux_codex_feed_command("PreToolUse") not in commands:
+    if mosaic_codex_feed_command("PreToolUse") not in commands:
         raise AssertionError(f"current PreToolUse feed hook was not installed: {commands!r}")
 
 
@@ -1152,8 +1152,8 @@ def test_install_codex_hooks_only_edits_real_features_table(cli_path: str, root:
 
     lines = config_toml.splitlines()
     features_index = lines.index("[features]")
-    if lines[features_index + 1] != "# cmux-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df begin":
-        raise AssertionError(f"cmux marker should be inserted into [features]: {config_toml!r}")
+    if lines[features_index + 1] != "# mosaic-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df begin":
+        raise AssertionError(f"mosaic marker should be inserted into [features]: {config_toml!r}")
     if lines[features_index + 2] != "hooks = true":
         raise AssertionError(f"hooks should be inserted into [features]: {config_toml!r}")
 
@@ -1231,7 +1231,7 @@ def test_uninstall_restores_disabled_codex_hooks_feature(cli_path: str, root: Pa
     if not _toml_has_line(config_toml, "hooks = false"):
         raise AssertionError(f"pre-existing disabled hooks feature was not restored: {config_toml!r}")
     if _toml_has_line(config_toml, "hooks = true"):
-        raise AssertionError(f"cmux-owned hooks feature was not removed: {config_toml!r}")
+        raise AssertionError(f"mosaic-owned hooks feature was not removed: {config_toml!r}")
     if "apps = true" not in config_toml:
         raise AssertionError(f"existing feature setting was not preserved: {config_toml!r}")
 
@@ -1264,7 +1264,7 @@ def test_uninstall_restores_disabled_dotted_codex_hooks_feature(cli_path: str, r
     if not _toml_has_line(config_toml, "features.hooks = false"):
         raise AssertionError(f"pre-existing disabled dotted hooks feature was not restored: {config_toml!r}")
     if _toml_has_line(config_toml, "features.hooks = true"):
-        raise AssertionError(f"cmux-owned dotted hooks feature was not removed: {config_toml!r}")
+        raise AssertionError(f"mosaic-owned dotted hooks feature was not removed: {config_toml!r}")
     if "features.apps = true" not in config_toml:
         raise AssertionError(f"existing dotted feature setting was not preserved: {config_toml!r}")
 
@@ -1303,7 +1303,7 @@ def test_install_scans_features_past_bracketed_array(cli_path: str, root: Path) 
         raise AssertionError(f"bracketed array content was not preserved: {config_toml!r}")
 
 
-def test_uninstall_removes_cmux_owned_codex_hooks_feature(cli_path: str, root: Path) -> None:
+def test_uninstall_removes_mosaic_owned_codex_hooks_feature(cli_path: str, root: Path) -> None:
     codex_home = root / "codex-home-uninstall-owned"
     codex_home.mkdir()
     env = os.environ.copy()
@@ -1325,14 +1325,14 @@ def test_uninstall_removes_cmux_owned_codex_hooks_feature(cli_path: str, root: P
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
     if "hooks = true" in config_toml or "codex_hooks" in config_toml:
-        raise AssertionError(f"cmux-owned hooks feature was not removed: {config_toml!r}")
+        raise AssertionError(f"mosaic-owned hooks feature was not removed: {config_toml!r}")
     if "hooks.state" in config_toml or "trusted_hash" in config_toml:
-        raise AssertionError(f"cmux-owned hook trust was not removed: {config_toml!r}")
+        raise AssertionError(f"mosaic-owned hook trust was not removed: {config_toml!r}")
     if "[features]" in config_toml:
         raise AssertionError(f"empty features table was preserved: {config_toml!r}")
 
 
-def test_uninstall_preserves_unowned_hook_trust_when_cmux_marker_is_unclosed(
+def test_uninstall_preserves_unowned_hook_trust_when_mosaic_marker_is_unclosed(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-unclosed-trust"
@@ -1341,9 +1341,9 @@ def test_uninstall_preserves_unowned_hook_trust_when_cmux_marker_is_unclosed(
     (codex_home / "config.toml").write_text(
         "[features]\n"
         "hooks = true\n"
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
-        "[hooks.state.\"/tmp/cmux/hooks.json:pre_tool_use:0:0\"]\n"
-        'trusted_hash = "sha256:cmux"\n'
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
+        "[hooks.state.\"/tmp/mosaic/hooks.json:pre_tool_use:0:0\"]\n"
+        'trusted_hash = "sha256:mosaic"\n'
         "[hooks.state.\"/tmp/third-party/hooks.json:pre_tool_use:0:0\"]\n"
         'trusted_hash = "sha256:third-party"\n',
         encoding="utf-8",
@@ -1365,13 +1365,13 @@ def test_uninstall_preserves_unowned_hook_trust_when_cmux_marker_is_unclosed(
         )
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin" in config_toml:
-        raise AssertionError(f"orphaned cmux hook trust marker was preserved: {config_toml!r}")
+    if "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin" in config_toml:
+        raise AssertionError(f"orphaned mosaic hook trust marker was preserved: {config_toml!r}")
     if 'trusted_hash = "sha256:third-party"' not in config_toml:
         raise AssertionError(f"unowned hook trust was removed: {config_toml!r}")
 
 
-def test_install_recovers_hook_trust_when_cmux_marker_is_unclosed(
+def test_install_recovers_hook_trust_when_mosaic_marker_is_unclosed(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-unclosed-trust-install"
@@ -1380,7 +1380,7 @@ def test_install_recovers_hook_trust_when_cmux_marker_is_unclosed(
     (codex_home / "config.toml").write_text(
         "[features]\n"
         "hooks = true\n"
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
         f'[hooks.state."{stale_key}"]\n'
         'trusted_hash = "sha256:stale"\n',
         encoding="utf-8",
@@ -1402,17 +1402,17 @@ def test_install_recovers_hook_trust_when_cmux_marker_is_unclosed(
         )
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "approved cmux hooks" not in result.stdout:
+    if "approved mosaic hooks" not in result.stdout:
         raise AssertionError(f"install did not report recovered hook trust approval: {result.stdout!r}")
-    if config_toml.count("# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin") != 1:
-        raise AssertionError(f"install did not write one fresh cmux hook trust marker: {config_toml!r}")
-    if config_toml.count("# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end") != 1:
+    if config_toml.count("# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin") != 1:
+        raise AssertionError(f"install did not write one fresh mosaic hook trust marker: {config_toml!r}")
+    if config_toml.count("# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end") != 1:
         raise AssertionError(f"install did not close the recovered hook trust block: {config_toml!r}")
     if 'trusted_hash = "sha256:stale"' in config_toml:
-        raise AssertionError(f"install preserved stale cmux hook trust: {config_toml!r}")
+        raise AssertionError(f"install preserved stale mosaic hook trust: {config_toml!r}")
     hooks = json.loads((codex_home / "hooks.json").read_text(encoding="utf-8"))
     state = codex_hook_trust_state(config_toml)
-    expected_trust = expected_cmux_codex_hook_trust(hooks, codex_home / "hooks.json")
+    expected_trust = expected_mosaic_codex_hook_trust(hooks, codex_home / "hooks.json")
     for key, trusted_hash in expected_trust.items():
         if state.get(key, {}).get("trusted_hash") != trusted_hash:
             raise AssertionError(
@@ -1420,18 +1420,18 @@ def test_install_recovers_hook_trust_when_cmux_marker_is_unclosed(
             )
 
 
-def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
+def test_install_preserves_plugin_tables_inside_stale_mosaic_hook_trust_marker(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-stale-trust-with-plugins"
     codex_home.mkdir()
     hooks_path = codex_home / "hooks.json"
     stale_key = f"{hooks_path.resolve()}:pre_tool_use:0:0"
-    stale_old_cmux_key = f"{hooks_path.resolve()}:pre_tool_use:9:0"
-    stale_old_cmux_hash = codex_command_hook_hash(
+    stale_old_mosaic_key = f"{hooks_path.resolve()}:pre_tool_use:9:0"
+    stale_old_mosaic_hash = codex_command_hook_hash(
         event_label="pre_tool_use",
         matcher=None,
-        command=cmux_codex_feed_command("PreToolUse"),
+        command=mosaic_codex_feed_command("PreToolUse"),
         timeout=120_000,
         status_message=None,
     )
@@ -1439,7 +1439,7 @@ def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
     stale_legacy_hash = codex_command_hook_hash(
         event_label="pre_tool_use",
         matcher=None,
-        command="cmux feed-hook --source codex --event PreToolUse",
+        command="mosaic feed-hook --source codex --event PreToolUse",
         timeout=120_000,
         status_message=None,
     )
@@ -1450,16 +1450,16 @@ def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
     config_path.write_text(
         "[features]\n"
         "hooks = true\n"
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
         "preserve_loose_config = true\n"
-        f'[ hooks . state . "{stale_key}" ] # stale cmux trust\n'
+        f'[ hooks . state . "{stale_key}" ] # stale mosaic trust\n'
         'trusted_hash = "sha256:stale"\n'
         "\n"
         f'[hooks.state."{escaped_user_key}"]\n'
         'trusted_hash = "sha256:escaped-user"\n'
         "\n"
-        f'[hooks.state."{stale_old_cmux_key}"]\n'
-        f'trusted_hash = "{stale_old_cmux_hash}"\n'
+        f'[hooks.state."{stale_old_mosaic_key}"]\n'
+        f'trusted_hash = "{stale_old_mosaic_hash}"\n'
         "\n"
         f'[hooks.state."{stale_legacy_key}"]\n'
         f'trusted_hash = "{stale_legacy_hash}"\n'
@@ -1475,7 +1475,7 @@ def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
         "\n"
         '[plugins."browser@openai-bundled"]\n'
         "enabled = true\n"
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end\n",
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end\n",
         encoding="utf-8",
     )
     env = os.environ.copy()
@@ -1508,17 +1508,17 @@ def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
     if 'trusted_hash = "sha256:escaped-user"' not in config_toml:
         raise AssertionError(f"escaped-key user hook trust was removed: {config_toml!r}")
     if 'trusted_hash = "sha256:stale"' in config_toml:
-        raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
-    if stale_old_cmux_key in config_toml:
-        raise AssertionError(f"old cmux hook trust was preserved: {config_toml!r}")
+        raise AssertionError(f"stale mosaic hook trust was preserved: {config_toml!r}")
+    if stale_old_mosaic_key in config_toml:
+        raise AssertionError(f"old mosaic hook trust was preserved: {config_toml!r}")
     if stale_legacy_key in config_toml or stale_legacy_hash in config_toml:
-        raise AssertionError(f"legacy cmux hook trust was preserved: {config_toml!r}")
-    trust_begin = "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin"
-    trust_end = "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
+        raise AssertionError(f"legacy mosaic hook trust was preserved: {config_toml!r}")
+    trust_begin = "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin"
+    trust_end = "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
     if config_toml.count(trust_begin) != 1:
-        raise AssertionError(f"install did not write one fresh cmux hook trust marker: {config_toml!r}")
+        raise AssertionError(f"install did not write one fresh mosaic hook trust marker: {config_toml!r}")
     if config_toml.count(trust_end) != 1:
-        raise AssertionError(f"install did not close the fresh cmux trust block: {config_toml!r}")
+        raise AssertionError(f"install did not close the fresh mosaic trust block: {config_toml!r}")
     trust_begin_index = config_toml.index(trust_begin)
     trust_end_index = config_toml.index(trust_end)
     for plugin_header in (
@@ -1527,11 +1527,11 @@ def test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(
     ):
         plugin_index = config_toml.index(plugin_header)
         if trust_begin_index < plugin_index < trust_end_index:
-            raise AssertionError(f"plugin table remained inside fresh cmux trust block: {config_toml!r}")
+            raise AssertionError(f"plugin table remained inside fresh mosaic trust block: {config_toml!r}")
 
     hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
     state = codex_hook_trust_state(config_toml)
-    expected_trust = expected_cmux_codex_hook_trust(hooks, hooks_path)
+    expected_trust = expected_mosaic_codex_hook_trust(hooks, hooks_path)
     for key, trusted_hash in expected_trust.items():
         if state.get(key, {}).get("trusted_hash") != trusted_hash:
             raise AssertionError(
@@ -1548,11 +1548,11 @@ def test_install_enables_hooks_when_stale_trust_marker_captures_dotted_feature(
     stale_key = f"{hooks_path.resolve()}:pre_tool_use:0:0"
     config_path = codex_home / "config.toml"
     config_path.write_text(
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 begin\n"
         f'[hooks.state."{stale_key}"]\n'
         'trusted_hash = "sha256:stale"\n'
         "features.experimental = true\n"
-        "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end\n",
+        "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end\n",
         encoding="utf-8",
     )
     env = os.environ.copy()
@@ -1575,10 +1575,10 @@ def test_install_enables_hooks_when_stale_trust_marker_captures_dotted_feature(
     if not _toml_has_line(config_toml, "hooks = true") and not _toml_has_line(config_toml, "features.hooks = true"):
         raise AssertionError(f"install did not enable Codex hooks: {config_toml!r}")
     if 'trusted_hash = "sha256:stale"' in config_toml:
-        raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
+        raise AssertionError(f"stale mosaic hook trust was preserved: {config_toml!r}")
 
 
-def test_uninstall_preserves_third_party_hook_trust_inside_cmux_marker(
+def test_uninstall_preserves_third_party_hook_trust_inside_mosaic_marker(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-uninstall-stale-third-party-trust"
@@ -1600,7 +1600,7 @@ def test_uninstall_preserves_third_party_hook_trust_inside_cmux_marker(
         )
 
     config_path = codex_home / "config.toml"
-    trust_end = "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
+    trust_end = "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
     same_file_user_key = f"{(codex_home / 'hooks.json').resolve()}:pre_tool_use:8:0"
     third_party_key = "/tmp/third-party/hooks.json:pre_tool_use:0:0"
     config_toml = config_path.read_text(encoding="utf-8")
@@ -1630,19 +1630,19 @@ def test_uninstall_preserves_third_party_hook_trust_inside_cmux_marker(
         )
 
     config_toml = config_path.read_text(encoding="utf-8")
-    if "cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738" in config_toml:
-        raise AssertionError(f"cmux hook trust marker was preserved: {config_toml!r}")
+    if "mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738" in config_toml:
+        raise AssertionError(f"mosaic hook trust marker was preserved: {config_toml!r}")
     state = codex_hook_trust_state(config_toml)
     for key in state:
         if key.startswith(f"{(codex_home / 'hooks.json').resolve()}:") and key != same_file_user_key:
-            raise AssertionError(f"cmux hook trust was preserved: {config_toml!r}")
+            raise AssertionError(f"mosaic hook trust was preserved: {config_toml!r}")
     if 'trusted_hash = "sha256:same-file-user"' not in config_toml:
         raise AssertionError(f"same-file user hook trust was removed: {config_toml!r}")
     if 'trusted_hash = "sha256:third-party"' not in config_toml:
         raise AssertionError(f"third-party hook trust was removed: {config_toml!r}")
 
 
-def test_uninstall_retry_removes_stale_cmux_hook_trust_after_hooks_are_cleaned(
+def test_uninstall_retry_removes_stale_mosaic_hook_trust_after_hooks_are_cleaned(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-uninstall-retry-stale-trust"
@@ -1665,18 +1665,18 @@ def test_uninstall_retry_removes_stale_cmux_hook_trust_after_hooks_are_cleaned(
 
     hooks_path = codex_home / "hooks.json"
     hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
-    expected_trust = expected_cmux_codex_hook_trust(hooks, hooks_path)
+    expected_trust = expected_mosaic_codex_hook_trust(hooks, hooks_path)
     if not expected_trust:
-        raise AssertionError(f"expected cmux Codex trust entries, got {expected_trust!r}")
+        raise AssertionError(f"expected mosaic Codex trust entries, got {expected_trust!r}")
 
     config_path = codex_home / "config.toml"
-    trust_end = "# cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
+    trust_end = "# mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738 end"
     same_file_user_key = f"{hooks_path.resolve()}:pre_tool_use:8:0"
     legacy_key = f"{hooks_path.resolve()}:pre_tool_use:9:0"
     legacy_hash = codex_command_hook_hash(
         event_label="pre_tool_use",
         matcher=None,
-        command="cmux feed-hook --source codex --event PreToolUse",
+        command="mosaic feed-hook --source codex --event PreToolUse",
         timeout=120_000,
         status_message=None,
     )
@@ -1712,20 +1712,20 @@ def test_uninstall_retry_removes_stale_cmux_hook_trust_after_hooks_are_cleaned(
         )
 
     config_toml = config_path.read_text(encoding="utf-8")
-    if "cmux-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738" in config_toml:
-        raise AssertionError(f"cmux hook trust marker was preserved: {config_toml!r}")
+    if "mosaic-codex-hook-trust-f5cc24da-7a09-4b20-a756-89e7786f6738" in config_toml:
+        raise AssertionError(f"mosaic hook trust marker was preserved: {config_toml!r}")
     for key, trusted_hash in expected_trust.items():
         if key in config_toml or trusted_hash in config_toml:
-            raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
+            raise AssertionError(f"stale mosaic hook trust was preserved: {config_toml!r}")
     if legacy_key in config_toml or legacy_hash in config_toml:
-        raise AssertionError(f"legacy cmux hook trust was preserved: {config_toml!r}")
+        raise AssertionError(f"legacy mosaic hook trust was preserved: {config_toml!r}")
     if 'trusted_hash = "sha256:same-file-user"' not in config_toml:
         raise AssertionError(f"same-file user hook trust was removed: {config_toml!r}")
     if 'trusted_hash = "sha256:third-party"' not in config_toml:
         raise AssertionError(f"third-party hook trust was removed: {config_toml!r}")
 
 
-def test_uninstall_retry_preserves_user_hook_trust_at_default_cmux_key(
+def test_uninstall_retry_preserves_user_hook_trust_at_default_mosaic_key(
     cli_path: str, root: Path
 ) -> None:
     codex_home = root / "codex-home-uninstall-retry-user-default-key"
@@ -1767,9 +1767,9 @@ def test_uninstall_retry_preserves_user_hook_trust_at_default_cmux_key(
         )
 
     installed_hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
-    expected_trust = expected_cmux_codex_hook_trust(installed_hooks, hooks_path)
+    expected_trust = expected_mosaic_codex_hook_trust(installed_hooks, hooks_path)
     if not expected_trust:
-        raise AssertionError(f"expected cmux Codex trust entries, got {expected_trust!r}")
+        raise AssertionError(f"expected mosaic Codex trust entries, got {expected_trust!r}")
     hooks_path.write_text(json.dumps(user_hooks, indent=2) + "\n", encoding="utf-8")
 
     result = subprocess.run(
@@ -1788,12 +1788,12 @@ def test_uninstall_retry_preserves_user_hook_trust_at_default_cmux_key(
 
     config_toml = config_path.read_text(encoding="utf-8")
     if 'trusted_hash = "sha256:user-default-index"' not in config_toml:
-        raise AssertionError(f"user hook trust at default cmux key was removed: {config_toml!r}")
+        raise AssertionError(f"user hook trust at default mosaic key was removed: {config_toml!r}")
     for key, trusted_hash in expected_trust.items():
         if trusted_hash in config_toml:
-            raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
+            raise AssertionError(f"stale mosaic hook trust was preserved: {config_toml!r}")
         if key != user_key and key in config_toml:
-            raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
+            raise AssertionError(f"stale mosaic hook trust was preserved: {config_toml!r}")
 
 
 def test_uninstall_removes_legacy_codex_hook_trust(cli_path: str, root: Path) -> None:
@@ -1801,7 +1801,7 @@ def test_uninstall_removes_legacy_codex_hook_trust(cli_path: str, root: Path) ->
     codex_home.mkdir()
     hooks_path = codex_home / "hooks.json"
     config_path = codex_home / "config.toml"
-    legacy_command = "cmux feed-hook --source codex --event PreToolUse"
+    legacy_command = "mosaic feed-hook --source codex --event PreToolUse"
     legacy_key = f"{hooks_path.resolve()}:pre_tool_use:0:0"
     legacy_hash = codex_command_hook_hash(
         event_label="pre_tool_use",
@@ -1855,10 +1855,10 @@ def test_uninstall_removes_legacy_codex_hook_trust(cli_path: str, root: Path) ->
 
     hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
     if legacy_command in json.dumps(hooks):
-        raise AssertionError(f"legacy cmux hook command was preserved: {hooks!r}")
+        raise AssertionError(f"legacy mosaic hook command was preserved: {hooks!r}")
     config_toml = config_path.read_text(encoding="utf-8")
     if legacy_key in config_toml or legacy_hash in config_toml:
-        raise AssertionError(f"legacy cmux hook trust was preserved: {config_toml!r}")
+        raise AssertionError(f"legacy mosaic hook trust was preserved: {config_toml!r}")
 
 
 def test_uninstall_codex_hooks_removes_legacy_managed_block(cli_path: str, root: Path) -> None:
@@ -1871,14 +1871,14 @@ def test_uninstall_codex_hooks_removes_legacy_managed_block(cli_path: str, root:
             [
                 "[features]",
                 "apps = true",
-                "# cmux-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df begin",
-                "# cmux-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df previous line: hooks = false",
+                "# mosaic-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df begin",
+                "# mosaic-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df previous line: hooks = false",
                 "hooks = true",
-                "# cmux-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df end",
-                "# cmux hooks codex feature begin",
-                "# cmux hooks codex feature previous line: features.hooks = false",
+                "# mosaic-codex-hooks-feature-78f1e4ba-66df-4d35-93c1-67fdf1cbb7df end",
+                "# mosaic hooks codex feature begin",
+                "# mosaic hooks codex feature previous line: features.hooks = false",
                 "features.hooks = true",
-                "# cmux hooks codex feature end",
+                "# mosaic hooks codex feature end",
                 "",
             ]
         ),
@@ -1901,12 +1901,12 @@ def test_uninstall_codex_hooks_removes_legacy_managed_block(cli_path: str, root:
         )
 
     config_toml = config_path.read_text(encoding="utf-8")
-    if "cmux-codex-hooks-feature" in config_toml:
+    if "mosaic-codex-hooks-feature" in config_toml:
         raise AssertionError(f"legacy managed markers were not removed: {config_toml!r}")
-    if "cmux hooks codex feature" in config_toml:
+    if "mosaic hooks codex feature" in config_toml:
         raise AssertionError(f"old legacy managed markers were not removed: {config_toml!r}")
     if "hooks = true" in config_toml:
-        raise AssertionError(f"cmux-owned legacy hooks setting was not removed: {config_toml!r}")
+        raise AssertionError(f"mosaic-owned legacy hooks setting was not removed: {config_toml!r}")
     if "hooks = false" not in config_toml:
         raise AssertionError(f"previous hooks setting was not restored: {config_toml!r}")
     if "features.hooks = false" not in config_toml:
@@ -2005,7 +2005,7 @@ def test_install_codex_hooks_preserves_config_when_toml_read_fails(cli_path: str
 
 
 def test_codex_permission_request_is_nonblocking_telemetry(cli_path: str, root: Path) -> None:
-    socket_path = root / "cmux.sock"
+    socket_path = root / "mosaic.sock"
     payload = {
         "session_id": "codex-session",
         "turn_id": "turn-1",
@@ -2044,7 +2044,7 @@ def test_codex_permission_decisions_do_not_block_approval_reviewer(cli_path: str
     for mode in ["once", "always", "all", "bypass", "deny"]:
         stdout, _ = run_feed_hook(
             cli_path,
-            root / f"cmux-{mode}.sock",
+            root / f"mosaic-{mode}.sock",
             payload,
             {"kind": "permission", "mode": mode},
         )
@@ -2055,7 +2055,7 @@ def test_codex_permission_decisions_do_not_block_approval_reviewer(cli_path: str
 def test_codex_pre_tool_use_is_telemetry_not_actionable(cli_path: str, root: Path) -> None:
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-pretool.sock",
+        root / "mosaic-pretool.sock",
         {
             "session_id": "codex-session",
             "turn_id": "turn-2",
@@ -2121,7 +2121,7 @@ def test_codex_lifecycle_feed_events_stay_telemetry_and_distinct(cli_path: str, 
     for event_name, payload in event_payloads.items():
         stdout, frame = run_feed_hook(
             cli_path,
-            root / f"cmux-codex-{event_name}.sock",
+            root / f"mosaic-codex-{event_name}.sock",
             payload,
             None,
         )
@@ -2163,7 +2163,7 @@ def test_codex_post_tool_use_redacts_tool_output(cli_path: str, root: Path) -> N
 
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-codex-large-posttool.sock",
+        root / "mosaic-codex-large-posttool.sock",
         payload,
         None,
     )
@@ -2176,7 +2176,7 @@ def test_codex_post_tool_use_redacts_tool_output(cli_path: str, root: Path) -> N
     tool_input = event.get("tool_input")
     if not isinstance(tool_input, dict):
         raise AssertionError(f"Codex PostToolUse should forward summarized tool_input: {event!r}")
-    if tool_input.get("_cmux_sanitized") is not True:
+    if tool_input.get("_mosaic_sanitized") is not True:
         raise AssertionError(f"PostToolUse response was not marked sanitized: {tool_input!r}")
     if tool_input.get("exit_code") != 42 or tool_input.get("status") != "failed":
         raise AssertionError(f"large PostToolUse response did not preserve metadata: {tool_input!r}")
@@ -2204,7 +2204,7 @@ def test_codex_post_tool_use_accepts_native_event_label(cli_path: str, root: Pat
 
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-codex-native-posttool.sock",
+        root / "mosaic-codex-native-posttool.sock",
         payload,
         None,
     )
@@ -2236,7 +2236,7 @@ def test_codex_post_tool_use_oversize_payload_is_dropped_before_decode(cli_path:
 
     stdout, frame = run_feed_hook_optional_frame(
         cli_path,
-        root / "cmux-codex-oversize-posttool.sock",
+        root / "mosaic-codex-oversize-posttool.sock",
         payload,
         None,
     )
@@ -2257,7 +2257,7 @@ def test_codex_lifecycle_oversize_payload_is_dropped_before_decode(cli_path: str
 
     stdout, frame = run_feed_hook_optional_frame(
         cli_path,
-        root / "cmux-codex-oversize-precompact.sock",
+        root / "mosaic-codex-oversize-precompact.sock",
         payload,
         None,
     )
@@ -2285,7 +2285,7 @@ def test_codex_post_tool_use_keeps_cwd_from_tool_input(cli_path: str, root: Path
 
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-codex-posttool-cwd.sock",
+        root / "mosaic-codex-posttool-cwd.sock",
         payload,
         None,
     )
@@ -2315,7 +2315,7 @@ def test_codex_post_tool_use_without_response_keeps_request_input(cli_path: str,
 
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-codex-posttool-request-only.sock",
+        root / "mosaic-codex-posttool-request-only.sock",
         payload,
         None,
     )
@@ -2325,7 +2325,7 @@ def test_codex_post_tool_use_without_response_keeps_request_input(cli_path: str,
     tool_input = event.get("tool_input")
     if tool_input != payload["tool_input"]:
         raise AssertionError(f"Codex PostToolUse without response should preserve request input: {event!r}")
-    if isinstance(tool_input, dict) and tool_input.get("_cmux_sanitized") is True:
+    if isinstance(tool_input, dict) and tool_input.get("_mosaic_sanitized") is True:
         raise AssertionError(f"request input fallback should not be sanitized: {event!r}")
 
 
@@ -2347,7 +2347,7 @@ def test_non_codex_post_tool_use_keeps_request_input(cli_path: str, root: Path) 
 
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-antigravity-posttool.sock",
+        root / "mosaic-antigravity-posttool.sock",
         payload,
         None,
         source="antigravity",
@@ -2358,14 +2358,14 @@ def test_non_codex_post_tool_use_keeps_request_input(cli_path: str, root: Path) 
     tool_input = event.get("tool_input")
     if tool_input != payload["tool_input"]:
         raise AssertionError(f"non-Codex PostToolUse should preserve request input: {event!r}")
-    if isinstance(tool_input, dict) and tool_input.get("_cmux_sanitized") is True:
+    if isinstance(tool_input, dict) and tool_input.get("_mosaic_sanitized") is True:
         raise AssertionError(f"non-Codex request input should not be sanitized: {event!r}")
 
 
 def test_claude_subagent_stop_stays_distinct_feed_telemetry(cli_path: str, root: Path) -> None:
     stdout, frame = run_feed_hook(
         cli_path,
-        root / "cmux-claude-subagent-stop.sock",
+        root / "mosaic-claude-subagent-stop.sock",
         {
             "session_id": "claude-session",
             "cwd": "/tmp/project",
@@ -2386,12 +2386,12 @@ def test_claude_subagent_stop_stays_distinct_feed_telemetry(cli_path: str, root:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-codex-feed-hooks-", dir="/tmp") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-codex-feed-hooks-", dir="/tmp") as td:
         root = Path(td)
         try:
             test_codex_stop_reaps_transcript_monitor(cli_path, root)
@@ -2413,14 +2413,14 @@ def main() -> int:
             test_uninstall_restores_disabled_codex_hooks_feature(cli_path, root)
             test_uninstall_restores_disabled_dotted_codex_hooks_feature(cli_path, root)
             test_install_scans_features_past_bracketed_array(cli_path, root)
-            test_uninstall_removes_cmux_owned_codex_hooks_feature(cli_path, root)
-            test_uninstall_preserves_unowned_hook_trust_when_cmux_marker_is_unclosed(cli_path, root)
-            test_install_recovers_hook_trust_when_cmux_marker_is_unclosed(cli_path, root)
-            test_install_preserves_plugin_tables_inside_stale_cmux_hook_trust_marker(cli_path, root)
+            test_uninstall_removes_mosaic_owned_codex_hooks_feature(cli_path, root)
+            test_uninstall_preserves_unowned_hook_trust_when_mosaic_marker_is_unclosed(cli_path, root)
+            test_install_recovers_hook_trust_when_mosaic_marker_is_unclosed(cli_path, root)
+            test_install_preserves_plugin_tables_inside_stale_mosaic_hook_trust_marker(cli_path, root)
             test_install_enables_hooks_when_stale_trust_marker_captures_dotted_feature(cli_path, root)
-            test_uninstall_preserves_third_party_hook_trust_inside_cmux_marker(cli_path, root)
-            test_uninstall_retry_removes_stale_cmux_hook_trust_after_hooks_are_cleaned(cli_path, root)
-            test_uninstall_retry_preserves_user_hook_trust_at_default_cmux_key(cli_path, root)
+            test_uninstall_preserves_third_party_hook_trust_inside_mosaic_marker(cli_path, root)
+            test_uninstall_retry_removes_stale_mosaic_hook_trust_after_hooks_are_cleaned(cli_path, root)
+            test_uninstall_retry_preserves_user_hook_trust_at_default_mosaic_key(cli_path, root)
             test_uninstall_removes_legacy_codex_hook_trust(cli_path, root)
             test_uninstall_codex_hooks_removes_legacy_managed_block(cli_path, root)
             test_install_surfaces_invalid_codex_config_encoding(cli_path, root)

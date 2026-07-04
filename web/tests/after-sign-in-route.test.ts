@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 process.env.SKIP_ENV_VALIDATION = "1";
 process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_key";
 process.env.CLERK_SECRET_KEY = "sk_test_secret_key_that_is_long_enough_for_native_tokens";
-process.env.CMUX_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
+process.env.MOSAIC_NATIVE_AUTH_SECRET = "native-test-secret-that-is-at-least-thirty-two-bytes";
 
 const HANDOFF_COOKIE = "mosaic-native-auth-handoff";
 let handoffCookie: string | undefined;
@@ -54,7 +54,7 @@ function signInRequest(nativeReturnTo: string, handoffNonce: string): NextReques
   const encodedReturnTo = encodeURIComponent(nativeReturnTo);
   const encodedNonce = encodeURIComponent(handoffNonce);
   return new NextRequest(
-    `https://cmux.test/handler/after-sign-in?native_app_return_to=${encodedReturnTo}&mosaic_auth_handoff=${encodedNonce}`,
+    `https://mosaic.test/handler/after-sign-in?native_app_return_to=${encodedReturnTo}&mosaic_auth_handoff=${encodedNonce}`,
     {
       headers: {
         "accept-language": "en",
@@ -116,8 +116,8 @@ describe("after sign-in native handoff", () => {
     expect(callbackURL.protocol).toBe("mosaic:");
     expect(callbackURL.hostname).toBe("auth-callback");
     expect(callbackURL.searchParams.get("mosaic_auth_state")).toBe("state-123");
-    expect(callbackURL.searchParams.get("mosaic_refresh")).toStartWith("cmuxv1.");
-    expect(callbackURL.searchParams.get("mosaic_access")).toStartWith("cmuxv1.");
+    expect(callbackURL.searchParams.get("mosaic_refresh")).toStartWith("mosaicv1.");
+    expect(callbackURL.searchParams.get("mosaic_access")).toStartWith("mosaicv1.");
     const accessClaims = verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_access")!);
     const refreshClaims = verifyNativeAuthToken(callbackURL.searchParams.get("mosaic_refresh")!);
     expect(accessClaims).toMatchObject({
@@ -192,7 +192,7 @@ describe("after sign-in native handoff", () => {
     const response = await GET(signInRequest(nativeReturnTo, "handoff-nonce"));
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://cmux.test/sign-in");
+    expect(response.headers.get("location")).toBe("https://mosaic.test/sign-in");
   });
 
   test("captures trimmed profile picture and name from Clerk at sign-in", async () => {

@@ -1,4 +1,4 @@
-import CmuxFoundation
+import MosaicFoundation
 import Sentry
 
 /// Applies a ``SentryScrubber`` to outgoing Sentry events and breadcrumbs so
@@ -93,7 +93,7 @@ struct SentryEventScrubber {
         }
         if let context = event.context {
             // `context` carries the per-key dictionaries set via
-            // `scope.setContext(value:key:)`, where cmux puts cwd / path / URL
+            // `scope.setContext(value:key:)`, where mosaic puts cwd / path / URL
             // data. Route through the context scrubber so the OUTER context name
             // is also a redaction boundary (a `credentials`/`auth` context is
             // dropped wholesale), matching the key-aware handling tags/extra get.

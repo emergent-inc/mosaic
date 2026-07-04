@@ -1,8 +1,8 @@
-import CMUXMobileCore
-import CmuxAuthRuntime
+import MosaicMobileCore
+import MosaicAuthRuntime
 import Foundation
 
-/// Registers this Mac (and its running cmux app instance's attach routes) in the
+/// Registers this Mac (and its running mosaic app instance's attach routes) in the
 /// team-scoped device registry (`POST /api/devices`), so a phone can look up the
 /// Mac's current routes on reload and auto-pair instead of re-scanning a QR.
 ///
@@ -129,9 +129,9 @@ final class DeviceRegistryClient {
         req.httpMethod = "POST"
         req.timeoutInterval = 10
         req.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Cmux-Refresh-Token")
+        req.setValue(tokens.refreshToken, forHTTPHeaderField: "X-Mosaic-Refresh-Token")
         if let teamID, !teamID.isEmpty {
-            req.setValue(teamID, forHTTPHeaderField: "X-Cmux-Team-Id")
+            req.setValue(teamID, forHTTPHeaderField: "X-Mosaic-Team-Id")
         }
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.httpBody = try? JSONSerialization.data(withJSONObject: bodyDict, options: [])
@@ -144,7 +144,7 @@ final class DeviceRegistryClient {
                     // transient failure retries on the next status tick.
                     lastRegistration = registration
                 } else {
-                    NSLog("cmux.deviceRegistry register failed status=%d", http.statusCode)
+                    NSLog("mosaic.deviceRegistry register failed status=%d", http.statusCode)
                 }
             }
         } catch {
@@ -152,11 +152,11 @@ final class DeviceRegistryClient {
         }
     }
 
-    /// The build tag for this cmux instance, distinguishing dev/tagged builds
+    /// The build tag for this mosaic instance, distinguishing dev/tagged builds
     /// from stable. Defaults to "default" so untagged stable builds register
     /// under a stable instance key.
     private static func buildTag() -> String {
-        let tag = ProcessInfo.processInfo.environment["CMUX_TAG"]?
+        let tag = ProcessInfo.processInfo.environment["MOSAIC_TAG"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (tag?.isEmpty == false) ? tag! : "default"
     }

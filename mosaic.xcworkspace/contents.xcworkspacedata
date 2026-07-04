@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:mosaic.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:ios/mosaic-ios.xcodeproj">
+   </FileRef>
+   <Group
+      location = "container:Packages/Shared"
+      name = "Packages (Shared)">
+      <FileRef
+         location = "group:MosaicAgentChat">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicAuthCore">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicAuthRuntime">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicCollaboration">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileCore">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSyncStore">
+      </FileRef>
+   </Group>
+   <Group
+      location = "container:Packages/iOS"
+      name = "Packages (iOS)">
+      <FileRef
+         location = "container:ios/mosaicPackage">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicAgentChatUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileAnalytics">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileBrowser">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileCamera">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileDiagnostics">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobilePairedMac">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileRPC">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileShell">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileShellModel">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileShellUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileSupport">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileTerminal">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileTerminalKit">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileTransport">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicMobileWorkspace">
+      </FileRef>
+   </Group>
+   <Group
+      location = "container:Packages/macOS"
+      name = "Packages (macOS)">
+      <FileRef
+         location = "group:MosaicAgentLaunch">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicAppKitSupportUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicBrowser">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicCanvas">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicCanvasUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicCommandPalette">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicControlSocket">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicCore">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicDebugLog">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicExtensionKit">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicFeedback">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicFoundation">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicGit">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicLiveEval">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicNotifications">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicPanes">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicProjectModel">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicRemoteDaemon">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicRemoteSession">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicRemoteWorkspace">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSettings">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSettingsUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSidebar">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSidebarGit">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSidebarInterpreterService">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSidebarProviderKit">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSwiftRender">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicSwiftRenderUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicTerminal">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicTerminalCore">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicTestSupport">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicUpdater">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicUpdaterUI">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicWindowing">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicWorkspaces">
+      </FileRef>
+   </Group>
+   <Group
+      location = "container:Examples"
+      name = "Examples">
+      <FileRef
+         location = "group:TabsVisibleSidebar/TabsVisibleSidebar.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:SampleSidebarExtensionApp/SampleSidebarExtensionApp.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:MosaicExtensionSidebarExamples">
+      </FileRef>
+   </Group>
+</Workspace>

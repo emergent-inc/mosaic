@@ -1,12 +1,12 @@
 import Foundation
-import CmuxAppKitSupportUI
-import CmuxTerminal
-import CmuxFoundation
-import CmuxPanes
-import CmuxTerminalCore
-import CmuxSettings
-import CmuxWorkspaces
-import CmuxTestSupport
+import MosaicAppKitSupportUI
+import MosaicTerminal
+import MosaicFoundation
+import MosaicPanes
+import MosaicTerminalCore
+import MosaicSettings
+import MosaicWorkspaces
+import MosaicTestSupport
 import SwiftUI
 import AppKit
 import Metal
@@ -18,8 +18,8 @@ import Carbon.HIToolbox
 import os
 import Sentry
 import Bonsplit
-import CMUXAgentLaunch
-import CMUXMobileCore
+import MosaicAgentLaunch
+import MosaicMobileCore
 import IOSurface
 import UniformTypeIdentifiers
 
@@ -118,7 +118,7 @@ enum GhosttyStartupAppearancePreviewProfile: String, CaseIterable, Identifiable 
         case .realUserConfig:
             return nil
         case .freshInstall:
-            return GhosttyConfig.cmuxDefaultThemeConfigContents(
+            return GhosttyConfig.mosaicDefaultThemeConfigContents(
                 preferredColorScheme: preferredColorScheme
             )
         case .userThemePair:
@@ -156,7 +156,7 @@ enum GhosttyStartupAppearancePreviewProfile: String, CaseIterable, Identifiable 
 
 enum GhosttyStartupAppearancePreviewState {
     #if DEBUG
-    // The selected debug preview profile. Backed by the CmuxTerminalCore seam
+    // The selected debug preview profile. Backed by the MosaicTerminalCore seam
     // (TerminalStartupAppearancePreviewOverride) so GhosttyConfig's loader, now
     // package-bound, never reaches back up into this app-target settings type.
     // The app is the sole writer of the override.
@@ -179,14 +179,14 @@ enum GhosttyStartupAppearancePreviewState {
     #endif
 }
 
-// Window-background policy (cmuxShouldApplyWindowGlass /
-// cmuxShouldUseTransparentBackgroundWindow / cmuxShouldUseClearWindowBackground
-// / cmuxTransparentWindowBaseColor) and the compositor-blur CGS shims
-// (cmuxResetCompositorBackgroundBlur) moved to CmuxWorkspaceWindow as
+// Window-background policy (mosaicShouldApplyWindowGlass /
+// mosaicShouldUseTransparentBackgroundWindow / mosaicShouldUseClearWindowBackground
+// / mosaicTransparentWindowBaseColor) and the compositor-blur CGS shims
+// (mosaicResetCompositorBackgroundBlur) moved to MosaicWorkspaceWindow as
 // WindowBackgroundPolicy + CompositorBlurController. The transitional
 // process-wide instances live in WindowBackgroundComposition (app target).
 
-private func cmuxRuntimeReadClipboardCallback(
+private func mosaicRuntimeReadClipboardCallback(
     _ userdata: UnsafeMutableRawPointer?,
     _ location: ghostty_clipboard_e,
     _ state: UnsafeMutableRawPointer?
@@ -194,10 +194,10 @@ private func cmuxRuntimeReadClipboardCallback(
     GhosttyApp.runtimeReadClipboardCallback(userdata, location, state)
 }
 
-// GhosttyPasteboardHelper moved to CmuxTerminalServices as
+// GhosttyPasteboardHelper moved to MosaicTerminalServices as
 // TerminalPasteboardService (behind the TerminalClipboardReading /
 // TerminalClipboardWriting / TerminalImagePasteWriting seams in
-// CmuxTerminalCore). The process-wide instance is the transitional
+// MosaicTerminalCore). The process-wide instance is the transitional
 // GhosttyApp.terminalPasteboard composition static below.
 
 /// The app-side conformance injected into ``TerminalLinkRouter``: terminal
@@ -247,7 +247,7 @@ private func terminalKeyTableIndicatorText(_ name: String) -> String {
 }
 
 func terminalKeyboardCopyModeShouldBypassForShortcut(modifierFlags: NSEvent.ModifierFlags) -> Bool {
-    CmuxTerminalCore.terminalKeyboardCopyModeShouldBypassForShortcut(
+    MosaicTerminalCore.terminalKeyboardCopyModeShouldBypassForShortcut(
         modifiers: TerminalKeyboardCopyModeModifiers(modifierFlags: modifierFlags)
     )
 }
@@ -259,7 +259,7 @@ func terminalKeyboardCopyModeAction(
     hasSelection: Bool,
     asciiCharacterProvider: (UInt16, NSEvent.ModifierFlags) -> String? = KeyboardLayout.character(forKeyCode:modifierFlags:)
 ) -> TerminalKeyboardCopyModeAction? {
-    CmuxTerminalCore.terminalKeyboardCopyModeAction(
+    MosaicTerminalCore.terminalKeyboardCopyModeAction(
         keyCode: keyCode,
         charactersIgnoringModifiers: charactersIgnoringModifiers,
         modifiers: TerminalKeyboardCopyModeModifiers(modifierFlags: modifierFlags),
@@ -278,7 +278,7 @@ func terminalKeyboardCopyModeResolve(
     state: inout TerminalKeyboardCopyModeInputState,
     asciiCharacterProvider: (UInt16, NSEvent.ModifierFlags) -> String? = KeyboardLayout.character(forKeyCode:modifierFlags:)
 ) -> TerminalKeyboardCopyModeResolution {
-    CmuxTerminalCore.terminalKeyboardCopyModeResolve(
+    MosaicTerminalCore.terminalKeyboardCopyModeResolve(
         keyCode: keyCode,
         charactersIgnoringModifiers: charactersIgnoringModifiers,
         modifiers: TerminalKeyboardCopyModeModifiers(modifierFlags: modifierFlags),
@@ -290,10 +290,10 @@ func terminalKeyboardCopyModeResolve(
     )
 }
 
-// GhosttySurfaceCallbackContext moved to CmuxTerminalCore behind the
+// GhosttySurfaceCallbackContext moved to MosaicTerminalCore behind the
 // TerminalSurfaceControlling/TerminalSurfaceHosting seams; the conformances
 // and concrete-typed convenience accessors live here.
-// TerminalSurface's TerminalSurfaceControlling conformance lives in CmuxTerminal.
+// TerminalSurface's TerminalSurfaceControlling conformance lives in MosaicTerminal.
 
 extension GhosttyNSView: TerminalSurfaceHosting {
     var hostedTabId: UUID? { tabId }
@@ -305,9 +305,9 @@ extension GhosttySurfaceCallbackContext {
     var surfaceView: GhosttyNSView? { surfaceHost as? GhosttyNSView }
 }
 
-// TerminalSurface's TerminalSurfacing conformance lives in CmuxTerminal.
+// TerminalSurface's TerminalSurfacing conformance lives in MosaicTerminal.
 
-// The surface model drives its views through the CmuxTerminal hosting seams;
+// The surface model drives its views through the MosaicTerminal hosting seams;
 // the concrete view classes conform here.
 extension GhosttyNSView: TerminalSurfaceNativeViewing {}
 extension GhosttySurfaceScrollView: TerminalSurfacePaneHosting {}
@@ -341,7 +341,7 @@ extension TerminalSurfaceRegistry {
     }
 }
 
-// TerminalSurfaceRuntimeTeardownCoordinator moved to CmuxTerminal
+// TerminalSurfaceRuntimeTeardownCoordinator moved to MosaicTerminal
 // (Lifecycle/); the process-wide instance is the transitional
 // GhosttyApp.terminalSurfaceRuntimeTeardown composition static below.
 
@@ -360,7 +360,7 @@ class GhosttyApp {
 
     // MARK: Transitional terminal engine/services composition
     //
-    // CmuxTerminalEngine and CmuxTerminalServices ship singleton-free; cmux
+    // MosaicTerminalEngine and MosaicTerminalServices ship singleton-free; mosaic
     // constructs exactly one instance of each capability here. These statics
     // are the documented transitional accessors for god-file callers
     // (GhosttyTerminalView.swift, AppDelegate, Workspace, TerminalController,
@@ -436,7 +436,7 @@ class GhosttyApp {
         category: "ghostty.initialization"
     )
     // SAFETY: Ghostty C callbacks can run while GhosttyApp.shared is still initializing.
-    // cmux owns one process-lifetime GhosttyApp, so the registry avoids singleton re-entry
+    // mosaic owns one process-lifetime GhosttyApp, so the registry avoids singleton re-entry
     // without adding a teardown path for a ghostty_app_t that is never freed/recreated.
     private static let appRegistryLock = NSLock()
     private static var appRegistry: [UInt: GhosttyApp] = [:]
@@ -475,12 +475,12 @@ class GhosttyApp {
     private static func resolveBackgroundLogURL(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL {
-        if let explicitPath = environment["CMUX_DEBUG_BG_LOG"],
+        if let explicitPath = environment["MOSAIC_DEBUG_BG_LOG"],
            !explicitPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return URL(fileURLWithPath: explicitPath)
         }
 
-        if let debugLogPath = environment["CMUX_DEBUG_LOG"],
+        if let debugLogPath = environment["MOSAIC_DEBUG_LOG"],
            !debugLogPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let baseURL = URL(fileURLWithPath: debugLogPath)
             let extensionSeparatorIndex = baseURL.lastPathComponent.lastIndex(of: ".")
@@ -489,7 +489,7 @@ class GhosttyApp {
             return baseURL.deletingLastPathComponent().appendingPathComponent(bgName)
         }
 
-        return URL(fileURLWithPath: "/tmp/cmux-bg.log")
+        return URL(fileURLWithPath: "/tmp/mosaic-bg.log")
     }
 
 #if DEBUG
@@ -552,7 +552,7 @@ class GhosttyApp {
             )
 
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "terminal.clipboard.read surface=\(callbackContext.surfaceId.uuidString.prefix(5)) " +
                 "types=\((pasteboard.types ?? []).map(\.rawValue).joined(separator: ",")) " +
                 "prepared=\(Self.debugDescription(for: preparedContent))"
@@ -590,7 +590,7 @@ class GhosttyApp {
                         guard let workspace = MainActor.assumeIsolated({
                             callbackContext.terminalSurface?.owningWorkspace()
                         }) else {
-                            finish(.failure(NSError(domain: "cmux.remote.paste", code: 3)))
+                            finish(.failure(NSError(domain: "mosaic.remote.paste", code: 3)))
                             GhosttyApp.terminalPasteboard.cleanupTransferredTemporaryImageFiles(fileURLs)
                             return
                         }
@@ -629,7 +629,7 @@ class GhosttyApp {
                         }
                         NSSound.beep()
 #if DEBUG
-                        cmuxDebugLog("terminal.remotePasteUpload.failed surface=\(callbackContext.surfaceId.uuidString.prefix(5))")
+                        mosaicDebugLog("terminal.remotePasteUpload.failed surface=\(callbackContext.surfaceId.uuidString.prefix(5))")
 #endif
                         completeClipboardRequest(with: "")
                     }
@@ -641,13 +641,13 @@ class GhosttyApp {
     }
 
     let backgroundLogEnabled = {
-        if ProcessInfo.processInfo.environment["CMUX_DEBUG_BG"] == "1" {
+        if ProcessInfo.processInfo.environment["MOSAIC_DEBUG_BG"] == "1" {
             return true
         }
-        if ProcessInfo.processInfo.environment["CMUX_DEBUG_LOG"] != nil {
+        if ProcessInfo.processInfo.environment["MOSAIC_DEBUG_LOG"] != nil {
             return true
         }
-        return UserDefaults.standard.bool(forKey: "cmuxDebugBG")
+        return UserDefaults.standard.bool(forKey: "mosaicDebugBG")
     }()
     private let backgroundLogWriter = BackgroundLogWriter(
         fileURL: GhosttyApp.resolveBackgroundLogURL(),
@@ -748,7 +748,7 @@ class GhosttyApp {
     }
 
     #if DEBUG
-    private static let initLogPath = "/tmp/cmux-ghostty-init.log"
+    private static let initLogPath = "/tmp/mosaic-ghostty-init.log"
 
     private static func initLog(_ message: String) {
         let timestamp = ISO8601DateFormatter().string(from: Date())
@@ -804,7 +804,7 @@ class GhosttyApp {
         let result = ghostty_init(UInt(CommandLine.argc), CommandLine.unsafeArgv)
         if result != GHOSTTY_SUCCESS {
             #if DEBUG
-            cmuxDebugLog("ghostty.initialize.failed result=\(result)")
+            mosaicDebugLog("ghostty.initialize.failed result=\(result)")
             #endif
             Self.reportInitializationFailure(
                 "ghostty.initialize.failed",
@@ -816,7 +816,7 @@ class GhosttyApp {
         // Load config
         guard let primaryConfig = ghostty_config_new() else {
             #if DEBUG
-            cmuxDebugLog("ghostty.initialize.config.failed")
+            mosaicDebugLog("ghostty.initialize.config.failed")
             #endif
             Self.reportInitializationFailure("ghostty.initialize.config.failed")
             return
@@ -857,7 +857,7 @@ class GhosttyApp {
         // though the C ABI returns `bool`. Store the C-compatible shim explicitly so the
         // project compiles against both importer variants.
         runtimeConfig.read_clipboard_cb = unsafeBitCast(
-            cmuxRuntimeReadClipboardCallback as @convention(c) (
+            mosaicRuntimeReadClipboardCallback as @convention(c) (
                 UnsafeMutableRawPointer?,
                 ghostty_clipboard_e,
                 UnsafeMutableRawPointer?
@@ -921,7 +921,7 @@ class GhosttyApp {
                 guard let app = AppDelegate.shared else { return }
                 guard let callbackSurface = callbackContext.terminalSurface else {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "surface.closeCallback.ignore surface=\(callbackSurfaceId.uuidString.prefix(5)) reason=missingCallbackSurface"
                     )
 #endif
@@ -930,7 +930,7 @@ class GhosttyApp {
                 if let registeredSurface = GhosttyApp.terminalSurfaceRegistry.surface(id: callbackSurfaceId),
                    registeredSurface !== callbackSurface {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "surface.closeCallback.ignore surface=\(callbackSurfaceId.uuidString.prefix(5)) reason=staleCallbackSurface"
                     )
 #endif
@@ -970,12 +970,12 @@ class GhosttyApp {
             #endif
 
             // If the user config is invalid, prefer a minimal fallback configuration so
-            // cmux still launches with working terminals.
+            // mosaic still launches with working terminals.
             ghostty_config_free(primaryConfig)
 
             guard let fallbackConfig = ghostty_config_new() else {
                 #if DEBUG
-                cmuxDebugLog("ghostty.initialize.fallbackConfig.failed")
+                mosaicDebugLog("ghostty.initialize.fallbackConfig.failed")
                 #endif
                 Self.reportInitializationFailure("ghostty.initialize.fallbackConfig.failed")
                 return
@@ -984,24 +984,24 @@ class GhosttyApp {
             loadInlineGhosttyConfig(
                 "macos-background-from-layer = true",
                 into: fallbackConfig,
-                prefix: "cmux-renderer-bg",
+                prefix: "mosaic-renderer-bg",
                 logLabel: "renderer background (fallback)"
             )
             loadInlineGhosttyConfig(
                 "macos-titlebar-proxy-icon = hidden",
                 into: fallbackConfig,
-                prefix: "cmux-titlebar-proxy-icon",
+                prefix: "mosaic-titlebar-proxy-icon",
                 logLabel: "titlebar proxy icon (fallback)"
             )
             loadInlineGhosttyConfig(
                 "shell-integration = none",
                 into: fallbackConfig,
-                prefix: "cmux-shell-integration-override",
+                prefix: "mosaic-shell-integration-override",
                 logLabel: "shell integration override (fallback)"
             )
-            loadCmuxManagedTerminalSettingsConfig(fallbackConfig)
+            loadMosaicManagedTerminalSettingsConfig(fallbackConfig)
             loadGlobalFontMagnificationConfig(fallbackConfig)
-            loadCmuxOwnedGhosttyKeybindOverrides(fallbackConfig)
+            loadMosaicOwnedGhosttyKeybindOverrides(fallbackConfig)
             loadNoActiveDisplayVsyncFallbackIfNeeded(fallbackConfig)
             let fallbackRenderingModeChanged = setUsesHostLayerBackground(
                 true,
@@ -1027,7 +1027,7 @@ class GhosttyApp {
                 Self.dumpConfigDiagnostics(fallbackConfig, label: "fallback")
                 #endif
                 #if DEBUG
-                cmuxDebugLog("ghostty.initialize.app.failed")
+                mosaicDebugLog("ghostty.initialize.app.failed")
                 #endif
                 Self.reportInitializationFailure("ghostty.initialize.app.failed")
                 ghostty_config_free(fallbackConfig)
@@ -1088,7 +1088,7 @@ class GhosttyApp {
         let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        let syntheticPath = "/__cmux_inline__/\(prefix).conf"
+        let syntheticPath = "/__mosaic_inline__/\(prefix).conf"
         trimmed.withCString { contents in
             syntheticPath.withCString { path in
                 ghostty_config_load_string(
@@ -1101,11 +1101,11 @@ class GhosttyApp {
         }
     }
 
-    private func loadCmuxDefaultAppearanceConfig(
+    private func loadMosaicDefaultAppearanceConfig(
         _ config: ghostty_config_t,
         preferredColorScheme: GhosttyConfig.ColorSchemePreference
     ) {
-        if let url = GhosttyConfig.cmuxDefaultThemeConfigURL(preferredColorScheme: preferredColorScheme) {
+        if let url = GhosttyConfig.mosaicDefaultThemeConfigURL(preferredColorScheme: preferredColorScheme) {
             url.path.withCString { path in
                 ghostty_config_load_file(config, path)
             }
@@ -1113,18 +1113,18 @@ class GhosttyApp {
         }
 
         loadInlineGhosttyConfig(
-            GhosttyConfig.cmuxDefaultThemeConfigContents(preferredColorScheme: preferredColorScheme),
+            GhosttyConfig.mosaicDefaultThemeConfigContents(preferredColorScheme: preferredColorScheme),
             into: config,
-            prefix: "cmux-default-appearance",
+            prefix: "mosaic-default-appearance",
             logLabel: "default appearance fallback"
         )
     }
 
-    private func loadCmuxEnforcedAppearanceConfig(
+    private func loadMosaicEnforcedAppearanceConfig(
         _ config: ghostty_config_t,
         preferredColorScheme: GhosttyConfig.ColorSchemePreference
     ) {
-        if let url = GhosttyConfig.cmuxDefaultThemeConfigURL(preferredColorScheme: preferredColorScheme) {
+        if let url = GhosttyConfig.mosaicDefaultThemeConfigURL(preferredColorScheme: preferredColorScheme) {
             url.path.withCString { path in
                 ghostty_config_load_file(config, path)
             }
@@ -1132,19 +1132,19 @@ class GhosttyApp {
         }
 
         loadInlineGhosttyConfig(
-            GhosttyConfig.cmuxDefaultThemeConfigContents(preferredColorScheme: preferredColorScheme),
+            GhosttyConfig.mosaicDefaultThemeConfigContents(preferredColorScheme: preferredColorScheme),
             into: config,
-            prefix: "cmux-enforced-appearance",
+            prefix: "mosaic-enforced-appearance",
             logLabel: "enforced appearance fallback"
         )
     }
 
-    private func loadCmuxManagedTerminalSettingsConfig(_ config: ghostty_config_t) {
+    private func loadMosaicManagedTerminalSettingsConfig(_ config: ghostty_config_t) {
         guard let contents = TerminalManagedGhosttySettings.ghosttyConfigContents(emitsCopyOnSelectFalse: false) else { return }
         loadInlineGhosttyConfig(
             contents,
             into: config,
-            prefix: "cmux-managed-terminal-settings",
+            prefix: "mosaic-managed-terminal-settings",
             logLabel: "managed terminal settings"
         )
     }
@@ -1155,7 +1155,7 @@ class GhosttyApp {
         preferredColorScheme: GhosttyConfig.ColorSchemePreference
     ) {
         if profile == .freshInstall {
-            loadCmuxDefaultAppearanceConfig(
+            loadMosaicDefaultAppearanceConfig(
                 config,
                 preferredColorScheme: preferredColorScheme
             )
@@ -1168,7 +1168,7 @@ class GhosttyApp {
         loadInlineGhosttyConfig(
             contents,
             into: config,
-            prefix: "cmux-startup-preview",
+            prefix: "mosaic-startup-preview",
             logLabel: "startup appearance preview"
         )
     }
@@ -1184,7 +1184,7 @@ class GhosttyApp {
         loadInlineGhosttyConfig(
             contents,
             into: config,
-            prefix: "cmux-conditional-theme",
+            prefix: "mosaic-conditional-theme",
             logLabel: "conditional theme override"
         )
     }
@@ -1203,19 +1203,19 @@ class GhosttyApp {
         if startupPreviewProfile.loadsRealUserConfig {
             ghostty_config_load_default_files(config)
             loadLegacyGhosttyConfigIfNeeded(config)
-            loadCmuxAppSupportGhosttyConfigIfNeeded(config)
+            loadMosaicAppSupportGhosttyConfigIfNeeded(config)
             ghostty_config_load_recursive_files(config)
             loadConditionalThemeOverrideIfNeeded(
                 config,
                 preferredColorScheme: themeColorScheme
             )
             if Self.shouldApplyManagedDefaultAppearance() {
-                loadCmuxDefaultAppearanceConfig(
+                loadMosaicDefaultAppearanceConfig(
                     config,
                     preferredColorScheme: preferredColorScheme
                 )
             }
-            loadCmuxEnforcedAppearanceConfig(
+            loadMosaicEnforcedAppearanceConfig(
                 config,
                 preferredColorScheme: preferredColorScheme
             )
@@ -1225,7 +1225,7 @@ class GhosttyApp {
                 into: config,
                 preferredColorScheme: preferredColorScheme
             )
-            loadCmuxEnforcedAppearanceConfig(
+            loadMosaicEnforcedAppearanceConfig(
                 config,
                 preferredColorScheme: preferredColorScheme
             )
@@ -1233,19 +1233,19 @@ class GhosttyApp {
         #else
         ghostty_config_load_default_files(config)
         loadLegacyGhosttyConfigIfNeeded(config)
-        loadCmuxAppSupportGhosttyConfigIfNeeded(config)
+        loadMosaicAppSupportGhosttyConfigIfNeeded(config)
         ghostty_config_load_recursive_files(config)
         loadConditionalThemeOverrideIfNeeded(
             config,
             preferredColorScheme: themeColorScheme
         )
         if Self.shouldApplyManagedDefaultAppearance() {
-            loadCmuxDefaultAppearanceConfig(
+            loadMosaicDefaultAppearanceConfig(
                 config,
                 preferredColorScheme: preferredColorScheme
             )
         }
-        loadCmuxEnforcedAppearanceConfig(
+        loadMosaicEnforcedAppearanceConfig(
             config,
             preferredColorScheme: preferredColorScheme
         )
@@ -1255,21 +1255,21 @@ class GhosttyApp {
             true,
             source: "loadDefaultConfigFilesWithLegacyFallback"
         )
-        // Let cmux own the window-level backdrop once, while Ghostty keeps
+        // Let mosaic own the window-level backdrop once, while Ghostty keeps
         // rendering text, cell backgrounds, and background images. This avoids
         // separate translucent fills for terminal and chrome surfaces.
         loadInlineGhosttyConfig(
             "macos-background-from-layer = true",
             into: config,
-            prefix: "cmux-renderer-bg",
+            prefix: "mosaic-renderer-bg",
             logLabel: "renderer background"
         )
         // Hide Ghostty's native AppKit proxy icon at the source instead of
-        // overriding NSWindow.representedURL on every cmux main window.
+        // overriding NSWindow.representedURL on every mosaic main window.
         loadInlineGhosttyConfig(
             "macos-titlebar-proxy-icon = hidden",
             into: config,
-            prefix: "cmux-titlebar-proxy-icon",
+            prefix: "mosaic-titlebar-proxy-icon",
             logLabel: "titlebar proxy icon"
         )
         // Save the user's preference before we force it to none.
@@ -1283,17 +1283,17 @@ class GhosttyApp {
             }
         }
 
-        // Prevent Ghostty from overriding ZDOTDIR — cmux handles shell
+        // Prevent Ghostty from overriding ZDOTDIR — mosaic handles shell
         // integration itself via the .zshenv bootstrap (#2594).
         loadInlineGhosttyConfig(
             "shell-integration = none",
             into: config,
-            prefix: "cmux-shell-integration-override",
+            prefix: "mosaic-shell-integration-override",
             logLabel: "shell integration override"
         )
-        loadCmuxManagedTerminalSettingsConfig(config)
+        loadMosaicManagedTerminalSettingsConfig(config)
         loadGlobalFontMagnificationConfig(config)
-        loadCmuxOwnedGhosttyKeybindOverrides(config)
+        loadMosaicOwnedGhosttyKeybindOverrides(config)
         loadNoActiveDisplayVsyncFallbackIfNeeded(config)
 
         ghostty_config_finalize(config)
@@ -1308,7 +1308,7 @@ class GhosttyApp {
         let scaledFontSize = max(1, CGFloat(fontSize) * GlobalFontMagnification.scale)
         loadInlineGhosttyConfig(
             "font-size = \(Double(scaledFontSize))", into: config,
-            prefix: "cmux-global-font-magnification",
+            prefix: "mosaic-global-font-magnification",
             logLabel: "global font magnification"
         )
     }
@@ -1320,16 +1320,16 @@ class GhosttyApp {
         loadInlineGhosttyConfig(
             "window-vsync = false",
             into: config,
-            prefix: "cmux-no-active-display-vsync-fallback",
+            prefix: "mosaic-no-active-display-vsync-fallback",
             logLabel: "no active display vsync fallback"
         )
 #if DEBUG
-        cmuxDebugLog("ghostty.vsync.disable reason=noActiveDisplays")
+        mosaicDebugLog("ghostty.vsync.disable reason=noActiveDisplays")
 #endif
     }
 
-    private func loadCmuxOwnedGhosttyKeybindOverrides(_ config: ghostty_config_t) {
-        // cmux owns these split and close shortcuts through KeyboardShortcutSettings.
+    private func loadMosaicOwnedGhosttyKeybindOverrides(_ config: ghostty_config_t) {
+        // mosaic owns these split and close shortcuts through KeyboardShortcutSettings.
         // Remove Ghostty's default fallbacks so remapped or cleared shortcuts
         // can reach the focused terminal instead of splitting or closing outside
         // the remappable shortcut layer.
@@ -1343,8 +1343,8 @@ class GhosttyApp {
             \(Self.numberedWorkspaceGhosttyUnbinds)
             """,
             into: config,
-            prefix: "cmux-owned-keybind-overrides",
-            logLabel: "cmux-owned keybind overrides"
+            prefix: "mosaic-owned-keybind-overrides",
+            logLabel: "mosaic-owned keybind overrides"
         )
     }
 
@@ -1354,7 +1354,7 @@ class GhosttyApp {
     ///
     /// Without this, a `⌘1–9` remapped away in Settings still falls through to the
     /// focused terminal and Ghostty performs `goto_tab`, so the rebind looks
-    /// hardcoded (https://github.com/emergent-inc/cmux/issues/5189). Ghostty registers
+    /// hardcoded (https://github.com/emergent-inc/mosaic/issues/5189). Ghostty registers
     /// each digit under both its Unicode form (`super+1`) and its physical-key form
     /// (`super+digit_1`), so both are unbound here.
     private static let numberedWorkspaceGhosttyUnbinds: String = {
@@ -1374,7 +1374,7 @@ class GhosttyApp {
     /// user-managed fallback chains or configured fonts that already cover
     /// the affected CJK ranges.
     ///
-    /// See: https://github.com/emergent-inc/cmux/pull/1017
+    /// See: https://github.com/emergent-inc/mosaic/pull/1017
     private func loadCJKFontFallbackIfNeeded(_ config: ghostty_config_t) {
         guard let mappings = Self.autoInjectedCJKFontMappings() else { return }
 
@@ -1390,7 +1390,7 @@ class GhosttyApp {
         loadInlineGhosttyConfig(
             lines,
             into: config,
-            prefix: "cmux-cjk-font-fallback",
+            prefix: "mosaic-cjk-font-fallback",
             logLabel: "CJK font fallback"
         )
     }
@@ -1403,7 +1403,7 @@ class GhosttyApp {
         configDiscovery.cjkFontMappings(preferredLanguages: preferredLanguages)
     }
 
-    /// Returns only the CJK mappings cmux should auto-inject. Forwards to
+    /// Returns only the CJK mappings mosaic should auto-inject. Forwards to
     /// ``GhosttyConfigDiscovery``.
     static func autoInjectedCJKFontMappings(
         preferredLanguages: [String] = Locale.preferredLanguages,
@@ -1478,7 +1478,7 @@ class GhosttyApp {
         configDiscovery.discoveredFont(named: name, size: size, weightTrait: weightTrait)
     }
 
-    /// Returns the top-level Ghostty config paths cmux may load before recursive
+    /// Returns the top-level Ghostty config paths mosaic may load before recursive
     /// `config-file` processing. Forwards to ``GhosttyConfigDiscovery``.
     static func loadedGhosttyConfigScanPaths(
         currentBundleIdentifier: String? = Bundle.main.bundleIdentifier,
@@ -1537,12 +1537,12 @@ class GhosttyApp {
         )
     }
 
-    static func cmuxAppSupportConfigURLs(
+    static func mosaicAppSupportConfigURLs(
         currentBundleIdentifier: String?,
         appSupportDirectory: URL,
         fileManager: FileManager = .default
     ) -> [URL] {
-        configDiscovery.cmuxAppSupportConfigURLs(
+        configDiscovery.mosaicAppSupportConfigURLs(
             currentBundleIdentifier: currentBundleIdentifier,
             appSupportDirectory: appSupportDirectory,
             fileManager: fileManager
@@ -1627,18 +1627,18 @@ class GhosttyApp {
     static func terminalRuntimeColorSchemePreference(
         forBackgroundColor backgroundColor: NSColor
     ) -> GhosttyConfig.ColorSchemePreference {
-        cmuxReadableColorScheme(for: backgroundColor) == .light ? .light : .dark
+        mosaicReadableColorScheme(for: backgroundColor) == .light ? .light : .dark
     }
 
     static func runtimeColorSchemeForConfigLoad(
         source: String,
         requestedColorScheme: GhosttyConfig.ColorSchemePreference,
         effectiveTerminalColorScheme: GhosttyConfig.ColorSchemePreference,
-        cmuxThemeValue: String?
+        mosaicThemeValue: String?
     ) -> GhosttyConfig.ColorSchemePreference {
-        guard GhosttySurfaceConfigurationRefresh.isCmuxThemeReloadSource(source),
-              let cmuxThemeValue,
-              GhosttyConfig.themeValueUsesSameResolvedThemeInBothColorSchemes(cmuxThemeValue) else {
+        guard GhosttySurfaceConfigurationRefresh.isMosaicThemeReloadSource(source),
+              let mosaicThemeValue,
+              GhosttyConfig.themeValueUsesSameResolvedThemeInBothColorSchemes(mosaicThemeValue) else {
             return requestedColorScheme
         }
 
@@ -1668,13 +1668,13 @@ class GhosttyApp {
         return true
     }
 
-    private func loadCmuxAppSupportGhosttyConfigIfNeeded(_ config: ghostty_config_t) {
+    private func loadMosaicAppSupportGhosttyConfigIfNeeded(_ config: ghostty_config_t) {
         #if os(macOS)
         let fm = FileManager.default
         guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
         guard let currentBundleIdentifier = Bundle.main.bundleIdentifier,
               !currentBundleIdentifier.isEmpty else { return }
-        let urls = Self.cmuxAppSupportConfigURLs(
+        let urls = Self.mosaicAppSupportConfigURLs(
             currentBundleIdentifier: currentBundleIdentifier,
             appSupportDirectory: appSupport,
             fileManager: fm
@@ -1688,20 +1688,20 @@ class GhosttyApp {
         }
 
 #if DEBUG
-        cmuxDebugLog(
-            "loaded cmux app support ghostty config from: \(urls.map(\.path).joined(separator: ", "))"
+        mosaicDebugLog(
+            "loaded mosaic app support ghostty config from: \(urls.map(\.path).joined(separator: ", "))"
         )
         #endif
         #endif
     }
 
-    private func currentCmuxAppSupportThemeValue() -> String? {
+    private func currentMosaicAppSupportThemeValue() -> String? {
         #if os(macOS)
         let fm = FileManager.default
         guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }
-        let urls = Self.cmuxAppSupportConfigURLs(
+        let urls = Self.mosaicAppSupportConfigURLs(
             currentBundleIdentifier: Bundle.main.bundleIdentifier,
             appSupportDirectory: appSupport,
             fileManager: fm
@@ -1804,11 +1804,11 @@ class GhosttyApp {
         }
         if Thread.isMainThread {
             MainActor.assumeIsolated {
-                AppDelegate.shared?.reloadCmuxConfigStores(source: source)
+                AppDelegate.shared?.reloadMosaicConfigStores(source: source)
             }
         } else {
             DispatchQueue.main.sync {
-                AppDelegate.shared?.reloadCmuxConfigStores(source: source)
+                AppDelegate.shared?.reloadMosaicConfigStores(source: source)
             }
         }
         let reloadColorScheme = preferredColorScheme ?? GhosttyConfig.currentColorSchemePreference()
@@ -1816,14 +1816,14 @@ class GhosttyApp {
             logThemeAction("reload skipped source=\(source) soft=\(soft) reason=no_app")
             return
         }
-        // Use the appearance preference while loading conditional theme pairs. For cmux
+        // Use the appearance preference while loading conditional theme pairs. For mosaic
         // single-theme reloads, keep the resolved terminal scheme stable until the new
         // background is known so same-scheme theme changes do not flash through app mode.
         let loadColorScheme = Self.runtimeColorSchemeForConfigLoad(
             source: source,
             requestedColorScheme: reloadColorScheme,
             effectiveTerminalColorScheme: effectiveTerminalColorSchemePreference,
-            cmuxThemeValue: currentCmuxAppSupportThemeValue()
+            mosaicThemeValue: currentMosaicAppSupportThemeValue()
         )
         synchronizeGhosttyRuntimeColorScheme(loadColorScheme, source: "reloadConfiguration:\(source):load")
         logThemeAction("reload begin source=\(source) soft=\(soft)")
@@ -2536,7 +2536,7 @@ class GhosttyApp {
     ) -> Bool {
         guard BrowserAvailabilitySettings.isEnabled() else {
             #if DEBUG
-            cmuxDebugLog("link.openURL deferred embedded but cmuxBrowser=disabled, opening externally url=\(url)")
+            mosaicDebugLog("link.openURL deferred embedded but mosaicBrowser=disabled, opening externally url=\(url)")
             #endif
             return openTerminalLinkInMacOS(url, linkType: linkType)
         }
@@ -2547,7 +2547,7 @@ class GhosttyApp {
                 preferredWorkspaceId: sourceWorkspaceId
               ) else {
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "link.openURL deferred embedded but workspace lookup failed, opening externally " +
                 "tabId=\(sourceWorkspaceId) surfaceId=\(sourcePanelId) url=\(url)"
             )
@@ -2558,7 +2558,7 @@ class GhosttyApp {
         let workspace = resolved.workspace
         #if DEBUG
         if workspace.id != sourceWorkspaceId {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "link.openURL workspace.remap sourceTab=\(sourceWorkspaceId) " +
                 "resolvedTab=\(workspace.id) surfaceId=\(sourcePanelId)"
             )
@@ -2570,14 +2570,14 @@ class GhosttyApp {
         var properties: [String: Any] = ["link_type": linkType]
         if let targetPane = workspace.preferredRightSideTargetPane(fromPanelId: sourcePanelId) {
             #if DEBUG
-            cmuxDebugLog("link.openURL opening in existing browser pane=\(targetPane)")
+            mosaicDebugLog("link.openURL opening in existing browser pane=\(targetPane)")
             #endif
             openedInBrowser = workspace.newBrowserSurface(inPane: targetPane, url: url, focus: true) != nil
             destination = "browser_pane"
             properties["reused_pane"] = true
         } else {
             #if DEBUG
-            cmuxDebugLog("link.openURL opening as new browser split from surface=\(sourcePanelId)")
+            mosaicDebugLog("link.openURL opening as new browser split from surface=\(sourcePanelId)")
             #endif
             openedInBrowser = workspace.newBrowserSplit(from: sourcePanelId, orientation: .horizontal, url: url) != nil
             destination = "new_split"
@@ -2585,7 +2585,7 @@ class GhosttyApp {
 
         guard openedInBrowser else {
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "link.openURL deferred embedded browser creation failed, opening externally " +
                 "host=\(host) url=\(url)"
             )
@@ -2809,10 +2809,10 @@ class GhosttyApp {
         if action.tag == GHOSTTY_ACTION_SHOW_CHILD_EXITED {
             // The child (shell) exited. Ghostty will fall back to printing
             // "Process exited. Press any key..." into the terminal unless the host
-            // handles this action. For cmux, the correct behavior is to close
+            // handles this action. For mosaic, the correct behavior is to close
             // the panel immediately (no prompt).
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "surface.action.showChildExited tab=\(callbackTabId?.uuidString.prefix(5) ?? "nil") " +
                 "surface=\(callbackSurfaceId?.uuidString.prefix(5) ?? "nil")"
             )
@@ -3119,7 +3119,7 @@ class GhosttyApp {
                 encoding: .utf8
             ) ?? ""
             #if DEBUG
-            cmuxDebugLog("link.openURL raw=\(urlString)")
+            mosaicDebugLog("link.openURL raw=\(urlString)")
             #endif
 
             // Try file-path resolution before URL classification.
@@ -3127,7 +3127,7 @@ class GhosttyApp {
             // slashes or dots (e.g. "docs/spec.md." or "/tmp/spec.md.") as URLs.
             // Attempt to resolve the raw string as a local file first
             // (with trailing-punctuation trimming via TerminalPathResolver's quicklook resolution).
-            // If the file exists and cmux can handle it, route through the
+            // If the file exists and mosaic can handle it, route through the
             // file viewer instead of the browser.
             let trimmedUrlString = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
             var normalizedOpenURLString = urlString
@@ -3145,14 +3145,14 @@ class GhosttyApp {
                     guard let resolvedPath = TerminalPathResolver().resolveOpenURLFilePath(trimmedUrlString, cwd: cwd) else {
                         return (false, nil)
                     }
-                    guard CommandClickFileOpenRouter.shouldRouteInCmux(path: resolvedPath) else {
+                    guard CommandClickFileOpenRouter.shouldRouteInMosaic(path: resolvedPath) else {
                         return (false, resolvedPath)
                     }
                     #if DEBUG
-                    cmuxDebugLog("link.openURL resolvedAsFilePath=\(resolvedPath)")
+                    mosaicDebugLog("link.openURL resolvedAsFilePath=\(resolvedPath)")
                     #endif
                     let fileURL = URL(fileURLWithPath: resolvedPath)
-                    CommandClickFileOpenRouter.deferredOpenFileInCmux(
+                    CommandClickFileOpenRouter.deferredOpenFileInMosaic(
                         workspace: workspace,
                         preferredWorkspaceId: workspace.id,
                         surfaceId: termSurface.id,
@@ -3175,20 +3175,20 @@ class GhosttyApp {
 
             guard let target = resolveTerminalOpenURLTarget(normalizedOpenURLString) else {
                 #if DEBUG
-                cmuxDebugLog("link.openURL resolve failed, returning false")
+                mosaicDebugLog("link.openURL resolve failed, returning false")
                 #endif
                 return false
             }
             let linkType = Self.terminalLinkType(rawValue: normalizedOpenURLString, url: target.url)
             #if DEBUG
             if UITestCaptureSink().appendLineIfConfigured(
-                envKey: "CMUX_UI_TEST_CAPTURE_OPEN_URL_PATH",
+                envKey: "MOSAIC_UI_TEST_CAPTURE_OPEN_URL_PATH",
                 line: target.url.absoluteString
             ) {
                 return true
             }
             #endif
-            // Route local file URLs into cmux when the file-routing toggle is on.
+            // Route local file URLs into mosaic when the file-routing toggle is on.
             // URL fragments/queries are stripped (the panel only needs the file
             // path), so links emitted by tools like Claude Code (`foo.md#L42`)
             // still route into the viewer. Anything else (toggle off, hosted
@@ -3203,10 +3203,10 @@ class GhosttyApp {
                     guard let termSurface = surfaceView.terminalSurface,
                           let workspace = termSurface.owningWorkspace(),
                           !workspace.isRemoteTerminalSurface(termSurface.id),
-                          CommandClickFileOpenRouter.shouldRouteInCmux(path: fileURL.path) else {
+                          CommandClickFileOpenRouter.shouldRouteInMosaic(path: fileURL.path) else {
                         return false
                     }
-                    CommandClickFileOpenRouter.deferredOpenFileInCmux(
+                    CommandClickFileOpenRouter.deferredOpenFileInMosaic(
                         workspace: workspace,
                         preferredWorkspaceId: workspace.id,
                         surfaceId: termSurface.id,
@@ -3225,9 +3225,9 @@ class GhosttyApp {
                 // Fall through to the existing NSWorkspace path below.
             }
 
-            if !BrowserLinkOpenSettings.openTerminalLinksInCmuxBrowser() {
+            if !BrowserLinkOpenSettings.openTerminalLinksInMosaicBrowser() {
                 #if DEBUG
-                cmuxDebugLog("link.openURL cmuxBrowser=disabled, opening externally url=\(target.url)")
+                mosaicDebugLog("link.openURL mosaicBrowser=disabled, opening externally url=\(target.url)")
                 #endif
                 return performOnMain {
                     Self.openTerminalLinkInMacOS(target.url, linkType: linkType)
@@ -3236,7 +3236,7 @@ class GhosttyApp {
             switch target {
             case let .external(url):
                 #if DEBUG
-                cmuxDebugLog("link.openURL target=external, opening externally url=\(url)")
+                mosaicDebugLog("link.openURL target=external, opening externally url=\(url)")
                 #endif
                 return performOnMain {
                     Self.openTerminalLinkInMacOS(url, linkType: linkType)
@@ -3244,7 +3244,7 @@ class GhosttyApp {
             case let .embeddedBrowser(url):
                 if BrowserLinkOpenSettings.shouldOpenExternally(url) {
                     #if DEBUG
-                    cmuxDebugLog("link.openURL target=embedded but shouldOpenExternally=true url=\(url)")
+                    mosaicDebugLog("link.openURL target=embedded but shouldOpenExternally=true url=\(url)")
                     #endif
                     return performOnMain {
                         Self.openTerminalLinkInMacOS(url, linkType: linkType)
@@ -3252,7 +3252,7 @@ class GhosttyApp {
                 }
                 guard let host = BrowserInsecureHTTPSettings.normalizeHost(url.host ?? "") else {
                     #if DEBUG
-                    cmuxDebugLog("link.openURL target=embedded but normalizeHost=nil host=\(url.host ?? "nil") url=\(url)")
+                    mosaicDebugLog("link.openURL target=embedded but normalizeHost=nil host=\(url.host ?? "nil") url=\(url)")
                     #endif
                     return performOnMain {
                         Self.openTerminalLinkInMacOS(url, linkType: linkType)
@@ -3262,7 +3262,7 @@ class GhosttyApp {
                 // If a host whitelist is configured and this host isn't in it, open externally.
                 if !BrowserLinkOpenSettings.hostMatchesWhitelist(host) {
                     #if DEBUG
-                    cmuxDebugLog("link.openURL target=embedded but hostWhitelist miss host=\(host) url=\(url)")
+                    mosaicDebugLog("link.openURL target=embedded but hostWhitelist miss host=\(host) url=\(url)")
                     #endif
                     return performOnMain {
                         Self.openTerminalLinkInMacOS(url, linkType: linkType)
@@ -3273,12 +3273,12 @@ class GhosttyApp {
                 guard let sourceWorkspaceId,
                       let sourcePanelId else {
                     #if DEBUG
-                    cmuxDebugLog("link.openURL target=embedded but tabId/surfaceId=nil")
+                    mosaicDebugLog("link.openURL target=embedded but tabId/surfaceId=nil")
                     #endif
                     return false
                 }
                 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "link.openURL target=embedded, opening in browser pane " +
                     "host=\(host) url=\(url) tabId=\(sourceWorkspaceId) surfaceId=\(sourcePanelId)"
                 )
@@ -3292,7 +3292,7 @@ class GhosttyApp {
                 }
                 guard canAttemptEmbeddedOpen else {
                     #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "link.openURL embedded preflight failed, opening externally " +
                         "tabId=\(sourceWorkspaceId) surfaceId=\(sourcePanelId) url=\(url)"
                     )
@@ -3304,7 +3304,7 @@ class GhosttyApp {
 
                 // Browser split creation changes focus, which unfocuses the source terminal and
                 // calls back into Ghostty. Defer that work until this open_url callback returns.
-                // From here cmux owns the open attempt and the deferred path falls back externally.
+                // From here mosaic owns the open attempt and the deferred path falls back externally.
                 Task { @MainActor [url, sourceWorkspaceId, sourcePanelId, host, linkType] in
                     let didOpen = Self.openEmbeddedBrowserLink(
                         url: url,
@@ -3315,7 +3315,7 @@ class GhosttyApp {
                     )
                     guard didOpen else {
                         #if DEBUG
-                        cmuxDebugLog("link.openURL deferred open failed url=\(url)")
+                        mosaicDebugLog("link.openURL deferred open failed url=\(url)")
                         #endif
                         NSSound.beep()
                         return
@@ -3358,26 +3358,26 @@ class GhosttyApp {
     private func activeMainWindow() -> NSWindow? {
         let keyWindow = NSApp.keyWindow
         if let raw = keyWindow?.identifier?.rawValue,
-           raw == "cmux.main" || raw.hasPrefix("cmux.main.") {
+           raw == "mosaic.main" || raw.hasPrefix("mosaic.main.") {
             return keyWindow
         }
         return NSApp.windows.first(where: { window in
             guard let raw = window.identifier?.rawValue else { return false }
-            return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+            return raw == "mosaic.main" || raw.hasPrefix("mosaic.main.")
         })
     }
 
     func logBackground(_ message: String) {
         // Skip all work (timing capture, string formatting, and disk I/O) unless
         // background logging is explicitly enabled via env/defaults. Without this
-        // guard, direct callers wrote to /tmp/cmux-bg.log on every theme/OSC color
+        // guard, direct callers wrote to /tmp/mosaic-bg.log on every theme/OSC color
         // event even in normal runs.
         guard backgroundLogEnabled else { return }
         // The writer captures cheap timing values here and performs all string
         // formatting + the file append on a dedicated serial queue against a single
         // long-lived handle, so emitting a line never blocks the calling thread —
         // frequently the main thread, inside SwiftUI appearance updates. See
-        // https://github.com/emergent-inc/cmux/issues/5833.
+        // https://github.com/emergent-inc/mosaic/issues/5833.
         backgroundLogWriter.log(message, isMainThread: Thread.isMainThread)
     }
 }
@@ -3385,8 +3385,8 @@ class GhosttyApp {
 // MARK: - Debug Render Instrumentation
 
 // GhosttyMetalLayer and the render/tick demand gates moved to
-// CmuxTerminalEngine (RenderDemandCounter behind the RenderDemandGating seam);
-// TerminalSurfaceRegistry moved to CmuxTerminalEngine behind
+// MosaicTerminalEngine (RenderDemandCounter behind the RenderDemandGating seam);
+// TerminalSurfaceRegistry moved to MosaicTerminalEngine behind
 // TerminalSurfaceRegistering, its AppDelegate reach-up inverted via
 // MainWindowRouteRetiring. The process-wide instances live in the
 // transitional GhosttyApp composition statics below.
@@ -3424,7 +3424,7 @@ private final class TerminalSharedBackdropCutoutFilter: CIFilter {
 
 // MARK: - Terminal Surface (owns the ghostty_surface_t lifecycle)
 
-// TerminalSurfaceFocusPlacement moved to CmuxTerminalCore (SurfaceRegistry/).
+// TerminalSurfaceFocusPlacement moved to MosaicTerminalCore (SurfaceRegistry/).
 
 private func recordAgentHibernationTerminalInput(workspaceId: UUID, panelId: UUID) {
     guard AgentHibernationTrackingGate.isEnabled() else { return }
@@ -3438,7 +3438,7 @@ private func recordAgentHibernationTerminalInput(workspaceId: UUID, panelId: UUI
     }
 }
 
-// TerminalSurface and its SearchState moved to the CmuxTerminal package
+// TerminalSurface and its SearchState moved to the MosaicTerminal package
 // (Surface/TerminalSurface*.swift), with the legacy GhosttyApp /
 // TerminalController / MobileTerminalByteTee / RendererRealizationController /
 // AgentHibernationController reach-ups inverted through
@@ -3455,10 +3455,10 @@ extension TerminalSurface {
 
 class GhosttyNSView: NSView, NSUserInterfaceValidations {
     private static let focusDebugEnabled: Bool = {
-        if ProcessInfo.processInfo.environment["CMUX_FOCUS_DEBUG"] == "1" {
+        if ProcessInfo.processInfo.environment["MOSAIC_FOCUS_DEBUG"] == "1" {
             return true
         }
-        return UserDefaults.standard.bool(forKey: "cmuxFocusDebug")
+        return UserDefaults.standard.bool(forKey: "mosaicFocusDebug")
     }()
     internal enum DropPlan: Equatable {
         case insertText(String)
@@ -3477,7 +3477,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         NSPasteboard.PasteboardType(UTType.heif.identifier)
     ])
     private static let tabTransferPasteboardType = NSPasteboard.PasteboardType("com.splittabbar.tabtransfer")
-    private static let sidebarTabReorderPasteboardType = NSPasteboard.PasteboardType("com.cmux.sidebar-tab-reorder")
+    private static let sidebarTabReorderPasteboardType = NSPasteboard.PasteboardType("com.mosaic.sidebar-tab-reorder")
 
     private enum WordPathResolutionSource: String {
         case quicklook
@@ -3678,10 +3678,10 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 #if DEBUG
     private static let keyLatencyProbeEnabled: Bool = {
-        if ProcessInfo.processInfo.environment["CMUX_KEY_LATENCY_PROBE"] == "1" {
+        if ProcessInfo.processInfo.environment["MOSAIC_KEY_LATENCY_PROBE"] == "1" {
             return true
         }
-        return UserDefaults.standard.bool(forKey: "cmuxKeyLatencyProbe")
+        return UserDefaults.standard.bool(forKey: "mosaicKeyLatencyProbe")
     }()
     @MainActor static var debugGhosttySurfaceKeyEventObserver: ((ghostty_input_key_s) -> Void)?
     @MainActor static var debugTextInputEventHandler: ((GhosttyNSView, NSEvent) -> Bool)?
@@ -4364,7 +4364,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             NSCursor.pop()
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.view.windowMove surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "inWindow=\(window != nil ? 1 : 0) bounds=\(String(format: "%.1fx%.1f", Double(bounds.width), Double(bounds.height))) " +
             "pending=\(String(format: "%.1fx%.1f", Double(pendingSurfaceSize?.width ?? 0), Double(pendingSurfaceSize?.height ?? 0)))"
@@ -4541,7 +4541,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
             let signature = "nonPositive-\(Int(size.width))x\(Int(size.height))"
             if lastSizeSkipSignature != signature {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "surface.size.defer surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                     "reason=nonPositive size=\(String(format: "%.1fx%.1f", size.width, size.height)) " +
                     "inWindow=\(window != nil ? 1 : 0)"
@@ -4558,7 +4558,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
             let signature = "\(deferralReason)-\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
             if lastSizeSkipSignature != signature {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "surface.size.defer surface=\(terminalSurface.id.uuidString.prefix(5)) reason=\(deferralReason) " +
                     "size=\(String(format: "%.1fx%.1f", size.width, size.height)) " +
                     "inWindow=\(window != nil ? 1 : 0)"
@@ -4573,7 +4573,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
             let signature = "noWindow-\(Int(size.width))x\(Int(size.height))"
             if lastSizeSkipSignature != signature {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "surface.size.defer surface=\(terminalSurface.id.uuidString.prefix(5)) reason=noWindow " +
                     "size=\(String(format: "%.1fx%.1f", size.width, size.height))"
                 )
@@ -4598,7 +4598,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
             let signature = "zeroBacking-\(Int(backingSize.width))x\(Int(backingSize.height))"
             if lastSizeSkipSignature != signature {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "surface.size.defer surface=\(terminalSurface.id.uuidString.prefix(5)) reason=zeroBacking " +
                     "size=\(String(format: "%.1fx%.1f", size.width, size.height)) " +
                     "backing=\(String(format: "%.1fx%.1f", backingSize.width, backingSize.height))"
@@ -4610,7 +4610,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
 #if DEBUG
         if lastSizeSkipSignature != nil {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "surface.size.resume surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                 "size=\(String(format: "%.1fx%.1f", size.width, size.height)) " +
                 "backing=\(String(format: "%.1fx%.1f", backingSize.width, backingSize.height))"
@@ -4742,7 +4742,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     private func requestInputRecoveryAfterSurfaceMiss(reason: String) {
         terminalSurface?.requestInputDemandSurfaceStartIfNeeded()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "focus.input_recovery surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "reason=\(reason) inWindow=\(window != nil ? 1 : 0)"
         )
@@ -5741,7 +5741,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard !content.isEmpty else { return }
 
 #if DEBUG
-        cmuxDebugLog("ime.ax.setValue len=\(content.count)")
+        mosaicDebugLog("ime.ax.setValue len=\(content.count)")
 #endif
 
         let inject = {
@@ -5853,7 +5853,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     )
                 }
 #if DEBUG
-                cmuxDebugLog("focus.firstResponder SUPPRESSED (reparent) surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+                mosaicDebugLog("focus.firstResponder SUPPRESSED (reparent) surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
 #endif
                 return result
             }
@@ -5868,7 +5868,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 onFocus?()
             } else if isVisibleInUI && (!hasUsableFocusGeometry || hiddenInHierarchy) {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "focus.firstResponder SUPPRESSED (hidden_or_tiny) surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                     "frame=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) hidden=\(hiddenInHierarchy ? 1 : 0)"
                 )
@@ -5883,7 +5883,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             let deltaMs = (now - lastScrollEventTime) * 1000
             Self.focusLog("becomeFirstResponder: surface=\(terminalSurface?.id.uuidString ?? "nil") deltaSinceScrollMs=\(String(format: "%.2f", deltaMs))")
 #if DEBUG
-            cmuxDebugLog("focus.firstResponder surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+            mosaicDebugLog("focus.firstResponder surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
             if let terminalSurface {
                 AppDelegate.shared?.recordJumpUnreadFocusIfExpected(
                     tabId: terminalSurface.tabId,
@@ -5968,7 +5968,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
     private func recordKeyLatency(path: String, event: NSEvent) {
         guard Self.keyLatencyProbeEnabled else { return }
-        CmuxTypingTiming.logEventDelay(path: path, event: event)
+        MosaicTypingTiming.logEventDelay(path: path, event: event)
     }
 #endif
 
@@ -5996,9 +5996,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     private func performKeyEquivalent(with event: NSEvent, shouldRetryMainMenu: Bool) -> Bool {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         defer {
-            CmuxTypingTiming.logDuration(
+            MosaicTypingTiming.logDuration(
                 path: "terminal.performKeyEquivalent",
                 startedAt: typingTimingStart,
                 event: event
@@ -6146,7 +6146,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     override func keyDown(with event: NSEvent) {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         let phaseTotalStart = ProcessInfo.processInfo.systemUptime
         var ensureSurfaceMs: Double = 0
         var dismissNotificationMs: Double = 0
@@ -6156,7 +6156,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         var ghosttySendMs: Double = 0
         defer {
             let totalMs = (ProcessInfo.processInfo.systemUptime - phaseTotalStart) * 1000.0
-            CmuxTypingTiming.logBreakdown(
+            MosaicTypingTiming.logBreakdown(
                 path: "terminal.keyDown.phase",
                 totalMs: totalMs,
                 event: event,
@@ -6171,7 +6171,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 ],
                 extra: "marked=\(hasMarkedText() ? 1 : 0)"
             )
-            CmuxTypingTiming.logDuration(path: "terminal.keyDown", startedAt: typingTimingStart, event: event)
+            MosaicTypingTiming.logDuration(path: "terminal.keyDown", startedAt: typingTimingStart, event: event)
         }
         let ensureSurfaceStart = ProcessInfo.processInfo.systemUptime
 #endif
@@ -6207,9 +6207,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #endif
         }
         let flags = ShortcutStroke.normalizedModifierFlags(from: event.modifierFlags)
-        if !cmuxFindEventIsPlainEscape(event) { endFindEscapeSuppression() }
+        if !mosaicFindEventIsPlainEscape(event) { endFindEscapeSuppression() }
         if shouldConsumeSuppressedFindEscape(event) { return }
-        if cmuxFindEventIsPlainEscape(event), !hasMarkedText(), let terminalSurface, terminalSurface.searchState != nil {
+        if mosaicFindEventIsPlainEscape(event), !hasMarkedText(), let terminalSurface, terminalSurface.searchState != nil {
             terminalSurface.searchState = nil
             beginFindEscapeSuppression(); return
         }
@@ -6277,7 +6277,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 #endif
             } else {
                 #if DEBUG
-                let sendTimingStart = CmuxTypingTiming.start()
+                let sendTimingStart = MosaicTypingTiming.start()
                 let ghosttySendStart = ProcessInfo.processInfo.systemUptime
                 #endif
                 handled = text.withCString { ptr in
@@ -6286,7 +6286,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 }
                 #if DEBUG
                 ghosttySendMs = (ProcessInfo.processInfo.systemUptime - ghosttySendStart) * 1000.0
-                CmuxTypingTiming.logDuration(
+                MosaicTypingTiming.logDuration(
                     path: "terminal.keyDown.ctrlGhosttySend",
                     startedAt: sendTimingStart,
                     event: event,
@@ -6295,7 +6295,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 #endif
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "key.ctrl path=ghostty surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "handled=\(handled ? 1 : 0) keyCode=\(event.keyCode) chars=\((event.characters?.unicodeScalarHexList ?? "")) " +
                 "ign=\((event.charactersIgnoringModifiers?.unicodeScalarHexList ?? "")) mods=\(event.modifierFlags.rawValue)"
@@ -6311,7 +6311,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         // Translate mods to respect Ghostty config (e.g., macos-option-as-alt)
         let translationModsGhostty = ghostty_surface_key_translation_mods(surface, modsFromEvent(event))
-        let translationMods = cmuxTranslationModifierFlags(
+        let translationMods = mosaicTranslationModifierFlags(
             original: event.modifierFlags,
             ghosttyTranslationMods: translationModsGhostty
         )
@@ -6351,7 +6351,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         // Let the input system handle the event (for IME, dead keys, etc.)
 #if DEBUG
-        let interpretTimingStart = CmuxTypingTiming.start()
+        let interpretTimingStart = MosaicTypingTiming.start()
         let interpretPhaseStart = ProcessInfo.processInfo.systemUptime
 #endif
 #if DEBUG
@@ -6368,7 +6368,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #endif
 #if DEBUG
         interpretMs = (ProcessInfo.processInfo.systemUptime - interpretPhaseStart) * 1000.0
-        CmuxTypingTiming.logDuration(
+        MosaicTypingTiming.logDuration(
             path: "terminal.keyDown.interpretKeyEvents",
             startedAt: interpretTimingStart,
             event: event
@@ -6436,7 +6436,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             for text in accumulatedText {
                 if shouldSendText(text) {
 #if DEBUG
-                    let sendTimingStart = CmuxTypingTiming.start()
+                    let sendTimingStart = MosaicTypingTiming.start()
                     let ghosttySendStart = ProcessInfo.processInfo.systemUptime
 #endif
                     text.withCString { ptr in
@@ -6455,7 +6455,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     }
 #if DEBUG
                     ghosttySendMs += (ProcessInfo.processInfo.systemUptime - ghosttySendStart) * 1000.0
-                    CmuxTypingTiming.logDuration(
+                    MosaicTypingTiming.logDuration(
                         path: "terminal.keyDown.accumulatedGhosttySend.total",
                         startedAt: sendTimingStart,
                         event: event,
@@ -6515,7 +6515,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                    !suppressComposingFallbackText {
                     var handled = false
 #if DEBUG
-                    let sendTimingStart = CmuxTypingTiming.start()
+                    let sendTimingStart = MosaicTypingTiming.start()
                     let ghosttySendStart = ProcessInfo.processInfo.systemUptime
 #endif
                     text.withCString { ptr in
@@ -6537,7 +6537,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     }
 #if DEBUG
                     ghosttySendMs += (ProcessInfo.processInfo.systemUptime - ghosttySendStart) * 1000.0
-                    CmuxTypingTiming.logDuration(
+                    MosaicTypingTiming.logDuration(
                         path: "terminal.keyDown.ghosttySend.total",
                         startedAt: sendTimingStart,
                         event: event,
@@ -6598,7 +6598,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         event: NSEvent? = nil,
         extra: String? = nil
     ) -> Bool {
-        let timingStart = CmuxTypingTiming.start()
+        let timingStart = MosaicTypingTiming.start()
         let handled = sendGhosttyKey(surface, keyEvent)
         let baseExtra = "handled=\(handled ? 1 : 0)"
         let mergedExtra: String
@@ -6607,7 +6607,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         } else {
             mergedExtra = baseExtra
         }
-        CmuxTypingTiming.logDuration(path: path, startedAt: timingStart, event: event, extra: mergedExtra)
+        MosaicTypingTiming.logDuration(path: path, startedAt: timingStart, event: event, extra: mergedExtra)
         return handled
     }
 #endif
@@ -6725,7 +6725,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 #if DEBUG
         if suppressCommandPathHover, flags.contains(.command) {
             _ = UITestCaptureSink().mutateJSONObjectIfConfigured(
-                envKey: "CMUX_UI_TEST_CMD_HOVER_DIAGNOSTICS_PATH"
+                envKey: "MOSAIC_UI_TEST_CMD_HOVER_DIAGNOSTICS_PATH"
             ) { payload in
                 payload["suppressed_command_hover_count"] = (payload["suppressed_command_hover_count"] as? Int ?? 0) + 1
             }
@@ -6739,7 +6739,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     private func modsFromFlags(_ flags: NSEvent.ModifierFlags) -> ghostty_input_mods_e {
-        cmuxGhosttyModsFromFlags(modifierFlagsRawValue: flags.rawValue)
+        mosaicGhosttyModsFromFlags(modifierFlagsRawValue: flags.rawValue)
     }
 
     private func mouseModsFromEvent(_ event: NSEvent) -> ghostty_input_mods_e {
@@ -6747,7 +6747,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     private func mouseModsFromFlags(_ flags: NSEvent.ModifierFlags) -> ghostty_input_mods_e {
-        cmuxGhosttyMouseModsFromFlags(modifierFlagsRawValue: flags.rawValue)
+        mosaicGhosttyMouseModsFromFlags(modifierFlagsRawValue: flags.rawValue)
     }
 
     /// Consumed mods are modifiers that were used for text translation.
@@ -6771,7 +6771,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     private func shouldConsumeSuppressedFindEscape(_ event: NSEvent) -> Bool {
-        isFindEscapeSuppressionArmed && cmuxFindEventIsPlainEscape(event)
+        isFindEscapeSuppressionArmed && mosaicFindEventIsPlainEscape(event)
     }
 
     /// Get the characters for a key event with control character handling.
@@ -6851,7 +6851,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         // Translate mods to respect Ghostty config (e.g., macos-option-as-alt).
         let translationModsGhostty = ghostty_surface_key_translation_mods(surface, modsFromEvent(event))
-        let translationMods = cmuxTranslationModifierFlags(
+        let translationMods = mosaicTranslationModifierFlags(
             original: event.modifierFlags,
             ghosttyTranslationMods: translationModsGhostty
         )
@@ -6917,7 +6917,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         var payload = data
         payload["surface_id"] = terminalSurface?.id.uuidString ?? "nil"
         payload["word_path_hover_active"] = wordPathHoverActive
-        CmuxRuntimeDebugCapture.logIfConfigured(
+        MosaicRuntimeDebugCapture.logIfConfigured(
             hypothesisID: hypothesisID,
             source: "GhosttyNSView.\(name)",
             name: name,
@@ -6946,7 +6946,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     private func requestPointerFocusRecovery() {
 #if DEBUG
-        cmuxDebugLog("focus.pointerDown surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+        mosaicDebugLog("focus.pointerDown surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
 #endif
         onFocus?()
     }
@@ -6954,7 +6954,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     override func mouseDown(with event: NSEvent) {
         #if DEBUG
         let debugPoint = convert(event.locationInWindow, from: nil)
-        cmuxDebugLog("terminal.mouseDown surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") mods=[\(debugModifierString(event.modifierFlags))] clickCount=\(event.clickCount) point=(\(String(format: "%.0f", debugPoint.x)),\(String(format: "%.0f", debugPoint.y)))")
+        mosaicDebugLog("terminal.mouseDown surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") mods=[\(debugModifierString(event.modifierFlags))] clickCount=\(event.clickCount) point=(\(String(format: "%.0f", debugPoint.x)),\(String(format: "%.0f", debugPoint.y)))")
         #endif
         // Split reparent/layout churn can suppress the later `becomeFirstResponder -> onFocus`
         // callback. Treat pointer-down as explicit focus intent so clicking a ghost pane still
@@ -6996,7 +6996,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     override func mouseUp(with event: NSEvent) {
         #if DEBUG
-        cmuxDebugLog("terminal.mouseUp surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") mods=[\(debugModifierString(event.modifierFlags))]")
+        mosaicDebugLog("terminal.mouseUp surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") mods=[\(debugModifierString(event.modifierFlags))]")
         #endif
         completePendingLeftMouseRelease(with: event)
     }
@@ -7031,7 +7031,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         guard let resolution = resolveWordUnderCursorPath(at: point) else { return }
 
         #if DEBUG
-        cmuxDebugLog("link.wordFallback resolved=\(resolution.path) source=\(resolution.source.rawValue)")
+        mosaicDebugLog("link.wordFallback resolved=\(resolution.path) source=\(resolution.source.rawValue)")
         #endif
 
         PreferredEditorService(defaults: .standard).open(URL(fileURLWithPath: resolution.path))
@@ -7072,7 +7072,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 let wordData = Data(bytes: ptr, count: Int(text.text_len))
                 if let decodedWord = String(bytes: wordData, encoding: .utf8) {
 #if DEBUG
-                    let resolvedQuicklookWord = cmuxTerminalCmdClickQuicklookOverride(decodedWord)
+                    let resolvedQuicklookWord = mosaicTerminalCmdClickQuicklookOverride(decodedWord)
 #else
                     let resolvedQuicklookWord = decodedWord
 #endif
@@ -7089,7 +7089,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             var viewportResolution: WordPathResolution?
             if text.offset_len > 0 {
 #if DEBUG
-                let viewportOffsetStart = cmuxTerminalCmdClickViewportOffsetDelta(Int(text.offset_start))
+                let viewportOffsetStart = mosaicTerminalCmdClickViewportOffsetDelta(Int(text.offset_start))
 #else
                 let viewportOffsetStart = Int(text.offset_start)
 #endif
@@ -7124,9 +7124,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     #if DEBUG
-    private func cmuxTerminalCmdClickQuicklookOverride(_ decodedWord: String) -> String {
+    private func mosaicTerminalCmdClickQuicklookOverride(_ decodedWord: String) -> String {
         let env = ProcessInfo.processInfo.environment
-        guard let override = env["CMUX_UI_TEST_TERMINAL_CMD_CLICK_QUICKLOOK_OVERRIDE"]?
+        guard let override = env["MOSAIC_UI_TEST_TERMINAL_CMD_CLICK_QUICKLOOK_OVERRIDE"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !override.isEmpty else {
             return decodedWord
@@ -7134,9 +7134,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         return override
     }
 
-    private func cmuxTerminalCmdClickViewportOffsetDelta(_ viewportOffsetStart: Int) -> Int {
+    private func mosaicTerminalCmdClickViewportOffsetDelta(_ viewportOffsetStart: Int) -> Int {
         let env = ProcessInfo.processInfo.environment
-        guard let delta = env["CMUX_UI_TEST_TERMINAL_CMD_CLICK_VIEWPORT_OFFSET_DELTA"]?
+        guard let delta = env["MOSAIC_UI_TEST_TERMINAL_CMD_CLICK_VIEWPORT_OFFSET_DELTA"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               let parsedDelta = Int(delta) else {
             return viewportOffsetStart
@@ -7427,7 +7427,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
 
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "link.wordFallback resolved=\(resolution.path) source=\(resolution.source.rawValue) consumed=\(ghosttyConsumed ? 1 : 0)"
         )
         var payload: [String: Any] = [
@@ -7452,13 +7452,13 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         #endif
 
         // Remote-surface guard runs before shouldRoute so we never stat a local
-        // path on the main thread for a remote workspace. When the cmux route
+        // path on the main thread for a remote workspace. When the mosaic route
         // is applicable but split creation fails, fall back to the preferred
         // editor so the click never silently no-ops.
         if let termSurface = terminalSurface,
            let workspace = termSurface.owningWorkspace(),
            !workspace.isRemoteTerminalSurface(termSurface.id),
-           CommandClickFileOpenRouter.openInCmux(
+           CommandClickFileOpenRouter.openInMosaic(
                workspace: workspace,
                sourcePanelId: termSurface.id,
                filePath: resolution.path
@@ -8168,7 +8168,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     deinit {
         // Surface lifecycle is managed by TerminalSurface, not the view
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.view.deinit view=\(Unmanaged.passUnretained(self).toOpaque()) " +
             "surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "inWindow=\(window != nil ? 1 : 0) hasSuperview=\(superview != nil ? 1 : 0)"
@@ -8306,7 +8306,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 }
             },
             uploadDetectedSSH: { _, _, _, finish in
-                finish(.failure(NSError(domain: "cmux.remote.drop", code: 4)))
+                finish(.failure(NSError(domain: "mosaic.remote.drop", code: 4)))
             },
             insertText: sendText,
             onFailure: { _ in onFailure() }
@@ -8342,7 +8342,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 guard let workspace = MainActor.assumeIsolated({
                     self?.terminalSurface?.owningWorkspace()
                 }) else {
-                    finish(.failure(NSError(domain: "cmux.remote.drop", code: 3)))
+                    finish(.failure(NSError(domain: "mosaic.remote.drop", code: 3)))
                     GhosttyApp.terminalPasteboard.cleanupTransferredTemporaryImageFiles(fileURLs)
                     return
                 }
@@ -8398,7 +8398,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 DispatchQueue.main.async {
                     NSSound.beep()
 #if DEBUG
-                    cmuxDebugLog("terminal.remoteDropUpload.failed surface=\(self?.terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+                    mosaicDebugLog("terminal.remoteDropUpload.failed surface=\(self?.terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
 #endif
                 }
             }
@@ -8463,7 +8463,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         asImageData: Bool = false
     ) -> Bool {
         guard !paths.isEmpty else { return false }
-        let pbName = NSPasteboard.Name("cmux.debug.drop.\(UUID().uuidString)")
+        let pbName = NSPasteboard.Name("mosaic.debug.drop.\(UUID().uuidString)")
         let pasteboard = NSPasteboard(name: pbName)
         pasteboard.clearContents()
         switch asImageData ? DebugDropPayloadKind.imageData : .fileURLs {
@@ -8502,7 +8502,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
         #if DEBUG
         let types = sender.draggingPasteboard.types ?? []
-        cmuxDebugLog("terminal.draggingEntered surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") types=\(types.map(\.rawValue))")
+        mosaicDebugLog("terminal.draggingEntered surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") types=\(types.map(\.rawValue))")
         #endif
         guard let types = sender.draggingPasteboard.types else { return [] }
         // Defer to bonsplit when a tab/session drag is in flight: bonsplit's pane
@@ -8519,7 +8519,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
         #if DEBUG
         let types = sender.draggingPasteboard.types ?? []
-        cmuxDebugLog("terminal.draggingUpdated surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") types=\(types.map(\.rawValue))")
+        mosaicDebugLog("terminal.draggingUpdated surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") types=\(types.map(\.rawValue))")
         #endif
         guard let types = sender.draggingPasteboard.types else { return [] }
         if types.contains(Self.tabTransferPasteboardType) || types.contains(Self.sidebarTabReorderPasteboardType) {
@@ -8537,7 +8537,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             return false
         }
         #if DEBUG
-        cmuxDebugLog("terminal.fileDrop surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+        mosaicDebugLog("terminal.fileDrop surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
         #endif
         return insertDroppedPasteboard(sender.draggingPasteboard)
     }
@@ -9090,7 +9090,7 @@ final class GhosttySurfaceScrollView: NSView {
     private var lastDragGeometryLogSignature: String?
     private var dragLayoutLogSequence: UInt64 = 0
     private static let tabTransferPasteboardType = NSPasteboard.PasteboardType("com.splittabbar.tabtransfer")
-    private static let sidebarTabReorderPasteboardType = NSPasteboard.PasteboardType("com.cmux.sidebar-tab-reorder")
+    private static let sidebarTabReorderPasteboardType = NSPasteboard.PasteboardType("com.mosaic.sidebar-tab-reorder")
     private static var flashCounts: [UUID: Int] = [:]
     private static var drawCounts: [UUID: Int] = [:]
     private static var lastDrawTimes: [UUID: CFTimeInterval] = [:]
@@ -9616,7 +9616,7 @@ final class GhosttySurfaceScrollView: NSView {
 
     deinit {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "surface.hosted.deinit surface=\(debugSurfaceId?.uuidString.prefix(5) ?? "nil") " +
             "inWindow=\(window != nil ? 1 : 0) hasSuperview=\(superview != nil ? 1 : 0) " +
             "hidden=\(isHidden ? 1 : 0) frame=\(String(format: "%.1fx%.1f", frame.width, frame.height))"
@@ -9878,7 +9878,7 @@ final class GhosttySurfaceScrollView: NSView {
             "\(String(format: "%.1f,%.1f", new.x, new.y))|\(overlaySuperviewClass)|\(dropZoneOverlayView.isHidden ? 1 : 0)"
         guard lastDragGeometryLogSignature != signature else { return }
         lastDragGeometryLogSignature = signature
-        cmuxDebugLog(
+        mosaicDebugLog(
             "terminal.dragGeometry event=\(event) surface=\(surface) " +
             "old=\(String(format: "%.1f,%.1f", old.x, old.y)) " +
             "new=\(String(format: "%.1f,%.1f", new.x, new.y)) " +
@@ -9905,7 +9905,7 @@ final class GhosttySurfaceScrollView: NSView {
         let pendingZone = pendingDropZone.map { String(describing: $0) } ?? "none"
         let event = eventType.map { String(describing: $0) } ?? "nil"
         let overlaySuperviewClass = dropZoneOverlayView.superview.map { String(describing: type(of: $0)) } ?? "nil"
-        cmuxDebugLog(
+        mosaicDebugLog(
             "terminal.layout.drag surface=\(surface) seq=\(dragLayoutLogSequence) " +
             "activeZone=\(activeZone) pendingZone=\(pendingZone) " +
             "hasTabDrag=\(hasTabDrag ? 1 : 0) hasSidebarDrag=\(hasSidebarDrag ? 1 : 0) " +
@@ -9934,7 +9934,7 @@ final class GhosttySurfaceScrollView: NSView {
             MainActor.assumeIsolated {
                 guard let self, self.isActive, self.surfaceView.isVisibleInUI, let tabId = self.surfaceView.tabId, let surfaceId = self.surfaceView.terminalSurface?.id, self.matchesCurrentTerminalFocusTarget(tabId: tabId, surfaceId: surfaceId) else { return }
 #if DEBUG
-                cmuxDebugLog("find.window.didBecomeKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(self.surfaceView.terminalSurface?.searchState != nil) focusTarget=\(self.searchFocusTarget) firstResponder=\(String(describing: self.window?.firstResponder))")
+                mosaicDebugLog("find.window.didBecomeKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(self.surfaceView.terminalSurface?.searchState != nil) focusTarget=\(self.searchFocusTarget) firstResponder=\(String(describing: self.window?.firstResponder))")
 #endif
                 self.scheduleAutomaticFirstResponderApply(reason: "didBecomeKey")
             }
@@ -9954,12 +9954,12 @@ final class GhosttySurfaceScrollView: NSView {
                 if let fr = window.firstResponder as? NSView,
                    fr === self.surfaceView || fr.isDescendant(of: self.surfaceView) {
 #if DEBUG
-                    cmuxDebugLog("find.window.didResignKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(searchActive) resigningFirstResponder")
+                    mosaicDebugLog("find.window.didResignKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(searchActive) resigningFirstResponder")
 #endif
                     window.makeFirstResponder(nil)
                 } else {
 #if DEBUG
-                    cmuxDebugLog("find.window.didResignKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(searchActive) firstResponder=\(String(describing: window.firstResponder)) (not terminal, skipping)")
+                    mosaicDebugLog("find.window.didResignKey surface=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") searchActive=\(searchActive) firstResponder=\(String(describing: window.firstResponder)) (not terminal, skipping)")
 #endif
                 }
             }
@@ -10308,7 +10308,7 @@ final class GhosttySurfaceScrollView: NSView {
         surfaceView.terminalSurface?.setFocus(false)
         let result = window.makeFirstResponder(field)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "find.mountedFieldFocus surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "result=\(result ? 1 : 0) attemptsRemaining=\(attemptsRemaining) " +
             "firstResponder=\(String(describing: window.firstResponder))"
@@ -10347,7 +10347,7 @@ final class GhosttySurfaceScrollView: NSView {
                 return
             }
 #if DEBUG
-            cmuxDebugLog("find.setSearchOverlay REMOVE surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") hadOverlay=\(hadOverlay)")
+            mosaicDebugLog("find.setSearchOverlay REMOVE surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") hadOverlay=\(hadOverlay)")
 #endif
             scheduleDeferredSearchOverlayMutation(generation: mutationGeneration) { [weak self] in
                 self?.searchOverlayHostingView?.removeFromSuperview()
@@ -10368,7 +10368,7 @@ final class GhosttySurfaceScrollView: NSView {
 
         let hadOverlay = searchOverlayHostingView != nil
 #if DEBUG
-        cmuxDebugLog("find.setSearchOverlay MOUNT surface=\(terminalSurface.id.uuidString.prefix(5)) existingOverlay=\(hadOverlay ? "yes(update)" : "no(create)")")
+        mosaicDebugLog("find.setSearchOverlay MOUNT surface=\(terminalSurface.id.uuidString.prefix(5)) existingOverlay=\(hadOverlay ? "yes(update)" : "no(create)")")
 #endif
 
         let rootView = makeSearchOverlayRootView(
@@ -10636,7 +10636,7 @@ final class GhosttySurfaceScrollView: NSView {
             "\(scrollOriginText)|\(surfaceOriginText)|\(dropZoneOverlayView.isHidden ? 1 : 0)"
         guard lastDropZoneOverlayLogSignature != signature else { return }
         lastDropZoneOverlayLogSignature = signature
-        cmuxDebugLog(
+        mosaicDebugLog(
             "terminal.dropOverlay event=\(event) surface=\(surface) zone=\(zoneText) " +
             "hidden=\(dropZoneOverlayView.isHidden ? 1 : 0) bounds=\(boundsText) frame=\(frameText) " +
             "overlaySuper=\(overlaySuperviewClass) overlayExternal=\(dropZoneOverlayView.superview === self ? 0 : 1) " +
@@ -10670,7 +10670,7 @@ final class GhosttySurfaceScrollView: NSView {
                     return CAMediaTimingFunction(name: .easeOut)
                 }
             }
-            self.flashLayer.add(animation, forKey: "cmux.flash")
+            self.flashLayer.add(animation, forKey: "mosaic.flash")
         }
     }
 
@@ -10763,11 +10763,11 @@ final class GhosttySurfaceScrollView: NSView {
 #if DEBUG
     private func debugLogWorkspaceSwitchTiming(event: String, suffix: String) {
         guard let snapshot = AppDelegate.shared?.tabManager?.debugCurrentWorkspaceSwitchSnapshot() else {
-            cmuxDebugLog("\(event) id=none \(suffix)")
+            mosaicDebugLog("\(event) id=none \(suffix)")
             return
         }
         let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-        cmuxDebugLog("\(event) id=\(snapshot.id) dt=\(String(format: "%.2fms", dtMs)) \(suffix)")
+        mosaicDebugLog("\(event) id=\(snapshot.id) dt=\(String(format: "%.2fms", dtMs)) \(suffix)")
     }
 
     private func debugFirstResponderLabel() -> String {
@@ -10806,7 +10806,7 @@ final class GhosttySurfaceScrollView: NSView {
 #if DEBUG
         let surfaceShort = String(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil")
         let searchActive = self.surfaceView.terminalSurface?.searchState != nil
-        cmuxDebugLog(
+        mosaicDebugLog(
             "find.moveFocus to=\(surfaceShort) " +
             "from=\(previous?.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "searchState=\(searchActive ? "active" : "nil") " +
@@ -10825,7 +10825,7 @@ final class GhosttySurfaceScrollView: NSView {
             }
             let result = window.makeFirstResponder(self.surfaceView)
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.moveFocus.apply to=\(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "result=\(result ? 1 : 0) before=\(before) after=\(String(describing: window.firstResponder))"
             )
@@ -10917,7 +10917,7 @@ final class GhosttySurfaceScrollView: NSView {
     /// Handle file/URL drops, forwarding to the terminal as shell-escaped paths.
     func handleDroppedURLs(_ urls: [URL]) -> Bool {
         #if DEBUG
-        cmuxDebugLog("terminal.swiftUIDrop surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") urls=\(urls.map(\.lastPathComponent))")
+        mosaicDebugLog("terminal.swiftUIDrop surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") urls=\(urls.map(\.lastPathComponent))")
         #endif
         return surfaceView.handleDroppedFileURLs(urls)
     }
@@ -11002,7 +11002,7 @@ final class GhosttySurfaceScrollView: NSView {
         guard let window = uiWindow else { return }
         guard surfaceView.isVisibleInUI else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.ensure.defer surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "reason=not_visible"
             )
@@ -11012,7 +11012,7 @@ final class GhosttySurfaceScrollView: NSView {
         }
         guard !isHiddenForFocus, hasUsablePortalGeometry else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.ensure.defer surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "reason=hidden_or_tiny hidden=\(isHiddenForFocus ? 1 : 0) " +
                 "frame=\(String(format: "%.1fx%.1f", bounds.width, bounds.height))"
@@ -11036,7 +11036,7 @@ final class GhosttySurfaceScrollView: NSView {
             }
             if terminalSurface.searchState != nil {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "focus.ensure.dock.search surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                     "tab=\(tabId.uuidString.prefix(5)) panel=\(surfaceId.uuidString.prefix(5)) " +
                     "firstResponder=\(String(describing: window.firstResponder))"
@@ -11063,7 +11063,7 @@ final class GhosttySurfaceScrollView: NSView {
             }
             let result = window.makeFirstResponder(surfaceView)
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.ensure.dock.apply surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "result=\(result ? 1 : 0) firstResponder=\(String(describing: window.firstResponder))"
             )
@@ -11106,7 +11106,7 @@ final class GhosttySurfaceScrollView: NSView {
         // Search focus restoration — only after confirming this is the active tab/pane.
         if surfaceView.terminalSurface?.searchState != nil {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.ensure.search surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
                 "tab=\(tabId.uuidString.prefix(5)) panel=\(surfaceId.uuidString.prefix(5)) " +
                 "firstResponder=\(String(describing: window.firstResponder))"
@@ -11152,7 +11152,7 @@ final class GhosttySurfaceScrollView: NSView {
         }
         let result = window.makeFirstResponder(surfaceView)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "focus.ensure.apply surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "tab=\(tabId.uuidString.prefix(5)) panel=\(surfaceId.uuidString.prefix(5)) " +
             "result=\(result ? 1 : 0) firstResponder=\(String(describing: window.firstResponder))"
@@ -11213,7 +11213,7 @@ final class GhosttySurfaceScrollView: NSView {
         guard surfaceView.suppressingReparentFocus else { return }
         surfaceView.suppressingReparentFocus = false
 #if DEBUG
-        cmuxDebugLog("focus.reparent.pointerClear surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
+        mosaicDebugLog("focus.reparent.pointerClear surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil")")
 #endif
     }
 
@@ -11232,7 +11232,7 @@ final class GhosttySurfaceScrollView: NSView {
         guard let window = uiWindow, window.isKeyWindow else { return }
         guard !isHiddenForFocus, hasUsablePortalGeometry else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.reparent.resume.defer surface=\(surfaceShort) " +
                 "reason=hidden_or_tiny hidden=\(isHiddenForFocus ? 1 : 0) " +
                 "frame=\(String(format: "%.1fx%.1f", bounds.width, bounds.height))"
@@ -11243,7 +11243,7 @@ final class GhosttySurfaceScrollView: NSView {
         }
         if !surfaceOwnsFirstResponder && !isSurfaceViewFirstResponder() {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.reparent.resume.restoreFirstResponder surface=\(surfaceShort) " +
                 "firstResponder=\(String(describing: window.firstResponder))"
             )
@@ -11252,7 +11252,7 @@ final class GhosttySurfaceScrollView: NSView {
                   isSurfaceViewFirstResponder() else { return }
         }
 #if DEBUG
-        cmuxDebugLog("focus.reparent.resume surface=\(surfaceShort) firstResponder=\(String(describing: window.firstResponder))")
+        mosaicDebugLog("focus.reparent.resume surface=\(surfaceShort) firstResponder=\(String(describing: window.firstResponder))")
 #endif
         reassertTerminalSurfaceFocus(reason: "clearSuppressReparentFocus", force: true)
     }
@@ -11361,7 +11361,7 @@ final class GhosttySurfaceScrollView: NSView {
             self.pendingAutomaticFirstResponderApply = false
 #if DEBUG
             let surfaceShort = String(self.surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil")
-            cmuxDebugLog("find.applyFirstResponder.defer surface=\(surfaceShort) reason=\(reason)")
+            mosaicDebugLog("find.applyFirstResponder.defer surface=\(surfaceShort) reason=\(reason)")
 #endif
             self.applyFirstResponderIfNeeded()
         }
@@ -11380,7 +11380,7 @@ final class GhosttySurfaceScrollView: NSView {
         guard !isHiddenForFocus, hasUsablePortalGeometry, hasUsableSurfaceGeometry else {
 #if DEBUG
             let surfaceShort = String(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil")
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.surface.reassert.skip surface=\(surfaceShort) reason=\(reason).hidden_or_tiny " +
                 "hidden=\(isHiddenForFocus ? 1 : 0) " +
                 "force=\(force ? 1 : 0) " +
@@ -11403,7 +11403,7 @@ final class GhosttySurfaceScrollView: NSView {
             terminalSurface.requestBackgroundSurfaceStartIfNeeded()
         }
 #if DEBUG
-        cmuxDebugLog("focus.surface.reassert surface=\(terminalSurface.id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("focus.surface.reassert surface=\(terminalSurface.id.uuidString.prefix(5)) reason=\(reason)")
 #endif
         terminalSurface.setFocus(true, force: force)
         pendingSuppressedFirstResponderFocusReapply = false
@@ -11423,7 +11423,7 @@ final class GhosttySurfaceScrollView: NSView {
         }
         lastFocusRefreshAt = now
 #if DEBUG
-        cmuxDebugLog("focus.surface.refresh surface=\(terminalSurface.id.uuidString.prefix(5)) reason=\(reason)")
+        mosaicDebugLog("focus.surface.refresh surface=\(terminalSurface.id.uuidString.prefix(5)) reason=\(reason)")
 #endif
         terminalSurface.forceRefresh(reason: "focus.surface.\(reason)")
     }
@@ -11447,7 +11447,7 @@ final class GhosttySurfaceScrollView: NSView {
               hasUsablePortalGeometry,
               (!requiresSuppressedSurfaceGeometry || hasUsableSurfaceGeometry) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "focus.apply.skip surface=\(surfaceShort) " +
                 "reason=hidden_or_tiny hidden=\(isHiddenForFocus ? 1 : 0) " +
                 "frame=\(String(format: "%.1fx%.1f", bounds.width, bounds.height)) " +
@@ -11461,7 +11461,7 @@ final class GhosttySurfaceScrollView: NSView {
               let panelId = surfaceView.terminalSurface?.id,
               matchesCurrentTerminalFocusTarget(tabId: tabId, surfaceId: panelId) || (pendingSuppressedFirstResponderFocusReapply && isRightSidebarDockSurface && currentTerminalSurfaceOwnsFirstResponder()) else {
 #if DEBUG
-            cmuxDebugLog("focus.apply.skip surface=\(surfaceShort) reason=stale_target")
+            mosaicDebugLog("focus.apply.skip surface=\(surfaceShort) reason=stale_target")
 #endif
             return
         }
@@ -11473,7 +11473,7 @@ final class GhosttySurfaceScrollView: NSView {
         }
         if AppDelegate.shared?.isCommandPaletteEffectivelyVisible(for: window) == true {
 #if DEBUG
-            cmuxDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=commandPaletteVisible")
+            mosaicDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=commandPaletteVisible")
 #endif
             return
         }
@@ -11490,7 +11490,7 @@ final class GhosttySurfaceScrollView: NSView {
         // Don't steal focus from a search overlay on another surface in this window.
         if let fr = window.firstResponder, isSearchOverlayOrDescendant(fr) {
 #if DEBUG
-            cmuxDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=searchOverlayFocused")
+            mosaicDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=searchOverlayFocused")
 #endif
             return
         }
@@ -11503,12 +11503,12 @@ final class GhosttySurfaceScrollView: NSView {
            }) {
 #if DEBUG
             let reason = firstResponder is NSText ? "textEditorFocused" : "rightSidebarFocused"
-            cmuxDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=\(reason)")
+            mosaicDebugLog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=\(reason)")
 #endif
             return
         }
 #if DEBUG
-        cmuxDebugLog("find.applyFirstResponder APPLY surface=\(surfaceShort) prevFirstResponder=\(String(describing: window.firstResponder))")
+        mosaicDebugLog("find.applyFirstResponder APPLY surface=\(surfaceShort) prevFirstResponder=\(String(describing: window.firstResponder))")
 #endif
         window.makeFirstResponder(surfaceView)
         if isSurfaceViewFirstResponder() {
@@ -11527,7 +11527,7 @@ final class GhosttySurfaceScrollView: NSView {
                isCurrentSurfaceSearchFieldResponder(firstResponder) {
                 surfaceView.terminalSurface?.setFocus(false)
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "find.restoreSearchFocus.skip surface=\(surfaceShort) target=searchField " +
                     "reason=alreadyFocused firstResponder=\(String(describing: firstResponder))"
                 )
@@ -11539,7 +11539,7 @@ final class GhosttySurfaceScrollView: NSView {
                !isCurrentSurfaceSearchResponder(firstResponder) {
                 surfaceView.terminalSurface?.setFocus(false)
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "find.restoreSearchFocus.skip surface=\(surfaceShort) target=searchField " +
                     "reason=foreignSearchResponder firstResponder=\(String(describing: firstResponder))"
                 )
@@ -11558,7 +11558,7 @@ final class GhosttySurfaceScrollView: NSView {
                 NotificationCenter.default.post(name: .ghosttySearchFocus, object: terminalSurface)
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.restoreSearchFocus surface=\(surfaceShort) target=searchField " +
                 "via=notification firstResponder=\(String(describing: window.firstResponder))"
             )
@@ -11569,7 +11569,7 @@ final class GhosttySurfaceScrollView: NSView {
                 reassertTerminalSurfaceFocus(reason: "restoreSearchFocus.terminal")
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.restoreSearchFocus surface=\(surfaceShort) target=terminal " +
                 "result=\(result ? 1 : 0) firstResponder=\(String(describing: window.firstResponder))"
             )
@@ -11596,7 +11596,7 @@ final class GhosttySurfaceScrollView: NSView {
 
 #if DEBUG
         if alreadyFocused {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.restoreSearchFocus.skip surface=\(surfaceShort) target=searchField " +
                 "reason=mountedFieldAlreadyFocused firstResponder=\(String(describing: firstResponder))"
             )
@@ -11608,7 +11608,7 @@ final class GhosttySurfaceScrollView: NSView {
         let ownsField = mountedSearchFieldOwnsResponder(window.firstResponder, field: field)
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "find.restoreSearchFocus surface=\(surfaceShort) target=searchField " +
             "via=mountedField result=\(result ? 1 : 0) firstResponder=\(String(describing: window.firstResponder))"
         )
@@ -11676,7 +11676,7 @@ final class GhosttySurfaceScrollView: NSView {
                 return "textBoxInput"
             }
         }()
-        cmuxDebugLog(
+        mosaicDebugLog(
             "find.preparePanelFocusIntent surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "target=\(targetLabel)"
         )
@@ -11705,7 +11705,7 @@ final class GhosttySurfaceScrollView: NSView {
                 NotificationCenter.default.post(name: .ghosttySearchFocus, object: terminalSurface)
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "find.restorePanelFocusIntent surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                 "target=searchField firstResponder=\(String(describing: window?.firstResponder))"
             )
@@ -11737,12 +11737,12 @@ final class GhosttySurfaceScrollView: NSView {
               ownedPanelFocusIntent(for: firstResponder) == intent else {
             return false
         }
-        if intent == .findField { _ = cmuxRememberFindSelection(in: searchOverlayHostingView) }
+        if intent == .findField { _ = mosaicRememberFindSelection(in: searchOverlayHostingView) }
         surfaceView.terminalSurface?.setFocus(false)
         pendingSuppressedFirstResponderFocusReapply = false
         resignOwnedFirstResponderIfNeeded(reason: "yieldPanelFocusIntent")
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "focus.handoff.yield surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "target=\(intent == .findField ? "searchField" : "terminal")"
         )
@@ -11763,7 +11763,7 @@ final class GhosttySurfaceScrollView: NSView {
 
         pendingSuppressedFirstResponderFocusReapply = false
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "focus.surface.resign surface=\(surfaceView.terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +
             "reason=\(reason) firstResponder=\(String(describing: firstResponder))"
         )
@@ -12327,7 +12327,7 @@ extension GhosttyNSView: NSTextInputClient {
     fileprivate func sendTextToSurface(_ chars: String, preserveLiteralEscape: Bool) {
         guard let surface = surface else { return }
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
 #endif
 #if DEBUG
         TerminalChildExitProbe().write(
@@ -12401,7 +12401,7 @@ extension GhosttyNSView: NSTextInputClient {
         }
         flushBufferedText()
 #if DEBUG
-        CmuxTypingTiming.logDuration(
+        MosaicTypingTiming.logDuration(
             path: "terminal.sendTextToSurface",
             startedAt: typingTimingStart,
             extra: "textBytes=\(chars.utf8.count)"
@@ -12539,9 +12539,9 @@ extension GhosttyNSView: NSTextInputClient {
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         defer {
-            CmuxTypingTiming.logDuration(
+            MosaicTypingTiming.logDuration(
                 path: "terminal.setMarkedText",
                 startedAt: typingTimingStart,
                 extra: "markedLength=\(markedText.length)"
@@ -12570,9 +12570,9 @@ extension GhosttyNSView: NSTextInputClient {
     func unmarkText() {
 #if DEBUG
         let hadMarkedText = markedText.length > 0
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         defer {
-            CmuxTypingTiming.logDuration(
+            MosaicTypingTiming.logDuration(
                 path: "terminal.unmarkText",
                 startedAt: typingTimingStart,
                 extra: "hadMarkedText=\(hadMarkedText ? 1 : 0)"
@@ -12592,9 +12592,9 @@ extension GhosttyNSView: NSTextInputClient {
     /// preedit overlay (e.g. for Korean, Japanese, Chinese input).
     private func syncPreedit(clearIfNeeded: Bool = true) {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         defer {
-            CmuxTypingTiming.logDuration(
+            MosaicTypingTiming.logDuration(
                 path: "terminal.syncPreedit",
                 startedAt: typingTimingStart,
                 extra: "markedLength=\(markedText.length) clearIfNeeded=\(clearIfNeeded ? 1 : 0)"
@@ -12717,9 +12717,9 @@ extension GhosttyNSView: NSTextInputClient {
 
     func insertText(_ string: Any, replacementRange: NSRange) {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = MosaicTypingTiming.start()
         defer {
-            CmuxTypingTiming.logDuration(
+            MosaicTypingTiming.logDuration(
                 path: "terminal.insertText",
                 startedAt: typingTimingStart,
                 event: NSApp.currentEvent,
@@ -12757,7 +12757,7 @@ extension GhosttyNSView: NSTextInputClient {
 
 #if DEBUG
         if NSApp.currentEvent == nil {
-            cmuxDebugLog("ime.insertText.noEvent len=\(chars.count)")
+            mosaicDebugLog("ime.insertText.noEvent len=\(chars.count)")
         }
 #endif
 
@@ -12779,7 +12779,7 @@ extension GhosttyNSView: NSTextInputClient {
 
 #if DEBUG
         if sanitizedChars != chars {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ime.insertText.sanitized originalBytes=\(chars.utf8.count) " +
                 "sanitizedBytes=\(sanitizedChars.utf8.count)"
             )
@@ -13006,7 +13006,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
         if desiredStateChanged {
             if let snapshot = AppDelegate.shared?.tabManager?.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.swiftui.update id=\(snapshot.id) dt=\(String(format: "%.2fms", dtMs)) " +
                     "surface=\(terminalSurface.id.uuidString.prefix(5)) visible=\(isVisibleInUI ? 1 : 0) " +
                     "active=\(isActive ? 1 : 0) z=\(portalZPriority) " +
@@ -13014,7 +13014,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
                     "hostedSuperview=\(hostedView.superview != nil ? 1 : 0)"
                 )
             } else {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.swiftui.update id=none surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                     "visible=\(isVisibleInUI ? 1 : 0) active=\(isActive ? 1 : 0) z=\(portalZPriority) " +
                     "hostWindow=\(nsView.window != nil ? 1 : 0) hostedWindow=\(hostedView.window != nil ? 1 : 0) " +
@@ -13068,7 +13068,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
         if coordinator.lastPaneDropZone != paneDropZone {
             let oldZone = coordinator.lastPaneDropZone.map { String(describing: $0) } ?? "none"
             let newZone = paneDropZone.map { String(describing: $0) } ?? "none"
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "terminal.paneDropZone surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                 "old=\(oldZone) new=\(newZone) " +
                 "active=\(isActive ? 1 : 0) visible=\(isVisibleInUI ? 1 : 0) " +
@@ -13077,7 +13077,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
             coordinator.lastPaneDropZone = paneDropZone
         }
         if paneDropZone != nil, !isVisibleInUI {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "terminal.paneDropZone.suppress surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                 "requested=\(String(describing: paneDropZone!)) visible=0 active=\(isActive ? 1 : 0)"
             )
@@ -13136,7 +13136,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
                    (coordinator.lastBoundHostId != hostId ||
                     !TerminalWindowPortalRegistry.isHostedView(hostedView, boundTo: host)) {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "ws.hostState.rebindOnGeometry surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                         "reason=portalEntryMissing visible=\(coordinator.desiredIsVisibleInUI ? 1 : 0) " +
                         "active=\(coordinator.desiredIsActive ? 1 : 0) z=\(coordinator.desiredPortalZPriority)"
@@ -13179,7 +13179,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
                 if portalBindingLive && shouldBindNow {
 #if DEBUG
                     if portalEntryMissing {
-                        cmuxDebugLog(
+                        mosaicDebugLog(
                             "ws.hostState.rebindOnUpdate surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                             "reason=portalEntryMissing visible=\(coordinator.desiredIsVisibleInUI ? 1 : 0) " +
                             "active=\(coordinator.desiredIsActive ? 1 : 0) z=\(coordinator.desiredPortalZPriority)"
@@ -13209,7 +13209,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
                 // that runs before the deferred bind completes won't hide the view.
 #if DEBUG
                 if desiredStateChanged {
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "ws.hostState.deferBind surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                         "reason=hostNoWindow visible=\(coordinator.desiredIsVisibleInUI ? 1 : 0) " +
                         "active=\(coordinator.desiredIsActive ? 1 : 0) z=\(coordinator.desiredPortalZPriority) " +
@@ -13242,7 +13242,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
             // The currently bound host remains authoritative for immediate visible/active state.
 #if DEBUG
             if desiredStateChanged {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.hostState.deferApply surface=\(terminalSurface.id.uuidString.prefix(5)) " +
                     "reason=\(hostOwnsPortalNow ? "staleHostBinding" : "hostOwnershipRejected") " +
                     "hostWindow=\(hostWindowAttached ? 1 : 0) " +
@@ -13266,13 +13266,13 @@ struct GhosttyTerminalView: NSViewRepresentable {
         if let hostedView {
             if let snapshot = AppDelegate.shared?.tabManager?.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.swiftui.dismantle id=\(snapshot.id) dt=\(String(format: "%.2fms", dtMs)) " +
                     "surface=\(hostedView.debugSurfaceId?.uuidString.prefix(5) ?? "nil") " +
                     "inWindow=\(hostedView.window != nil ? 1 : 0)"
                 )
             } else {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.swiftui.dismantle id=none surface=\(hostedView.debugSurfaceId?.uuidString.prefix(5) ?? "nil") " +
                     "inWindow=\(hostedView.window != nil ? 1 : 0)"
                 )

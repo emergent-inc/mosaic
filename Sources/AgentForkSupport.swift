@@ -1,6 +1,6 @@
-import CmuxFoundation
+import MosaicFoundation
 import Foundation
-import CMUXAgentLaunch
+import MosaicAgentLaunch
 import Darwin
 
 /// Coordinates cancellation with `Process.run()`: Foundation raises an

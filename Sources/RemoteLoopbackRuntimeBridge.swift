@@ -1,5 +1,5 @@
 import Foundation
-import CmuxCore
+import MosaicCore
 
 enum RemoteLoopbackRuntimeBridge {
     static let runtimeBridgeScriptSource: String = {
@@ -32,8 +32,8 @@ enum RemoteLoopbackRuntimeBridge {
           if (effectiveHost !== normalizedAliasHost && !effectiveHost.endsWith(`.${normalizedAliasHost}`)) {
             return true;
           }
-          if (window.__cmuxRemoteLoopbackRuntimeBridgeInstalled) return true;
-          window.__cmuxRemoteLoopbackRuntimeBridgeInstalled = true;
+          if (window.__mosaicRemoteLoopbackRuntimeBridgeInstalled) return true;
+          window.__mosaicRemoteLoopbackRuntimeBridgeInstalled = true;
 
           const loopbackAliasHost = (host) => {
             const normalizedHost = normalizeHost(host);
@@ -72,7 +72,7 @@ enum RemoteLoopbackRuntimeBridge {
             return parsed.href;
           };
 
-          Object.defineProperty(window, '__cmuxRewriteRemoteLoopbackURL', {
+          Object.defineProperty(window, '__mosaicRewriteRemoteLoopbackURL', {
             value: rewriteLoopbackURL,
             configurable: true,
           });
@@ -100,30 +100,30 @@ enum RemoteLoopbackRuntimeBridge {
 
           const NativeWebSocket = window.WebSocket;
           if (typeof NativeWebSocket === 'function') {
-            const CmuxWebSocket = function(url, protocols) {
+            const MosaicWebSocket = function(url, protocols) {
               const rewrittenURL = rewriteLoopbackURL(url);
               if (protocols === undefined) {
                 return new NativeWebSocket(rewrittenURL);
               }
               return new NativeWebSocket(rewrittenURL, protocols);
             };
-            CmuxWebSocket.prototype = NativeWebSocket.prototype;
-            Object.setPrototypeOf(CmuxWebSocket, NativeWebSocket);
-            window.WebSocket = CmuxWebSocket;
+            MosaicWebSocket.prototype = NativeWebSocket.prototype;
+            Object.setPrototypeOf(MosaicWebSocket, NativeWebSocket);
+            window.WebSocket = MosaicWebSocket;
           }
 
           const NativeEventSource = window.EventSource;
           if (typeof NativeEventSource === 'function') {
-            const CmuxEventSource = function(url, eventSourceInitDict) {
+            const MosaicEventSource = function(url, eventSourceInitDict) {
               const rewrittenURL = rewriteLoopbackURL(url);
               if (eventSourceInitDict === undefined) {
                 return new NativeEventSource(rewrittenURL);
               }
               return new NativeEventSource(rewrittenURL, eventSourceInitDict);
             };
-            CmuxEventSource.prototype = NativeEventSource.prototype;
-            Object.setPrototypeOf(CmuxEventSource, NativeEventSource);
-            window.EventSource = CmuxEventSource;
+            MosaicEventSource.prototype = NativeEventSource.prototype;
+            Object.setPrototypeOf(MosaicEventSource, NativeEventSource);
+            window.EventSource = MosaicEventSource;
           }
 
           return true;

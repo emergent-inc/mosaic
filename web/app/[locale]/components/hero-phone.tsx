@@ -10,7 +10,7 @@ import phoneImage from "../assets/landing-iphone.png";
 // live right/bottom %, which persist to localStorage. Send us the numbers and
 // we update DEFAULT_POS here.
 const DEFAULT_POS = { right: -1.2, bottom: -4.3 };
-const STORAGE_KEY = "cmuxHeroPhonePos";
+const STORAGE_KEY = "mosaicHeroPhonePos";
 
 const sizeClasses =
   "w-[22%] sm:w-[24%] md:w-[25%] lg:w-[25%] max-w-[360px]";
@@ -90,7 +90,7 @@ export function HeroPhone() {
   const img = (
     <Image
       src={phoneImage}
-      alt="cmux iOS app mirroring a live agent terminal"
+      alt="mosaic iOS app mirroring a live agent terminal"
       sizes="(max-width: 640px) 22vw, (max-width: 1024px) 25vw, 360px"
       className="pointer-events-none h-auto w-full select-none"
       draggable={false}
@@ -122,7 +122,7 @@ export function HeroPhone() {
       style={style}
       className={`pointer-events-none absolute z-10 drop-shadow-[0_28px_60px_rgba(0,0,0,0.5)] ${sizeClasses}`}
     >
-      <Link href="/ios" aria-label="cmux iOS" className="pointer-events-auto block">
+      <Link href="/ios" aria-label="mosaic iOS" className="pointer-events-auto block">
         {img}
       </Link>
     </div>

@@ -3,11 +3,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CRATE_DIR="${ROOT}/Native/CommandPaletteNucleoFFI"
-LIB_NAME="libcmux_command_palette_nucleo_ffi.dylib"
-BUILD_OUTPUT_DIR="${TARGET_BUILD_DIR:-${CRATE_DIR}/target}/cmux-nucleo-ffi"
+LIB_NAME="libmosaic_command_palette_nucleo_ffi.dylib"
+BUILD_OUTPUT_DIR="${TARGET_BUILD_DIR:-${CRATE_DIR}/target}/mosaic-nucleo-ffi"
 
 if ! command -v cargo >/dev/null 2>&1; then
-  case "${CMUX_NUCLEO_FFI_REQUIRE_CARGO:-${CI:-0}}" in
+  case "${MOSAIC_NUCLEO_FFI_REQUIRE_CARGO:-${CI:-0}}" in
     1|true|TRUE|yes|YES)
       echo "error: cargo is required to build ${LIB_NAME}" >&2
       exit 1
@@ -50,13 +50,13 @@ ensure_rust_target() {
   fi
 }
 
-requested_targets="${CMUX_NUCLEO_FFI_TARGETS:-}"
+requested_targets="${MOSAIC_NUCLEO_FFI_TARGETS:-}"
 if [ -z "${requested_targets}" ] && [ -n "${TARGET_TRIPLE:-}" ]; then
   requested_targets="$(rust_target_for_triple "${TARGET_TRIPLE}")"
 fi
 
 if [ -z "${requested_targets}" ]; then
-  requested_archs="${CMUX_NUCLEO_FFI_ARCHS:-${ARCHS:-}}"
+  requested_archs="${MOSAIC_NUCLEO_FFI_ARCHS:-${ARCHS:-}}"
   if [ -z "${requested_archs}" ]; then
     case "$(uname -m)" in
       arm64|aarch64) requested_archs="arm64" ;;

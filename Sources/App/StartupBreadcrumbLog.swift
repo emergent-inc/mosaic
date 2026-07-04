@@ -53,16 +53,16 @@ enum StartupBreadcrumbLog {
             try handle.write(contentsOf: line)
             try handle.write(contentsOf: Data([0x0A]))
         } catch {
-            logger.fault("cmux startup breadcrumb failed: \(String(describing: error), privacy: .public)")
+            logger.fault("mosaic startup breadcrumb failed: \(String(describing: error), privacy: .public)")
         }
     }
 
     private static var isEnabled: Bool {
         let environment = ProcessInfo.processInfo.environment
-        if environment["CMUX_DISABLE_STARTUP_BREADCRUMBS"] == "1" {
+        if environment["MOSAIC_DISABLE_STARTUP_BREADCRUMBS"] == "1" {
             return false
         }
-        if environment["CMUX_STARTUP_BREADCRUMBS"] == "1" {
+        if environment["MOSAIC_STARTUP_BREADCRUMBS"] == "1" {
             return true
         }
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
@@ -75,9 +75,9 @@ enum StartupBreadcrumbLog {
     private static var logURL: URL {
         let logsDirectory = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)
             .first?
-            .appendingPathComponent("Logs/cmux", isDirectory: true)
+            .appendingPathComponent("Logs/mosaic", isDirectory: true)
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-                .appendingPathComponent("cmux-logs", isDirectory: true)
+                .appendingPathComponent("mosaic-logs", isDirectory: true)
         let sanitizedBundleIdentifier = logFileComponent(Bundle.main.bundleIdentifier ?? "unknown")
         return logsDirectory.appendingPathComponent("startup-\(sanitizedBundleIdentifier).log")
     }

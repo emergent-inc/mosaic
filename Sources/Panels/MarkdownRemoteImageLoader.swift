@@ -65,7 +65,7 @@ enum MarkdownRemoteImageSecurity {
             "GET \(pathAndQuery(for: url)) HTTP/1.1",
             "Host: \(hostHeader)",
             "Accept: image/png,image/jpeg,image/gif,image/webp,image/avif;q=0.9,image/svg+xml;q=0.9,*/*;q=0.1",
-            "User-Agent: cmux-markdown-image-loader",
+            "User-Agent: mosaic-markdown-image-loader",
             "Connection: close",
             "",
             ""
@@ -332,7 +332,7 @@ private final class MarkdownPinnedRemoteImageLoader {
     private let maximumBytes: Int
     private let target: MarkdownRemoteImageFetchTarget
     private let lock = NSLock()
-    private let queue = DispatchQueue(label: "dev.cmux.markdown-remote-image", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "dev.mosaic.markdown-remote-image", qos: .userInitiated)
     private var rawBody = Data()
     private var mimeType = "image/png"
     private var completion: ((MarkdownRemoteImageLoadOutcome?) -> Void)?

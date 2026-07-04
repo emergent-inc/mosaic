@@ -1,4 +1,4 @@
-//! Minimal C FFI over iroh for the cmux mobile transport spike.
+//! Minimal C FFI over iroh for the mosaic mobile transport spike.
 //!
 //! This is spike code: it proves a Swift process (macOS app or iOS app) can
 //! bind an iroh endpoint, dial another endpoint by EndpointId through the
@@ -29,7 +29,7 @@ use iroh::{
 };
 use tokio::{runtime::Runtime, sync::Mutex};
 
-const ALPN: &[u8] = b"dev.cmux.mobile.terminal/0";
+const ALPN: &[u8] = b"dev.mosaic.mobile.terminal/0";
 
 fn runtime() -> &'static Runtime {
     static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -55,11 +55,11 @@ fn set_error(err_buf: *mut c_char, err_cap: usize, message: &str) {
     }
 }
 
-pub struct CmuxIrohEndpoint {
+pub struct MosaicIrohEndpoint {
     endpoint: Endpoint,
 }
 
-pub struct CmuxIrohConnection {
+pub struct MosaicIrohConnection {
     connection: Connection,
     send: Mutex<SendStream>,
     recv: Mutex<RecvStream>,
@@ -70,12 +70,12 @@ pub struct CmuxIrohConnection {
 /// Returns null on failure with the cause in `err_buf`. The spike always
 /// generates a fresh secret key; key custody is a production design topic.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_bind(
+pub extern "C" fn mosaic_iroh_endpoint_bind(
     enable_relay: bool,
     accept_connections: bool,
     err_buf: *mut c_char,
     err_cap: usize,
-) -> *mut CmuxIrohEndpoint {
+) -> *mut MosaicIrohEndpoint {
     let result = runtime().block_on(async move {
         let mut builder = Endpoint::builder(presets::N0)
             .secret_key(SecretKey::generate())
@@ -90,7 +90,7 @@ pub extern "C" fn cmux_iroh_endpoint_bind(
         builder.bind().await
     });
     match result {
-        Ok(endpoint) => Box::into_raw(Box::new(CmuxIrohEndpoint { endpoint })),
+        Ok(endpoint) => Box::into_raw(Box::new(MosaicIrohEndpoint { endpoint })),
         Err(error) => {
             set_error(err_buf, err_cap, &format!("bind failed: {error:#}"));
             ptr::null_mut()
@@ -99,9 +99,9 @@ pub extern "C" fn cmux_iroh_endpoint_bind(
 }
 
 /// Returns the endpoint's EndpointId (z-base-32) as a heap string.
-/// Free with `cmux_iroh_string_free`.
+/// Free with `mosaic_iroh_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_id(endpoint: *const CmuxIrohEndpoint) -> *mut c_char {
+pub extern "C" fn mosaic_iroh_endpoint_id(endpoint: *const MosaicIrohEndpoint) -> *mut c_char {
     let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
         return ptr::null_mut();
     };
@@ -109,9 +109,9 @@ pub extern "C" fn cmux_iroh_endpoint_id(endpoint: *const CmuxIrohEndpoint) -> *m
 }
 
 /// Returns a `CmxAttachRoute`-shaped JSON object for this endpoint
-/// (id, direct addrs, relay URL). Free with `cmux_iroh_string_free`.
+/// (id, direct addrs, relay URL). Free with `mosaic_iroh_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_route_json(endpoint: *const CmuxIrohEndpoint) -> *mut c_char {
+pub extern "C" fn mosaic_iroh_endpoint_route_json(endpoint: *const MosaicIrohEndpoint) -> *mut c_char {
     let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
         return ptr::null_mut();
     };
@@ -142,8 +142,8 @@ pub extern "C" fn cmux_iroh_endpoint_route_json(endpoint: *const CmuxIrohEndpoin
 /// Waits until the endpoint has a home relay connection (so dial-by-id from
 /// elsewhere can reach it). 0 on success, -1 on timeout.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_online(
-    endpoint: *mut CmuxIrohEndpoint,
+pub extern "C" fn mosaic_iroh_endpoint_online(
+    endpoint: *mut MosaicIrohEndpoint,
     timeout_ms: u64,
     err_buf: *mut c_char,
     err_cap: usize,
@@ -171,12 +171,12 @@ pub extern "C" fn cmux_iroh_endpoint_online(
 /// Accepts one incoming connection and its first bidirectional stream.
 /// Blocks up to `timeout_ms`. Returns null on failure/timeout.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_accept(
-    endpoint: *mut CmuxIrohEndpoint,
+pub extern "C" fn mosaic_iroh_endpoint_accept(
+    endpoint: *mut MosaicIrohEndpoint,
     timeout_ms: u64,
     err_buf: *mut c_char,
     err_cap: usize,
-) -> *mut CmuxIrohConnection {
+) -> *mut MosaicIrohConnection {
     let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
         set_error(err_buf, err_cap, "null endpoint");
         return ptr::null_mut();
@@ -206,8 +206,8 @@ pub extern "C" fn cmux_iroh_endpoint_accept(
 /// Dials `endpoint_id` (optionally with relay URL / direct addr hints) and
 /// opens one bidirectional stream. With no hints, n0 discovery resolves the id.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_connect(
-    endpoint: *mut CmuxIrohEndpoint,
+pub extern "C" fn mosaic_iroh_endpoint_connect(
+    endpoint: *mut MosaicIrohEndpoint,
     endpoint_id: *const c_char,
     relay_url: *const c_char,
     direct_addrs: *const *const c_char,
@@ -215,7 +215,7 @@ pub extern "C" fn cmux_iroh_endpoint_connect(
     timeout_ms: u64,
     err_buf: *mut c_char,
     err_cap: usize,
-) -> *mut CmuxIrohConnection {
+) -> *mut MosaicIrohConnection {
     let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
         set_error(err_buf, err_cap, "null endpoint");
         return ptr::null_mut();
@@ -289,8 +289,8 @@ pub extern "C" fn cmux_iroh_endpoint_connect(
 /// Receives up to `cap` bytes. Returns bytes read (>0), 0 on clean end of
 /// stream, or -1 on error.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_connection_recv(
-    connection: *mut CmuxIrohConnection,
+pub extern "C" fn mosaic_iroh_connection_recv(
+    connection: *mut MosaicIrohConnection,
     buf: *mut u8,
     cap: usize,
     err_buf: *mut c_char,
@@ -328,8 +328,8 @@ pub extern "C" fn cmux_iroh_connection_recv(
 
 /// Sends `len` bytes. Returns 0 on success, -1 on error.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_connection_send(
-    connection: *mut CmuxIrohConnection,
+pub extern "C" fn mosaic_iroh_connection_send(
+    connection: *mut MosaicIrohConnection,
     bytes: *const u8,
     len: usize,
     err_buf: *mut c_char,
@@ -369,7 +369,7 @@ pub extern "C" fn cmux_iroh_connection_send(
 /// acknowledges receipt of all finished stream data, so wait for it (bounded,
 /// so a vanished peer cannot wedge close) before closing the connection.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_connection_close(connection: *mut CmuxIrohConnection) {
+pub extern "C" fn mosaic_iroh_connection_close(connection: *mut MosaicIrohConnection) {
     if connection.is_null() {
         return;
     }
@@ -386,7 +386,7 @@ pub extern "C" fn cmux_iroh_connection_close(connection: *mut CmuxIrohConnection
 
 /// Closes the endpoint and frees its handle.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_endpoint_close(endpoint: *mut CmuxIrohEndpoint) {
+pub extern "C" fn mosaic_iroh_endpoint_close(endpoint: *mut MosaicIrohEndpoint) {
     if endpoint.is_null() {
         return;
     }
@@ -398,7 +398,7 @@ pub extern "C" fn cmux_iroh_endpoint_close(endpoint: *mut CmuxIrohEndpoint) {
 
 /// Frees a string returned by this library.
 #[unsafe(no_mangle)]
-pub extern "C" fn cmux_iroh_string_free(string: *mut c_char) {
+pub extern "C" fn mosaic_iroh_string_free(string: *mut c_char) {
     if string.is_null() {
         return;
     }
@@ -409,9 +409,9 @@ fn finish_connection(
     result: Result<(Connection, SendStream, RecvStream), String>,
     err_buf: *mut c_char,
     err_cap: usize,
-) -> *mut CmuxIrohConnection {
+) -> *mut MosaicIrohConnection {
     match result {
-        Ok((connection, send, recv)) => Box::into_raw(Box::new(CmuxIrohConnection {
+        Ok((connection, send, recv)) => Box::into_raw(Box::new(MosaicIrohConnection {
             connection,
             send: Mutex::new(send),
             recv: Mutex::new(recv),

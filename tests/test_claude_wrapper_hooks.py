@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WRAPPER = ROOT / "Resources" / "bin" / "cmux-claude-wrapper"
+SOURCE_WRAPPER = ROOT / "Resources" / "bin" / "mosaic-claude-wrapper"
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -47,7 +47,7 @@ def run_wrapper(
     tmpdir: str | None = None,
     hooks_disabled: bool = False,
 ) -> tuple[int, list[str], list[str], str, str, str, str, str, str, str]:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-test-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-test-") as td:
         tmp = Path(td)
         wrapper_dir = tmp / "wrapper-bin"
         real_dir = tmp / "real-bin"
@@ -56,7 +56,7 @@ def run_wrapper(
         real_dir.mkdir(parents=True, exist_ok=True)
         bundled_dir.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "cmux-claude-wrapper"
+        wrapper = wrapper_dir / "mosaic-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
@@ -66,9 +66,9 @@ def run_wrapper(
         real_runtime_node_options_log = tmp / "real-runtime-node-options.log"
         real_child_node_options_log = tmp / "real-child-node-options.log"
         real_launch_argv_b64_log = tmp / "real-launch-argv-b64.log"
-        hook_cmux_bin_log = tmp / "hook-cmux-bin.log"
-        cmux_log = tmp / "cmux.log"
-        socket_path = str(tmp / "cmux.sock")
+        hook_mosaic_bin_log = tmp / "hook-mosaic-bin.log"
+        mosaic_log = tmp / "mosaic.log"
+        socket_path = str(tmp / "mosaic.sock")
 
         make_executable(
             real_dir / "claude",
@@ -77,8 +77,8 @@ set -euo pipefail
 : > "$FAKE_REAL_ARGS_LOG"
 printf '%s\\n' "${CLAUDECODE-__UNSET__}" > "$FAKE_REAL_CLAUDECODE_LOG"
 printf '%s\\n' "${NODE_OPTIONS-__UNSET__}" > "$FAKE_REAL_NODE_OPTIONS_LOG"
-printf '%s\\n' "${CMUX_AGENT_LAUNCH_ARGV_B64-__UNSET__}" > "$FAKE_REAL_LAUNCH_ARGV_B64_LOG"
-printf '%s\\n' "${CMUX_CLAUDE_HOOK_CMUX_BIN-__UNSET__}" > "$FAKE_HOOK_CMUX_BIN_LOG"
+printf '%s\\n' "${MOSAIC_AGENT_LAUNCH_ARGV_B64-__UNSET__}" > "$FAKE_REAL_LAUNCH_ARGV_B64_LOG"
+printf '%s\\n' "${MOSAIC_CLAUDE_HOOK_MOSAIC_BIN-__UNSET__}" > "$FAKE_HOOK_MOSAIC_BIN_LOG"
 for arg in "$@"; do
   printf '%s\\n' "$arg" >> "$FAKE_REAL_ARGS_LOG"
 done
@@ -134,15 +134,15 @@ fs.writeFileSync(
         )
 
         make_executable(
-            wrapper_dir / "cmux",
+            wrapper_dir / "mosaic",
             """#!/usr/bin/env bash
 set -euo pipefail
-printf '%s timeout=%s\\n' "$*" "${CMUXTERM_CLI_RESPONSE_TIMEOUT_SEC-__UNSET__}" >> "$FAKE_CMUX_LOG"
+printf '%s timeout=%s\\n' "$*" "${MOSAICTERM_CLI_RESPONSE_TIMEOUT_SEC-__UNSET__}" >> "$FAKE_MOSAIC_LOG"
 if [[ "${1:-}" == "--socket" ]]; then
   shift 2
 fi
 if [[ "${1:-}" == "ping" ]]; then
-  if [[ "${FAKE_CMUX_PING_OK:-0}" == "1" ]]; then
+  if [[ "${FAKE_MOSAIC_PING_OK:-0}" == "1" ]]; then
     exit 0
   fi
   exit 1
@@ -150,7 +150,7 @@ fi
 exit 0
 """,
         )
-        bundled_cli_path = bundled_dir / "cmux"
+        bundled_cli_path = bundled_dir / "mosaic"
         make_executable(
             bundled_cli_path,
             """#!/usr/bin/env bash
@@ -165,8 +165,8 @@ exit 0
 
         env = os.environ.copy()
         env["PATH"] = f"{wrapper_dir}:{real_dir}:{env.get('PATH', '/usr/bin:/bin')}"
-        env["CMUX_SURFACE_ID"] = "surface:test"
-        env["CMUX_SOCKET_PATH"] = socket_path
+        env["MOSAIC_SURFACE_ID"] = "surface:test"
+        env["MOSAIC_SOCKET_PATH"] = socket_path
         env["FAKE_REAL_ARGS_LOG"] = str(real_args_log)
         env["FAKE_REAL_CLAUDECODE_LOG"] = str(real_claudecode_log)
         env["FAKE_REAL_NODE_OPTIONS_LOG"] = str(real_node_options_log)
@@ -174,15 +174,15 @@ exit 0
         env["FAKE_REAL_CHILD_NODE_OPTIONS_LOG"] = str(real_child_node_options_log)
         env["FAKE_REAL_LAUNCH_ARGV_B64_LOG"] = str(real_launch_argv_b64_log)
         env["FAKE_REAL_NODE_SCRIPT"] = str(real_dir / "claude-real.js")
-        env["FAKE_HOOK_CMUX_BIN_LOG"] = str(hook_cmux_bin_log)
-        env["FAKE_CMUX_LOG"] = str(cmux_log)
-        env["FAKE_CMUX_PING_OK"] = "1" if socket_state == "live" else "0"
-        env["CMUX_BUNDLED_CLI_PATH"] = str(bundled_cli_path)
+        env["FAKE_HOOK_MOSAIC_BIN_LOG"] = str(hook_mosaic_bin_log)
+        env["FAKE_MOSAIC_LOG"] = str(mosaic_log)
+        env["FAKE_MOSAIC_PING_OK"] = "1" if socket_state == "live" else "0"
+        env["MOSAIC_BUNDLED_CLI_PATH"] = str(bundled_cli_path)
         env["CLAUDECODE"] = "nested-session-sentinel"
         if hooks_disabled:
-            env["CMUX_CLAUDE_HOOKS_DISABLED"] = "1"
+            env["MOSAIC_CLAUDE_HOOKS_DISABLED"] = "1"
         else:
-            env.pop("CMUX_CLAUDE_HOOKS_DISABLED", None)
+            env.pop("MOSAIC_CLAUDE_HOOKS_DISABLED", None)
         env.pop("NODE_OPTIONS", None)
         if tmpdir is not None:
             env["TMPDIR"] = tmpdir
@@ -203,7 +203,7 @@ exit 0
                 test_socket.close()
 
         claudecode_lines = read_lines(real_claudecode_log)
-        hook_cmux_bin_lines = read_lines(hook_cmux_bin_log)
+        hook_mosaic_bin_lines = read_lines(hook_mosaic_bin_log)
         launch_argv_b64_lines = read_lines(real_launch_argv_b64_log)
         claudecode_value = claudecode_lines[0] if claudecode_lines else ""
         node_options_lines = read_lines(real_node_options_log)
@@ -212,18 +212,18 @@ exit 0
         runtime_node_options_value = runtime_node_options_lines[0] if runtime_node_options_lines else ""
         child_node_options_lines = read_lines(real_child_node_options_log)
         child_node_options_value = child_node_options_lines[0] if child_node_options_lines else ""
-        hook_cmux_bin_value = hook_cmux_bin_lines[0] if hook_cmux_bin_lines else ""
+        hook_mosaic_bin_value = hook_mosaic_bin_lines[0] if hook_mosaic_bin_lines else ""
         launch_argv_b64_value = launch_argv_b64_lines[0] if launch_argv_b64_lines else ""
         return (
             proc.returncode,
             read_lines(real_args_log),
-            read_lines(cmux_log),
+            read_lines(mosaic_log),
             proc.stderr.strip(),
             claudecode_value,
             node_options_value,
             runtime_node_options_value,
             child_node_options_value,
-            hook_cmux_bin_value,
+            hook_mosaic_bin_value,
             launch_argv_b64_value,
         )
 
@@ -233,38 +233,38 @@ def run_wrapper_terminal_env_probe(
     *,
     hooks_disabled: bool = False,
 ) -> tuple[int, dict[str, str], list[str], str, set[str]]:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-env-probe-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-env-probe-") as td:
         tmp = Path(td)
         wrapper_dir = tmp / "wrapper-bin"
         real_dir = tmp / "real-bin"
         wrapper_dir.mkdir(parents=True, exist_ok=True)
         real_dir.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "cmux-claude-wrapper"
+        wrapper = wrapper_dir / "mosaic-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
         env_log = tmp / "real-env.log"
         args_log = tmp / "real-args.log"
-        socket_path = str(tmp / "cmux.sock")
+        socket_path = str(tmp / "mosaic.sock")
         fingerprint_env = {
-            "CMUX_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
-            "CMUX_BUNDLED_CLI_PATH": str(wrapper_dir / "cmux"),
-            "CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION": "1",
-            "CMUX_PANEL_ID": "panel:test",
-            "CMUX_PORT": "9170",
-            "CMUX_PORT_END": "9179",
-            "CMUX_PORT_RANGE": "10",
-            "CMUX_SHELL_INTEGRATION": "1",
-            "CMUX_SHELL_INTEGRATION_DIR": str(tmp / "shell-integration"),
-            "CMUX_SOCKET_PATH": socket_path,
-            "CMUX_SURFACE_ID": "surface:test",
-            "CMUX_TAB_ID": "tab:test",
-            "CMUX_WORKSPACE_ID": "workspace:test",
+            "MOSAIC_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
+            "MOSAIC_BUNDLED_CLI_PATH": str(wrapper_dir / "mosaic"),
+            "MOSAIC_LOAD_GHOSTTY_ZSH_INTEGRATION": "1",
+            "MOSAIC_PANEL_ID": "panel:test",
+            "MOSAIC_PORT": "9170",
+            "MOSAIC_PORT_END": "9179",
+            "MOSAIC_PORT_RANGE": "10",
+            "MOSAIC_SHELL_INTEGRATION": "1",
+            "MOSAIC_SHELL_INTEGRATION_DIR": str(tmp / "shell-integration"),
+            "MOSAIC_SOCKET_PATH": socket_path,
+            "MOSAIC_SURFACE_ID": "surface:test",
+            "MOSAIC_TAB_ID": "tab:test",
+            "MOSAIC_WORKSPACE_ID": "workspace:test",
             "TERMINFO": str(tmp / "terminfo"),
         }
         if hooks_disabled:
-            fingerprint_env["CMUX_CLAUDE_HOOKS_DISABLED"] = "1"
+            fingerprint_env["MOSAIC_CLAUDE_HOOKS_DISABLED"] = "1"
         probe_key_lines = "\n".join(f"  {key}" for key in fingerprint_env)
 
         make_executable(
@@ -290,7 +290,7 @@ done
         )
 
         make_executable(
-            wrapper_dir / "cmux",
+            wrapper_dir / "mosaic",
             """#!/usr/bin/env bash
 set -euo pipefail
 if [[ "${1:-}" == "--socket" ]]; then
@@ -347,23 +347,23 @@ def run_wrapper_auth_env(
     inherited_env: dict[str, str],
     socket_state: str = "live",
     hooks_disabled: bool = False,
-    in_cmux: bool = True,
+    in_mosaic: bool = True,
     setup_env=None,
 ) -> tuple[int, dict[str, str], list[str], str]:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-auth-env-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-auth-env-") as td:
         tmp = Path(td)
         wrapper_dir = tmp / "wrapper-bin"
         real_dir = tmp / "real-bin"
         wrapper_dir.mkdir(parents=True, exist_ok=True)
         real_dir.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "cmux-claude-wrapper"
+        wrapper = wrapper_dir / "mosaic-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
         auth_env_log = tmp / "auth-env.log"
         args_log = tmp / "args.log"
-        socket_path = str(tmp / "cmux.sock")
+        socket_path = str(tmp / "mosaic.sock")
 
         make_executable(
             real_dir / "claude",
@@ -401,14 +401,14 @@ done
         )
 
         make_executable(
-            wrapper_dir / "cmux",
+            wrapper_dir / "mosaic",
             """#!/usr/bin/env bash
 set -euo pipefail
 if [[ "${1:-}" == "--socket" ]]; then
   shift 2
 fi
 if [[ "${1:-}" == "ping" ]]; then
-  if [[ "${FAKE_CMUX_PING_OK:-0}" == "1" ]]; then
+  if [[ "${FAKE_MOSAIC_PING_OK:-0}" == "1" ]]; then
     exit 0
   fi
   exit 1
@@ -425,8 +425,8 @@ exit 0
                 test_socket.bind(socket_path)
 
             env = os.environ.copy()
-            for ambient_cmux_key in [k for k in env if k.startswith("CMUX_")]:
-                env.pop(ambient_cmux_key, None)
+            for ambient_mosaic_key in [k for k in env if k.startswith("MOSAIC_")]:
+                env.pop(ambient_mosaic_key, None)
             for ambient_aws_key in [k for k in env if k.startswith("AWS_")]:
                 env.pop(ambient_aws_key, None)
             for ambient_key in (
@@ -445,14 +445,14 @@ exit 0
             ):
                 env.pop(ambient_key, None)
             env["PATH"] = f"{wrapper_dir}:{real_dir}:{env.get('PATH', '/usr/bin:/bin')}"
-            if in_cmux:
-                env["CMUX_SURFACE_ID"] = "surface:test"
-                env["CMUX_SOCKET_PATH"] = socket_path
+            if in_mosaic:
+                env["MOSAIC_SURFACE_ID"] = "surface:test"
+                env["MOSAIC_SOCKET_PATH"] = socket_path
             env["FAKE_AUTH_ENV_LOG"] = str(auth_env_log)
             env["FAKE_ARGS_LOG"] = str(args_log)
-            env["FAKE_CMUX_PING_OK"] = "1" if socket_state == "live" else "0"
+            env["FAKE_MOSAIC_PING_OK"] = "1" if socket_state == "live" else "0"
             if hooks_disabled:
-                env["CMUX_CLAUDE_HOOKS_DISABLED"] = "1"
+                env["MOSAIC_CLAUDE_HOOKS_DISABLED"] = "1"
             if setup_env is not None:
                 env.update(setup_env(tmp))
             env.update(inherited_env)
@@ -474,7 +474,7 @@ exit 0
 
 
 def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: list[str]) -> None:
-    code, real_argv, cmux_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_cmux_bin, _ = run_wrapper(
+    code, real_argv, mosaic_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_mosaic_bin, _ = run_wrapper(
         socket_state="live",
         argv=["hello"],
     )
@@ -488,10 +488,10 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
             failures,
         )
     expect(real_argv[-1] == "hello", f"live socket: expected original arg to pass through, got {real_argv}", failures)
-    expect(any(" ping" in line for line in cmux_log), f"live socket: expected cmux ping, got {cmux_log}", failures)
+    expect(any(" ping" in line for line in mosaic_log), f"live socket: expected mosaic ping, got {mosaic_log}", failures)
     expect(
-        any("timeout=0.75" in line for line in cmux_log),
-        f"live socket: expected bounded ping timeout, got {cmux_log}",
+        any("timeout=0.75" in line for line in mosaic_log),
+        f"live socket: expected bounded ping timeout, got {mosaic_log}",
         failures,
     )
     expect(claudecode == "__UNSET__", f"live socket: expected CLAUDECODE unset, got {claudecode!r}", failures)
@@ -508,7 +508,7 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
     )
     expect(runtime_node_options == "__UNSET__", f"live socket: expected runtime NODE_OPTIONS restored, got {runtime_node_options!r}", failures)
     expect(child_node_options == "__UNSET__", f"live socket: expected child NODE_OPTIONS restored, got {child_node_options!r}", failures)
-    expect(hook_cmux_bin.endswith("/bundled cli/cmux"), f"live socket: expected bundled cmux pin, got {hook_cmux_bin!r}", failures)
+    expect(hook_mosaic_bin.endswith("/bundled cli/mosaic"), f"live socket: expected bundled mosaic pin, got {hook_mosaic_bin!r}", failures)
 
     settings = parse_settings_arg(real_argv)
     expect(
@@ -528,8 +528,8 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
     }.items():
         hook_command = hooks.get(hook_name, [{}])[0].get("hooks", [{}])[0].get("command", "")
         expect(
-            hook_command == f'"${{CMUX_CLAUDE_HOOK_CMUX_BIN:-cmux}}" hooks claude {expected_subcommand}',
-            f"{hook_name} hook should pin bundled cmux, got {hook_command!r}",
+            hook_command == f'"${{MOSAIC_CLAUDE_HOOK_MOSAIC_BIN:-mosaic}}" hooks claude {expected_subcommand}',
+            f"{hook_name} hook should pin bundled mosaic, got {hook_command!r}",
             failures,
         )
     pre_tool_use_groups = hooks.get("PreToolUse", [])
@@ -539,7 +539,7 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
         cron_guard_hooks = cron_guard_groups[0].get("hooks", [])
         expect(
             any(
-                h.get("command") == '"${CMUX_CLAUDE_HOOK_CMUX_BIN:-cmux}" hooks claude cron-create-guard'
+                h.get("command") == '"${MOSAIC_CLAUDE_HOOK_MOSAIC_BIN:-mosaic}" hooks claude cron-create-guard'
                 and h.get("async") is not True
                 for h in cron_guard_hooks
             ),
@@ -561,14 +561,14 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
     )
     permission_request_hooks = hooks.get("PermissionRequest", [{}])[0].get("hooks", [{}])
     expect(
-        any(h.get("command") == '"${CMUX_CLAUDE_HOOK_CMUX_BIN:-cmux}" hooks feed --source claude' for h in permission_request_hooks),
+        any(h.get("command") == '"${MOSAIC_CLAUDE_HOOK_MOSAIC_BIN:-mosaic}" hooks feed --source claude' for h in permission_request_hooks),
         f"PermissionRequest hook should call hooks feed, got {permission_request_hooks}",
         failures,
     )
     subagent_stop_hooks = hooks.get("SubagentStop", [{}])[0].get("hooks", [{}])
     expect(
         any(
-            h.get("command") == '"${CMUX_CLAUDE_HOOK_CMUX_BIN:-cmux}" hooks feed --source claude'
+            h.get("command") == '"${MOSAIC_CLAUDE_HOOK_MOSAIC_BIN:-mosaic}" hooks feed --source claude'
             and h.get("async") is True
             for h in subagent_stop_hooks
         ),
@@ -590,7 +590,7 @@ def test_live_socket_injects_supported_hooks_without_unlocking_bypass(failures: 
 
 
 def test_live_socket_merges_user_settings_into_hooks(failures: list[str]) -> None:
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=["--settings", '{"ultracode": true, "effortLevel": "max"}', "-p", "hi"],
     )
@@ -603,7 +603,7 @@ def test_live_socket_merges_user_settings_into_hooks(failures: list[str]) -> Non
     settings = parse_settings_arg(real_argv)
     expect(
         settings.get("preferredNotifChannel") == "notifications_disabled",
-        f"merge user settings: cmux hook settings lost, got {settings}",
+        f"merge user settings: mosaic hook settings lost, got {settings}",
         failures,
     )
     expected_hooks = {
@@ -612,7 +612,7 @@ def test_live_socket_merges_user_settings_into_hooks(failures: list[str]) -> Non
     }
     expect(
         set(settings.get("hooks", {}).keys()) == expected_hooks,
-        f"merge user settings: cmux hooks missing after merge, got {settings.get('hooks', {}).keys()}",
+        f"merge user settings: mosaic hooks missing after merge, got {settings.get('hooks', {}).keys()}",
         failures,
     )
     expect(
@@ -638,7 +638,7 @@ def test_live_socket_merges_user_settings_into_hooks(failures: list[str]) -> Non
 
 
 def test_live_socket_merges_inline_settings_form(failures: list[str]) -> None:
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=['--settings={"ultracode": true}', "hello"],
     )
@@ -652,7 +652,7 @@ def test_live_socket_merges_inline_settings_form(failures: list[str]) -> None:
     expect(settings.get("ultracode") is True, f"inline settings: user key dropped, got {settings}", failures)
     expect(
         settings.get("preferredNotifChannel") == "notifications_disabled",
-        f"inline settings: cmux hooks lost, got {settings}",
+        f"inline settings: mosaic hooks lost, got {settings}",
         failures,
     )
     expect(real_argv[-1] == "hello", f"inline settings: positional arg dropped, got {real_argv}", failures)
@@ -665,7 +665,7 @@ def test_live_socket_repeated_settings_user_value_wins_conflict(failures: list[s
     # >=2.1.169) is irrelevant. Among the user's own repeated --settings, the
     # earliest-listed value wins a scalar conflict. Asserted on the WRAPPER
     # OUTPUT (a single merged --settings in argv).
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=[
             "--settings", '{"effortLevel": "high", "a": 1}',
@@ -692,17 +692,17 @@ def test_live_socket_repeated_settings_user_value_wins_conflict(failures: list[s
     )
     expect(
         settings.get("preferredNotifChannel") == "notifications_disabled",
-        f"merged: cmux hook settings lost, got {settings}",
+        f"merged: mosaic hook settings lost, got {settings}",
         failures,
     )
 
 
-def test_live_socket_user_nonobject_hooks_does_not_drop_cmux_hooks(failures: list[str]) -> None:
+def test_live_socket_user_nonobject_hooks_does_not_drop_mosaic_hooks(failures: list[str]) -> None:
     # Regression: the merge must never let a non-object/array user value clobber
-    # cmux's own hook structure. If a user --settings sets `hooks` to a non-object
-    # (here an array; `null` behaves the same), the cmux hook object must survive
+    # mosaic's own hook structure. If a user --settings sets `hooks` to a non-object
+    # (here an array; `null` behaves the same), the mosaic hook object must survive
     # so notifications/status keep working, while the user's other keys still apply.
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=[
             "--settings", '{"hooks": [], "myKey": "kept"}',
@@ -719,12 +719,12 @@ def test_live_socket_user_nonobject_hooks_does_not_drop_cmux_hooks(failures: lis
     hooks = settings.get("hooks")
     expect(
         isinstance(hooks, dict) and "SessionStart" in hooks,
-        f"nonobject-hooks: cmux hook object dropped by non-object user hooks, got {hooks!r}",
+        f"nonobject-hooks: mosaic hook object dropped by non-object user hooks, got {hooks!r}",
         failures,
     )
     expect(
         settings.get("preferredNotifChannel") == "notifications_disabled",
-        f"nonobject-hooks: cmux preferredNotifChannel lost, got {settings}",
+        f"nonobject-hooks: mosaic preferredNotifChannel lost, got {settings}",
         failures,
     )
     expect(
@@ -738,7 +738,7 @@ def test_live_socket_invalid_settings_warns_and_falls_back(failures: list[str]) 
     # A malformed --settings must not be dropped in silence: the wrapper surfaces
     # a stderr warning instead of quietly reverting to the dual --settings
     # behavior that #2816 fixes.
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=["--settings", "{not valid json", "hi"],
     )
@@ -758,10 +758,10 @@ def test_live_socket_invalid_settings_warns_and_falls_back(failures: list[str]) 
 def test_live_socket_merges_settings_file_form(failures: list[str]) -> None:
     # --settings <path> reads JSON from disk (readFileSync/expand). Exercise that
     # loader branch end-to-end so path parsing/merging cannot silently regress.
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-settings-file-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-settings-file-") as td:
         settings_path = Path(td) / "user-settings.json"
         settings_path.write_text('{"ultracode": true, "effortLevel": "max"}', encoding="utf-8")
-        code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+        code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
             socket_state="live",
             argv=["--settings", str(settings_path), "hello"],
         )
@@ -776,7 +776,7 @@ def test_live_socket_merges_settings_file_form(failures: list[str]) -> None:
     expect(settings.get("effortLevel") == "max", f"settings file: user key dropped, got {settings}", failures)
     expect(
         settings.get("preferredNotifChannel") == "notifications_disabled",
-        f"settings file: cmux hooks lost, got {settings}",
+        f"settings file: mosaic hooks lost, got {settings}",
         failures,
     )
     expect(real_argv[-1] == "hello", f"settings file: positional arg dropped, got {real_argv}", failures)
@@ -786,7 +786,7 @@ def test_live_socket_empty_settings_warns_instead_of_silent_drop(failures: list[
     # An explicit empty --settings= must not be swallowed in silence: the wrapper
     # surfaces the merge-failure warning instead of dropping the flag with no
     # signal (CodeRabbit review on #5388).
-    code, real_argv, _cmux_log, stderr, *_ = run_wrapper(
+    code, real_argv, _mosaic_log, stderr, *_ = run_wrapper(
         socket_state="live",
         argv=["--settings=", "hi"],
     )
@@ -866,7 +866,7 @@ def test_passthrough_flags_bypass_hook_injection(failures: list[str]) -> None:
         expect(node_options == "__UNSET__", f"{flag} passthrough: expected no NODE_OPTIONS injection, got {node_options!r}", failures)
 
 
-def test_agents_subcommand_removes_cmux_terminal_fingerprint(failures: list[str]) -> None:
+def test_agents_subcommand_removes_mosaic_terminal_fingerprint(failures: list[str]) -> None:
     code, observed_env, real_argv, stderr, expected_keys = run_wrapper_terminal_env_probe(["agents"])
     expect(code == 0, f"agents env probe: wrapper exited {code}: {stderr}", failures)
     expect(real_argv == ["agents"], f"agents env probe: expected raw argv, got {real_argv}", failures)
@@ -884,7 +884,7 @@ def test_agents_subcommand_removes_cmux_terminal_fingerprint(failures: list[str]
         )
 
 
-def test_hooks_disabled_preserves_cmux_terminal_env_for_custom_hooks(failures: list[str]) -> None:
+def test_hooks_disabled_preserves_mosaic_terminal_env_for_custom_hooks(failures: list[str]) -> None:
     scenarios = [
         ("interactive", ["hello"]),
         ("command-like", ["agents"]),
@@ -903,19 +903,19 @@ def test_hooks_disabled_preserves_cmux_terminal_env_for_custom_hooks(failures: l
         )
 
         for key, expected_value in {
-            "CMUX_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
-            "CMUX_CLAUDE_HOOKS_DISABLED": "1",
-            "CMUX_PANEL_ID": "panel:test",
-            "CMUX_SURFACE_ID": "surface:test",
-            "CMUX_TAB_ID": "tab:test",
-            "CMUX_WORKSPACE_ID": "workspace:test",
+            "MOSAIC_BUNDLE_ID": "mosaic.com.emergent.app.debug.envprobe",
+            "MOSAIC_CLAUDE_HOOKS_DISABLED": "1",
+            "MOSAIC_PANEL_ID": "panel:test",
+            "MOSAIC_SURFACE_ID": "surface:test",
+            "MOSAIC_TAB_ID": "tab:test",
+            "MOSAIC_WORKSPACE_ID": "workspace:test",
         }.items():
             expect(
                 observed_env.get(key) == expected_value,
                 f"hooks-disabled {label} env probe: expected {key} preserved as {expected_value!r}, got {observed_env.get(key)!r}",
                 failures,
             )
-        for key in sorted(k for k in expected_keys if k.startswith("CMUX_")):
+        for key in sorted(k for k in expected_keys if k.startswith("MOSAIC_")):
             expect(
                 observed_env.get(key) != "__UNSET__",
                 f"hooks-disabled {label} env probe: expected {key} to survive passthrough, got unset",
@@ -1005,7 +1005,7 @@ def test_live_socket_normalizes_subrouter_claude_config_dir(failures: list[str])
 
 
 def test_live_socket_resume_self_heals_mismatched_claude_config_dir(failures: list[str]) -> None:
-    # Regression for https://github.com/emergent-inc/cmux/issues/6194: when cmux is
+    # Regression for https://github.com/emergent-inc/mosaic/issues/6194: when mosaic is
     # launched with a foreign CLAUDE_CONFIG_DIR (e.g. the .app was opened from a
     # terminal whose agent set one), a restored `claude --resume <id>` must still
     # find the session by self-healing CLAUDE_CONFIG_DIR to the config root that
@@ -1023,7 +1023,7 @@ def test_live_socket_resume_self_heals_mismatched_claude_config_dir(failures: li
             "{}\n", encoding="utf-8"
         )
         # A FOREIGN config dir is inherited: a valid config dir that does NOT hold
-        # this session (mirrors the cmux app inheriting an agent's CLAUDE_CONFIG_DIR).
+        # this session (mirrors the mosaic app inheriting an agent's CLAUDE_CONFIG_DIR).
         foreign_root = home / ".codex-accounts" / "claude" / "_pforeign"
         (foreign_root / "projects").mkdir(parents=True)
         expected["path"] = str(default_root)
@@ -1080,7 +1080,7 @@ def test_live_socket_resume_self_heals_bare_legacy_subrouter_config_dir(failures
 
 
 def test_stale_socket_resume_self_heals_mismatched_claude_config_dir(failures: list[str]) -> None:
-    # App restore can launch terminal startup commands before the cmux socket is
+    # App restore can launch terminal startup commands before the mosaic socket is
     # accepting pings. Hook injection should be skipped in that window, but
     # explicit `--resume` still has to select the config root that owns the
     # transcript or Claude reports "No conversation found".
@@ -1090,9 +1090,9 @@ def test_stale_socket_resume_self_heals_mismatched_claude_config_dir(failures: l
     def setup_env(tmp: Path) -> dict[str, str]:
         home = tmp / "home"
         default_root = home / ".claude"
-        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166").mkdir(parents=True)
+        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-mosaic166").mkdir(parents=True)
         (
-            default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166" / f"{session_id}.jsonl"
+            default_root / "projects" / "-Users-austinwang-emergent.inc-term-mosaic166" / f"{session_id}.jsonl"
         ).write_text("{}\n", encoding="utf-8")
         foreign_root = home / ".codex-accounts" / "claude" / "_pforeign"
         (foreign_root / "projects").mkdir(parents=True)
@@ -1125,16 +1125,16 @@ def test_stale_socket_resume_self_heals_mismatched_claude_config_dir(failures: l
 def test_stale_socket_resume_self_heals_after_value_option(failures: list[str]) -> None:
     # The stale-socket path runs before hook injection. Its resume parser still
     # has to skip value-taking options that appear before `--resume`, including
-    # newer Claude options that are not in cmux's preserved-argument allowlists.
+    # newer Claude options that are not in mosaic's preserved-argument allowlists.
     session_id = "017427ef-1828-43d9-ae1d-8ec6d4b2bdb7"
     expected: dict[str, str] = {}
 
     def setup_env(tmp: Path) -> dict[str, str]:
         home = tmp / "home"
         default_root = home / ".claude"
-        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166").mkdir(parents=True)
+        (default_root / "projects" / "-Users-austinwang-emergent.inc-term-mosaic166").mkdir(parents=True)
         (
-            default_root / "projects" / "-Users-austinwang-emergent.inc-term-cmux166" / f"{session_id}.jsonl"
+            default_root / "projects" / "-Users-austinwang-emergent.inc-term-mosaic166" / f"{session_id}.jsonl"
         ).write_text("{}\n", encoding="utf-8")
         foreign_root = home / ".codex-accounts" / "claude" / "_pforeign"
         (foreign_root / "projects").mkdir(parents=True)
@@ -1145,14 +1145,14 @@ def test_stale_socket_resume_self_heals_after_value_option(failures: list[str]) 
         }
 
     code, auth_env, real_argv, stderr = run_wrapper_auth_env(
-        argv=["--permission-prompt-tool", "/tmp/cmux-permission-tool", "--resume", session_id],
+        argv=["--permission-prompt-tool", "/tmp/mosaic-permission-tool", "--resume", session_id],
         inherited_env={},
         socket_state="stale",
         setup_env=setup_env,
     )
     expect(code == 0, f"stale socket option resume self-heal: wrapper exited {code}: {stderr}", failures)
     expect(
-        real_argv == ["--permission-prompt-tool", "/tmp/cmux-permission-tool", "--resume", session_id],
+        real_argv == ["--permission-prompt-tool", "/tmp/mosaic-permission-tool", "--resume", session_id],
         f"stale socket option resume self-heal: expected passthrough argv, got {real_argv}",
         failures,
     )
@@ -1170,7 +1170,7 @@ def test_stale_socket_resume_self_heals_after_value_option(failures: list[str]) 
 
 
 def test_plain_terminal_resume_does_not_self_heal_mismatched_claude_config_dir(failures: list[str]) -> None:
-    # Outside cmux, the wrapper must be a passthrough and must not repoint the
+    # Outside mosaic, the wrapper must be a passthrough and must not repoint the
     # user's selected Claude account just because another config root has the id.
     session_id = "57d7a2a6-6261-4a6f-b950-10f892a0fd81"
 
@@ -1198,7 +1198,7 @@ def test_plain_terminal_resume_does_not_self_heal_mismatched_claude_config_dir(f
             inherited_env={},
             socket_state="missing",
             hooks_disabled=hooks_disabled,
-            in_cmux=False,
+            in_mosaic=False,
             setup_env=setup_env,
         )
         expect(code == 0, f"plain terminal {label} resume: wrapper exited {code}: {stderr}", failures)
@@ -1218,7 +1218,7 @@ def test_plain_terminal_resume_does_not_self_heal_mismatched_claude_config_dir(f
 def test_live_socket_resume_after_unlisted_value_option_does_not_inject_session_id(failures: list[str]) -> None:
     code, real_argv, _, stderr, _, _, _, _, _, _ = run_wrapper(
         socket_state="live",
-        argv=["--permission-prompt-tool", "/tmp/cmux-permission-tool", "--resume", "some-session-id"],
+        argv=["--permission-prompt-tool", "/tmp/mosaic-permission-tool", "--resume", "some-session-id"],
     )
     expect(code == 0, f"unlisted value option resume: wrapper exited {code}: {stderr}", failures)
     expect("--settings" in real_argv, f"unlisted value option resume: expected hook settings injection, got {real_argv}", failures)
@@ -1228,7 +1228,7 @@ def test_live_socket_resume_after_unlisted_value_option_does_not_inject_session_
         settings_index = passthrough_argv.index("--settings")
         del passthrough_argv[settings_index:settings_index + 2]
     expect(
-        passthrough_argv == ["--permission-prompt-tool", "/tmp/cmux-permission-tool", "--resume", "some-session-id"],
+        passthrough_argv == ["--permission-prompt-tool", "/tmp/mosaic-permission-tool", "--resume", "some-session-id"],
         f"unlisted value option resume: expected original argv preserved around injected settings, got {real_argv}",
         failures,
     )
@@ -1356,7 +1356,7 @@ def test_live_socket_resume_keeps_correct_claude_config_dir(failures: list[str])
 
 def test_live_socket_resume_self_heal_ignores_prompt_text_after_double_dash(failures: list[str]) -> None:
     # A fresh prompt can contain literal --resume text after `--`; that must not
-    # trigger resume self-healing or suppress cmux's generated --session-id.
+    # trigger resume self-healing or suppress mosaic's generated --session-id.
     session_id = "7e2f5010-98d4-465f-93f6-a01608943e5f"
     expected: dict[str, str] = {}
 
@@ -1397,8 +1397,8 @@ def test_live_socket_preserves_claude_auth_for_resume_launch(failures: list[str]
     }
     inherited = {
         **expected_auth_env,
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "CLAUDE_CONFIG_DIR,ANTHROPIC_MODEL",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "CLAUDE_CONFIG_DIR,ANTHROPIC_MODEL",
     }
     code, auth_env, real_argv, stderr = run_wrapper_auth_env(
         argv=["--resume", "claude-session-123"],
@@ -1415,8 +1415,8 @@ def test_live_socket_preserves_only_listed_claude_auth_keys(failures: list[str])
         "CLAUDE_CONFIG_DIR": "/tmp/claude-config",
         "ANTHROPIC_API_KEY": "stale-api-key",
         "ANTHROPIC_MODEL": "resume-model",
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "ANTHROPIC_MODEL",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "ANTHROPIC_MODEL",
     }
     code, auth_env, real_argv, stderr = run_wrapper_auth_env(
         argv=["--resume", "claude-session-123"],
@@ -1430,7 +1430,7 @@ def test_live_socket_preserves_only_listed_claude_auth_keys(failures: list[str])
 
 
 def test_live_socket_auto_preserves_vertex_auth_when_truthy(failures: list[str]) -> None:
-    # Regression for https://github.com/emergent-inc/cmux/issues/3641.
+    # Regression for https://github.com/emergent-inc/mosaic/issues/3641.
     inherited = {
         "CLAUDE_CODE_USE_VERTEX": "1",
         "ANTHROPIC_API_KEY": "anthropic-key-must-be-scrubbed-on-vertex",
@@ -1488,7 +1488,7 @@ def test_live_socket_auto_preserves_vertex_auth_when_truthy(failures: list[str])
 
 
 def test_live_socket_auto_preserves_bedrock_auth_when_truthy(failures: list[str]) -> None:
-    # Regression for https://github.com/emergent-inc/cmux/issues/3638.
+    # Regression for https://github.com/emergent-inc/mosaic/issues/3638.
     inherited = {
         "CLAUDE_CODE_USE_BEDROCK": "1",
         "ANTHROPIC_API_KEY": "anthropic-key-must-be-scrubbed-on-bedrock",
@@ -1586,9 +1586,9 @@ def test_live_socket_does_not_auto_preserve_when_all_backends_are_falsy(failures
 
 
 def test_live_socket_preserves_plain_anthropic_model_on_default_path(failures: list[str]) -> None:
-    # Regression for https://github.com/emergent-inc/cmux/issues/7047.
+    # Regression for https://github.com/emergent-inc/mosaic/issues/7047.
     # A user who pins `export ANTHROPIC_MODEL=claude-opus-4-8[1m]` to get the
-    # Max-plan 1M context window must keep that selection inside cmux on the
+    # Max-plan 1M context window must keep that selection inside mosaic on the
     # default Anthropic API path, exactly like a plain Terminal does. A plain
     # (non-backend-qualified) id is valid against the Anthropic API, so the
     # auth-selection scrub must NOT strip it when no Vertex/Bedrock backend is
@@ -1612,7 +1612,7 @@ def test_live_socket_preserves_plain_anthropic_model_on_default_path(failures: l
         f"plain model default path: expected ANTHROPIC_SMALL_FAST_MODEL preserved, got {auth_env.get('ANTHROPIC_SMALL_FAST_MODEL')!r}",
         failures,
     )
-    # The model pin must not block the normal cmux hook/session injection.
+    # The model pin must not block the normal mosaic hook/session injection.
     expect(
         "--session-id" in real_argv,
         f"plain model default path: expected session injection, got {real_argv}",
@@ -1654,7 +1654,7 @@ def test_live_socket_strips_backend_qualified_model_on_default_path(failures: li
 
 def test_live_socket_auto_preserve_accepts_all_documented_truthy_variants(failures: list[str]) -> None:
     # The wrapper recognizes 1|true|TRUE|yes|YES as truthy (matching the
-    # existing CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV parser); the focused
+    # existing MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV parser); the focused
     # auto-preserve tests above only exercise "1". This loop pins all 5
     # documented variants for both backends so a future "simplification"
     # of the case statement cannot silently drop yes/YES/true/TRUE.
@@ -1676,12 +1676,12 @@ def test_live_socket_auto_preserve_accepts_all_documented_truthy_variants(failur
 
 def test_live_socket_explicit_key_list_is_additive_to_vertex_auto_preserve(failures: list[str]) -> None:
     # Pins the precedence between the explicit-opt-in key list
-    # (CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS) and the Vertex/Bedrock
+    # (MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS) and the Vertex/Bedrock
     # auto-preserve introduced for #3641 / #3638: the key list adds entries
     # to preservation, it does NOT exclude keys from auto-preserve.
     inherited = {
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
-        "CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "ANTHROPIC_API_KEY",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV": "1",
+        "MOSAIC_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS": "ANTHROPIC_API_KEY",
         "ANTHROPIC_API_KEY": "explicitly-listed-key-must-survive",
         "CLAUDE_CODE_USE_VERTEX": "1",
         "ANTHROPIC_MODEL": "claude-sonnet-4-5@20250929",
@@ -1734,10 +1734,10 @@ def test_live_socket_enforces_heap_cap_for_space_separated_flag(failures: list[s
 
 
 def test_live_socket_tmpdir_failure_skips_node_options_injection(failures: list[str]) -> None:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-bad-tmp-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-bad-tmp-") as td:
         bad_tmpdir = Path(td) / "not-a-directory"
         bad_tmpdir.write_text("occupied", encoding="utf-8")
-        code, real_argv, cmux_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, _, _ = run_wrapper(
+        code, real_argv, mosaic_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, _, _ = run_wrapper(
             socket_state="live",
             argv=["hello"],
             tmpdir=str(bad_tmpdir),
@@ -1745,7 +1745,7 @@ def test_live_socket_tmpdir_failure_skips_node_options_injection(failures: list[
     expect(code == 0, f"tmpdir failure: wrapper exited {code}: {stderr}", failures)
     expect("--settings" in real_argv, f"tmpdir failure: missing --settings in args: {real_argv}", failures)
     expect("--session-id" in real_argv, f"tmpdir failure: missing --session-id in args: {real_argv}", failures)
-    expect(any(" ping" in line for line in cmux_log), f"tmpdir failure: expected cmux ping, got {cmux_log}", failures)
+    expect(any(" ping" in line for line in mosaic_log), f"tmpdir failure: expected mosaic ping, got {mosaic_log}", failures)
     expect(claudecode == "__UNSET__", f"tmpdir failure: expected CLAUDECODE unset, got {claudecode!r}", failures)
     expect(node_options == "__UNSET__", f"tmpdir failure: expected NODE_OPTIONS injection to be skipped, got {node_options!r}", failures)
     expect(runtime_node_options == "__UNSET__", f"tmpdir failure: expected runtime NODE_OPTIONS passthrough, got {runtime_node_options!r}", failures)
@@ -1774,9 +1774,9 @@ def test_live_socket_preserves_explicit_bypass_availability_flag(failures: list[
 
 
 def test_live_socket_stale_mktemp_literal_does_not_warn(failures: list[str]) -> None:
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-wrapper-tmp-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-wrapper-tmp-") as td:
         tmpdir = Path(td)
-        guard_dir = tmpdir / "cmux-claude-node-options"
+        guard_dir = tmpdir / "mosaic-claude-node-options"
         guard_dir.mkdir(parents=True, exist_ok=True)
         (guard_dir / "restore-node-options.XXXXXX.cjs").write_text("stale", encoding="utf-8")
         code, _, _, stderr, _, node_options, runtime_node_options, child_node_options, _, _ = run_wrapper(
@@ -1802,22 +1802,22 @@ def test_live_socket_stale_mktemp_literal_does_not_warn(failures: list[str]) -> 
 
 
 def test_missing_socket_skips_hook_injection(failures: list[str]) -> None:
-    code, real_argv, cmux_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_cmux_bin, _ = run_wrapper(
+    code, real_argv, mosaic_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_mosaic_bin, _ = run_wrapper(
         socket_state="missing",
         argv=["hello"],
     )
     expect(code == 0, f"missing socket: wrapper exited {code}: {stderr}", failures)
     expect(real_argv == ["hello"], f"missing socket: expected passthrough args, got {real_argv}", failures)
-    expect(cmux_log == [], f"missing socket: expected no cmux calls, got {cmux_log}", failures)
+    expect(mosaic_log == [], f"missing socket: expected no mosaic calls, got {mosaic_log}", failures)
     expect(claudecode == "__UNSET__", f"missing socket: expected CLAUDECODE unset, got {claudecode!r}", failures)
     expect(node_options == "__UNSET__", f"missing socket: expected NODE_OPTIONS passthrough, got {node_options!r}", failures)
     expect(runtime_node_options == "__UNSET__", f"missing socket: expected runtime NODE_OPTIONS passthrough, got {runtime_node_options!r}", failures)
     expect(child_node_options == "__UNSET__", f"missing socket: expected child NODE_OPTIONS passthrough, got {child_node_options!r}", failures)
-    expect(hook_cmux_bin == "__UNSET__", f"missing socket: expected hook cmux unset, got {hook_cmux_bin!r}", failures)
+    expect(hook_mosaic_bin == "__UNSET__", f"missing socket: expected hook mosaic unset, got {hook_mosaic_bin!r}", failures)
 
 
 def test_disabled_integration_skips_hook_injection(failures: list[str]) -> None:
-    code, real_argv, cmux_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_cmux_bin, _ = run_wrapper(
+    code, real_argv, mosaic_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_mosaic_bin, _ = run_wrapper(
         socket_state="live",
         argv=["hello"],
         hooks_disabled=True,
@@ -1826,32 +1826,32 @@ def test_disabled_integration_skips_hook_injection(failures: list[str]) -> None:
     expect(real_argv == ["hello"], f"disabled integration: expected passthrough args, got {real_argv}", failures)
     expect("--settings" not in real_argv, f"disabled integration: expected no --settings injection, got {real_argv}", failures)
     expect("notifications_disabled" not in " ".join(real_argv), f"disabled integration: expected no notification suppression, got {real_argv}", failures)
-    expect(cmux_log == [], f"disabled integration: expected no cmux calls, got {cmux_log}", failures)
+    expect(mosaic_log == [], f"disabled integration: expected no mosaic calls, got {mosaic_log}", failures)
     expect(claudecode == "__UNSET__", f"disabled integration: expected CLAUDECODE unset, got {claudecode!r}", failures)
     expect(node_options == "__UNSET__", f"disabled integration: expected NODE_OPTIONS passthrough, got {node_options!r}", failures)
     expect(runtime_node_options == "__UNSET__", f"disabled integration: expected runtime NODE_OPTIONS passthrough, got {runtime_node_options!r}", failures)
     expect(child_node_options == "__UNSET__", f"disabled integration: expected child NODE_OPTIONS passthrough, got {child_node_options!r}", failures)
-    expect(hook_cmux_bin == "__UNSET__", f"disabled integration: expected hook cmux unset, got {hook_cmux_bin!r}", failures)
+    expect(hook_mosaic_bin == "__UNSET__", f"disabled integration: expected hook mosaic unset, got {hook_mosaic_bin!r}", failures)
 
 
 def test_stale_socket_skips_hook_injection(failures: list[str]) -> None:
-    code, real_argv, cmux_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_cmux_bin, _ = run_wrapper(
+    code, real_argv, mosaic_log, stderr, claudecode, node_options, runtime_node_options, child_node_options, hook_mosaic_bin, _ = run_wrapper(
         socket_state="stale",
         argv=["hello"],
     )
     expect(code == 0, f"stale socket: wrapper exited {code}: {stderr}", failures)
     expect(real_argv == ["hello"], f"stale socket: expected passthrough args, got {real_argv}", failures)
-    expect(any(" ping" in line for line in cmux_log), f"stale socket: expected cmux ping probe, got {cmux_log}", failures)
+    expect(any(" ping" in line for line in mosaic_log), f"stale socket: expected mosaic ping probe, got {mosaic_log}", failures)
     expect(
-        any("timeout=0.75" in line for line in cmux_log),
-        f"stale socket: expected bounded ping timeout, got {cmux_log}",
+        any("timeout=0.75" in line for line in mosaic_log),
+        f"stale socket: expected bounded ping timeout, got {mosaic_log}",
         failures,
     )
     expect(claudecode == "__UNSET__", f"stale socket: expected CLAUDECODE unset, got {claudecode!r}", failures)
     expect(node_options == "__UNSET__", f"stale socket: expected NODE_OPTIONS passthrough, got {node_options!r}", failures)
     expect(runtime_node_options == "__UNSET__", f"stale socket: expected runtime NODE_OPTIONS passthrough, got {runtime_node_options!r}", failures)
     expect(child_node_options == "__UNSET__", f"stale socket: expected child NODE_OPTIONS passthrough, got {child_node_options!r}", failures)
-    expect(hook_cmux_bin == "__UNSET__", f"stale socket: expected hook cmux unset, got {hook_cmux_bin!r}", failures)
+    expect(hook_mosaic_bin == "__UNSET__", f"stale socket: expected hook mosaic unset, got {hook_mosaic_bin!r}", failures)
 
 
 def main() -> int:
@@ -1860,15 +1860,15 @@ def main() -> int:
     test_live_socket_merges_user_settings_into_hooks(failures)
     test_live_socket_merges_inline_settings_form(failures)
     test_live_socket_repeated_settings_user_value_wins_conflict(failures)
-    test_live_socket_user_nonobject_hooks_does_not_drop_cmux_hooks(failures)
+    test_live_socket_user_nonobject_hooks_does_not_drop_mosaic_hooks(failures)
     test_live_socket_invalid_settings_warns_and_falls_back(failures)
     test_live_socket_merges_settings_file_form(failures)
     test_live_socket_empty_settings_warns_instead_of_silent_drop(failures)
     test_plain_claude_launch_argv_has_no_empty_argument(failures)
     test_command_like_invocations_bypass_hook_injection(failures)
     test_passthrough_flags_bypass_hook_injection(failures)
-    test_agents_subcommand_removes_cmux_terminal_fingerprint(failures)
-    test_hooks_disabled_preserves_cmux_terminal_env_for_custom_hooks(failures)
+    test_agents_subcommand_removes_mosaic_terminal_fingerprint(failures)
+    test_hooks_disabled_preserves_mosaic_terminal_env_for_custom_hooks(failures)
     test_live_socket_preserves_third_party_claude_auth_for_fresh_launch(failures)
     test_hooks_disabled_clears_stale_auth_selection_before_passthrough(failures)
     test_live_socket_normalizes_subrouter_claude_config_dir(failures)

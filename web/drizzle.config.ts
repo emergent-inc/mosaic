@@ -1,13 +1,13 @@
 import { defineConfig } from "drizzle-kit";
 
 function defaultDatabaseURL(): string {
-  const rawPort = process.env.CMUX_PORT ?? process.env.PORT ?? "3777";
-  const cmuxPort = /^\d+$/.test(rawPort) ? Number(rawPort) : 3777;
-  const offset = Number(process.env.CMUX_DB_PORT_OFFSET ?? "10000");
-  const dbPort = process.env.CMUX_DB_PORT ?? String(cmuxPort + offset);
-  const user = process.env.CMUX_DB_USER ?? "cmux";
-  const password = process.env.CMUX_DB_PASSWORD ?? "cmux";
-  const database = process.env.CMUX_DB_NAME ?? "cmux";
+  const rawPort = process.env.MOSAIC_PORT ?? process.env.PORT ?? "3777";
+  const mosaicPort = /^\d+$/.test(rawPort) ? Number(rawPort) : 3777;
+  const offset = Number(process.env.MOSAIC_DB_PORT_OFFSET ?? "10000");
+  const dbPort = process.env.MOSAIC_DB_PORT ?? String(mosaicPort + offset);
+  const user = process.env.MOSAIC_DB_USER ?? "mosaic";
+  const password = process.env.MOSAIC_DB_PASSWORD ?? "mosaic";
+  const database = process.env.MOSAIC_DB_NAME ?? "mosaic";
   return `postgres://${user}:${password}@localhost:${dbPort}/${database}`;
 }
 

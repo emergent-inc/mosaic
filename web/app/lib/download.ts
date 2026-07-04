@@ -1,7 +1,7 @@
 /**
- * Single source of truth for cmux download links.
+ * Single source of truth for mosaic download links.
  *
- * `DOWNLOAD_URL` is the actual release asset. cmux ships only a macOS build,
+ * `DOWNLOAD_URL` is the actual release asset. mosaic ships only a macOS build,
  * so there is one asset; if win/linux builds are added later, route them from
  * here (and from the confirmation page) rather than duplicating URLs at call
  * sites.
@@ -53,7 +53,7 @@ export type WaitlistTarget = WaitlistPlatform | "any";
  * rather than only as a raw event.
  */
 export const WAITLIST_EARLY_ACCESS_FLAGS: Record<WaitlistPlatform, string> = {
-  linux: "cmux-for-linux",
-  android: "cmux-for-android",
-  windows: "cmux-for-windows",
+  linux: "mosaic-for-linux",
+  android: "mosaic-for-android",
+  windows: "mosaic-for-windows",
 };

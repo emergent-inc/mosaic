@@ -17,10 +17,10 @@ from pathlib import Path
 from typing import Callable, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _wait_for(
@@ -35,17 +35,17 @@ def _wait_for(
         if predicate():
             return
         time.sleep(cadence_s)
-    raise cmuxError(f"Timed out waiting for {label}")
+    raise mosaicError(f"Timed out waiting for {label}")
 
 
-def _focused_surface_id(c: cmux) -> str:
+def _focused_surface_id(c: mosaic) -> str:
     surfaces = c.list_surfaces()
     if not surfaces:
-        raise cmuxError("Expected at least one terminal surface")
+        raise mosaicError("Expected at least one terminal surface")
     return next((sid for _idx, sid, focused in surfaces if focused), surfaces[0][1])
 
 
-def _surface_health_row(c: cmux, surface_id: str) -> Optional[dict]:
+def _surface_health_row(c: mosaic, surface_id: str) -> Optional[dict]:
     surface_id = surface_id.lower()
     for row in c.surface_health():
         if str(row.get("surface_id") or "").lower() == surface_id:
@@ -62,10 +62,10 @@ def _rect_size(rect: object) -> tuple[float, float]:
     )
 
 
-def _assert_surface_visible(c: cmux, surface_id: str, context: str) -> None:
+def _assert_surface_visible(c: mosaic, surface_id: str, context: str) -> None:
     row = _surface_health_row(c, surface_id)
     if row is None:
-        raise cmuxError(f"{context}: surface missing from health output: {surface_id}")
+        raise mosaicError(f"{context}: surface missing from health output: {surface_id}")
 
     failures: list[str] = []
     expected_true = [
@@ -95,7 +95,7 @@ def _assert_surface_visible(c: cmux, surface_id: str, context: str) -> None:
         failures.append(f"hosted_view_frame={row.get('hosted_view_frame')!r}")
 
     if failures:
-        raise cmuxError(
+        raise mosaicError(
             f"{context}: terminal surface is not visibly mounted after notification.\n"
             f"surface_id={surface_id}\n"
             f"failures={', '.join(failures)}\n"
@@ -104,7 +104,7 @@ def _assert_surface_visible(c: cmux, surface_id: str, context: str) -> None:
 
 
 def _assert_surface_stays_visible(
-    c: cmux,
+    c: mosaic,
     surface_id: str,
     *,
     duration_s: float = 1.2,
@@ -120,12 +120,12 @@ def _assert_surface_stays_visible(
         _assert_surface_visible(c, surface_id, "final visibility sample")
 
 
-def _send_osc777_notification(c: cmux, surface_id: str, title: str, body: str) -> None:
+def _send_osc777_notification(c: mosaic, surface_id: str, title: str, body: str) -> None:
     # zsh/bash printf both interpret these escapes and emit the actual OSC 777.
     c.send_surface(surface_id, f"printf '\\033]777;notify;{title};{body}\\007'\n")
 
 
-def _wait_for_notification(c: cmux, title: str, surface_id: str) -> None:
+def _wait_for_notification(c: mosaic, title: str, surface_id: str) -> None:
     surface_id = surface_id.lower()
 
     def seen() -> bool:
@@ -139,7 +139,7 @@ def _wait_for_notification(c: cmux, title: str, surface_id: str) -> None:
     _wait_for(seen, timeout_s=5.0, label=f"notification {title!r}")
 
 
-def _wait_for_terminal_text(c: cmux, surface_id: str, text: str) -> None:
+def _wait_for_terminal_text(c: mosaic, surface_id: str, text: str) -> None:
     _wait_for(
         lambda: text in c.read_terminal_text(surface_id),
         timeout_s=5.0,
@@ -147,7 +147,7 @@ def _wait_for_terminal_text(c: cmux, surface_id: str, text: str) -> None:
     )
 
 
-def _assert_renders_after_notification(c: cmux, surface_id: str, marker: str) -> None:
+def _assert_renders_after_notification(c: mosaic, surface_id: str, marker: str) -> None:
     c.panel_snapshot_reset(surface_id)
     before = c.panel_snapshot(surface_id, "notif_render_before")
     baseline_present = int(c.render_stats(surface_id).get("presentCount") or 0)
@@ -163,7 +163,7 @@ def _assert_renders_after_notification(c: cmux, surface_id: str, marker: str) ->
     after = c.panel_snapshot(surface_id, "notif_render_after")
     changed_pixels = int(after.get("changed_pixels") or 0)
     if changed_pixels < 50:
-        raise cmuxError(
+        raise mosaicError(
             "Expected visible terminal pixels to change after OSC notification.\n"
             f"changed_pixels={changed_pixels}\n"
             f"before={before}\n"
@@ -172,12 +172,12 @@ def _assert_renders_after_notification(c: cmux, surface_id: str, marker: str) ->
 
 
 def main() -> int:
-    token = f"CMUX_OSC777_{int(time.time() * 1000)}"
+    token = f"MOSAIC_OSC777_{int(time.time() * 1000)}"
     notify_title = f"{token}_TITLE"
     notify_body = f"{token}_BODY"
     after_marker = f"{token}_AFTER_NOTIFY_RENDER"
 
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         try:
             c.activate_app()
             time.sleep(0.25)

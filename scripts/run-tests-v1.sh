@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# This runner is intended for the UTM macOS VM (ssh cmux-vm).
-# It is intentionally guarded so we don't accidentally kill the host user's cmux instances.
-if [ "$(id -un)" != "cmux" ]; then
-  echo "ERROR: This script is intended to be run on the cmux-vm (user: cmux)." >&2
-  echo "Run via: ssh cmux-vm 'cd /Users/cmux/cmux && ./scripts/run-tests-v1.sh'" >&2
+# This runner is intended for the UTM macOS VM (ssh mosaic-vm).
+# It is intentionally guarded so we don't accidentally kill the host user's mosaic instances.
+if [ "$(id -un)" != "mosaic" ]; then
+  echo "ERROR: This script is intended to be run on the mosaic-vm (user: mosaic)." >&2
+  echo "Run via: ssh mosaic-vm 'cd /Users/mosaic/mosaic && ./scripts/run-tests-v1.sh'" >&2
   exit 2
 fi
 
 cd "$(dirname "$0")/.."
 
-DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData/cmux-tests-v1"
+DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData/mosaic-tests-v1"
 APP="$DERIVED_DATA_PATH/Build/Products/Debug/Mosaic DEV.app"
 RUN_TAG="tests-v1"
 
@@ -21,8 +21,8 @@ echo "== build =="
 # module file ... was built".
 rm -rf "$DERIVED_DATA_PATH/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules" || true
 xcodebuild \
-  -project cmux.xcodeproj \
-  -scheme cmux \
+  -project mosaic.xcodeproj \
+  -scheme mosaic \
   -configuration Debug \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
@@ -36,7 +36,7 @@ fi
 cleanup() {
   pkill -x "Mosaic DEV" || true
   pkill -x "Mosaic" || true
-  rm -f /tmp/cmux*.sock || true
+  rm -f /tmp/mosaic*.sock || true
 }
 
 launch_and_wait() {
@@ -52,11 +52,11 @@ launch_and_wait() {
   defaults write mosaic.com.emergent.app.debug socketControlMode -string full >/dev/null 2>&1 || true
 
   # Launch directly with UI test mode enabled so startup follows deterministic test codepaths.
-  CMUX_TAG="$RUN_TAG" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/Mosaic DEV" >/dev/null 2>&1 &
+  MOSAIC_TAG="$RUN_TAG" MOSAIC_UI_TEST_MODE=1 "$APP/Contents/MacOS/Mosaic DEV" >/dev/null 2>&1 &
 
   SOCK=""
   for _ in {1..120}; do
-    SOCK=$(ls -t /tmp/cmux-debug*.sock /tmp/cmux*.sock 2>/dev/null | head -1 || true)
+    SOCK=$(ls -t /tmp/mosaic-debug*.sock /tmp/mosaic*.sock 2>/dev/null | head -1 || true)
     if [ -n "$SOCK" ] && [ -S "$SOCK" ]; then
       break
     fi
@@ -64,13 +64,13 @@ launch_and_wait() {
   done
 
   if [ -z "$SOCK" ] || [ ! -S "$SOCK" ]; then
-    echo "ERROR: Socket not ready (looked for /tmp/cmux*.sock)" >&2
+    echo "ERROR: Socket not ready (looked for /tmp/mosaic*.sock)" >&2
     exit 1
   fi
-  export CMUX_SOCKET_PATH="$SOCK"
+  export MOSAIC_SOCKET_PATH="$SOCK"
 
   # Ensure LaunchServices has a visible/main window attached for rendering checks.
-  CMUX_TAG="$RUN_TAG" open "$APP" >/dev/null 2>&1 || true
+  MOSAIC_TAG="$RUN_TAG" open "$APP" >/dev/null 2>&1 || true
   sleep 0.5
 
   echo "== wait ready =="
@@ -80,14 +80,14 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.getcwd(), "tests"))
-from cmux import cmux  # type: ignore
+from mosaic import mosaic  # type: ignore
 
 deadline = time.time() + 30.0
 last = None
 client = None
 while time.time() < deadline:
     try:
-        client = cmux()
+        client = mosaic()
         client.connect()
         break
     except Exception as e:
@@ -121,7 +121,7 @@ probe_deadline = time.time() + 10.0
 while time.time() < probe_deadline:
     probe = None
     try:
-        probe = cmux()
+        probe = mosaic()
         probe.connect()
         if not probe.ping():
             raise RuntimeError("ping returned false")

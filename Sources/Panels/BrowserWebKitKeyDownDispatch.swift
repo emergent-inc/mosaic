@@ -1,26 +1,26 @@
 import AppKit
 
 @MainActor
-private var cmuxBrowserWebKitKeyDownDispatchDepth = 0
+private var mosaicBrowserWebKitKeyDownDispatchDepth = 0
 
 @MainActor
-func cmuxBrowserWebKitKeyDownDispatchIsActive() -> Bool {
-    cmuxBrowserWebKitKeyDownDispatchDepth > 0
+func mosaicBrowserWebKitKeyDownDispatchIsActive() -> Bool {
+    mosaicBrowserWebKitKeyDownDispatchDepth > 0
 }
 
 @MainActor
-func cmuxWithBrowserWebKitKeyDownDispatch<T>(_ body: () -> T) -> T {
-    cmuxBrowserWebKitKeyDownDispatchDepth += 1
+func mosaicWithBrowserWebKitKeyDownDispatch<T>(_ body: () -> T) -> T {
+    mosaicBrowserWebKitKeyDownDispatchDepth += 1
     defer {
-        cmuxBrowserWebKitKeyDownDispatchDepth = max(0, cmuxBrowserWebKitKeyDownDispatchDepth - 1)
+        mosaicBrowserWebKitKeyDownDispatchDepth = max(0, mosaicBrowserWebKitKeyDownDispatchDepth - 1)
     }
     return body()
 }
 
 @MainActor
-extension CmuxWebView {
+extension MosaicWebView {
     func forwardKeyDownToWebKit(_ event: NSEvent) {
-        cmuxWithBrowserWebKitKeyDownDispatch {
+        mosaicWithBrowserWebKitKeyDownDispatch {
             super.keyDown(with: event)
         }
     }

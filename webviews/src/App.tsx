@@ -95,7 +95,7 @@ type AppAction =
 const fileSkeletonWidths = ["82%", "64%", "76%", "58%", "70%", "46%"];
 const diffSkeletonWidths = ["58%", "88%", "72%", "94%", "64%", "82%", "52%", "78%"];
 const defaultWorkerModuleURL = "./assets/pierre-diffs-1.2.7-trees-1.0.0-beta.4/worker-pool/worker-portable.js";
-const persistedLayoutKey = "cmux.diffViewer.layout";
+const persistedLayoutKey = "mosaic.diffViewer.layout";
 type DiffViewerLayout = DiffViewerOptions["layout"];
 
 function initialAppState(config: DiffViewerConfig, initialStatus: DiffViewerStatus): AppState {
@@ -358,7 +358,7 @@ export function App({ config, initialStatus }: ConfigProps) {
         dispatch={dispatch}
         state={state}
       />
-      <section id="content" style={{ "--cmux-diff-files-width": `${state.filesWidth}px` } as React.CSSProperties}>
+      <section id="content" style={{ "--mosaic-diff-files-width": `${state.filesWidth}px` } as React.CSSProperties}>
         <FilesSidebar
           commentEntries={commentEntries}
           commentLabels={commentLabels}
@@ -463,7 +463,7 @@ function useDiffComments({
         dispatch({ type: "upsert-comment", comment: saved });
         dispatch({ type: "set-draft", draft: null });
       })
-      .catch((error) => console.warn("cmux diff comment save failed", error));
+      .catch((error) => console.warn("mosaic diff comment save failed", error));
   };
 
   const editMessage = (
@@ -481,13 +481,13 @@ function useDiffComments({
       : Promise.resolve(updated);
     save
       .then((saved) => dispatch({ type: "upsert-comment", comment: saved }))
-      .catch((error) => console.warn("cmux diff comment edit failed", error));
+      .catch((error) => console.warn("mosaic diff comment edit failed", error));
   };
 
   const remove = (comment: DiffCommentRecord) => {
     if (bridgeAvailable && repoRoot != null) {
       bridgeDeleteComment(repoRoot, comment.id)
-        .catch((error) => console.warn("cmux diff comment delete failed", error));
+        .catch((error) => console.warn("mosaic diff comment delete failed", error));
     }
     dispatch({ type: "remove-comment", id: comment.id });
   };
@@ -760,7 +760,7 @@ function BaseControl({
   );
 }
 
-// Reads the FROZEN CONTRACT `branchPicker` object. In dev, a `?cmuxBranchPickerMock=1`
+// Reads the FROZEN CONTRACT `branchPicker` object. In dev, a `?mosaicBranchPickerMock=1`
 // query flag injects a local sample so the popover can be exercised without a
 // wired backend. Production behavior is unchanged when the flag is absent.
 function resolveBranchPicker(payload: any): BranchPickerPayload | null {
@@ -792,7 +792,7 @@ function isValidBranchPickerPayload(value: any): value is BranchPickerPayload {
 
 function devBranchPickerMockEnabled(): boolean {
   try {
-    return new URLSearchParams(window.location.search).get("cmuxBranchPickerMock") === "1";
+    return new URLSearchParams(window.location.search).get("mosaicBranchPickerMock") === "1";
   } catch {
     return false;
   }
@@ -1121,7 +1121,7 @@ function PierreFileTree({
   const [initialPreparedInput] = useState(() => preparePresortedFileTreeInput(source.paths));
   const { model } = useFileTree({
     flattenEmptyDirectories: false,
-    id: "cmux-diff-file-tree",
+    id: "mosaic-diff-file-tree",
     initialExpansion: "open",
     initialSelectedPaths: selectedPath ? [selectedPath] : [],
     initialVisibleRowCount: getInitialFileTreeRowCount(),
@@ -1155,9 +1155,9 @@ function LoadingFileList() {
     <div className="diff-loading-placeholder" aria-hidden="true">
       {fileSkeletonWidths.map((width, index) => (
         <div key={`${width}-${index}`} className="grid h-6 grid-cols-[16px_minmax(0,1fr)_44px] items-center gap-2 rounded-[5px] px-[7px]">
-          <span className="size-4 rounded-[5px] border border-[color-mix(in_lab,var(--cmux-diff-fg)_18%,transparent)]" />
-          <span className="h-[11px] rounded bg-[var(--cmux-diff-muted-bg)]" style={{ width }} />
-          <span className="h-[11px] justify-self-end rounded bg-[var(--cmux-diff-muted-bg)] opacity-70" style={{ width: index % 2 === 0 ? "34px" : "24px" }} />
+          <span className="size-4 rounded-[5px] border border-[color-mix(in_lab,var(--mosaic-diff-fg)_18%,transparent)]" />
+          <span className="h-[11px] rounded bg-[var(--mosaic-diff-muted-bg)]" style={{ width }} />
+          <span className="h-[11px] justify-self-end rounded bg-[var(--mosaic-diff-muted-bg)] opacity-70" style={{ width: index % 2 === 0 ? "34px" : "24px" }} />
         </div>
       ))}
     </div>
@@ -1166,17 +1166,17 @@ function LoadingFileList() {
 
 function LoadingDiffSkeleton() {
   return (
-    <div className="diff-loading-placeholder mx-3.5 mt-3.5 border-t border-[var(--cmux-diff-border)] pt-3" aria-hidden="true">
-      <div className="mb-3 grid h-9 grid-cols-[72px_minmax(0,1fr)_96px] items-center gap-3 rounded-md bg-[color-mix(in_lab,var(--cmux-diff-fg)_5%,transparent)] px-3">
-        <span className="h-3 rounded bg-[var(--cmux-diff-muted-bg)]" />
-        <span className="h-3 w-2/5 rounded bg-[var(--cmux-diff-muted-bg)]" />
-        <span className="h-3 rounded bg-[var(--cmux-diff-muted-bg)] opacity-70" />
+    <div className="diff-loading-placeholder mx-3.5 mt-3.5 border-t border-[var(--mosaic-diff-border)] pt-3" aria-hidden="true">
+      <div className="mb-3 grid h-9 grid-cols-[72px_minmax(0,1fr)_96px] items-center gap-3 rounded-md bg-[color-mix(in_lab,var(--mosaic-diff-fg)_5%,transparent)] px-3">
+        <span className="h-3 rounded bg-[var(--mosaic-diff-muted-bg)]" />
+        <span className="h-3 w-2/5 rounded bg-[var(--mosaic-diff-muted-bg)]" />
+        <span className="h-3 rounded bg-[var(--mosaic-diff-muted-bg)] opacity-70" />
       </div>
       <div className="space-y-[13px] px-3 py-1">
         {diffSkeletonWidths.map((width, index) => (
           <div key={`${width}-${index}`} className="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-4">
-            <span className="h-px bg-[color-mix(in_lab,var(--cmux-diff-fg)_10%,transparent)]" />
-            <span className="h-3 rounded bg-[var(--cmux-diff-muted-bg)]" style={{ width }} />
+            <span className="h-px bg-[color-mix(in_lab,var(--mosaic-diff-fg)_10%,transparent)]" />
+            <span className="h-3 rounded bg-[var(--mosaic-diff-muted-bg)]" style={{ width }} />
           </div>
         ))}
       </div>
@@ -1225,7 +1225,7 @@ function useWorkerRenderOptionsSync(
           codeViewRef.current?.getInstance()?.render(true);
         }
       })
-      .catch((error: unknown) => console.warn("cmux diff worker render options update failed", error));
+      .catch((error: unknown) => console.warn("mosaic diff worker render options update failed", error));
     return () => {
       active = false;
     };
@@ -1358,7 +1358,7 @@ function useRenderDiff(
           return resolveDiffPreloadLanguages(fileName(diff, ""), diff.lang, diff, getFiletypeFromFileName);
         })));
         preloadHighlighter({ themes, langs: langs.length > 0 ? langs : ["text"] })
-          .catch((error) => console.warn("cmux diff highlighter preload failed", error));
+          .catch((error) => console.warn("mosaic diff highlighter preload failed", error));
       },
       onMetrics: (metrics) => dispatch({ type: "set-metrics", metrics }),
       onRename: (rename) => dispatch({ type: "rename-item", oldId: rename.oldId, newId: rename.newId }),
@@ -1367,7 +1367,7 @@ function useRenderDiff(
       patchURL: payload.patchURL,
       processFile,
     }).catch((error) => {
-      console.error("cmux diff viewer render failed", error);
+      console.error("mosaic diff viewer render failed", error);
       dispatch({ type: "set-status", status: createDiffViewerStatus(label("renderFailed"), { error: true, loading: false, statusOnly: true }) });
     });
   }, [config, dispatch, label, latestState]);
@@ -1417,20 +1417,20 @@ function usePendingReplacement(payload: any, label: DiffViewerLabelResolver, dis
         type: "set-status",
         status: createDiffViewerStatus(payload.statusMessage ?? label("loadingDiff"), { loading: true, pending: true }),
       });
-      fetch("/__cmux_diff_viewer_wait" + location.pathname, { cache: "no-store" })
+      fetch("/__mosaic_diff_viewer_wait" + location.pathname, { cache: "no-store" })
         .then(async (response) => {
           if (!response.ok) {
             throw new Error("replacement failed");
           }
           const text = await response.text();
-          if (!text.includes("data-cmux-diff-pending=\"true\"")) {
+          if (!text.includes("data-mosaic-diff-pending=\"true\"")) {
             window.location.reload();
           }
         })
         .catch((error) => {
-          document.documentElement.dataset.cmuxDiffWait = "failed";
+          document.documentElement.dataset.mosaicDiffWait = "failed";
           dispatch({ type: "set-status", status: createDiffViewerStatus(label("renderFailed"), { error: true, loading: false, statusOnly: true }) });
-          console.warn("cmux diff viewer deferred load failed", error);
+          console.warn("mosaic diff viewer deferred load failed", error);
         });
       return;
     }

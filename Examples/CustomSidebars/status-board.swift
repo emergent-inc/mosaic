@@ -80,7 +80,7 @@ func laneHeader(_ icon, _ name, _ count, _ tint) -> some View {
 }
 
 func row(_ w, _ tint, _ nowEpoch) -> some View {
-  Button(action: { cmux("workspace.select", workspace_id: w.id) }) {
+  Button(action: { mosaic("workspace.select", workspace_id: w.id) }) {
     HStack(alignment: .top, spacing: 7) {
       Capsule().frame(width: 3, height: 28).foregroundColor(w.selected ? tint : Color(red: 0.5, green: 0.5, blue: 0.5)).opacity(w.selected ? 1.0 : 0.25)
       VStack(alignment: .leading, spacing: 2) {

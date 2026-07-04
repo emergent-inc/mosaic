@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCHEME_FILE="cmux.xcodeproj/xcshareddata/xcschemes/cmux.xcscheme"
+SCHEME_FILE="mosaic.xcodeproj/xcshareddata/xcschemes/mosaic.xcscheme"
 
 if [ ! -f "$SCHEME_FILE" ]; then
   echo "FAIL: Missing scheme file at $SCHEME_FILE" >&2
@@ -9,8 +9,8 @@ if [ ! -f "$SCHEME_FILE" ]; then
 fi
 
 if ! grep -q '<TestAction buildConfiguration="Debug"' "$SCHEME_FILE"; then
-  echo "FAIL: cmux scheme TestAction must use Debug build configuration for UI test setup hooks" >&2
+  echo "FAIL: mosaic scheme TestAction must use Debug build configuration for UI test setup hooks" >&2
   exit 1
 fi
 
-echo "PASS: cmux scheme TestAction uses Debug"
+echo "PASS: mosaic scheme TestAction uses Debug"

@@ -35,7 +35,7 @@ esac
 echo "==> cargo build --release --target $rust_target"
 (cd rust && cargo build --release --target "$rust_target")
 
-lib="rust/target/$rust_target/release/libcmux_iroh_ffi.a"
+lib="rust/target/$rust_target/release/libmosaic_iroh_ffi.a"
 ls -lh "$lib"
 
 out="out/swift-harness-$target_kind"
@@ -43,7 +43,7 @@ echo "==> swiftc -> $out"
 xcrun -sdk "$sdk" swiftc \
     -target "$swift_target" \
     -O \
-    -import-objc-header include/cmux_iroh_ffi.h \
+    -import-objc-header include/mosaic_iroh_ffi.h \
     swift/main.swift \
     "$lib" \
     "${frameworks[@]}" \

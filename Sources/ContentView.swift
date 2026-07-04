@@ -1,29 +1,29 @@
 import AppKit
-import CMUXAuthCore
-import CmuxAuthRuntime
-import CmuxAppKitSupportUI
-import CmuxCollaboration
-import CmuxCommandPalette
-import CmuxCore
-import CmuxFeedback
-import CmuxFoundation
-import CmuxPanes
-import CmuxSettings
-import CmuxWorkspaces
+import MosaicAuthCore
+import MosaicAuthRuntime
+import MosaicAppKitSupportUI
+import MosaicCollaboration
+import MosaicCommandPalette
+import MosaicCore
+import MosaicFeedback
+import MosaicFoundation
+import MosaicPanes
+import MosaicSettings
+import MosaicWorkspaces
 import Bonsplit
 import Combine
-import CmuxSidebarInterpreterClient
-import CmuxTerminal
-@_spi(CmuxHostTransport) import CmuxExtensionKit
-import CmuxSidebarProviderKit
-import CmuxExtensionSidebarExamples
-import CmuxSettingsUI
-import CmuxSidebar
-import CmuxSidebarRemoteRender
-import CmuxSwiftRender
-import CmuxSwiftRenderUI
-import CmuxUpdater
-import CmuxUpdaterUI
+import MosaicSidebarInterpreterClient
+import MosaicTerminal
+@_spi(MosaicHostTransport) import MosaicExtensionKit
+import MosaicSidebarProviderKit
+import MosaicExtensionSidebarExamples
+import MosaicSettingsUI
+import MosaicSidebar
+import MosaicSidebarRemoteRender
+import MosaicSwiftRender
+import MosaicSwiftRenderUI
+import MosaicUpdater
+import MosaicUpdaterUI
 import ImageIO
 import Observation
 import SwiftUI
@@ -35,9 +35,9 @@ var fileDropOverlayKey: UInt8 = 0
 private var commandPaletteWindowOverlayKey: UInt8 = 0
 private var tutorialVideoWindowOverlayKey: UInt8 = 0
 private var tmuxWorkspacePaneWindowOverlayKey: UInt8 = 0
-let commandPaletteOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.commandPalette.overlay.container")
-let tutorialVideoOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.tutorialVideo.overlay.container")
-let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("cmux.tmuxWorkspacePane.overlay.container")
+let commandPaletteOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.commandPalette.overlay.container")
+let tutorialVideoOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.tutorialVideo.overlay.container")
+let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.tmuxWorkspacePane.overlay.container")
 
 private enum MosaicSidebarStyle {
     static let background = Color(nsColor: MosaicChromePalette.sidebarBackgroundColor)
@@ -200,7 +200,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
             installedContainerView = target.container
             installedReferenceView = target.reference
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.overlay.install container=\(String(describing: type(of: target.container))) " +
                 "reference=\(String(describing: type(of: target.reference))) " +
                 "glass=\(chromeComposition.glassEffect.portalInstallationTarget(for: window) != nil ? 1 : 0)"
@@ -318,7 +318,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
     private func focusPaletteTextInput(in window: NSWindow) -> Bool {
         guard let input = firstEditableTextInput(in: hostingView) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.direct missingInput window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -326,7 +326,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
             return false
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.focus.direct attempt window={\(debugCommandPaletteWindowSummary(window))} " +
             "input=\(debugCommandPaletteResponderSummary(input)) " +
             "frBefore=\(debugCommandPaletteResponderSummary(window.firstResponder))"
@@ -334,7 +334,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 #endif
         guard window.makeFirstResponder(input) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.direct failedMakeFirstResponder window={\(debugCommandPaletteWindowSummary(window))} " +
                 "input=\(debugCommandPaletteResponderSummary(input)) " +
                 "frAfter=\(debugCommandPaletteResponderSummary(window.firstResponder))"
@@ -352,7 +352,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 
         let didSettle = isPaletteTextInputFirstResponder(window.firstResponder)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.focus.direct settled window={\(debugCommandPaletteWindowSummary(window))} " +
             "didSettle=\(didSettle ? 1 : 0) frAfter=\(debugCommandPaletteResponderSummary(window.firstResponder))"
         )
@@ -363,13 +363,13 @@ private final class WindowCommandPaletteOverlayController: NSObject {
     private func scheduleFocusIntoPalette(retries: Int = 4) {
 #if DEBUG
         if let window {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.schedule retries=\(retries) " +
                 "window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
         } else {
-            cmuxDebugLog("palette.focus.schedule retries=\(retries) window=nil")
+            mosaicDebugLog("palette.focus.schedule retries=\(retries) window=nil")
         }
 #endif
         scheduledFocusWorkItem?.cancel()
@@ -384,7 +384,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
     private func focusIntoPalette(retries: Int) {
         guard let window else { return }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.focus.retry start retries=\(retries) " +
             "window={\(debugCommandPaletteWindowSummary(window))} " +
             "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
@@ -392,7 +392,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 #endif
         if isPaletteTextInputFirstResponder(window.firstResponder) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.retry alreadyFocused window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -402,7 +402,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 
         if focusPaletteTextInput(in: window) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.retry directSuccess retries=\(retries) " +
                 "window={\(debugCommandPaletteWindowSummary(window))}"
             )
@@ -412,7 +412,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 
         let containerFocused = window.makeFirstResponder(containerView)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.focus.retry containerResult retries=\(retries) " +
             "window={\(debugCommandPaletteWindowSummary(window))} " +
             "didFocusContainer=\(containerFocused ? 1 : 0) " +
@@ -422,7 +422,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
         if containerFocused {
             if focusPaletteTextInput(in: window) {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.focus.retry containerAssistedSuccess retries=\(retries) " +
                     "window={\(debugCommandPaletteWindowSummary(window))}"
                 )
@@ -433,7 +433,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 
         guard retries > 0 else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.retry exhausted window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -441,7 +441,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
             return
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.focus.retry reschedule nextRetries=\(retries - 1) " +
             "window={\(debugCommandPaletteWindowSummary(window))}"
         )
@@ -480,7 +480,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
         }
         guard isPaletteVisible else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.lock inactive visible=0 window={\(debugCommandPaletteWindowSummary(window))}"
             )
 #endif
@@ -490,7 +490,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
 
         guard window.isKeyWindow else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.lock keyWindowMissing window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -505,7 +505,7 @@ private final class WindowCommandPaletteOverlayController: NSObject {
         startFocusLockTimer()
         if !isPaletteTextInputFirstResponder(window.firstResponder) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.focus.lock requestRestore window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -574,13 +574,13 @@ private final class WindowCommandPaletteOverlayController: NSObject {
         ).shouldPromote
 #if DEBUG
         if let window {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.overlay.update visible=\(isVisible ? 1 : 0) promote=\(shouldPromote ? 1 : 0) " +
                 "window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
         } else {
-            cmuxDebugLog("palette.overlay.update visible=\(isVisible ? 1 : 0) promote=\(shouldPromote ? 1 : 0) window=nil")
+            mosaicDebugLog("palette.overlay.update visible=\(isVisible ? 1 : 0) promote=\(shouldPromote ? 1 : 0) window=nil")
         }
 #endif
         isPaletteVisible = isVisible
@@ -889,10 +889,10 @@ private func commandPaletteOwningWebView(for responder: NSResponder?) -> WKWebVi
     return nil
 }
 
-// Lifted to `CmuxFoundation.WorkspaceMountPlan` / `MountedWorkspacePresentation`
+// Lifted to `MosaicFoundation.WorkspaceMountPlan` / `MountedWorkspacePresentation`
 // (ContentView decomposition). These typealiases keep call sites short.
-typealias WorkspaceMountPlan = CmuxFoundation.WorkspaceMountPlan
-typealias MountedWorkspacePresentation = CmuxFoundation.MountedWorkspacePresentation
+typealias WorkspaceMountPlan = MosaicFoundation.WorkspaceMountPlan
+typealias MountedWorkspacePresentation = MosaicFoundation.MountedWorkspacePresentation
 
 /// Installs a FileDropOverlayView on the window's theme frame for Finder file drag support.
 private func findFileDropOverlayView(in root: NSView?) -> FileDropOverlayView? {
@@ -1089,7 +1089,7 @@ struct ContentView: View {
     var notificationStore: TerminalNotificationStore { .shared }
     @EnvironmentObject var sidebarState: SidebarState
     @EnvironmentObject var sidebarSelectionState: SidebarSelectionState
-    @EnvironmentObject var cmuxConfigStore: CmuxConfigStore
+    @EnvironmentObject var mosaicConfigStore: MosaicConfigStore
     @EnvironmentObject var fileExplorerState: FileExplorerState
     @Environment(\.colorScheme) private var colorScheme
 #if DEBUG
@@ -1885,7 +1885,7 @@ struct ContentView: View {
         .background(MosaicSidebarStyle.background.ignoresSafeArea())
     }
 
-    /// Native titlebar inset reported by AppKit. Standard mode follows cmux's visual chrome;
+    /// Native titlebar inset reported by AppKit. Standard mode follows mosaic's visual chrome;
     /// minimal WindowGroup hosts can still need the reported safe area cancelled.
     @State private var titlebarPadding: CGFloat = WindowChromeMetrics.defaultTitlebarHeight
     /// SwiftUI WindowGroup windows can still report a titlebar safe area; manually created
@@ -2113,7 +2113,7 @@ struct ContentView: View {
             },
             onClose: {
                 #if DEBUG
-                cmuxDebugLog("rightSidebar.closeButton")
+                mosaicDebugLog("rightSidebar.closeButton")
                 #endif
                 _ = AppDelegate.shared?.closeRightSidebarInActiveMainWindow(preferredWindow: observedWindow)
             }
@@ -2162,7 +2162,7 @@ struct ContentView: View {
     @AppStorage("bgGlassTintOpacity") private var bgGlassTintOpacity = 0.03
     @AppStorage("bgGlassEnabled") private var bgGlassEnabled = false
     @State private var titlebarLeadingInset: CGFloat = 12
-    private var windowIdentifier: String { "cmux.main.\(windowId.uuidString)" }
+    private var windowIdentifier: String { "mosaic.main.\(windowId.uuidString)" }
     private var windowAppearanceSnapshot: WindowAppearanceSnapshot {
         _ = titlebarThemeGeneration
         return windowChrome.appearanceSnapshot(
@@ -2291,7 +2291,7 @@ struct ContentView: View {
                 }
 
                 Text(titlebarText)
-                    .cmuxFont(size: 13, weight: .bold)
+                    .mosaicFont(size: 13, weight: .bold)
                     .foregroundColor(fakeTitlebarTextColor(appearance: appearance))
                     .lineLimit(1)
                     .allowsHitTesting(false)
@@ -2394,7 +2394,7 @@ struct ContentView: View {
 
     private func refreshWindowChromeMetrics(for window: NSWindow) {
         // Keep native measurements around for minimal WindowGroup safe-area cancellation.
-        // Standard mode uses cmux's visual chrome height for layout.
+        // Standard mode uses mosaic's visual chrome height for layout.
         let computedTitlebarHeight = window.frame.height - window.contentLayoutRect.height
         let nextPadding = WindowChromeMetrics.clampedTitlebarHeight(computedTitlebarHeight)
         let nextSafeAreaTop = max(0, window.contentView?.safeAreaInsets.top ?? 0)
@@ -2547,7 +2547,7 @@ struct ContentView: View {
 
             #if DEBUG
             let hasUnavailableDetail = unavailableDetail?.isEmpty == false
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "fileExplorer.sync remote state=\(tab.remoteConnectionState.rawValue) " +
                 "hasDestination=\(config.destination.isEmpty ? 0 : 1) " +
                 "hasDisplayTarget=\(config.displayTarget.isEmpty ? 0 : 1) " +
@@ -2755,7 +2755,7 @@ struct ContentView: View {
 
                 if didRecover {
 #if DEBUG
-                    cmuxDebugLog("startup.recovery tabCount=\(tabManager.tabs.count) selected=\(tabManager.selectedTabId?.uuidString.prefix(8) ?? "nil") mounted=\(mountedWorkspaceIds.count)")
+                    mosaicDebugLog("startup.recovery tabCount=\(tabManager.tabs.count) selected=\(tabManager.selectedTabId?.uuidString.prefix(8) ?? "nil") mounted=\(mountedWorkspaceIds.count)")
 #endif
                     sentryBreadcrumb("startup.recovery", data: [
                         "tabCount": tabManager.tabs.count,
@@ -2770,11 +2770,11 @@ struct ContentView: View {
 #if DEBUG
             if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.view.selectedChange id=\(snapshot.id) dt=\(debugMsText(dtMs)) selected=\(debugShortWorkspaceId(newValue))"
                 )
             } else {
-                cmuxDebugLog("ws.view.selectedChange id=none selected=\(debugShortWorkspaceId(newValue))")
+                mosaicDebugLog("ws.view.selectedChange id=none selected=\(debugShortWorkspaceId(newValue))")
             }
 #endif
             tabManager.applyWindowBackgroundForSelectedTab()
@@ -2806,11 +2806,11 @@ struct ContentView: View {
 #if DEBUG
             if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.view.hotChange id=\(snapshot.id) dt=\(debugMsText(dtMs)) hot=\(tabManager.isWorkspaceCycleHot ? 1 : 0)"
                 )
             } else {
-                cmuxDebugLog("ws.view.hotChange id=none hot=\(tabManager.isWorkspaceCycleHot ? 1 : 0)")
+                mosaicDebugLog("ws.view.hotChange id=none hot=\(tabManager.isWorkspaceCycleHot ? 1 : 0)")
             }
 #endif
             reconcileMountedWorkspaceIds()
@@ -2995,7 +2995,7 @@ struct ContentView: View {
             let tabId = SidebarDragLifecycleNotification().tabId(from: notification)
             sidebarDraggedTabId = tabId
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.dragState.content tab=\(debugShortWorkspaceId(tabId)) " +
                 "reason=\(SidebarDragLifecycleNotification().reason(from: notification))"
             )
@@ -3094,7 +3094,7 @@ struct ContentView: View {
                 mainWindow: NSApp.mainWindow
             )
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.request observed={\(debugCommandPaletteWindowSummary(observedWindow))} " +
                 "requested={\(debugCommandPaletteWindowSummary(requestedWindow))} " +
                 "shouldHandle=\(shouldHandle ? 1 : 0) presented=\(isCommandPalettePresented ? 1 : 0) " +
@@ -3363,7 +3363,7 @@ struct ContentView: View {
         }
         view = AnyView(view.background(mainWindowAccessor))
 
-        return AnyView(view.cmuxAppearanceColorScheme(appearanceMode))
+        return AnyView(view.mosaicAppearanceColorScheme(appearanceMode))
     }
 
     @MainActor
@@ -3380,7 +3380,7 @@ struct ContentView: View {
         // Native AppKit titlebar dragging steals pane-tab drags in minimal
         // mode. Keep the main window immovable by default; explicit chrome
         // drag zones temporarily enable performDrag for real app moves.
-        configureCmuxMainWindowDragBehavior(window)
+        configureMosaicMainWindowDragBehavior(window)
         window.styleMask.insert(.fullSizeContentView)
 
         // Track this window for fullscreen notifications
@@ -3413,7 +3413,7 @@ struct ContentView: View {
         )
         windowChrome.nativeTitlebarBackdropCoordinator.removeNativeTitlebarBackdrop(in: window)
 #if DEBUG
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_MODE"] == "1" {
+        if ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_MODE"] == "1" {
             AppDelegate.shared?.updateLog.append("ui test window accessor: id=\(windowIdentifier) visible=\(window.isVisible)")
         }
 #endif
@@ -3430,7 +3430,7 @@ struct ContentView: View {
         }
         AppDelegate.shared?.attachUpdateAccessory(to: window)
         AppDelegate.shared?.applyWindowDecorations(to: window)
-        // Let cmux supply the translucent titlebar fills. AppKit's native
+        // Let mosaic supply the translucent titlebar fills. AppKit's native
         // material otherwise blends a lighter strip over the terminal area.
         windowChrome.nativeTitlebarBackdropCoordinator.syncNativeTitlebarBackdrop(
             in: window,
@@ -3444,7 +3444,7 @@ struct ContentView: View {
             sidebarState: sidebarState,
             sidebarSelectionState: sidebarSelectionState,
             fileExplorerState: fileExplorerState,
-            cmuxConfigStore: cmuxConfigStore
+            mosaicConfigStore: mosaicConfigStore
         )
         installFileDropOverlayWhenReady(on: window, tabManager: tabManager)
     }
@@ -3486,14 +3486,14 @@ struct ContentView: View {
             let added = mountedWorkspaceIds.filter { !previousMountedIds.contains($0) }
             if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.mount.reconcile id=\(snapshot.id) dt=\(debugMsText(dtMs)) hot=\(isCycleHot ? 1 : 0) " +
                     "selected=\(debugShortWorkspaceId(effectiveSelectedId)) " +
                     "mounted=\(debugShortWorkspaceIds(mountedWorkspaceIds)) " +
                     "added=\(debugShortWorkspaceIds(added)) removed=\(debugShortWorkspaceIds(removedIds))"
                 )
             } else {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.mount.reconcile id=none hot=\(isCycleHot ? 1 : 0) selected=\(debugShortWorkspaceId(effectiveSelectedId)) " +
                     "mounted=\(debugShortWorkspaceIds(mountedWorkspaceIds))"
                 )
@@ -3534,12 +3534,12 @@ struct ContentView: View {
 #if DEBUG
         if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
             let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.handoff.start id=\(snapshot.id) dt=\(debugMsText(dtMs)) old=\(debugShortWorkspaceId(oldSelectedId)) " +
                 "new=\(debugShortWorkspaceId(newSelectedId))"
             )
         } else {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.handoff.start id=none old=\(debugShortWorkspaceId(oldSelectedId)) new=\(debugShortWorkspaceId(newSelectedId))"
             )
         }
@@ -3549,11 +3549,11 @@ struct ContentView: View {
 #if DEBUG
             if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
                 let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "ws.handoff.fastReady id=\(snapshot.id) dt=\(debugMsText(dtMs)) selected=\(debugShortWorkspaceId(newSelectedId))"
                 )
             } else {
-                cmuxDebugLog("ws.handoff.fastReady id=none selected=\(debugShortWorkspaceId(newSelectedId))")
+                mosaicDebugLog("ws.handoff.fastReady id=none selected=\(debugShortWorkspaceId(newSelectedId))")
             }
 #endif
             completeWorkspaceHandoff(reason: "ready")
@@ -3607,11 +3607,11 @@ struct ContentView: View {
 #if DEBUG
         if let snapshot = tabManager.debugCurrentWorkspaceSwitchSnapshot() {
             let dtMs = (CACurrentMediaTime() - snapshot.startedAt) * 1000
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "ws.handoff.complete id=\(snapshot.id) dt=\(debugMsText(dtMs)) reason=\(reason) retiring=\(debugShortWorkspaceId(retiring))"
             )
         } else {
-            cmuxDebugLog("ws.handoff.complete id=none reason=\(reason) retiring=\(debugShortWorkspaceId(retiring))")
+            mosaicDebugLog("ws.handoff.complete id=none reason=\(reason) retiring=\(debugShortWorkspaceId(retiring))")
         }
 #endif
     }
@@ -3830,7 +3830,7 @@ struct ContentView: View {
         case .singleLine(let accessibilityIdentifier, let focus, let onDeleteBackward):
             TextField(placeholder, text: text)
                 .textFieldStyle(.plain)
-                .cmuxFont(size: 13, weight: .regular)
+                .mosaicFont(size: 13, weight: .regular)
                 .tint(Color(nsColor: sidebarActiveForegroundNSColor(opacity: 1.0)))
                 .focused(focus)
                 .accessibilityIdentifier(accessibilityIdentifier)
@@ -3879,7 +3879,7 @@ struct ContentView: View {
             Divider()
 
             Text(renameInputHintText(target: target))
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -3911,7 +3911,7 @@ struct ContentView: View {
 
         return VStack(spacing: 0) {
             Text(nextName)
-                .cmuxFont(size: 13, weight: .regular)
+                .mosaicFont(size: 13, weight: .regular)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 9)
@@ -3920,7 +3920,7 @@ struct ContentView: View {
             Divider()
 
             Text(renameConfirmHintText(target: target))
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -3969,7 +3969,7 @@ struct ContentView: View {
             Divider()
 
             Text(target.inputHint)
-                .cmuxFont(size: 11)
+                .mosaicFont(size: 11)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -3978,7 +3978,7 @@ struct ContentView: View {
         }
         .onAppear {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.view.appear workspace=\(target.workspaceId.uuidString.prefix(8)) " +
                 "draftLen=\((commandPaletteWorkspaceDescriptionDraft as NSString).length) " +
                 "height=\(String(format: "%.1f", commandPaletteWorkspaceDescriptionHeight)) " +
@@ -3989,7 +3989,7 @@ struct ContentView: View {
         }
         .onChange(of: commandPaletteShouldFocusWorkspaceDescriptionEditor) { _, newValue in
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.focus.binding new=\(newValue ? 1 : 0) " +
                 "mode=\(debugCommandPaletteModeLabel(commandPaletteMode)) " +
                 "window={\(debugCommandPaletteWindowSummary(observedWindow ?? NSApp.keyWindow ?? NSApp.mainWindow))} " +
@@ -4046,7 +4046,7 @@ struct ContentView: View {
         let onEscape: () -> Void
         let onMoveSelection: (Int) -> Void
         let onUnhandledNavigationKey: (NSEvent) -> Bool
-        @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+        @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
 
         @MainActor final class Coordinator: NSObject, NSTextFieldDelegate {
             var parent: CommandPaletteSearchFieldRepresentable
@@ -4248,7 +4248,7 @@ struct ContentView: View {
 
         override func flagsChanged(with event: NSEvent) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.flagsChanged " +
                 "\(debugCommandPaletteKeyEventSummary(event))"
             )
@@ -4259,7 +4259,7 @@ struct ContentView: View {
         override func becomeFirstResponder() -> Bool {
             let becameFirstResponder = super.becomeFirstResponder()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.textView.becomeFirstResponder success=\(becameFirstResponder ? 1 : 0) " +
                 "window={\(debugCommandPaletteWindowSummary(window))} " +
                 "fr=\(debugCommandPaletteResponderSummary(window?.firstResponder))"
@@ -4274,7 +4274,7 @@ struct ContentView: View {
         override func keyDown(with event: NSEvent) {
             if hasMarkedText() {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.keyDown markedText=1 " +
                     "\(debugCommandPaletteKeyEventSummary(event))"
                 )
@@ -4284,7 +4284,7 @@ struct ContentView: View {
             }
             let handled = onHandleKeyEvent?(event, self) == true
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.keyDown handled=\(handled ? 1 : 0) " +
                 "\(debugCommandPaletteKeyEventSummary(event))"
             )
@@ -4298,7 +4298,7 @@ struct ContentView: View {
         override func performKeyEquivalent(with event: NSEvent) -> Bool {
             if hasMarkedText() {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.performKeyEquivalent markedText=1 " +
                     "\(debugCommandPaletteKeyEventSummary(event))"
                 )
@@ -4307,7 +4307,7 @@ struct ContentView: View {
             }
             let handled = onHandleKeyEvent?(event, self) == true
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.performKeyEquivalent handled=\(handled ? 1 : 0) " +
                 "\(debugCommandPaletteKeyEventSummary(event))"
             )
@@ -4317,7 +4317,7 @@ struct ContentView: View {
             }
             let result = super.performKeyEquivalent(with: event)
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.performKeyEquivalent superResult=\(result ? 1 : 0) " +
                 "\(debugCommandPaletteKeyEventSummary(event))"
             )
@@ -4327,7 +4327,7 @@ struct ContentView: View {
 
         override func doCommand(by commandSelector: Selector) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.doCommand selector=\(NSStringFromSelector(commandSelector)) " +
                 "len=\((string as NSString).length) " +
                 "sel=\(selectedRange().location):\(selectedRange().length)"
@@ -4338,7 +4338,7 @@ struct ContentView: View {
 
         override func insertNewline(_ sender: Any?) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.insertNewline " +
                 "len=\((string as NSString).length) " +
                 "sel=\(selectedRange().location):\(selectedRange().length)"
@@ -4349,7 +4349,7 @@ struct ContentView: View {
 
         override func insertLineBreak(_ sender: Any?) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.insertLineBreak " +
                 "len=\((string as NSString).length) " +
                 "sel=\(selectedRange().location):\(selectedRange().length)"
@@ -4360,7 +4360,7 @@ struct ContentView: View {
 
         override func insertNewlineIgnoringFieldEditor(_ sender: Any?) {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.insertNewlineIgnoringFieldEditor " +
                 "len=\((string as NSString).length) " +
                 "sel=\(selectedRange().location):\(selectedRange().length)"
@@ -4495,20 +4495,20 @@ struct ContentView: View {
         func focusIfNeeded() {
             guard let window else {
 #if DEBUG
-                cmuxDebugLog("palette.wsDescription.editor.focusIfNeeded window=nil")
+                mosaicDebugLog("palette.wsDescription.editor.focusIfNeeded window=nil")
 #endif
                 return
             }
             guard window.firstResponder !== textView else {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.focusIfNeeded alreadyFocused window={\(debugCommandPaletteWindowSummary(window))}"
                 )
 #endif
                 return
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.focusIfNeeded attempt window={\(debugCommandPaletteWindowSummary(window))} " +
                 "frBefore=\(debugCommandPaletteResponderSummary(window.firstResponder))"
             )
@@ -4517,7 +4517,7 @@ struct ContentView: View {
             let length = (textView.string as NSString).length
             textView.setSelectedRange(NSRange(location: length, length: 0))
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.focusIfNeeded result didFocus=\(didFocus ? 1 : 0) " +
                 "window={\(debugCommandPaletteWindowSummary(window))} " +
                 "frAfter=\(debugCommandPaletteResponderSummary(window.firstResponder))"
@@ -4576,7 +4576,7 @@ struct ContentView: View {
             let newlineCount = textView.string.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.textDidChange len=\((textView.string as NSString).length) " +
                 "newlines=\(newlineCount)"
             )
@@ -4602,7 +4602,7 @@ struct ContentView: View {
         let maxHeight: CGFloat
         let onSubmit: (String) -> Void
         let onEscape: () -> Void
-        @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+        @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
 
         final class Coordinator: NSObject, NSTextViewDelegate {
             var parent: CommandPaletteMultilineTextEditorRepresentable
@@ -4615,7 +4615,7 @@ struct ContentView: View {
 
             func textDidBeginEditing(_ notification: Notification) {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.beginEditing focus=\(parent.isFocused ? 1 : 0) " +
                     "responder=\(debugCommandPaletteResponderSummary(notification.object as? NSResponder))"
                 )
@@ -4635,7 +4635,7 @@ struct ContentView: View {
 
             func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.command selector=\(NSStringFromSelector(commandSelector)) " +
                     "len=\((textView.string as NSString).length) " +
                     "sel=\(textView.selectedRange().location):\(textView.selectedRange().length)"
@@ -4646,7 +4646,7 @@ struct ContentView: View {
 
             func handleDidBecomeFirstResponder() {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.didBecomeFirstResponder focus=\(parent.isFocused ? 1 : 0)"
                 )
 #endif
@@ -4670,7 +4670,7 @@ struct ContentView: View {
                     .subtracting([.numericPad, .function, .capsLock])
 
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.handleKeyEvent " +
                     "\(debugCommandPaletteKeyEventSummary(event)) " +
                     "normalized=\(debugCommandPaletteModifierFlagsSummary(normalizedFlags))"
@@ -4681,8 +4681,8 @@ struct ContentView: View {
                     if normalizedFlags.isEmpty {
                         let currentText = editor?.string ?? parent.text
 #if DEBUG
-                        cmuxDebugLog("palette.wsDescription.editor.handleKeyEvent action=submit")
-                        cmuxDebugLog(
+                        mosaicDebugLog("palette.wsDescription.editor.handleKeyEvent action=submit")
+                        mosaicDebugLog(
                             "palette.wsDescription.editor.handleKeyEvent submitText " +
                             "len=\((currentText as NSString).length) " +
                             "text=\"\(debugCommandPaletteTextPreview(currentText))\""
@@ -4696,7 +4696,7 @@ struct ContentView: View {
                     }
                     if normalizedFlags == [.shift] {
 #if DEBUG
-                        cmuxDebugLog("palette.wsDescription.editor.handleKeyEvent action=allowShiftReturn")
+                        mosaicDebugLog("palette.wsDescription.editor.handleKeyEvent action=allowShiftReturn")
 #endif
                         return false
                     }
@@ -4704,14 +4704,14 @@ struct ContentView: View {
 
                 if event.keyCode == 53, normalizedFlags.isEmpty {
 #if DEBUG
-                    cmuxDebugLog("palette.wsDescription.editor.handleKeyEvent action=escape")
+                    mosaicDebugLog("palette.wsDescription.editor.handleKeyEvent action=escape")
 #endif
                     parent.onEscape()
                     return true
                 }
 
 #if DEBUG
-                cmuxDebugLog("palette.wsDescription.editor.handleKeyEvent action=passThrough")
+                mosaicDebugLog("palette.wsDescription.editor.handleKeyEvent action=passThrough")
 #endif
                 return false
             }
@@ -4741,7 +4741,7 @@ struct ContentView: View {
             }
             view.refreshMetrics()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.editor.make focus=\(isFocused ? 1 : 0) " +
                 "textLen=\((text as NSString).length) " +
                 "height=\(String(format: "%.1f", measuredHeight))"
@@ -4771,7 +4771,7 @@ struct ContentView: View {
             guard let window = nsView.window else {
 #if DEBUG
                 if isFocused {
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "palette.wsDescription.editor.update waitingForWindow focus=1 " +
                         "pending=\(context.coordinator.pendingFocusRequest ? 1 : 0)"
                     )
@@ -4782,7 +4782,7 @@ struct ContentView: View {
             let isFirstResponder = window.firstResponder === nsView.textView
 #if DEBUG
             if isFocused || context.coordinator.pendingFocusRequest {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.update focus=\(isFocused ? 1 : 0) " +
                     "isFirstResponder=\(isFirstResponder ? 1 : 0) " +
                     "pending=\(context.coordinator.pendingFocusRequest ? 1 : 0) " +
@@ -4794,7 +4794,7 @@ struct ContentView: View {
             if isFocused, !isFirstResponder, !context.coordinator.pendingFocusRequest {
                 context.coordinator.pendingFocusRequest = true
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "palette.wsDescription.editor.update scheduleFocus window={\(debugCommandPaletteWindowSummary(window))} " +
                     "fr=\(debugCommandPaletteResponderSummary(window.firstResponder))"
                 )
@@ -5398,7 +5398,7 @@ struct ContentView: View {
     private func commandPaletteCommandsFingerprint(commandsContext: CommandPaletteCommandsContext) -> Int {
         var hasher = Hasher()
         hasher.combine(commandsContext.snapshot.fingerprint())
-        hasher.combine(cmuxConfigStore.configRevision)
+        hasher.combine(mosaicConfigStore.configRevision)
         return hasher.finalize()
     }
 
@@ -5473,7 +5473,7 @@ struct ContentView: View {
             switch trailingLabel.style {
             case .shortcut:
                 Text(trailingLabel.text)
-                    .cmuxFont(size: 11, weight: .medium)
+                    .mosaicFont(size: 11, weight: .medium)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
@@ -5483,7 +5483,7 @@ struct ContentView: View {
                     )
             case .kind:
                 Text(trailingLabel.text)
-                    .cmuxFont(size: 11, weight: .regular)
+                    .mosaicFont(size: 11, weight: .regular)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -5500,7 +5500,7 @@ struct ContentView: View {
                 title,
                 matchedIndices: matchedIndices
             )
-                .cmuxFont(size: 13, weight: .regular)
+                .mosaicFont(size: 13, weight: .regular)
                 .lineLimit(1)
             Spacer()
             commandPaletteRenderTrailingLabelView(trailingLabel)
@@ -6160,7 +6160,7 @@ struct ContentView: View {
                 supportsFork = false
             }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.forkProbe panel=\(panelId.uuidString.prefix(5)) " +
                     "indexSnapshot=\(indexSnapshot != nil ? 1 : 0) " +
                     "fallbackSnapshot=\(fallbackSnapshot != nil ? 1 : 0) " +
@@ -6256,7 +6256,7 @@ struct ContentView: View {
     private func commandPaletteCommandsContext(
         terminalOpenTargets: Set<TerminalDirectoryOpenTarget>
     ) -> CommandPaletteCommandsContext {
-        let cliInstalledInPATH = AppDelegate.shared?.isCmuxCLIInstalledInPATH() ?? false
+        let cliInstalledInPATH = AppDelegate.shared?.isMosaicCLIInstalledInPATH() ?? false
         var snapshot = commandPaletteContextSnapshot(terminalOpenTargets: terminalOpenTargets)
         snapshot.setBool(CommandPaletteContextKeys.cliInstalledInPATH, cliInstalledInPATH)
         snapshot.setBool(
@@ -6282,7 +6282,7 @@ struct ContentView: View {
 
         for contribution in contributions {
             let configuredPaletteAction = commandPaletteConfigActionID(for: contribution.commandId)
-                .flatMap { cmuxConfigStore.resolvedAction(id: $0) }
+                .flatMap { mosaicConfigStore.resolvedAction(id: $0) }
             if let configuredPaletteAction, !configuredPaletteAction.palette {
                 continue
             }
@@ -6332,13 +6332,13 @@ struct ContentView: View {
     private func commandPaletteConfigActionID(for commandId: String) -> String? {
         switch commandId {
         case "palette.newTerminalTab":
-            return CmuxSurfaceTabBarBuiltInAction.newTerminal.configID
+            return MosaicSurfaceTabBarBuiltInAction.newTerminal.configID
         case "palette.newBrowserTab":
-            return CmuxSurfaceTabBarBuiltInAction.newBrowser.configID
+            return MosaicSurfaceTabBarBuiltInAction.newBrowser.configID
         case "palette.terminalSplitRight":
-            return CmuxSurfaceTabBarBuiltInAction.splitRight.configID
+            return MosaicSurfaceTabBarBuiltInAction.splitRight.configID
         case "palette.terminalSplitDown":
-            return CmuxSurfaceTabBarBuiltInAction.splitDown.configID
+            return MosaicSurfaceTabBarBuiltInAction.splitDown.configID
         default:
             return nil
         }
@@ -6348,11 +6348,11 @@ struct ContentView: View {
         for contribution: CommandPaletteCommandContribution,
         context: CommandPaletteContextSnapshot
     ) -> String? {
-        if let configuredShortcut = cmuxConfigStore.resolvedAction(id: contribution.commandId)?.shortcut {
+        if let configuredShortcut = mosaicConfigStore.resolvedAction(id: contribution.commandId)?.shortcut {
             return configuredShortcut.displayString
         }
         if let configuredPaletteAction = commandPaletteConfigActionID(for: contribution.commandId),
-           let configuredShortcut = cmuxConfigStore.resolvedAction(id: configuredPaletteAction)?.shortcut {
+           let configuredShortcut = mosaicConfigStore.resolvedAction(id: configuredPaletteAction)?.shortcut {
             return configuredShortcut.displayString
         }
         if let action = Self.commandPaletteShortcutAction(forCommandID: contribution.commandId) {
@@ -6626,7 +6626,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.installCLI",
-                title: constant(String(localized: "command.installCLI.title", defaultValue: "Shell Command: Install 'cmux' in PATH")),
+                title: constant(String(localized: "command.installCLI.title", defaultValue: "Shell Command: Install 'mosaic' in PATH")),
                 subtitle: constant(String(localized: "command.installCLI.subtitle", defaultValue: "CLI")),
                 keywords: ["install", "cli", "path", "shell", "command", "symlink"],
                 when: { !$0.bool(CommandPaletteContextKeys.cliInstalledInPATH) }
@@ -6635,7 +6635,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.uninstallCLI",
-                title: constant(String(localized: "command.uninstallCLI.title", defaultValue: "Shell Command: Uninstall 'cmux' from PATH")),
+                title: constant(String(localized: "command.uninstallCLI.title", defaultValue: "Shell Command: Uninstall 'mosaic' from PATH")),
                 subtitle: constant(String(localized: "command.uninstallCLI.subtitle", defaultValue: "CLI")),
                 keywords: ["uninstall", "remove", "cli", "path", "shell", "command", "symlink"],
                 when: { $0.bool(CommandPaletteContextKeys.cliInstalledInPATH) }
@@ -6748,8 +6748,8 @@ struct ContentView: View {
         // "Sidebar: <provider>" switch commands for each available view. The
         // built-in views are always offered; `descriptors` adds the hosted
         // extension sidebar only while the experimental Extensions beta is on.
-        for descriptor in CmuxExtensionSidebarSelection.descriptors {
-            let title = CmuxExtensionSidebarSelection.localizedTitle(for: descriptor)
+        for descriptor in MosaicExtensionSidebarSelection.descriptors {
+            let title = MosaicExtensionSidebarSelection.localizedTitle(for: descriptor)
             let titleFormat = String(localized: "command.switchExtensionSidebar.title", defaultValue: "Sidebar: %@")
             contributions.append(
                 CommandPaletteCommandContribution(
@@ -6844,10 +6844,10 @@ struct ContentView: View {
         )
         contributions.append(
             CommandPaletteCommandContribution(
-                commandId: "palette.openCmuxSettingsFile",
-                title: constant(String(localized: "settings.settingsJSON.openFile", defaultValue: "Open cmux.json")),
-                subtitle: constant(String(localized: "command.cmuxConfig.subtitle", defaultValue: "cmux.json")),
-                keywords: ["open", "cmux", "json", "config", "configuration", "settings", "file", "editor", "dotfile"]
+                commandId: "palette.openMosaicSettingsFile",
+                title: constant(String(localized: "settings.settingsJSON.openFile", defaultValue: "Open mosaic.json")),
+                subtitle: constant(String(localized: "command.mosaicConfig.subtitle", defaultValue: "mosaic.json")),
+                keywords: ["open", "mosaic", "json", "config", "configuration", "settings", "file", "editor", "dotfile"]
             )
         )
         contributions.append(
@@ -6926,7 +6926,7 @@ struct ContentView: View {
                 commandId: "palette.restartSocketListener",
                 title: constant(String(localized: "command.restartSocketListener.title", defaultValue: "Restart CLI Listener")),
                 subtitle: constant(String(localized: "command.restartSocketListener.subtitle", defaultValue: "Global")),
-                keywords: ["restart", "socket", "listener", "cli", "cmux", "control"]
+                keywords: ["restart", "socket", "listener", "cli", "mosaic", "control"]
             )
         )
         contributions.append(
@@ -7712,23 +7712,23 @@ struct ContentView: View {
             )
         )
 
-        let cmuxConfigDefaultSubtitle = String(localized: "command.cmuxConfig.subtitle", defaultValue: "cmux.json")
-        for issue in cmuxConfigStore.configurationIssues {
+        let mosaicConfigDefaultSubtitle = String(localized: "command.mosaicConfig.subtitle", defaultValue: "mosaic.json")
+        for issue in mosaicConfigStore.configurationIssues {
             contributions.append(
                 CommandPaletteCommandContribution(
-                    commandId: commandPaletteCmuxConfigIssueCommandID(issue),
-                    title: constant(commandPaletteCmuxConfigIssueTitle(issue)),
-                    subtitle: constant(commandPaletteCmuxConfigIssueSubtitle(issue)),
-                    keywords: ["cmux", "config", "json", "schema", "error", "warning"]
+                    commandId: commandPaletteMosaicConfigIssueCommandID(issue),
+                    title: constant(commandPaletteMosaicConfigIssueTitle(issue)),
+                    subtitle: constant(commandPaletteMosaicConfigIssueSubtitle(issue)),
+                    keywords: ["mosaic", "config", "json", "schema", "error", "warning"]
                 )
             )
         }
-        for action in cmuxConfigStore.paletteCustomActions() {
-            let actionTitle = sanitizeCmuxConfigPaletteText(action.title)
+        for action in mosaicConfigStore.paletteCustomActions() {
+            let actionTitle = sanitizeMosaicConfigPaletteText(action.title)
             let subtitleText = action.subtitle
-                .map { sanitizeCmuxConfigPaletteText($0) }
+                .map { sanitizeMosaicConfigPaletteText($0) }
                 .flatMap { $0.isEmpty ? nil : $0 }
-                ?? cmuxConfigDefaultSubtitle
+                ?? mosaicConfigDefaultSubtitle
             contributions.append(
                 CommandPaletteCommandContribution(
                     commandId: action.id,
@@ -7742,7 +7742,7 @@ struct ContentView: View {
         return contributions
     }
 
-    private func sanitizeCmuxConfigPaletteText(_ text: String) -> String {
+    private func sanitizeMosaicConfigPaletteText(_ text: String) -> String {
         let dangerous: Set<Unicode.Scalar> = [
             "\u{200B}", "\u{200C}", "\u{200D}", "\u{200E}", "\u{200F}",
             "\u{202A}", "\u{202B}", "\u{202C}", "\u{202D}", "\u{202E}",
@@ -7753,13 +7753,13 @@ struct ContentView: View {
         return filtered.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func commandPaletteCmuxConfigIssueCommandID(_ issue: CmuxConfigIssue) -> String {
+    private func commandPaletteMosaicConfigIssueCommandID(_ issue: MosaicConfigIssue) -> String {
         var hash: UInt64 = 1_469_598_103_934_665_603
         for byte in issue.id.utf8 {
             hash ^= UInt64(byte)
             hash &*= 1_099_511_628_211
         }
-        return "palette.cmuxConfig.issue.\(String(hash, radix: 16))"
+        return "palette.mosaicConfig.issue.\(String(hash, radix: 16))"
     }
 
     private func commandPaletteWorkspaceColorCommandID(_ colorName: String) -> String {
@@ -7780,59 +7780,59 @@ struct ContentView: View {
         return "palette.extensionSidebar.\(String(hash, radix: 16))"
     }
 
-    private func commandPaletteCmuxConfigIssueTitle(_ issue: CmuxConfigIssue) -> String {
+    private func commandPaletteMosaicConfigIssueTitle(_ issue: MosaicConfigIssue) -> String {
         switch issue.kind {
         case .schemaError:
             return String(
-                localized: "command.cmuxConfig.issue.schemaError.title",
-                defaultValue: "cmux.json Schema Error"
+                localized: "command.mosaicConfig.issue.schemaError.title",
+                defaultValue: "mosaic.json Schema Error"
             )
         default:
             return String(
-                localized: "command.cmuxConfig.issue.warning.title",
-                defaultValue: "cmux.json Configuration Warning"
+                localized: "command.mosaicConfig.issue.warning.title",
+                defaultValue: "mosaic.json Configuration Warning"
             )
         }
     }
 
-    private func commandPaletteCmuxConfigIssueSubtitle(_ issue: CmuxConfigIssue) -> String {
+    private func commandPaletteMosaicConfigIssueSubtitle(_ issue: MosaicConfigIssue) -> String {
         let rawPath = issue.sourcePath.map {
             NSString(string: $0).abbreviatingWithTildeInPath
         } ?? issue.settingName
-        let path = sanitizeCmuxConfigPaletteText(rawPath)
-        let detail = sanitizeCmuxConfigPaletteText(commandPaletteCmuxConfigIssueDetail(issue))
+        let path = sanitizeMosaicConfigPaletteText(rawPath)
+        let detail = sanitizeMosaicConfigPaletteText(commandPaletteMosaicConfigIssueDetail(issue))
         guard !detail.isEmpty else { return path }
         let format = String(
-            localized: "command.cmuxConfig.issue.subtitle",
+            localized: "command.mosaicConfig.issue.subtitle",
             defaultValue: "%@: %@"
         )
         return String(format: format, path, detail)
     }
 
-    private func commandPaletteCmuxConfigIssueDetail(_ issue: CmuxConfigIssue) -> String {
+    private func commandPaletteMosaicConfigIssueDetail(_ issue: MosaicConfigIssue) -> String {
         switch issue.kind {
         case .schemaError:
             let format = String(
-                localized: "command.cmuxConfig.issue.schemaError.detail",
+                localized: "command.mosaicConfig.issue.schemaError.detail",
                 defaultValue: "%@"
             )
             let fallback = String(
-                localized: "command.cmuxConfig.issue.schemaError.fallback",
-                defaultValue: "Invalid cmux.json"
+                localized: "command.mosaicConfig.issue.schemaError.fallback",
+                defaultValue: "Invalid mosaic.json"
             )
             return String(format: format, issue.message ?? fallback)
         case .newWorkspaceActionNotFound:
-            let format = String(localized: "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail", defaultValue: "%@ references missing action '%@'")
+            let format = String(localized: "command.mosaicConfig.issue.newWorkspaceActionNotFound.detail", defaultValue: "%@ references missing action '%@'")
             return String(format: format, issue.settingName, issue.commandName ?? "")
         case .newWorkspaceCommandNotFound:
             let format = String(
-                localized: "command.cmuxConfig.issue.newWorkspaceCommandNotFound.detail",
+                localized: "command.mosaicConfig.issue.newWorkspaceCommandNotFound.detail",
                 defaultValue: "%@ references missing command '%@'"
             )
             return String(format: format, issue.settingName, issue.commandName ?? "")
         case .newWorkspaceCommandRequiresWorkspace:
             let format = String(
-                localized: "command.cmuxConfig.issue.newWorkspaceCommandRequiresWorkspace.detail",
+                localized: "command.mosaicConfig.issue.newWorkspaceCommandRequiresWorkspace.detail",
                 defaultValue: "%@ '%@' must reference a workspace command"
             )
             return String(format: format, issue.settingName, issue.commandName ?? "")
@@ -7885,18 +7885,18 @@ struct ContentView: View {
             appDelegate.openNewMainWindow(preferredWindow: appDelegate.mainWindow(for: windowId))
         }
         registry.register(commandId: "palette.installCLI") {
-            AppDelegate.shared?.installCmuxCLIInPath(nil)
+            AppDelegate.shared?.installMosaicCLIInPath(nil)
         }
         registry.register(commandId: "palette.uninstallCLI") {
-            AppDelegate.shared?.uninstallCmuxCLIInPath(nil)
+            AppDelegate.shared?.uninstallMosaicCLIInPath(nil)
         }
         registry.register(commandId: "palette.newTerminalTab") {
-            if !executeConfiguredAction(id: CmuxSurfaceTabBarBuiltInAction.newTerminal.configID) {
+            if !executeConfiguredAction(id: MosaicSurfaceTabBarBuiltInAction.newTerminal.configID) {
                 tabManager.newSurface()
             }
         }
         registry.register(commandId: "palette.newBrowserTab") {
-            if executeConfiguredAction(id: CmuxSurfaceTabBarBuiltInAction.newBrowser.configID) {
+            if executeConfiguredAction(id: MosaicSurfaceTabBarBuiltInAction.newBrowser.configID) {
                 return
             }
             // Let command-palette dismissal complete first so omnibar focus
@@ -7943,9 +7943,9 @@ struct ContentView: View {
         // extension sidebar) regardless of the beta flag, so a contribution that
         // was visible when the flag was on still resolves after a runtime flip.
         // Visibility is gated by `descriptors`; the handler set is the superset.
-        for descriptor in CmuxExtensionSidebarSelection.allDescriptors {
+        for descriptor in MosaicExtensionSidebarSelection.allDescriptors {
             registry.register(commandId: commandPaletteExtensionSidebarCommandID(descriptor.id)) {
-                CmuxExtensionSidebarSelection.setProviderId(descriptor.id)
+                MosaicExtensionSidebarSelection.setProviderId(descriptor.id)
             }
         }
         for mode in RightSidebarMode.allCases {
@@ -7993,32 +7993,32 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.openSettings") {
 #if DEBUG
-            cmuxDebugLog("palette.openSettings.invoke")
+            mosaicDebugLog("palette.openSettings.invoke")
 #endif
             if let appDelegate = AppDelegate.shared {
                 appDelegate.openPreferencesWindow(debugSource: "palette.openSettings")
             } else {
 #if DEBUG
-                cmuxDebugLog("palette.openSettings.missingAppDelegate fallback=1")
+                mosaicDebugLog("palette.openSettings.missingAppDelegate fallback=1")
 #endif
                 AppDelegate.presentPreferencesWindow()
             }
         }
-        registry.register(commandId: "palette.openCmuxSettingsFile") {
+        registry.register(commandId: "palette.openMosaicSettingsFile") {
 #if DEBUG
-            cmuxDebugLog("palette.openCmuxSettingsFile.invoke")
+            mosaicDebugLog("palette.openMosaicSettingsFile.invoke")
 #endif
-            openCmuxSettingsFileInEditor()
+            openMosaicSettingsFileInEditor()
         }
         registry.register(commandId: "palette.openGhosttySettings") {
 #if DEBUG
-            cmuxDebugLog("palette.openGhosttySettings.invoke")
+            mosaicDebugLog("palette.openGhosttySettings.invoke")
 #endif
             GhosttyApp.shared.openConfigurationInTextEdit()
         }
         registry.register(commandId: "palette.mobileConnect") {
 #if DEBUG
-            cmuxDebugLog("palette.mobileConnect.invoke")
+            mosaicDebugLog("palette.mobileConnect.invoke")
 #endif
             MobilePairingWindowController.shared.show()
         }
@@ -8348,7 +8348,7 @@ struct ContentView: View {
             }
         }
         registry.register(commandId: "palette.terminalSplitRight") {
-            if !executeConfiguredAction(id: CmuxSurfaceTabBarBuiltInAction.splitRight.configID) {
+            if !executeConfiguredAction(id: MosaicSurfaceTabBarBuiltInAction.splitRight.configID) {
                 tabManager.createSplit(direction: .right)
             }
         }
@@ -8371,7 +8371,7 @@ struct ContentView: View {
             forkFocusedAgentConversationToNewWorkspace()
         }
         registry.register(commandId: "palette.terminalSplitDown") {
-            if !executeConfiguredAction(id: CmuxSurfaceTabBarBuiltInAction.splitDown.configID) {
+            if !executeConfiguredAction(id: MosaicSurfaceTabBarBuiltInAction.splitDown.configID) {
                 tabManager.createSplit(direction: .down)
             }
         }
@@ -8389,18 +8389,18 @@ struct ContentView: View {
         registry.register(commandId: "palette.equalizeSplits") {
             if let workspace = tabManager.selectedWorkspace, !tabManager.equalizeSplits(tabId: workspace.id) {
 #if DEBUG
-                cmuxDebugLog("palette.equalizeSplits result=noSplitOrFailed workspaceId=\(workspace.id)")
+                mosaicDebugLog("palette.equalizeSplits result=noSplitOrFailed workspaceId=\(workspace.id)")
 #endif
             }
         }
 
-        for issue in cmuxConfigStore.configurationIssues {
+        for issue in mosaicConfigStore.configurationIssues {
             let captured = issue
-            registry.register(commandId: commandPaletteCmuxConfigIssueCommandID(issue)) {
-                openCmuxConfigIssue(captured)
+            registry.register(commandId: commandPaletteMosaicConfigIssueCommandID(issue)) {
+                openMosaicConfigIssue(captured)
             }
         }
-        for action in cmuxConfigStore.paletteCustomActions() {
+        for action in mosaicConfigStore.paletteCustomActions() {
             let captured = action
             registry.register(commandId: action.id) {
                 executeConfiguredAction(captured)
@@ -8408,7 +8408,7 @@ struct ContentView: View {
         }
     }
 
-    private func openCmuxConfigIssue(_ issue: CmuxConfigIssue) {
+    private func openMosaicConfigIssue(_ issue: MosaicConfigIssue) {
         guard let sourcePath = issue.sourcePath,
               FileManager.default.fileExists(atPath: sourcePath) else {
             NSSound.beep()
@@ -8419,22 +8419,22 @@ struct ContentView: View {
 
     @discardableResult
     private func executeConfiguredAction(id: String) -> Bool {
-        guard let action = cmuxConfigStore.resolvedAction(id: id) else {
+        guard let action = mosaicConfigStore.resolvedAction(id: id) else {
             return false
         }
         return executeConfiguredAction(action)
     }
 
     @discardableResult
-    private func executeConfiguredAction(_ action: CmuxResolvedConfigAction) -> Bool {
+    private func executeConfiguredAction(_ action: MosaicResolvedConfigAction) -> Bool {
         let baseCwd = configuredActionBaseCwd()
-        return CmuxConfigExecutor.execute(
+        return MosaicConfigExecutor.execute(
             action: action,
-            commands: cmuxConfigStore.loadedCommands,
-            commandSourcePaths: cmuxConfigStore.commandSourcePaths,
+            commands: mosaicConfigStore.loadedCommands,
+            commandSourcePaths: mosaicConfigStore.commandSourcePaths,
             tabManager: tabManager,
             baseCwd: baseCwd,
-            globalConfigPath: cmuxConfigStore.globalConfigPath
+            globalConfigPath: mosaicConfigStore.globalConfigPath
         )
     }
 
@@ -8767,7 +8767,7 @@ struct ContentView: View {
             let newlineCount = commandPaletteWorkspaceDescriptionDraft.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.submit.request workspace=\(target.workspaceId.uuidString.prefix(8)) " +
                 "draftLen=\((commandPaletteWorkspaceDescriptionDraft as NSString).length) " +
                 "newlines=\(newlineCount)"
@@ -8782,7 +8782,7 @@ struct ContentView: View {
 
     private func runCommandPaletteCommand(_ command: CommandPaletteCommand) {
 #if DEBUG
-        cmuxDebugLog("palette.run commandId=\(command.id) dismissOnRun=\(command.dismissOnRun ? 1 : 0)")
+        mosaicDebugLog("palette.run commandId=\(command.id) dismissOnRun=\(command.dismissOnRun ? 1 : 0)")
 #endif
         let postRunFocusTarget = commandPalettePostRunFocusTarget(for: command)
         recordCommandPaletteUsage(command.id)
@@ -8866,7 +8866,7 @@ struct ContentView: View {
 
     private func openCommandPaletteWorkspaceDescriptionInput() {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.open begin presented=\(isCommandPalettePresented ? 1 : 0) " +
             "mode=\(debugCommandPaletteModeLabel(commandPaletteMode)) " +
             "window={\(debugCommandPaletteWindowSummary(observedWindow ?? NSApp.keyWindow ?? NSApp.mainWindow))}"
@@ -8877,7 +8877,7 @@ struct ContentView: View {
         }
         beginWorkspaceDescriptionFlow()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.open end presented=\(isCommandPalettePresented ? 1 : 0) " +
             "mode=\(debugCommandPaletteModeLabel(commandPaletteMode)) " +
             "focusFlag=\(commandPaletteShouldFocusWorkspaceDescriptionEditor ? 1 : 0)"
@@ -9088,7 +9088,7 @@ struct ContentView: View {
             let newlineCount = commandPaletteWorkspaceDescriptionDraft.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.dismiss workspace=\(target.workspaceId.uuidString.prefix(8)) " +
                 "restoreFocus=\(restoreFocus ? 1 : 0) " +
                 "draftLen=\((commandPaletteWorkspaceDescriptionDraft as NSString).length) " +
@@ -9149,12 +9149,12 @@ struct ContentView: View {
         let clickedFocusTarget = commandPaletteBackdropFocusTarget(atContentPoint: contentPoint)
 #if DEBUG
         if let clickedFocusTarget {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.dismiss.backdrop focusTarget panel=\(clickedFocusTarget.panelId.uuidString.prefix(5)) " +
                 "workspace=\(clickedFocusTarget.workspaceId.uuidString.prefix(5)) intent=\(debugCommandPaletteFocusIntent(clickedFocusTarget.intent))"
             )
         } else {
-            cmuxDebugLog("palette.dismiss.backdrop focusTarget=nil")
+            mosaicDebugLog("palette.dismiss.backdrop focusTarget=nil")
         }
 #endif
         dismissCommandPalette(restoreFocus: true, preferredFocusTarget: clickedFocusTarget)
@@ -9202,7 +9202,7 @@ struct ContentView: View {
     }
 
     private func commandPaletteBackdropFocusTarget(for responder: NSResponder) -> CommandPaletteRestoreFocusTarget? {
-        if let terminalView = cmuxOwningGhosttyView(for: responder),
+        if let terminalView = mosaicOwningGhosttyView(for: responder),
            let workspaceId = terminalView.tabId,
            let panelId = terminalView.terminalSurface?.id,
            tabManager.tabs.contains(where: { $0.id == workspaceId }) {
@@ -9382,7 +9382,7 @@ struct ContentView: View {
 
     private func resetCommandPaletteWorkspaceDescriptionFocus() {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.focus.reset schedule presented=\(isCommandPalettePresented ? 1 : 0) " +
             "mode=\(debugCommandPaletteModeLabel(commandPaletteMode)) " +
             "focusFlag=\(commandPaletteShouldFocusWorkspaceDescriptionEditor ? 1 : 0)"
@@ -9390,7 +9390,7 @@ struct ContentView: View {
 #endif
         DispatchQueue.main.async {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.focus.reset apply.before search=\(isCommandPaletteSearchFocused ? 1 : 0) " +
                 "rename=\(isCommandPaletteRenameFocused ? 1 : 0) " +
                 "editor=\(commandPaletteShouldFocusWorkspaceDescriptionEditor ? 1 : 0) " +
@@ -9403,7 +9403,7 @@ struct ContentView: View {
             commandPaletteShouldFocusWorkspaceDescriptionEditor = true
             commandPalettePendingTextSelectionBehavior = nil
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.focus.reset apply.after search=\(isCommandPaletteSearchFocused ? 1 : 0) " +
                 "rename=\(isCommandPaletteRenameFocused ? 1 : 0) " +
                 "editor=\(commandPaletteShouldFocusWorkspaceDescriptionEditor ? 1 : 0) " +
@@ -9566,7 +9566,7 @@ struct ContentView: View {
 #if DEBUG
         guard !didApplyUITestSidebarSelection else { return }
         let env = ProcessInfo.processInfo.environment
-        guard let rawValue = env["CMUX_UI_TEST_SIDEBAR_SELECTED_WORKSPACE_INDICES"]?
+        guard let rawValue = env["MOSAIC_UI_TEST_SIDEBAR_SELECTED_WORKSPACE_INDICES"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !rawValue.isEmpty else {
             return
@@ -9650,7 +9650,7 @@ struct ContentView: View {
 
     private func startWorkspaceDescriptionFlow(_ target: CommandPaletteWorkspaceDescriptionTarget) {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.flow.start workspace=\(target.workspaceId.uuidString.prefix(8)) " +
             "descLen=\((target.currentDescription as NSString).length) " +
             "presented=\(isCommandPalettePresented ? 1 : 0) " +
@@ -9663,7 +9663,7 @@ struct ContentView: View {
         commandPaletteMode = .workspaceDescriptionInput(target)
         resetCommandPaletteWorkspaceDescriptionFocus()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.flow.armed workspace=\(target.workspaceId.uuidString.prefix(8)) " +
             "height=\(String(format: "%.1f", commandPaletteWorkspaceDescriptionHeight)) " +
             "modeAfter=\(debugCommandPaletteModeLabel(commandPaletteMode))"
@@ -9708,7 +9708,7 @@ struct ContentView: View {
         let newlineCount = proposedDescription.reduce(into: 0) { count, character in
             if character == "\n" { count += 1 }
         }
-        cmuxDebugLog(
+        mosaicDebugLog(
             "palette.wsDescription.apply.begin workspace=\(target.workspaceId.uuidString.prefix(8)) " +
             "proposedLen=\((proposedDescription as NSString).length) " +
             "newlines=\(newlineCount) " +
@@ -9722,7 +9722,7 @@ struct ContentView: View {
             let persistedNewlineCount = persisted.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "palette.wsDescription.apply.end workspace=\(target.workspaceId.uuidString.prefix(8)) " +
                 "persistedLen=\((persisted as NSString).length) " +
                 "persistedNewlines=\(persistedNewlineCount) " +
@@ -9757,7 +9757,7 @@ struct ContentView: View {
         guard !pullRequests.isEmpty else { return false }
 
         var openedCount = 0
-        if BrowserLinkOpenSettings.openSidebarPullRequestLinksInCmuxBrowser() {
+        if BrowserLinkOpenSettings.openSidebarPullRequestLinksInMosaicBrowser() {
             for pullRequest in pullRequests {
                 if tabManager.openBrowser(url: pullRequest.url, insertAtEnd: true) != nil {
                     openedCount += 1
@@ -9884,8 +9884,8 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
     let showsGitBranchIcon: Bool
     let showsSSH: Bool
     let makesPullRequestsClickable: Bool
-    let openPullRequestLinksInCmuxBrowser: Bool
-    let openPortLinksInCmuxBrowser: Bool
+    let openPullRequestLinksInMosaicBrowser: Bool
+    let openPortLinksInMosaicBrowser: Bool
     let showsNotificationMessage: Bool
     let activeTabIndicatorStyle: WorkspaceIndicatorStyle
     let selectionColorHex: String?
@@ -9910,10 +9910,10 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
         showsGitBranchIcon = Self.bool(defaults: defaults, key: "sidebarShowGitBranchIcon", defaultValue: false)
         showsSSH = Self.bool(defaults: defaults, key: "sidebarShowSSH", defaultValue: SidebarWorkspaceDetailDefaults.showSSH)
         makesPullRequestsClickable = settings.value(for: catalog.sidebar.makePullRequestsClickable)
-        openPullRequestLinksInCmuxBrowser = BrowserLinkOpenSettings.openSidebarPullRequestLinksInCmuxBrowser(
+        openPullRequestLinksInMosaicBrowser = BrowserLinkOpenSettings.openSidebarPullRequestLinksInMosaicBrowser(
             defaults: defaults
         )
-        openPortLinksInCmuxBrowser = BrowserLinkOpenSettings.openSidebarPortLinksInCmuxBrowser(
+        openPortLinksInMosaicBrowser = BrowserLinkOpenSettings.openSidebarPortLinksInMosaicBrowser(
             defaults: defaults
         )
 
@@ -9942,11 +9942,11 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
 }
 
 
-enum CmuxExtensionSidebarSelection {
-    static let defaultsKey = "cmuxExtensionSidebar.providerId"
-    static let selectedExtensionNameDefaultsKey = "cmuxExtensionSidebar.selectedExtensionName"
-    static let defaultProviderId = CmuxSidebarProviderDescriptor.defaultWorkspacesID
-    static let hostedExtensionsProviderId = "cmux.sidebar.extensions"
+enum MosaicExtensionSidebarSelection {
+    static let defaultsKey = "mosaicExtensionSidebar.providerId"
+    static let selectedExtensionNameDefaultsKey = "mosaicExtensionSidebar.selectedExtensionName"
+    static let defaultProviderId = MosaicSidebarProviderDescriptor.defaultWorkspacesID
+    static let hostedExtensionsProviderId = "mosaic.sidebar.extensions"
 
     /// Synchronous read of the experimental Extensions flag for the on-demand
     /// AppKit/static paths (the toggle menu, the command-palette builder, the
@@ -9968,7 +9968,7 @@ enum CmuxExtensionSidebarSelection {
         return Bool.decodeFromUserDefaults(UserDefaults.standard.object(forKey: key.userDefaultsKey)) ?? key.defaultValue
     }
 
-    static var providers: [any CmuxSidebarProvider] {
+    static var providers: [any MosaicSidebarProvider] {
         SidebarExamples.providers
     }
 
@@ -9976,7 +9976,7 @@ enum CmuxExtensionSidebarSelection {
 
     /// Provider-id prefix for user/agent-authored custom sidebars. The
     /// suffix after the prefix is the sidebar's file base name.
-    static let customSidebarProviderPrefix = "cmux.sidebar.custom."
+    static let customSidebarProviderPrefix = "mosaic.sidebar.custom."
 
     /// Synchronous read of the experimental custom-sidebars flag, mirroring
     /// ``isEnabled`` for the AppKit/static paths (the picker menu).
@@ -9993,13 +9993,13 @@ enum CmuxExtensionSidebarSelection {
         if let override = customSidebarsDirectoryOverrideForTesting { return override }
         #endif
         return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/cmux/sidebars", isDirectory: true)
+            .appendingPathComponent(".config/mosaic/sidebars", isDirectory: true)
     }
 
     /// One provider descriptor per `<name>.swift`/`<name>.json` file in the
     /// sidebars directory (`.swift` preferred when both exist), titled by the
     /// file's base name.
-    static var customSidebarDescriptors: [CmuxSidebarProviderDescriptor] {
+    static var customSidebarDescriptors: [MosaicSidebarProviderDescriptor] {
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: customSidebarsDirectory,
             includingPropertiesForKeys: nil
@@ -10013,10 +10013,10 @@ enum CmuxExtensionSidebarSelection {
             extensionByName[name] = ext
         }
         return extensionByName.keys.sorted().map { name in
-            CmuxSidebarProviderDescriptor(
+            MosaicSidebarProviderDescriptor(
                 id: customSidebarProviderPrefix + name,
-                title: CmuxSidebarProviderLocalizedText(key: "sidebar.provider.custom.\(name)", defaultValue: name),
-                subtitle: CmuxSidebarProviderLocalizedText(
+                title: MosaicSidebarProviderLocalizedText(key: "sidebar.provider.custom.\(name)", defaultValue: name),
+                subtitle: MosaicSidebarProviderLocalizedText(
                     key: "sidebar.provider.custom.subtitle",
                     defaultValue: String(localized: "sidebar.provider.custom.subtitle", defaultValue: "Custom sidebar")
                 ),
@@ -10053,7 +10053,7 @@ enum CmuxExtensionSidebarSelection {
     /// Servers, Last Prompt, Super Compact, Browser Stack). These ship
     /// independently of the experimental Extensions feature, so they stay in
     /// the switcher menu regardless of the beta flag.
-    static var builtInDescriptors: [CmuxSidebarProviderDescriptor] {
+    static var builtInDescriptors: [MosaicSidebarProviderDescriptor] {
         [.defaultWorkspaces] + providers.map { $0.descriptor }
     }
 
@@ -10061,7 +10061,7 @@ enum CmuxExtensionSidebarSelection {
     /// extension entry belongs to the experimental Extensions feature, so it is
     /// only offered while that beta is enabled; the built-in views are always
     /// offered.
-    static var descriptors: [CmuxSidebarProviderDescriptor] {
+    static var descriptors: [MosaicSidebarProviderDescriptor] {
         var result = isEnabled ? builtInDescriptors + [hostedExtensionsDescriptor] : builtInDescriptors
         if customSidebarsEnabled { result += customSidebarDescriptors }
         return result
@@ -10070,19 +10070,19 @@ enum CmuxExtensionSidebarSelection {
     /// Every descriptor that can ever be selected, ignoring feature gates. Used
     /// to register command-palette handlers so a runtime flag flip always has a
     /// handler to invoke; what is *shown* uses ``descriptors``.
-    static var allDescriptors: [CmuxSidebarProviderDescriptor] {
+    static var allDescriptors: [MosaicSidebarProviderDescriptor] {
         builtInDescriptors + [hostedExtensionsDescriptor] + customSidebarDescriptors
     }
 
-    static var hostedExtensionsDescriptor: CmuxSidebarProviderDescriptor {
+    static var hostedExtensionsDescriptor: MosaicSidebarProviderDescriptor {
         let selectedName = UserDefaults.standard.string(forKey: selectedExtensionNameDefaultsKey)?.nilIfEmpty
-        return CmuxSidebarProviderDescriptor(
+        return MosaicSidebarProviderDescriptor(
             id: hostedExtensionsProviderId,
-            title: CmuxSidebarProviderLocalizedText(
+            title: MosaicSidebarProviderLocalizedText(
                 key: "sidebar.provider.extensions.title",
                 defaultValue: selectedName ?? String(localized: "sidebar.provider.extensions.title", defaultValue: "Extension Sidebar")
             ),
-            subtitle: CmuxSidebarProviderLocalizedText(
+            subtitle: MosaicSidebarProviderLocalizedText(
                 key: "sidebar.provider.extensions.subtitle",
                 defaultValue: selectedName == nil
                     ? String(localized: "sidebar.provider.extensions.subtitle", defaultValue: "Custom sidebar")
@@ -10093,7 +10093,7 @@ enum CmuxExtensionSidebarSelection {
         )
     }
 
-    static func descriptor(for providerId: String) -> CmuxSidebarProviderDescriptor {
+    static func descriptor(for providerId: String) -> MosaicSidebarProviderDescriptor {
         descriptors.first { $0.id == providerId } ?? .defaultWorkspaces
     }
 
@@ -10124,7 +10124,7 @@ enum CmuxExtensionSidebarSelection {
         return provider(for: id) == nil
     }
 
-    static func provider(for providerId: String) -> (any CmuxSidebarProvider)? {
+    static func provider(for providerId: String) -> (any MosaicSidebarProvider)? {
         providers.first { $0.descriptor.id == providerId }
     }
 
@@ -10143,11 +10143,11 @@ enum CmuxExtensionSidebarSelection {
         return persistedProviderId
     }
 
-    static func localizedTitle(for descriptor: CmuxSidebarProviderDescriptor) -> String {
+    static func localizedTitle(for descriptor: MosaicSidebarProviderDescriptor) -> String {
         localizedText(descriptor.title)
     }
 
-    static func localizedText(_ text: CmuxSidebarProviderLocalizedText) -> String {
+    static func localizedText(_ text: MosaicSidebarProviderLocalizedText) -> String {
         NSLocalizedString(
             text.key,
             tableName: "Localizable",
@@ -10175,11 +10175,11 @@ enum CmuxExtensionSidebarSelection {
         for descriptor in descriptors {
             let item = NSMenuItem(
                 title: localizedTitle(for: descriptor),
-                action: #selector(CmuxExtensionSidebarMenuTarget.selectProvider(_:)),
+                action: #selector(MosaicExtensionSidebarMenuTarget.selectProvider(_:)),
                 keyEquivalent: ""
             )
             item.representedObject = descriptor.id
-            item.target = CmuxExtensionSidebarMenuTarget.shared
+            item.target = MosaicExtensionSidebarMenuTarget.shared
             item.state = selectedProviderId == descriptor.id ? .on : .off
             item.image = NSImage(systemSymbolName: descriptor.systemImageName, accessibilityDescription: nil)
             menu.addItem(item)
@@ -10193,12 +10193,12 @@ enum CmuxExtensionSidebarSelection {
 }
 
 @MainActor
-private final class CmuxExtensionSidebarMenuTarget: NSObject {
-    static let shared = CmuxExtensionSidebarMenuTarget()
+private final class MosaicExtensionSidebarMenuTarget: NSObject {
+    static let shared = MosaicExtensionSidebarMenuTarget()
 
     @objc func selectProvider(_ sender: NSMenuItem) {
         guard let providerId = sender.representedObject as? String else { return }
-        CmuxExtensionSidebarSelection.setProviderId(providerId)
+        MosaicExtensionSidebarSelection.setProviderId(providerId)
     }
 }
 
@@ -10278,7 +10278,7 @@ private final class SidebarTabItemSettingsStore: ObservableObject {
 }
 
 // `SidebarDragState`, `SidebarWorkspaceDragRegistry`, and the DEBUG-only
-// `SidebarDragStateRegistry` now live in the `CmuxSidebar`// package. This app-side convenience keeps the `SidebarDragState()` call site
+// `SidebarDragStateRegistry` now live in the `MosaicSidebar`// package. This app-side convenience keeps the `SidebarDragState()` call site
 // unchanged by injecting the process-wide cross-window registry the app owns
 // at its composition root (`AppDelegate`).
 extension SidebarDragState {
@@ -10312,7 +10312,7 @@ struct VerticalTabsSidebar: View {
     // for context-menu actions and pass-down. See SidebarUnreadModel / #2586.
     @EnvironmentObject var sidebarUnread: SidebarUnreadModel
     var notificationStore: TerminalNotificationStore { .shared }
-    @EnvironmentObject var cmuxConfigStore: CmuxConfigStore
+    @EnvironmentObject var mosaicConfigStore: MosaicConfigStore
     @Binding var selection: SidebarSelection
     @Binding var selectedTabIds: Set<UUID>
     @Binding var lastSidebarSelectionIndex: Int?
@@ -10358,12 +10358,12 @@ struct VerticalTabsSidebar: View {
     /// header's resolved cwd-based config (color/icon/context menu /
     /// newWorkspacePlacement) reads it through the body, so a state
     /// invalidation here forces SwiftUI to re-call
-    /// `cmuxConfigStore.resolveWorkspaceGroupConfig(forCwd:)`. The anchor
+    /// `mosaicConfigStore.resolveWorkspaceGroupConfig(forCwd:)`. The anchor
     /// has no TabItemView, so no implicit per-row publisher subscription
     /// would otherwise fire on `cd` while it's not selected.
     @State private var anchorCwdRevision: Int = 0
-    @AppStorage(CmuxExtensionSidebarSelection.defaultsKey)
-    private var selectedExtensionSidebarProviderId = CmuxExtensionSidebarSelection.defaultProviderId
+    @AppStorage(MosaicExtensionSidebarSelection.defaultsKey)
+    private var selectedExtensionSidebarProviderId = MosaicExtensionSidebarSelection.defaultProviderId
     @LiveSetting(\.betaFeatures.extensions) private var extensionsExperimentalEnabled
     @LiveSetting(\.betaFeatures.customSidebars) private var customSidebarsExperimentalEnabled
     @LiveSetting(\.customSidebars.renderer) private var customSidebarRenderer
@@ -10383,18 +10383,18 @@ struct VerticalTabsSidebar: View {
     // reactive to the flag toggling.
     private var effectiveExtensionSidebarProviderId: String {
         let selected = selectedExtensionSidebarProviderId
-        if selected.hasPrefix(CmuxExtensionSidebarSelection.customSidebarProviderPrefix) {
+        if selected.hasPrefix(MosaicExtensionSidebarSelection.customSidebarProviderPrefix) {
             // Touch the @LiveSetting so toggling the flag in Settings still
             // re-renders, but decide with the synchronous UserDefaults read:
             // on a sidebar remount @LiveSetting's initial value lags one tick,
             // which would otherwise flash the default sidebar for a frame
             // before swapping to the custom one.
             _ = customSidebarsExperimentalEnabled
-            return CmuxExtensionSidebarSelection.customSidebarsEnabled
+            return MosaicExtensionSidebarSelection.customSidebarsEnabled
                 ? selected
-                : CmuxExtensionSidebarSelection.defaultProviderId
+                : MosaicExtensionSidebarSelection.defaultProviderId
         }
-        return CmuxExtensionSidebarSelection.effectiveProviderId(
+        return MosaicExtensionSidebarSelection.effectiveProviderId(
             selectedExtensionSidebarProviderId,
             extensionsEnabled: extensionsExperimentalEnabled
         )
@@ -10676,8 +10676,8 @@ struct VerticalTabsSidebar: View {
         // unknown id is a harmless no-op. The previous design gated this on a
         // per-row "laid-out row ids" PreferenceKey whose sidebar-wide reduce
         // fed `@State` writes from inside the layout/preference update cycle,
-        // the cmux-owned edge in the sidebar layout livelock
-        // (https://github.com/emergent-inc/cmux/issues/2586). No anchor means
+        // the mosaic-owned edge in the sidebar layout livelock
+        // (https://github.com/emergent-inc/mosaic/issues/2586). No anchor means
         // SwiftUI scrolls the minimum needed to reveal the row.
         let group = renderContext.workspaceById[selectedWorkspaceId]?.groupId
             .flatMap { renderContext.workspaceGroupById[$0] }
@@ -10812,7 +10812,7 @@ struct VerticalTabsSidebar: View {
         )
 
         ZStack(alignment: .bottomLeading) {
-            if CmuxExtensionSidebarSelection.resolvesToDefaultSidebar(effectiveProviderId: effectiveExtensionSidebarProviderId) {
+            if MosaicExtensionSidebarSelection.resolvesToDefaultSidebar(effectiveProviderId: effectiveExtensionSidebarProviderId) {
                 workspaceScrollArea(renderContext: renderContext)
             } else {
                 extensionSidebarScrollArea(renderContext: renderContext)
@@ -10896,7 +10896,7 @@ struct VerticalTabsSidebar: View {
                 reason: "drag_state_change"
             )
 #if DEBUG
-            cmuxDebugLog("sidebar.dragState.sidebar tab=\(debugShortSidebarTabId(newDraggedTabId))")
+            mosaicDebugLog("sidebar.dragState.sidebar tab=\(debugShortSidebarTabId(newDraggedTabId))")
 #endif
             if newDraggedTabId != nil {
                 pushSidebarClosedHandCursorIfNeeded()
@@ -10921,7 +10921,7 @@ struct VerticalTabsSidebar: View {
             guard dragState.draggedTabId != nil || dragState.dropIndicator != nil else { return }
             let reason = SidebarDragLifecycleNotification().reason(from: notification)
 #if DEBUG
-            cmuxDebugLog("sidebar.dragClear tab=\(debugShortSidebarTabId(dragState.draggedTabId)) reason=\(reason)")
+            mosaicDebugLog("sidebar.dragClear tab=\(debugShortSidebarTabId(dragState.draggedTabId)) reason=\(reason)")
 #endif
             dragState.clearDrag()
         }
@@ -11021,7 +11021,7 @@ struct VerticalTabsSidebar: View {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .workspaceCurrentDirectoryDidChange)) { _ in
                     // Drive a revision counter that the group-header resolver
-                    // reads. Forces SwiftUI to re-invoke `cmuxConfigStore.resolveWorkspaceGroupConfig(forCwd:)`
+                    // reads. Forces SwiftUI to re-invoke `mosaicConfigStore.resolveWorkspaceGroupConfig(forCwd:)`
                     // when the anchor's cwd changes while the anchor is not
                     // the selected workspace — otherwise group color/icon/menu
                     // and `+` placement reflect the previous cwd until some
@@ -11094,13 +11094,13 @@ struct VerticalTabsSidebar: View {
 
     @ViewBuilder
     private func extensionSidebarScrollAreaContent(renderContext: WorkspaceListRenderContext) -> some View {
-        if effectiveExtensionSidebarProviderId == CmuxExtensionSidebarSelection.hostedExtensionsProviderId {
-            CMUXInstalledExtensionSidebarHostView(
-                snapshotProvider: { cmuxSidebarSnapshotForCurrentTabs() },
+        if effectiveExtensionSidebarProviderId == MosaicExtensionSidebarSelection.hostedExtensionsProviderId {
+            MosaicInstalledExtensionSidebarHostView(
+                snapshotProvider: { mosaicSidebarSnapshotForCurrentTabs() },
                 snapshotUpdateToken: extensionSidebarUpdateToken,
-                actionHandler: { handleCMUXSidebarExtensionAction($0) },
+                actionHandler: { handleMosaicSidebarExtensionAction($0) },
                 onUseDefaultSidebar: {
-                    CmuxExtensionSidebarSelection.setProviderId(CmuxSidebarProviderDescriptor.defaultWorkspacesID)
+                    MosaicExtensionSidebarSelection.setProviderId(MosaicSidebarProviderDescriptor.defaultWorkspacesID)
                 }
             )
             .onReceive(extensionSidebarImmediateObservationPublisher) { _ in
@@ -11119,8 +11119,8 @@ struct VerticalTabsSidebar: View {
                     bottomHeight: sidebarBottomScrimHeight
                 )
             )
-        } else if effectiveExtensionSidebarProviderId.hasPrefix(CmuxExtensionSidebarSelection.customSidebarProviderPrefix),
-                  let customSidebarURL = CmuxExtensionSidebarSelection.customSidebarFileURL(forProviderId: effectiveExtensionSidebarProviderId) {
+        } else if effectiveExtensionSidebarProviderId.hasPrefix(MosaicExtensionSidebarSelection.customSidebarProviderPrefix),
+                  let customSidebarURL = MosaicExtensionSidebarSelection.customSidebarFileURL(forProviderId: effectiveExtensionSidebarProviderId) {
             // Periodic tick so the custom sidebar re-renders live (clock,
             // countdowns, and refreshed workspace/data context), mirroring the
             // default sidebar's TimelineView. No banned timers involved.
@@ -11137,7 +11137,7 @@ struct VerticalTabsSidebar: View {
                 CustomSidebarSurface(
                     fileURL: customSidebarURL,
                     dataContext: customSidebarDataContext(now: timeline.date),
-                    dispatch: makeCmuxSidebarActionDispatch(),
+                    dispatch: makeMosaicSidebarActionDispatch(),
                     contentInsets: CustomSidebarContentInsets(
                         top: SidebarWorkspaceScrollInsets.workspaceList.top,
                         bottom: SidebarWorkspaceScrollInsets.workspaceList.bottom
@@ -11162,7 +11162,7 @@ struct VerticalTabsSidebar: View {
 
     private func extensionSidebarTimelineContent(
         renderContext: WorkspaceListRenderContext,
-        model: CmuxSidebarProviderRenderModel,
+        model: MosaicSidebarProviderRenderModel,
         now: Date
     ) -> some View {
         GeometryReader { geometryProxy in
@@ -11295,29 +11295,29 @@ struct VerticalTabsSidebar: View {
     private func extensionSidebarRenderModel(
         renderContext: WorkspaceListRenderContext,
         now: Date
-    ) -> CmuxSidebarProviderRenderModel {
+    ) -> MosaicSidebarProviderRenderModel {
         let _ = extensionSidebarUpdateToken
         let snapshot = extensionSidebarSnapshot(renderContext: renderContext)
         return extensionSidebarRenderModel(snapshot: snapshot, now: now)
     }
 
     private func extensionSidebarRenderModel(
-        snapshot: CmuxSidebarProviderSnapshot,
+        snapshot: MosaicSidebarProviderSnapshot,
         now: Date
-    ) -> CmuxSidebarProviderRenderModel {
+    ) -> MosaicSidebarProviderRenderModel {
         // Look up the provider directly by the effective id instead of round-
         // tripping through `descriptor(for:)`, which rebuilds the full
         // `descriptors` list (SettingCatalog + custom-sidebars directory scan)
         // on every TimelineView tick. See issue #5970.
         let providerId = effectiveExtensionSidebarProviderId
-        if let provider = CmuxExtensionSidebarSelection.provider(for: providerId) {
-            let context = CmuxSidebarProviderRenderContext(now: now)
-            if let contextualProvider = provider as? any CmuxContextualSidebarProvider {
+        if let provider = MosaicExtensionSidebarSelection.provider(for: providerId) {
+            let context = MosaicSidebarProviderRenderContext(now: now)
+            if let contextualProvider = provider as? any MosaicContextualSidebarProvider {
                 return contextualProvider.render(snapshot: snapshot, context: context)
             }
             return provider.render(snapshot: snapshot)
         }
-        return CmuxSidebarProviderRenderModel(
+        return MosaicSidebarProviderRenderModel(
             providerId: providerId,
             snapshotSequence: snapshot.sequence,
             sections: []
@@ -11326,22 +11326,22 @@ struct VerticalTabsSidebar: View {
 
     private func extensionSidebarSnapshot(
         renderContext: WorkspaceListRenderContext
-    ) -> CmuxSidebarProviderSnapshot {
+    ) -> MosaicSidebarProviderSnapshot {
         extensionSidebarSnapshot(workspaces: renderContext.tabs)
     }
 
-    private func extensionSidebarSnapshotForCurrentTabs() -> CmuxSidebarProviderSnapshot {
+    private func extensionSidebarSnapshotForCurrentTabs() -> MosaicSidebarProviderSnapshot {
         extensionSidebarSnapshot(workspaces: tabManager.tabs)
     }
 
-    private func cmuxSidebarSnapshotForCurrentTabs() -> CmuxSidebarSnapshot {
+    private func mosaicSidebarSnapshotForCurrentTabs() -> MosaicSidebarSnapshot {
         let snapshot = extensionSidebarSnapshotForCurrentTabs()
-        return CmuxSidebarSnapshot(
+        return MosaicSidebarSnapshot(
             sequence: snapshot.sequence,
             windowID: snapshot.windowId,
             selectedWorkspaceID: snapshot.selectedWorkspaceId,
             workspaces: snapshot.workspaces.map { workspace in
-                CmuxSidebarWorkspace(
+                MosaicSidebarWorkspace(
                     id: workspace.id,
                     title: workspace.title,
                     detail: workspace.customDescription,
@@ -11353,20 +11353,20 @@ struct VerticalTabsSidebar: View {
 	                    latestNotification: workspace.latestNotificationText,
 	                    listeningPorts: workspace.listeningPorts,
 	                    pullRequestURLs: workspace.pullRequestURLs,
-	                    surfaces: cmuxSidebarSurfaces(for: workspace)
+	                    surfaces: mosaicSidebarSurfaces(for: workspace)
 	                )
 	            }
 	        )
 	    }
 
-    private func cmuxSidebarSurfaces(for workspace: CmuxSidebarProviderWorkspace) -> [CmuxSidebarSurface] {
+    private func mosaicSidebarSurfaces(for workspace: MosaicSidebarProviderWorkspace) -> [MosaicSidebarSurface] {
         guard let liveWorkspace = tabManager.tabs.first(where: { $0.id == workspace.id }) else { return [] }
         return liveWorkspace.sidebarOrderedPanelIds().compactMap { panelId in
             guard let panel = liveWorkspace.panels[panelId] else { return nil }
-            return CmuxSidebarSurface(
+            return MosaicSidebarSurface(
                 id: panelId,
                 title: liveWorkspace.panelTitle(panelId: panelId) ?? panel.displayTitle,
-                kind: cmuxSidebarSurfaceKind(for: panel.panelType),
+                kind: mosaicSidebarSurfaceKind(for: panel.panelType),
                 isFocused: liveWorkspace.focusedPanelId == panelId,
                 isPinned: liveWorkspace.isPanelPinned(panelId),
                 unreadCount: liveWorkspace.manualUnreadPanelIds.contains(panelId) ? 1 : 0,
@@ -11374,7 +11374,7 @@ struct VerticalTabsSidebar: View {
             )
         }
     }
-    private func cmuxSidebarSurfaceKind(for panelType: PanelType) -> CmuxSidebarSurfaceKind {
+    private func mosaicSidebarSurfaceKind(for panelType: PanelType) -> MosaicSidebarSurfaceKind {
         switch panelType {
         case .terminal:
             return .terminal
@@ -11397,9 +11397,9 @@ struct VerticalTabsSidebar: View {
         }
     }
 
-    private func handleCMUXSidebarExtensionAction(
-        _ action: CmuxSidebarAction
-    ) -> CmuxSidebarActionResult {
+    private func handleMosaicSidebarExtensionAction(
+        _ action: MosaicSidebarAction
+    ) -> MosaicSidebarActionResult {
         switch action {
         case .createWorkspace(let title, let workingDirectory, let select):
             let workspace = tabManager.addWorkspace(
@@ -11408,11 +11408,11 @@ struct VerticalTabsSidebar: View {
                 inheritWorkingDirectory: workingDirectory == nil,
                 select: select
             )
-            return CmuxSidebarActionResult(accepted: true, message: workspace.id.uuidString)
+            return MosaicSidebarActionResult(accepted: true, message: workspace.id.uuidString)
 
         case .selectWorkspace(let workspaceId):
             guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else {
-                return CmuxSidebarActionResult(
+                return MosaicSidebarActionResult(
                     accepted: false,
                     message: String(localized: "sidebar.extensions.action.workspaceNotFound", defaultValue: "Workspace not found")
                 )
@@ -11422,7 +11422,7 @@ struct VerticalTabsSidebar: View {
 
         case .closeWorkspace(let workspaceId):
             guard tabManager.closeWorkspaceWithConfirmation(tabId: workspaceId) else {
-                return CmuxSidebarActionResult(
+                return MosaicSidebarActionResult(
                     accepted: false,
                     message: String(localized: "sidebar.extensions.action.closeRejected", defaultValue: "Workspace could not be closed")
                 )
@@ -11448,16 +11448,16 @@ struct VerticalTabsSidebar: View {
             if panel == nil, workspace.isRemoteTmuxMirror {
                 // Routed to the remote as a tmux `new-window`; the tab arrives
                 // asynchronously via the mirror, so this is success, not failure.
-                return CmuxSidebarActionResult(
+                return MosaicSidebarActionResult(
                     accepted: true,
                     message: String(localized: "sidebar.extensions.action.remoteTmuxWindowRequested", defaultValue: "Remote tmux window requested")
                 )
             }
-            return panel.map { CmuxSidebarActionResult(accepted: true, message: $0.id.uuidString) }
+            return panel.map { MosaicSidebarActionResult(accepted: true, message: $0.id.uuidString) }
                 ?? .rejected(String(localized: "sidebar.extensions.action.surfaceCreateRejected", defaultValue: "Surface could not be created"))
 
         case .createBrowserSurface(let workspaceId, let urlString):
-            let validatedURL = cmuxSidebarExtensionOptionalHTTPURL(from: urlString)
+            let validatedURL = mosaicSidebarExtensionOptionalHTTPURL(from: urlString)
             guard validatedURL.accepted else {
                 return .rejected(String(localized: "sidebar.extensions.action.urlRejected", defaultValue: "URL could not be opened"))
             }
@@ -11468,7 +11468,7 @@ struct VerticalTabsSidebar: View {
                 tabManager.selectWorkspace(workspace)
             }
             let panelId = tabManager.createBrowserSplit(direction: .right, url: validatedURL.url)
-            return panelId.map { CmuxSidebarActionResult(accepted: true, message: $0.uuidString) }
+            return panelId.map { MosaicSidebarActionResult(accepted: true, message: $0.uuidString) }
                 ?? .rejected(String(localized: "sidebar.extensions.action.surfaceCreateRejected", defaultValue: "Surface could not be created"))
 
         case .selectSurface(let workspaceId, let surfaceId):
@@ -11503,10 +11503,10 @@ struct VerticalTabsSidebar: View {
                   let panelId = tabManager.createSplit(tabId: workspaceId, surfaceId: surfaceId, direction: splitDirection) else {
                 return .rejected(String(localized: "sidebar.extensions.action.surfaceCreateRejected", defaultValue: "Surface could not be created"))
             }
-            return CmuxSidebarActionResult(accepted: true, message: panelId.uuidString)
+            return MosaicSidebarActionResult(accepted: true, message: panelId.uuidString)
 
         case .splitBrowser(let workspaceId, let surfaceId, let direction, let urlString):
-            let validatedURL = cmuxSidebarExtensionOptionalHTTPURL(from: urlString)
+            let validatedURL = mosaicSidebarExtensionOptionalHTTPURL(from: urlString)
             guard validatedURL.accepted else {
                 return .rejected(String(localized: "sidebar.extensions.action.urlRejected", defaultValue: "URL could not be opened"))
             }
@@ -11518,7 +11518,7 @@ struct VerticalTabsSidebar: View {
             tabManager.selectWorkspace(tab)
             tab.focusPanel(surfaceId)
             let panelId = tabManager.createBrowserSplit(direction: splitDirection, url: validatedURL.url)
-            return panelId.map { CmuxSidebarActionResult(accepted: true, message: $0.uuidString) }
+            return panelId.map { MosaicSidebarActionResult(accepted: true, message: $0.uuidString) }
                 ?? .rejected(String(localized: "sidebar.extensions.action.surfaceCreateRejected", defaultValue: "Surface could not be created"))
 
         case .toggleSurfaceZoom(let workspaceId, let surfaceId):
@@ -11528,9 +11528,9 @@ struct VerticalTabsSidebar: View {
             return .accepted
 
         case .openURL(let urlString):
-            guard let url = cmuxSidebarExtensionRequiredHTTPURL(from: urlString),
+            guard let url = mosaicSidebarExtensionRequiredHTTPURL(from: urlString),
                   NSWorkspace.shared.open(url) else {
-                return CmuxSidebarActionResult(
+                return MosaicSidebarActionResult(
                     accepted: false,
                     message: String(localized: "sidebar.extensions.action.urlRejected", defaultValue: "URL could not be opened")
                 )
@@ -11539,17 +11539,17 @@ struct VerticalTabsSidebar: View {
         }
     }
 
-    private func cmuxSidebarExtensionOptionalHTTPURL(from urlString: String?) -> (url: URL?, accepted: Bool) {
+    private func mosaicSidebarExtensionOptionalHTTPURL(from urlString: String?) -> (url: URL?, accepted: Bool) {
         guard let urlString, !urlString.isEmpty else {
             return (nil, true)
         }
-        guard let url = cmuxSidebarExtensionRequiredHTTPURL(from: urlString) else {
+        guard let url = mosaicSidebarExtensionRequiredHTTPURL(from: urlString) else {
             return (nil, false)
         }
         return (url, true)
     }
 
-    private func cmuxSidebarExtensionRequiredHTTPURL(from urlString: String) -> URL? {
+    private func mosaicSidebarExtensionRequiredHTTPURL(from urlString: String) -> URL? {
         guard let url = URL(string: urlString),
               let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https",
@@ -11560,7 +11560,7 @@ struct VerticalTabsSidebar: View {
         return url
     }
 
-    private func splitDirection(from direction: CmuxSidebarSplitDirection) -> SplitDirection? {
+    private func splitDirection(from direction: MosaicSidebarSplitDirection) -> SplitDirection? {
         switch direction {
         case .left:
             return .left
@@ -11573,18 +11573,18 @@ struct VerticalTabsSidebar: View {
         }
     }
 
-    private func extensionSidebarSnapshot(workspaces: [Workspace]) -> CmuxSidebarProviderSnapshot {
-        CmuxSidebarProviderSnapshot(
-            sequence: UInt64(max(0, CmuxEventBus.shared.latestSequence)),
+    private func extensionSidebarSnapshot(workspaces: [Workspace]) -> MosaicSidebarProviderSnapshot {
+        MosaicSidebarProviderSnapshot(
+            sequence: UInt64(max(0, MosaicEventBus.shared.latestSequence)),
             selectedWorkspaceId: tabManager.selectedTabId,
             workspaces: workspaces.map(extensionWorkspaceSnapshot(for:)),
             windowId: windowId
         )
     }
 
-    private func extensionWorkspaceSnapshot(for workspace: Workspace) -> CmuxSidebarProviderWorkspace {
+    private func extensionWorkspaceSnapshot(for workspace: Workspace) -> MosaicSidebarProviderWorkspace {
         let rootPath = extensionSidebarRootPath(for: workspace)
-        return CmuxSidebarProviderWorkspace(
+        return MosaicSidebarProviderWorkspace(
             id: workspace.id,
             title: workspace.title,
             customDescription: workspace.customDescription,
@@ -11602,7 +11602,7 @@ struct VerticalTabsSidebar: View {
             pullRequestURLs: workspace.sidebarPullRequestsInDisplayOrder().map { $0.url.absoluteString },
             panelDirectories: workspace.sidebarDirectoriesInDisplayOrder(),
             gitBranches: workspace.sidebarGitBranchesInDisplayOrder().map {
-                CmuxSidebarProviderGitBranch(branch: $0.branch, isDirty: $0.isDirty)
+                MosaicSidebarProviderGitBranch(branch: $0.branch, isDirty: $0.isDirty)
             }
         )
     }
@@ -11612,7 +11612,7 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionBrowserStackSidebar(
-        model: CmuxSidebarProviderRenderModel,
+        model: MosaicSidebarProviderRenderModel,
         now: Date
     ) -> some View {
         let rows = model.sections.flatMap(\.rows)
@@ -11667,10 +11667,10 @@ struct VerticalTabsSidebar: View {
 
             TrackedButton("contentview_button_11429", action: onNewTab) {
                 HStack(spacing: 9) {
-                    CmuxSystemSymbolImage(magnified: "plus", pointSize: 15, weight: .regular)
+                    MosaicSystemSymbolImage(magnified: "plus", pointSize: 15, weight: .regular)
                         .frame(width: 22, height: 22)
                     Text(String(localized: "sidebar.browserStack.newTab", defaultValue: "New Tab"))
-                        .cmuxFont(size: 13, weight: .regular)
+                        .mosaicFont(size: 13, weight: .regular)
                     Spacer(minLength: 0)
                 }
                 .foregroundColor(.secondary)
@@ -11697,19 +11697,19 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionBrowserStackGroup(
-        section: CmuxSidebarProviderSection,
+        section: MosaicSidebarProviderSection,
         now: Date,
         dropRows: [ExtensionSidebarBrowserStackDropRow]
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                CmuxSystemSymbolImage(magnified: "folder.fill", pointSize: 14, weight: .regular)
+                MosaicSystemSymbolImage(magnified: "folder.fill", pointSize: 14, weight: .regular)
                     .foregroundColor(.secondary)
                 Text(extensionSidebarTreeSectionTitle(section.treeSection))
-                    .cmuxFont(size: 13, weight: .medium)
+                    .mosaicFont(size: 13, weight: .medium)
                     .foregroundColor(.primary.opacity(0.86))
                     .lineLimit(1)
-                CmuxSystemSymbolImage(magnified: "chevron.down", pointSize: 11, weight: .medium)
+                MosaicSystemSymbolImage(magnified: "chevron.down", pointSize: 11, weight: .medium)
                     .foregroundColor(.secondary)
                 Spacer(minLength: 0)
             }
@@ -11742,7 +11742,7 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionBrowserStackTile(
-        row: CmuxSidebarProviderRow,
+        row: MosaicSidebarProviderRow,
         isSelected: Bool,
         dropRows: [ExtensionSidebarBrowserStackDropRow]
     ) -> some View {
@@ -11773,7 +11773,7 @@ struct VerticalTabsSidebar: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
         .safeHelp(row.title)
-        .cmuxCursorOnHover(.openHand)
+        .mosaicCursorOnHover(.openHand)
         .opacity(dragState.draggedTabId == row.workspaceId ? 0.55 : 1)
         .onDrag {
             dragState.beginDragging(tabId: row.workspaceId)
@@ -11813,7 +11813,7 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionBrowserStackRow(
-        row: CmuxSidebarProviderRow,
+        row: MosaicSidebarProviderRow,
         now: Date,
         compact: Bool = false,
         isSelected: Bool,
@@ -11827,14 +11827,14 @@ struct VerticalTabsSidebar: View {
             HStack(spacing: 9) {
                 extensionBrowserStackIcon(row.leadingIcon, size: compact ? 22 : 24)
                 Text(row.title)
-                    .cmuxFont(size: compact ? 12.5 : 13, weight: .medium)
+                    .mosaicFont(size: compact ? 12.5 : 13, weight: .medium)
                     .foregroundColor(isSelected ? .primary : .primary.opacity(0.82))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer(minLength: 0)
                 if let trailing = extensionSidebarRenderedText(row.trailingText, now: now) {
                     Text(trailing)
-                        .cmuxFont(size: 11, weight: .regular)
+                        .mosaicFont(size: 11, weight: .regular)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -11852,7 +11852,7 @@ struct VerticalTabsSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .cmuxCursorOnHover(.openHand)
+        .mosaicCursorOnHover(.openHand)
         .opacity(dragState.draggedTabId == row.workspaceId ? 0.55 : 1)
         .onDrag {
             dragState.beginDragging(tabId: row.workspaceId)
@@ -11893,19 +11893,19 @@ struct VerticalTabsSidebar: View {
 
     @ViewBuilder
     private func extensionBrowserStackDropIndicator(
-        row: CmuxSidebarProviderRow,
+        row: MosaicSidebarProviderRow,
         edge: SidebarDropEdge
     ) -> some View {
         if dragState.dropIndicator == SidebarDropIndicator(tabId: row.workspaceId, edge: edge) {
             Rectangle()
-                .fill(cmuxAccentColor())
+                .fill(mosaicAccentColor())
                 .frame(height: 2)
                 .padding(.horizontal, 8)
         }
     }
 
     @ViewBuilder
-    private func extensionBrowserStackReorderMenu(row: CmuxSidebarProviderRow) -> some View {
+    private func extensionBrowserStackReorderMenu(row: MosaicSidebarProviderRow) -> some View {
         TrackedButton("contentview_button_11670", String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
             moveExtensionBrowserStackWorkspace(row.workspaceId, by: -1)
         }
@@ -11936,9 +11936,9 @@ struct VerticalTabsSidebar: View {
         }
     }
 
-    private func handleExtensionSidebarMutation(_ mutation: CmuxSidebarProviderMutation) -> Bool {
-        let descriptor = CmuxExtensionSidebarSelection.descriptor(for: effectiveExtensionSidebarProviderId)
-        guard let provider = CmuxExtensionSidebarSelection.provider(for: descriptor.id) as? any CmuxMutableSidebarProvider else {
+    private func handleExtensionSidebarMutation(_ mutation: MosaicSidebarProviderMutation) -> Bool {
+        let descriptor = MosaicExtensionSidebarSelection.descriptor(for: effectiveExtensionSidebarProviderId)
+        guard let provider = MosaicExtensionSidebarSelection.provider(for: descriptor.id) as? any MosaicMutableSidebarProvider else {
             return false
         }
         do {
@@ -11949,14 +11949,14 @@ struct VerticalTabsSidebar: View {
             return result.ok
         } catch {
 #if DEBUG
-            cmuxDebugLog("extension.sidebar.mutation.failed provider=\(descriptor.id) error=\(error.localizedDescription)")
+            mosaicDebugLog("extension.sidebar.mutation.failed provider=\(descriptor.id) error=\(error.localizedDescription)")
 #endif
             return false
         }
     }
 
     private func extensionBrowserStackDropRows(
-        for model: CmuxSidebarProviderRenderModel
+        for model: MosaicSidebarProviderRenderModel
     ) -> [ExtensionSidebarBrowserStackDropRow] {
         model.sections.flatMap { section in
             section.rows.map { row in
@@ -11972,7 +11972,7 @@ struct VerticalTabsSidebar: View {
         workspaceId: UUID,
         insertionPosition: Int,
         orderedRows: [ExtensionSidebarBrowserStackDropRow]
-    ) -> CmuxSidebarProviderWorkspaceMove? {
+    ) -> MosaicSidebarProviderWorkspaceMove? {
         ExtensionSidebarBrowserStackDropPlanner(orderedRows: orderedRows).move(
             draggedWorkspaceId: workspaceId,
             insertionPosition: insertionPosition
@@ -11980,9 +11980,9 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionSidebarWorkspaceSnapshotsById(
-        for rows: [CmuxSidebarProviderRow]
-    ) -> [UUID: CmuxSidebarProviderWorkspace] {
-        var snapshotsById: [UUID: CmuxSidebarProviderWorkspace] = [:]
+        for rows: [MosaicSidebarProviderRow]
+    ) -> [UUID: MosaicSidebarProviderWorkspace] {
+        var snapshotsById: [UUID: MosaicSidebarProviderWorkspace] = [:]
         for row in rows where snapshotsById[row.workspaceId] == nil {
             snapshotsById[row.workspaceId] = extensionWorkspaceSnapshot(for: row.workspaceId)
         }
@@ -11990,7 +11990,7 @@ struct VerticalTabsSidebar: View {
     }
 
     private func extensionBrowserStackIcon(
-        _ icon: CmuxSidebarProviderIcon?,
+        _ icon: MosaicSidebarProviderIcon?,
         size: CGFloat
     ) -> some View {
         let shape = icon?.shape ?? .circle
@@ -12003,26 +12003,26 @@ struct VerticalTabsSidebar: View {
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous).fill(background)
             }
             if let systemImageName = icon?.systemImageName {
-                CmuxSystemSymbolImage(magnified: systemImageName, pointSize: size * 0.58, weight: .semibold)
+                MosaicSystemSymbolImage(magnified: systemImageName, pointSize: size * 0.58, weight: .semibold)
                     .foregroundColor(foreground)
             } else {
                 Text(icon?.text ?? ".")
-                    .cmuxFont(size: size * 0.58, weight: .bold)
+                    .mosaicFont(size: size * 0.58, weight: .bold)
                     .foregroundColor(foreground)
             }
         }
         .frame(width: size, height: size)
     }
 
-    private func extensionSidebarRenderedText(_ text: CmuxSidebarProviderText?, now: Date) -> String? {
+    private func extensionSidebarRenderedText(_ text: MosaicSidebarProviderText?, now: Date) -> String? {
         guard let text else { return nil }
         switch text {
         case .plain(let value):
             return value
         case .localized(let localized):
-            return CmuxExtensionSidebarSelection.localizedText(localized)
+            return MosaicExtensionSidebarSelection.localizedText(localized)
         case .relativeDate(let date, _):
-            return CmuxExtensionRelativeTimeFormatter.string(from: date, to: now)
+            return MosaicExtensionRelativeTimeFormatter.string(from: date, to: now)
         }
     }
 
@@ -12041,7 +12041,7 @@ struct VerticalTabsSidebar: View {
 
     @ViewBuilder
     private func extensionSidebarSection(
-        _ section: CmuxSidebarProviderSection,
+        _ section: MosaicSidebarProviderSection,
         providerId: String,
         now: Date
     ) -> some View {
@@ -12061,14 +12061,14 @@ struct VerticalTabsSidebar: View {
                         }
                     }
                 }) {
-                    CmuxSystemSymbolImage(magnified: isCollapsed ? "folder" : "folder.fill", pointSize: 13, weight: .regular)
+                    MosaicSystemSymbolImage(magnified: isCollapsed ? "folder" : "folder.fill", pointSize: 13, weight: .regular)
                         .offset(y: -0.5)
                 }
                 .buttonStyle(.plain)
                 .safeHelp(String(localized: "sidebar.extension.toggleSection", defaultValue: "Toggle section"))
 
                 Text(extensionSidebarTreeSectionTitle(section.treeSection))
-                    .cmuxFont(size: 12, weight: .regular)
+                    .mosaicFont(size: 12, weight: .regular)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -12082,7 +12082,7 @@ struct VerticalTabsSidebar: View {
                     TrackedButton("contentview_button_11843", action: {
                         createExtensionWorktreeWorkspace(for: section.treeSection)
                     }) {
-                        CmuxSystemSymbolImage(magnified: worktreeButtonSymbol, pointSize: 11, weight: .regular)
+                        MosaicSystemSymbolImage(magnified: worktreeButtonSymbol, pointSize: 11, weight: .regular)
                             .frame(width: 18, height: 18)
                     }
                     .buttonStyle(.plain)
@@ -12098,14 +12098,14 @@ struct VerticalTabsSidebar: View {
             if !isCollapsed {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(section.rows) { row in
-                        CmuxExtensionSidebarWorkspaceRowView(
+                        MosaicExtensionSidebarWorkspaceRowView(
                             row: row,
                             workspace: workspaceSnapshotsById[row.workspaceId],
                             providerId: providerId,
                             relativeNow: now,
                             isSelected: row.workspaceId == selectedWorkspaceId,
                             onSelect: selectExtensionSidebarWorkspace,
-                            onOpenWindow: CmuxExtensionSidebarInspectorWindowController.show
+                            onOpenWindow: MosaicExtensionSidebarInspectorWindowController.show
                         )
                         .id(row.id)
                         .accessibilityIdentifier("extensionSidebar.workspace.\(row.workspaceId.uuidString)")
@@ -12118,13 +12118,13 @@ struct VerticalTabsSidebar: View {
         }
     }
 
-    private func extensionWorkspaceSnapshot(for workspaceId: UUID) -> CmuxSidebarProviderWorkspace? {
+    private func extensionWorkspaceSnapshot(for workspaceId: UUID) -> MosaicSidebarProviderWorkspace? {
         tabManager.tabs.first { $0.id == workspaceId }.map(extensionWorkspaceSnapshot(for:))
     }
 
-    private func extensionSidebarTreeSectionTitle(_ section: CmuxSidebarProviderTreeSection) -> String {
+    private func extensionSidebarTreeSectionTitle(_ section: MosaicSidebarProviderTreeSection) -> String {
         if let titleText = section.titleText {
-            return CmuxExtensionSidebarSelection.localizedText(titleText)
+            return MosaicExtensionSidebarSelection.localizedText(titleText)
         }
         return section.title
     }
@@ -12137,7 +12137,7 @@ struct VerticalTabsSidebar: View {
         tabManager.selectWorkspace(workspace)
     }
 
-    private func createExtensionWorktreeWorkspace(for section: CmuxSidebarProviderTreeSection) {
+    private func createExtensionWorktreeWorkspace(for section: MosaicSidebarProviderTreeSection) {
         guard let projectRootPath = section.projectRootPath,
               !extensionSidebarWorktreeCreationInFlightSectionIds.contains(section.id) else {
             return
@@ -12146,7 +12146,7 @@ struct VerticalTabsSidebar: View {
         extensionSidebarWorktreeCreationInFlightSectionIds.insert(section.id)
         Task {
             do {
-                let result = try await CmuxExtensionWorktreePrototype.createWorktree(projectRootPath: projectRootPath)
+                let result = try await MosaicExtensionWorktreePrototype.createWorktree(projectRootPath: projectRootPath)
                 let spawnArgs = result.workspaceSpawnArgs()
                 tabManager.addWorkspace(
                     title: spawnArgs.title,
@@ -12160,7 +12160,7 @@ struct VerticalTabsSidebar: View {
             } catch {
                 NSSound.beep()
 #if DEBUG
-                cmuxDebugLog("extensionSidebar.worktree.failed project=\(projectRootPath) error=\(error.localizedDescription)")
+                mosaicDebugLog("extensionSidebar.worktree.failed project=\(projectRootPath) error=\(error.localizedDescription)")
 #endif
             }
             extensionSidebarWorktreeCreationInFlightSectionIds.remove(section.id)
@@ -12188,7 +12188,7 @@ struct VerticalTabsSidebar: View {
             .overlay(alignment: .bottom) {
                 if emptyAreaTopDropIndicatorVisible() {
                     Rectangle()
-                        .fill(cmuxAccentColor())
+                        .fill(mosaicAccentColor())
                         .frame(height: 2)
                         .padding(.horizontal, 8)
                         .offset(y: tabRowSpacing / 2)
@@ -12250,7 +12250,7 @@ struct VerticalTabsSidebar: View {
         // LazyVStack is safe here because `dragState` is @Observable:
         // drag mutations at 60fps invalidate only the rows/overlays that
         // read them, never this sidebar body. See SidebarDragState and
-        // https://github.com/emergent-inc/cmux/issues/2586.
+        // https://github.com/emergent-inc/mosaic/issues/2586.
         LazyVStack(spacing: tabRowSpacing) {
             Text(String(localized: "sidebar.sessions.section", defaultValue: "Sessions"))
                 .font(.system(size: 11, weight: .regular, design: .default))
@@ -12719,7 +12719,7 @@ struct VerticalTabsSidebar: View {
         )
         let onDragStart: () -> NSItemProvider = { [tabId = tab.id] in
             #if DEBUG
-            cmuxDebugLog("sidebar.onDrag tab=\(tabId.uuidString.prefix(5))")
+            mosaicDebugLog("sidebar.onDrag tab=\(tabId.uuidString.prefix(5))")
             #endif
             dragState.beginDragging(tabId: tabId)
             return SidebarTabDragPayload.provider(for: tabId)
@@ -12789,7 +12789,7 @@ struct VerticalTabsSidebar: View {
 
         row
             .sidebarWorkspaceFrameAnchor(id: tab.id, isEnabled: shouldCollectWorkspaceDropTargets)
-            .cmuxCursorOnHover(.openHand, enabled: !isBeingDragged)
+            .mosaicCursorOnHover(.openHand, enabled: !isBeingDragged)
             .padding(.leading, tab.groupId != nil ? SidebarWorkspaceGroupingMetrics.memberIndent : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -12916,7 +12916,7 @@ private final class SidebarDragFailsafeMonitor: ObservableObject {
     private func requestClearSoon(reason: String) {
         guard pendingClearTimer == nil else { return }
 #if DEBUG
-        cmuxDebugLog("sidebar.dragFailsafe.schedule reason=\(reason)")
+        mosaicDebugLog("sidebar.dragFailsafe.schedule reason=\(reason)")
 #endif
         let timer = DispatchSource.makeTimerSource(queue: .main)
         pendingClearGeneration &+= 1
@@ -12926,7 +12926,7 @@ private final class SidebarDragFailsafeMonitor: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self, self.pendingClearGeneration == generation else { return }
 #if DEBUG
-                cmuxDebugLog("sidebar.dragFailsafe.fire reason=\(reason)")
+                mosaicDebugLog("sidebar.dragFailsafe.fire reason=\(reason)")
 #endif
                 self.pendingClearTimer = nil
                 self.onRequestClear?(reason)
@@ -12974,7 +12974,7 @@ private struct SidebarExternalDropDelegate: DropDelegate {
             hasSidebarDragPayload: hasSidebarPayload
         )
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "sidebar.dropOutside.validate tab=\(debugShortSidebarTabId(draggedTabId)) " +
             "hasType=\(hasSidebarPayload) allowed=\(shouldReset)"
         )
@@ -12984,20 +12984,20 @@ private struct SidebarExternalDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
 #if DEBUG
-        cmuxDebugLog("sidebar.dropOutside.entered tab=\(debugShortSidebarTabId(draggedTabId))")
+        mosaicDebugLog("sidebar.dropOutside.entered tab=\(debugShortSidebarTabId(draggedTabId))")
 #endif
     }
 
     func dropExited(info: DropInfo) {
 #if DEBUG
-        cmuxDebugLog("sidebar.dropOutside.exited tab=\(debugShortSidebarTabId(draggedTabId))")
+        mosaicDebugLog("sidebar.dropOutside.exited tab=\(debugShortSidebarTabId(draggedTabId))")
 #endif
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         guard validateDrop(info: info) else { return nil }
 #if DEBUG
-        cmuxDebugLog("sidebar.dropOutside.updated tab=\(debugShortSidebarTabId(draggedTabId)) op=move")
+        mosaicDebugLog("sidebar.dropOutside.updated tab=\(debugShortSidebarTabId(draggedTabId)) op=move")
 #endif
         // Explicit move proposal avoids AppKit showing a copy (+) cursor.
         return DropProposal(operation: .move)
@@ -13006,7 +13006,7 @@ private struct SidebarExternalDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         guard validateDrop(info: info) else { return false }
 #if DEBUG
-        cmuxDebugLog("sidebar.dropOutside.perform tab=\(debugShortSidebarTabId(draggedTabId))")
+        mosaicDebugLog("sidebar.dropOutside.perform tab=\(debugShortSidebarTabId(draggedTabId))")
 #endif
         SidebarDragLifecycleNotification().postClearRequest(reason: "outside_sidebar_drop")
         return true
@@ -13059,7 +13059,7 @@ private struct SidebarFooterButtons: View {
                         title: String(localized: "sidebar.extensions.browser.title", defaultValue: "Sidebar Extensions")
                     )
                 }) {
-                    CmuxSystemSymbolImage(magnified: "puzzlepiece.extension", pointSize: 12, weight: .medium)
+                    MosaicSystemSymbolImage(magnified: "puzzlepiece.extension", pointSize: 12, weight: .medium)
                         .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                         .frame(width: 22, height: 22, alignment: .center)
                 }
@@ -13071,7 +13071,7 @@ private struct SidebarFooterButtons: View {
                 .background(TitlebarControlAnchorView { extensionBrowserAnchorView = $0 })
             }
             if let updateActionsHost = AppDelegate.shared {
-                UpdatePill(model: updateViewModel, accent: cmuxAccentColor(), actions: updateActionsHost)
+                UpdatePill(model: updateViewModel, accent: mosaicAccentColor(), actions: updateActionsHost)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -13084,7 +13084,7 @@ private struct SidebarAccountButton: View {
     private let buttonSize: CGFloat = 22
     private let iconSize: CGFloat = 12
 
-    private var currentUser: CMUXAuthUser? {
+    private var currentUser: MosaicAuthUser? {
         coordinator?.currentUser
     }
 
@@ -13158,7 +13158,7 @@ private struct SidebarAccountButton: View {
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(helpText)
         .accessibilityIdentifier("SidebarAccountButton")
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
     }
 
     @ViewBuilder
@@ -13184,13 +13184,13 @@ private struct SidebarAccountButton: View {
     }
 
     private var fallbackIcon: some View {
-        CmuxSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
+        MosaicSystemSymbolImage(systemName: symbolName, pointSize: iconSize, weight: .medium)
             .foregroundStyle(iconColor)
             .frame(width: buttonSize, height: buttonSize, alignment: .center)
     }
 
     private var iconColor: Color {
-        isSignedIn ? cmuxAccentColor() : Color(nsColor: .secondaryLabelColor)
+        isSignedIn ? mosaicAccentColor() : Color(nsColor: .secondaryLabelColor)
     }
 
     private func openAccountSettings() {
@@ -13216,7 +13216,7 @@ private struct SidebarTutorialVideoButton: View {
                 TutorialVideoPresentationCenter.shared.requestPresentation(in: NSApp.keyWindow ?? NSApp.mainWindow)
             }
         }) {
-            CmuxSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
+            MosaicSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
                 .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .frame(width: buttonSize, height: buttonSize, alignment: .center)
         }
@@ -13225,7 +13225,7 @@ private struct SidebarTutorialVideoButton: View {
         .safeHelp(title)
         .accessibilityLabel(title)
         .accessibilityIdentifier("SidebarTutorialVideoButton")
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
     }
 }
 
@@ -13260,7 +13260,7 @@ private struct SidebarHelpMenuButton: View {
         TrackedButton("contentview_button_12962", action: {
             isPopoverPresented.toggle()
         }) {
-            CmuxSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
+            MosaicSystemSymbolImage(systemName: "questionmark.circle", pointSize: iconSize, weight: .medium)
                 .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .frame(width: buttonSize, height: buttonSize, alignment: .center)
         }
@@ -13348,7 +13348,7 @@ private struct SidebarHelpMenuButton: View {
         }) {
             HStack(spacing: 8) {
                 Text(title)
-                    .cmuxFont(size: 12)
+                    .mosaicFont(size: 12)
                 Spacer(minLength: 0)
                 if let shortcutHint {
                     helpOptionShortcutHint(text: shortcutHint)
@@ -13372,13 +13372,13 @@ private struct SidebarHelpMenuButton: View {
         Text(text)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .cmuxFont(size: 10, weight: .regular, design: .rounded)
+            .mosaicFont(size: 10, weight: .regular, design: .rounded)
             .monospacedDigit()
             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
     }
 
     private func helpOptionTrailingIcon(systemName: String, size: CGFloat = 13) -> some View {
-        CmuxSystemSymbolImage(systemName: systemName, pointSize: size)
+        MosaicSystemSymbolImage(systemName: systemName, pointSize: size)
             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
     }
 
@@ -13490,7 +13490,7 @@ private struct SidebarEmptyArea: View {
             .overlay(alignment: .top) {
                 if topDropIndicatorVisible {
                     Rectangle()
-                        .fill(cmuxAccentColor())
+                        .fill(mosaicAccentColor())
                         .frame(height: 2)
                         .padding(.horizontal, 8)
                         .offset(y: -(rowSpacing / 2))
@@ -13576,7 +13576,7 @@ private struct ExtensionSidebarBrowserStackEmptyArea: View {
     @Binding var draggedTabId: UUID?
     @Binding var dropIndicator: SidebarDropIndicator?
     let onNewTab: () -> Void
-    let onMove: (CmuxSidebarProviderWorkspaceMove) -> Bool
+    let onMove: (MosaicSidebarProviderWorkspaceMove) -> Bool
 
     var body: some View {
         Color.clear
@@ -13593,7 +13593,7 @@ private struct ExtensionSidebarBrowserStackEmptyArea: View {
             .overlay(alignment: .top) {
                 if shouldShowTopDropIndicator {
                     Rectangle()
-                        .fill(cmuxAccentColor())
+                        .fill(mosaicAccentColor())
                         .frame(height: 2)
                         .padding(.horizontal, 8)
                         .offset(y: -(rowSpacing / 2))
@@ -13885,14 +13885,14 @@ struct TabItemView: View, Equatable {
     let notificationStore: TerminalNotificationStore
     @Environment(\.colorScheme) private var colorScheme
     // Global font magnification percent, read once per row instead of through a
-    // per-label `CmuxFontModifier`. Each `.cmuxFont(...)` is a custom
+    // per-label `MosaicFontModifier`. Each `.mosaicFont(...)` is a custom
     // `@Environment`-reading `ViewModifier`; with 100+ workspaces continuously
     // re-rendering rows under agent churn, ~20 of those per row multiplied the
     // SwiftUI `DynamicBody`/environment node count the sidebar must re-evaluate
     // on every render pass (issue #6612, regression from #6554). Reading the
     // percent here and applying a primitive `.font(...)` keeps magnification
     // working while dropping those per-label modifier bodies.
-    @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontMagnificationPercent
+    @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontMagnificationPercent
     let tab: Tab
     let index: Int
     let workspaceShortcutDigit: Int?
@@ -14023,12 +14023,12 @@ struct TabItemView: View, Equatable {
         )
     }
 
-    private var openSidebarPullRequestLinksInCmuxBrowser: Bool {
-        settings.openPullRequestLinksInCmuxBrowser
+    private var openSidebarPullRequestLinksInMosaicBrowser: Bool {
+        settings.openPullRequestLinksInMosaicBrowser
     }
 
-    private var openSidebarPortLinksInCmuxBrowser: Bool {
-        settings.openPortLinksInCmuxBrowser
+    private var openSidebarPortLinksInMosaicBrowser: Bool {
+        settings.openPortLinksInMosaicBrowser
     }
 
     private var titleFontWeight: Font.Weight {
@@ -14044,7 +14044,7 @@ struct TabItemView: View, Equatable {
     }
 
     /// Resolves a system font scaled by the global magnification percent,
-    /// matching `CmuxFontModifier` exactly but without introducing a per-label
+    /// matching `MosaicFontModifier` exactly but without introducing a per-label
     /// custom `ViewModifier` (and its `@Environment` attribute + `DynamicBody`)
     /// for each `Text` in the row. The row reads the magnification percent once
     /// (`globalFontMagnificationPercent`) and applies a primitive `.font(...)`,
@@ -14107,7 +14107,7 @@ struct TabItemView: View, Equatable {
         if let hex = sidebarNotificationBadgeColorHex, let nsColor = NSColor(hex: hex) {
             return Color(nsColor: nsColor)
         }
-        return usesInvertedActiveForeground ? activePrimaryTextColor.opacity(0.25) : cmuxAccentColor()
+        return usesInvertedActiveForeground ? activePrimaryTextColor.opacity(0.25) : mosaicAccentColor()
     }
 
     private var activeUnreadBadgeTextColor: Color {
@@ -14119,7 +14119,7 @@ struct TabItemView: View, Equatable {
     }
 
     private var activeProgressFillColor: Color {
-        usesInvertedActiveForeground ? activeSecondaryColor(0.8) : cmuxAccentColor()
+        usesInvertedActiveForeground ? activeSecondaryColor(0.8) : mosaicAccentColor()
     }
 
     private var shortcutHintEmphasis: Double {
@@ -14332,7 +14332,7 @@ struct TabItemView: View, Equatable {
                 }
 
                 if workspaceSnapshot.isPinned {
-                    CmuxSystemSymbolImage(magnified: "pin.fill", pointSize: scaledFontSize(9), weight: .semibold)
+                    MosaicSystemSymbolImage(magnified: "pin.fill", pointSize: scaledFontSize(9), weight: .semibold)
                         .foregroundColor(activeSecondaryColor(0.8))
                         .safeHelp(protectedWorkspaceTooltip)
                 }
@@ -14346,7 +14346,7 @@ struct TabItemView: View, Equatable {
                         localized: "sidebar.mediaActivity.audio.tooltip",
                         defaultValue: "Playing audio"
                     )
-                    CmuxSystemSymbolImage(magnified: "speaker.wave.2.fill", pointSize: scaledFontSize(9), weight: .semibold)
+                    MosaicSystemSymbolImage(magnified: "speaker.wave.2.fill", pointSize: scaledFontSize(9), weight: .semibold)
                         .foregroundColor(activeSecondaryColor(0.8))
                         .safeHelp(audioPlayingTooltip)
                         .accessibilityLabel(audioPlayingTooltip)
@@ -14357,7 +14357,7 @@ struct TabItemView: View, Equatable {
                         localized: "sidebar.mediaActivity.microphone.tooltip",
                         defaultValue: "Microphone in use"
                     )
-                    CmuxSystemSymbolImage(magnified: "mic.fill", pointSize: scaledFontSize(9), weight: .semibold)
+                    MosaicSystemSymbolImage(magnified: "mic.fill", pointSize: scaledFontSize(9), weight: .semibold)
                         .foregroundColor(.orange)
                         .safeHelp(microphoneInUseTooltip)
                         .accessibilityLabel(microphoneInUseTooltip)
@@ -14368,7 +14368,7 @@ struct TabItemView: View, Equatable {
                         localized: "sidebar.mediaActivity.camera.tooltip",
                         defaultValue: "Camera in use"
                     )
-                    CmuxSystemSymbolImage(magnified: "video.fill", pointSize: scaledFontSize(9), weight: .semibold)
+                    MosaicSystemSymbolImage(magnified: "video.fill", pointSize: scaledFontSize(9), weight: .semibold)
                         .foregroundColor(.green)
                         .safeHelp(cameraInUseTooltip)
                         .accessibilityLabel(cameraInUseTooltip)
@@ -14401,11 +14401,11 @@ struct TabItemView: View, Equatable {
                 if canCloseWorkspace {
                     TrackedButton("contentview_button_14022", action: {
                         #if DEBUG
-                        cmuxDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=button")
+                        mosaicDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=button")
                         #endif
                         tabManager.closeWorkspaceFromTabCloseButton(tab)
                     }) {
-                        CmuxSystemSymbolImage(magnified: "xmark", pointSize: scaledFontSize(9), weight: .medium)
+                        MosaicSystemSymbolImage(magnified: "xmark", pointSize: scaledFontSize(9), weight: .medium)
                             .foregroundColor(activeSecondaryColor(0.7))
                             .frame(width: scaledCloseButtonWidth, height: scaledCloseButtonHitSize, alignment: .center)
                             .contentShape(Rectangle())
@@ -14462,7 +14462,7 @@ struct TabItemView: View, Equatable {
         .overlay {
             MiddleClickCapture {
                 #if DEBUG
-                cmuxDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=middleClick")
+                mosaicDebugLog("sidebar.close workspace=\(tab.id.uuidString.prefix(5)) method=middleClick")
                 #endif
                 tabManager.closeWorkspaceWithConfirmation(tab)
             }
@@ -14523,7 +14523,7 @@ struct TabItemView: View, Equatable {
         ) { _ in
 #if DEBUG
             let description = tab.customDescription ?? ""
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.row.invalidate workspace=\(tab.id.uuidString.prefix(8)) " +
                 "source=immediate " +
                 "title=\"\(debugCommandPaletteTextPreview(tab.title))\" " +
@@ -14543,7 +14543,7 @@ struct TabItemView: View, Equatable {
         ) { _ in
 #if DEBUG
             let description = tab.customDescription ?? ""
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.row.invalidate workspace=\(tab.id.uuidString.prefix(8)) " +
                 "source=debounced " +
                 "title=\"\(debugCommandPaletteTextPreview(tab.title))\" " +
@@ -14973,7 +14973,7 @@ struct TabItemView: View, Equatable {
         if modifiers.contains(.shift) { modStr += "shift " }
         if modifiers.contains(.option) { modStr += "opt " }
         if modifiers.contains(.control) { modStr += "ctrl " }
-        cmuxDebugLog("sidebar.select workspace=\(tab.id.uuidString.prefix(5)) modifiers=\(modStr.isEmpty ? "none" : modStr.trimmingCharacters(in: .whitespaces))")
+        mosaicDebugLog("sidebar.select workspace=\(tab.id.uuidString.prefix(5)) modifiers=\(modStr.isEmpty ? "none" : modStr.trimmingCharacters(in: .whitespaces))")
         #endif
 
         let workspaceIds = tabManager.tabs.map(\.id)
@@ -15361,7 +15361,7 @@ struct TabItemView: View, Equatable {
 
     private func openPullRequestLink(_ url: URL) {
         updateSelection()
-        if openSidebarPullRequestLinksInCmuxBrowser {
+        if openSidebarPullRequestLinksInMosaicBrowser {
             if tabManager.openBrowser(
                 inWorkspace: tab.id,
                 url: url,
@@ -15378,7 +15378,7 @@ struct TabItemView: View, Equatable {
     private func openPortLink(_ port: Int) {
         guard let url = URL(string: "http://localhost:\(port)") else { return }
         updateSelection()
-        if openSidebarPortLinksInCmuxBrowser {
+        if openSidebarPortLinksInMosaicBrowser {
             if tabManager.openBrowser(
                 inWorkspace: tab.id,
                 url: url,
@@ -15472,7 +15472,7 @@ struct TabItemView: View, Equatable {
                     .scaleEffect(fontScale)
                     .frame(width: customFrameSize, height: customFrameSize)
             case .closed:
-                CmuxSystemSymbolImage(magnified: "xmark.circle", pointSize: 7 * fontScale, weight: .regular)
+                MosaicSystemSymbolImage(magnified: "xmark.circle", pointSize: 7 * fontScale, weight: .regular)
                     .foregroundColor(color)
                     .frame(width: closedFrameSize, height: closedFrameSize)
             }
@@ -15652,7 +15652,7 @@ private struct SidebarWorkspaceDescriptionText: View {
                 Text(displayMarkdown)
             }
         }
-        .cmuxFont(size: 10.5 * fontScale)
+        .mosaicFont(size: 10.5 * fontScale)
         .foregroundColor(foregroundColor)
         .multilineTextAlignment(.leading)
         .lineLimit(Self.maxDisplayedLines)
@@ -15666,7 +15666,7 @@ private struct SidebarWorkspaceDescriptionText: View {
             let newlineCount = markdown.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.description.render workspaceState=appear " +
                 "len=\((markdown as NSString).length) " +
                 "newlines=\(newlineCount) " +
@@ -15679,7 +15679,7 @@ private struct SidebarWorkspaceDescriptionText: View {
             let newlineCount = newValue.reduce(into: 0) { count, character in
                 if character == "\n" { count += 1 }
             }
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.description.render workspaceState=change " +
                 "len=\((newValue as NSString).length) " +
                 "newlines=\(newlineCount) " +
@@ -15762,7 +15762,7 @@ private struct SidebarMetadataRows: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .cmuxFont(size: 10 * fontScale, weight: .semibold)
+                .mosaicFont(size: 10 * fontScale, weight: .semibold)
                 .foregroundColor(isActive ? activeSecondaryForegroundColor : .secondary.opacity(0.9))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -15826,7 +15826,7 @@ private struct SidebarMetadataEntryRow: View {
                 .truncationMode(.tail)
             Spacer(minLength: 0)
         }
-        .cmuxFont(size: 10 * fontScale)
+        .mosaicFont(size: 10 * fontScale)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -15850,12 +15850,12 @@ private struct SidebarMetadataEntryRow: View {
         if iconRaw.hasPrefix("emoji:") {
             let value = String(iconRaw.dropFirst("emoji:".count))
             guard !value.isEmpty else { return nil }
-            return AnyView(Text(value).cmuxFont(size: 9 * fontScale))
+            return AnyView(Text(value).mosaicFont(size: 9 * fontScale))
         }
         if iconRaw.hasPrefix("text:") {
             let value = String(iconRaw.dropFirst("text:".count))
             guard !value.isEmpty else { return nil }
-            return AnyView(Text(value).cmuxFont(size: 8 * fontScale, weight: .semibold))
+            return AnyView(Text(value).mosaicFont(size: 8 * fontScale, weight: .semibold))
         }
         let symbolName: String
         if iconRaw.hasPrefix("sf:") {
@@ -15864,7 +15864,7 @@ private struct SidebarMetadataEntryRow: View {
             symbolName = iconRaw
         }
         guard !symbolName.isEmpty else { return nil }
-        return AnyView(CmuxSystemSymbolImage(magnified: symbolName, pointSize: 8 * fontScale, weight: .medium))
+        return AnyView(MosaicSystemSymbolImage(magnified: symbolName, pointSize: 8 * fontScale, weight: .medium))
     }
 
     @ViewBuilder
@@ -15918,7 +15918,7 @@ private struct SidebarMetadataMarkdownBlocks: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .cmuxFont(size: 10 * fontScale, weight: .semibold)
+                .mosaicFont(size: 10 * fontScale, weight: .semibold)
                 .foregroundColor(isActive ? activeSecondaryForegroundColor : .secondary.opacity(0.9))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -15960,7 +15960,7 @@ private struct SidebarMetadataMarkdownBlockRow: View {
                     .foregroundColor(foregroundColor)
             }
         }
-        .cmuxFont(size: 10 * fontScale)
+        .mosaicFont(size: 10 * fontScale)
         .multilineTextAlignment(.leading)
         .lineLimit(Self.maxDisplayedLines)
         .truncationMode(.tail)
@@ -15987,10 +15987,10 @@ private struct SidebarMetadataMarkdownBlockRow: View {
 /// deletes) — the row's snapshot-boundary rule forbids reading
 /// `tabManager.workspaceGroups` from inside the contextMenu builder.
 enum SidebarTabDragPayload {
-    static let typeIdentifier = "com.cmux.sidebar-tab-reorder"
+    static let typeIdentifier = "com.mosaic.sidebar-tab-reorder"
     static let dropContentType = UTType(exportedAs: typeIdentifier)
     static let dropContentTypes: [UTType] = [dropContentType]
-    static let prefix = "cmux.sidebar-tab."
+    static let prefix = "mosaic.sidebar-tab."
 
     static func provider(for tabId: UUID) -> NSItemProvider {
         let provider = NSItemProvider()
@@ -16180,7 +16180,7 @@ struct SidebarTabDropDelegate: DropDelegate {
         let hasType = info.hasItemsConforming(to: [SidebarTabDragPayload.typeIdentifier])
         guard hasType, let draggedTabId = effectiveDraggedTabId else {
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.validateDrop target=\(targetTabId?.uuidString.prefix(5) ?? "end") " +
                 "hasType=\(hasType) hasDrag=false"
             )
@@ -16193,14 +16193,14 @@ struct SidebarTabDropDelegate: DropDelegate {
             // drops (the group stays intact in its window).
             if isCrossWindowGroupAnchorDrag(draggedTabId) {
                 #if DEBUG
-                cmuxDebugLog("sidebar.validateDrop crossWindow=true rejected=groupAnchor")
+                mosaicDebugLog("sidebar.validateDrop crossWindow=true rejected=groupAnchor")
                 #endif
                 return false
             }
             // Foreign workspace: any row (or the end strip) in this window is a
             // valid drop target — the workspace will be moved into this window.
             #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.validateDrop target=\(targetTabId?.uuidString.prefix(5) ?? "end") " +
                 "hasType=true crossWindow=true"
             )
@@ -16221,7 +16221,7 @@ struct SidebarTabDropDelegate: DropDelegate {
             ).contains(targetTabId)
         }()
         #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "sidebar.validateDrop target=\(targetTabId?.uuidString.prefix(5) ?? "end") " +
             "hasType=\(hasType) hasDrag=true inScope=\(targetIsInReorderScope)"
         )
@@ -16231,7 +16231,7 @@ struct SidebarTabDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         #if DEBUG
-        cmuxDebugLog("sidebar.dropEntered target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
+        mosaicDebugLog("sidebar.dropEntered target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
         #endif
         activateForeignDragIfNeeded()
         dragAutoScrollController.updateFromDragLocation()
@@ -16240,7 +16240,7 @@ struct SidebarTabDropDelegate: DropDelegate {
 
     func dropExited(info: DropInfo) {
 #if DEBUG
-        cmuxDebugLog("sidebar.dropExited target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
+        mosaicDebugLog("sidebar.dropExited target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
 #endif
         // SwiftUI can emit row exits while a valid drag is still over the
         // sidebar, especially after indicator state invalidates row overlays.
@@ -16252,7 +16252,7 @@ struct SidebarTabDropDelegate: DropDelegate {
         dragAutoScrollController.updateFromDragLocation()
         updateDropIndicator(pointerX: info.location.x, pointerY: plannerPointerY(for: info))
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "sidebar.dropUpdated target=\(targetTabId?.uuidString.prefix(5) ?? "end") " +
             "indicator=\(debugIndicator(dragState.dropIndicator))"
         )
@@ -16276,11 +16276,11 @@ struct SidebarTabDropDelegate: DropDelegate {
             dragAutoScrollController.stop()
         }
         #if DEBUG
-        cmuxDebugLog("sidebar.drop target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
+        mosaicDebugLog("sidebar.drop target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
         #endif
         guard let draggedTabId = effectiveDraggedTabId else {
 #if DEBUG
-            cmuxDebugLog("sidebar.drop.abort reason=missingDraggedTab")
+            mosaicDebugLog("sidebar.drop.abort reason=missingDraggedTab")
 #endif
             return false
         }
@@ -16317,7 +16317,7 @@ struct SidebarTabDropDelegate: DropDelegate {
         )
         guard let fromIndex = reorderTabIds.firstIndex(of: draggedTabId) else {
 #if DEBUG
-            cmuxDebugLog("sidebar.drop.abort reason=draggedTabMissing tab=\(draggedTabId.uuidString.prefix(5))")
+            mosaicDebugLog("sidebar.drop.abort reason=draggedTabMissing tab=\(draggedTabId.uuidString.prefix(5))")
 #endif
             return false
         }
@@ -16330,7 +16330,7 @@ struct SidebarTabDropDelegate: DropDelegate {
             legalInsertionRange: legalInsertionRange
         ) else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "sidebar.drop.abort reason=noTargetIndex tab=\(draggedTabId.uuidString.prefix(5)) " +
                 "target=\(targetTabId?.uuidString.prefix(5) ?? "end") indicator=\(debugIndicator(dragState.dropIndicator))"
             )
@@ -16340,13 +16340,13 @@ struct SidebarTabDropDelegate: DropDelegate {
 
         guard fromIndex != targetIndex || explicitGroupId != nil else {
 #if DEBUG
-            cmuxDebugLog("sidebar.drop.noop from=\(fromIndex) to=\(targetIndex)")
+            mosaicDebugLog("sidebar.drop.noop from=\(fromIndex) to=\(targetIndex)")
 #endif
             return true
         }
 
 #if DEBUG
-        cmuxDebugLog("sidebar.drop.commit tab=\(draggedTabId.uuidString.prefix(5)) from=\(fromIndex) to=\(targetIndex)")
+        mosaicDebugLog("sidebar.drop.commit tab=\(draggedTabId.uuidString.prefix(5)) from=\(fromIndex) to=\(targetIndex)")
 #endif
         let selectionBeforeReorder = selectedTabIds
         let anchorWorkspaceIdBeforeReorder = SidebarWorkspaceSelectionSyncPolicy().anchorWorkspaceId(
@@ -16417,7 +16417,7 @@ struct SidebarTabDropDelegate: DropDelegate {
               // disallowed (also gated in validateDrop).
               !sourceManager.workspaceGroups.contains(where: { $0.anchorWorkspaceId == draggedTabId }) else {
 #if DEBUG
-            cmuxDebugLog("sidebar.drop.crossWindow.abort reason=unresolvedRouteOrGroupAnchor tab=\(draggedTabId.uuidString.prefix(5))")
+            mosaicDebugLog("sidebar.drop.crossWindow.abort reason=unresolvedRouteOrGroupAnchor tab=\(draggedTabId.uuidString.prefix(5))")
 #endif
             return false
         }
@@ -16437,7 +16437,7 @@ struct SidebarTabDropDelegate: DropDelegate {
         guard !movingIds.isEmpty else { return false }
 
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "sidebar.drop.crossWindow.commit count=\(movingIds.count) " +
             "to=\(destinationWindowId.uuidString.prefix(5))"
         )
@@ -16619,7 +16619,7 @@ private struct ExtensionSidebarBrowserStackDropDelegate: DropDelegate {
     let targetRowHeight: CGFloat?
     let dragAutoScrollController: SidebarDragAutoScrollController
     @Binding var dropIndicator: SidebarDropIndicator?
-    let onMove: (CmuxSidebarProviderWorkspaceMove) -> Bool
+    let onMove: (MosaicSidebarProviderWorkspaceMove) -> Bool
 
     func validateDrop(info: DropInfo) -> Bool {
         info.hasItemsConforming(to: [SidebarTabDragPayload.typeIdentifier])
@@ -16714,7 +16714,7 @@ private struct ExtensionSidebarBrowserStackDropDelegate: DropDelegate {
         draggedWorkspaceId: UUID,
         insertionPosition: Int,
         indicator: SidebarDropIndicator?
-    ) -> CmuxSidebarProviderWorkspaceMove? {
+    ) -> MosaicSidebarProviderWorkspaceMove? {
         ExtensionSidebarBrowserStackDropPlanner(orderedRows: orderedRows).move(
             draggedWorkspaceId: draggedWorkspaceId,
             insertionPosition: insertionPosition,
@@ -16735,7 +16735,7 @@ private struct ExtensionSidebarBrowserStackEndDropDelegate: DropDelegate {
     @Binding var draggedTabId: UUID?
     let dragAutoScrollController: SidebarDragAutoScrollController
     @Binding var dropIndicator: SidebarDropIndicator?
-    let onMove: (CmuxSidebarProviderWorkspaceMove) -> Bool
+    let onMove: (MosaicSidebarProviderWorkspaceMove) -> Bool
 
     func validateDrop(info: DropInfo) -> Bool {
         info.hasItemsConforming(to: [SidebarTabDragPayload.typeIdentifier])

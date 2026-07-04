@@ -1,5 +1,5 @@
-import CmuxAgentChat
-import CmuxFoundation
+import MosaicAgentChat
+import MosaicFoundation
 import Foundation
 
 /// Tails one agent session's transcript JSONL: initial bounded backfill,

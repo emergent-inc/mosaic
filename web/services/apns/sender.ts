@@ -105,7 +105,7 @@ export async function sendApnsNotification(
   const jwt = providerToken(config);
   const body = Buffer.from(JSON.stringify(buildApnsPayload(input)));
   // The collapse-id coalesces repeated updates for the same notification into
-  // one delivered banner (the dismiss lever itself is the `cmux.notificationId`
+  // one delivered banner (the dismiss lever itself is the `mosaic.notificationId`
   // payload key, which iOS maps to delivered banners; the request identifier
   // equaling the collapse-id is observed OS behavior, not a contract). APNs
   // caps it at 64 bytes; a UUID is 36, but guard anyway so an over-long id

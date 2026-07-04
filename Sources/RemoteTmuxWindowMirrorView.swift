@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Renders a mirrored tmux window's multi-pane layout as nested splits inside a
-/// single cmux tab. Each pane is a real ``TerminalPanel`` (rendered via
+/// single mosaic tab. Each pane is a real ``TerminalPanel`` (rendered via
 /// ``TerminalPanelView`` for native chrome) topped with a small control header
 /// (split / close) that doubles as a clearly visible separator between panes.
 @MainActor

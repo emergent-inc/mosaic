@@ -1,6 +1,6 @@
 import AppKit
 import Bonsplit
-import CmuxFoundation
+import MosaicFoundation
 import SwiftUI
 
 struct SidebarBonsplitTabWorkspaceDropOverlay: NSViewRepresentable {

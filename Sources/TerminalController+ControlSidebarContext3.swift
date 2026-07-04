@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
-import CmuxControlSocket
-import CmuxTerminal
+import MosaicControlSocket
+import MosaicTerminal
 
 /// The live-app half of the v1 bonsplit pane commands (`list_panes` /
 /// `list_pane_surfaces` / `focus_pane` / `focus_surface_by_panel` /

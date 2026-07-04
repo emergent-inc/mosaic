@@ -12,7 +12,7 @@ Usage:
   # Then open: tests/terminal_input_report.html
 
 Environment:
-  CMUX_SOCKET_PATH can override the socket path.
+  MOSAIC_SOCKET_PATH can override the socket path.
 """
 
 import base64
@@ -26,10 +26,10 @@ from pathlib import Path
 from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH") or "/tmp/cmux-debug.sock"
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH") or "/tmp/mosaic-debug.sock"
 HTML_REPORT = Path(__file__).parent / "terminal_input_report.html"
 
 
@@ -49,17 +49,17 @@ def _wait_for(pred, timeout_s: float, step_s: float = 0.05) -> None:
         if pred():
             return
         time.sleep(step_s)
-    raise cmuxError("Timed out waiting for condition")
+    raise mosaicError("Timed out waiting for condition")
 
 
-def _focused_panel_id(c: cmux) -> str:
+def _focused_panel_id(c: mosaic) -> str:
     surfaces = c.list_surfaces()
     if not surfaces:
-        raise cmuxError("Expected at least 1 surface")
+        raise mosaicError("Expected at least 1 surface")
     return next((sid for _i, sid, focused in surfaces if focused), surfaces[0][1])
 
 
-def _snap_panel(c: cmux, panel_id: str, label: str) -> Shot:
+def _snap_panel(c: mosaic, panel_id: str, label: str) -> Shot:
     info = c.panel_snapshot(panel_id, label)
     return Shot(
         path=Path(info["path"]),
@@ -68,7 +68,7 @@ def _snap_panel(c: cmux, panel_id: str, label: str) -> Shot:
     )
 
 
-def _panel_sequence_blink_and_type(c: cmux, panel_id: str, prefix: str, typed_char: str = "x") -> tuple[list[Shot], dict]:
+def _panel_sequence_blink_and_type(c: mosaic, panel_id: str, prefix: str, typed_char: str = "x") -> tuple[list[Shot], dict]:
     shots: list[Shot] = []
 
     # Keep the app key/active while we probe focus + rendering; on a host machine the
@@ -123,7 +123,7 @@ def _write_report(cases: list[dict]) -> None:
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>cmux terminal input render report</title>
+  <title>mosaic terminal input render report</title>
   <style>
     :root {{
       --bg: #0b0f14;
@@ -207,7 +207,7 @@ def _write_report(cases: list[dict]) -> None:
   </style>
 </head>
 <body>
-  <h1>cmux terminal input render report</h1>
+  <h1>mosaic terminal input render report</h1>
   <div class="meta">generated: {esc(generated)} | socket: {esc(SOCKET_PATH)}</div>
 """
 
@@ -242,7 +242,7 @@ def _write_report(cases: list[dict]) -> None:
 def main() -> int:
     cases: list[dict] = []
 
-    with cmux(SOCKET_PATH) as c:
+    with mosaic(SOCKET_PATH) as c:
         c.activate_app()
         time.sleep(0.25)
 

@@ -57,7 +57,7 @@ export default function MarkdownViewerPage() {
       </time>
 
       <video
-        src="/blog/cmux-markdown-tobi.mp4"
+        src="/blog/mosaic-markdown-tobi.mp4"
         width={1280}
         height={850}
         autoPlay
@@ -69,7 +69,7 @@ export default function MarkdownViewerPage() {
 
       <p>{t("p1")}</p>
       <p>{t("p2")}</p>
-      <CodeBlock lang="bash">{`cmux open README.md`}</CodeBlock>
+      <CodeBlock lang="bash">{`mosaic open README.md`}</CodeBlock>
       <p>{t("p3")}</p>
       <p>
         {t.rich("p4", {

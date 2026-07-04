@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check cmux-owned Swift file lengths against a checked-in budget."""
+"""Check mosaic-owned Swift file lengths against a checked-in budget."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ import pathlib
 import sys
 
 
-DEFAULT_ROOTS = ("Sources", "CLI", "Packages", "cmuxTests", "cmuxUITests")
+DEFAULT_ROOTS = ("Sources", "CLI", "Packages", "mosaicTests", "mosaicUITests")
 DEFAULT_THRESHOLD = 500
 IGNORED_PATH_PARTS = (
     "/vendor/",
     "/ghostty/",
-    "/homebrew-cmux/",
+    "/homebrew-mosaic/",
     "/.build/",
     "/SourcePackages/",
     "/.ci-source-packages/",
@@ -85,7 +85,7 @@ def load_budget(path: pathlib.Path) -> FileLengthBudget:
 def write_budget(path: pathlib.Path, budget: FileLengthBudget) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
-        handle.write("# cmux-owned Swift file length budget.\n")
+        handle.write("# mosaic-owned Swift file length budget.\n")
         handle.write("# Format: max_lines<TAB>relative path\n")
         handle.write("# Reduce counts as files shrink. CI fails if tracked files exceed this budget.\n")
         for rel_path, line_count in sorted(budget.items(), key=lambda item: (-item[1], item[0])):
@@ -194,7 +194,7 @@ def main(argv: list[str]) -> int:
     budget_path = args.budget if args.budget.is_absolute() else repo_root / args.budget
     file_lengths = collect_file_lengths(repo_root, tuple(args.roots))
     actual = tracked_file_lengths(file_lengths, args.threshold)
-    print_file_summary("All scanned cmux-owned Swift files", file_lengths)
+    print_file_summary("All scanned mosaic-owned Swift files", file_lengths)
     print_file_summary(f"Tracked Swift files >= {args.threshold} lines", actual)
 
     if args.write_budget:

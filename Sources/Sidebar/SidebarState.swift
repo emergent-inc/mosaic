@@ -1,4 +1,4 @@
-import CmuxWorkspaces
+import MosaicWorkspaces
 import Combine
 import CoreGraphics
 import Foundation

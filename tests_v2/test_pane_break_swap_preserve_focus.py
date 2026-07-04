@@ -9,15 +9,15 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _wait_for(pred, msg: str, timeout_s: float = 5.0, step_s: float = 0.05):
@@ -33,23 +33,23 @@ def _wait_for(pred, msg: str, timeout_s: float = 5.0, step_s: float = 0.05):
         if value:
             return value
         if time.time() >= deadline:
-            raise cmuxError(f"Timed out waiting for condition: {msg}")
+            raise mosaicError(f"Timed out waiting for condition: {msg}")
         time.sleep(step_s)
 
 
-def _panes(client: cmux, workspace_id: str) -> list:
+def _panes(client: mosaic, workspace_id: str) -> list:
     payload = client._call("pane.list", {"workspace_id": workspace_id}) or {}
     return payload.get("panes") or []
 
 
-def _surface_ids_by_pane(client: cmux, workspace_id: str) -> dict:
+def _surface_ids_by_pane(client: mosaic, workspace_id: str) -> dict:
     return {
         str(row.get("id") or ""): tuple(row.get("surface_ids") or [])
         for row in _panes(client, workspace_id)
     }
 
 
-def _focused_pane_id(client: cmux, workspace_id: str) -> str:
+def _focused_pane_id(client: mosaic, workspace_id: str) -> str:
     for row in _panes(client, workspace_id):
         if bool(row.get("focused")):
             return str(row.get("id") or "")
@@ -60,7 +60,7 @@ def main() -> int:
     created_workspaces: list[str] = []
 
     try:
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             workspace_id = client.new_workspace()
             created_workspaces.append(workspace_id)
             client.select_workspace(workspace_id)
@@ -124,7 +124,7 @@ def main() -> int:
                 "pane.break should preserve the selected workspace when invoked over the socket",
             )
     finally:
-        with cmux(SOCKET_PATH) as cleanup_client:
+        with mosaic(SOCKET_PATH) as cleanup_client:
             for workspace_id in reversed(created_workspaces):
                 try:
                     cleanup_client.close_workspace(workspace_id)

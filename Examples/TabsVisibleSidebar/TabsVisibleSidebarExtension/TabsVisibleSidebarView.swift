@@ -1,4 +1,4 @@
-import CmuxExtensionKit
+import MosaicExtensionKit
 import SwiftUI
 
 struct TabsVisibleSidebarView: View {
@@ -29,10 +29,10 @@ struct TabsVisibleSidebarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func workspaceList(_ snapshot: CmuxSidebarSnapshot) -> some View {
+    private func workspaceList(_ snapshot: MosaicSidebarSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if snapshot.workspaces.isEmpty {
-                Text(String(localized: "tabsVisible.noWorkspaces", defaultValue: "No workspaces shared by cmux"))
+                Text(String(localized: "tabsVisible.noWorkspaces", defaultValue: "No workspaces shared by mosaic"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {
@@ -44,7 +44,7 @@ struct TabsVisibleSidebarView: View {
     }
 
     private func workspaceDisclosure(
-        _ workspace: CmuxSidebarWorkspace,
+        _ workspace: MosaicSidebarWorkspace,
         selectedWorkspaceID: UUID?
     ) -> some View {
         let isExpanded = Binding(
@@ -97,7 +97,7 @@ struct TabsVisibleSidebarView: View {
         )
     }
 
-    private func surfacesList(_ workspace: CmuxSidebarWorkspace) -> some View {
+    private func surfacesList(_ workspace: MosaicSidebarWorkspace) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             if workspace.surfaces.isEmpty {
                 Text(String(localized: "tabsVisible.noSurfaces", defaultValue: "No shared tabs"))
@@ -141,7 +141,7 @@ struct TabsVisibleSidebarView: View {
         VStack(alignment: .leading, spacing: 8) {
             ProgressView()
                 .controlSize(.small)
-            Text(String(localized: "tabsVisible.waiting", defaultValue: "Waiting for cmux"))
+            Text(String(localized: "tabsVisible.waiting", defaultValue: "Waiting for mosaic"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -159,7 +159,7 @@ struct TabsVisibleSidebarView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 
-    private func iconName(for kind: CmuxSidebarSurfaceKind) -> String {
+    private func iconName(for kind: MosaicSidebarSurfaceKind) -> String {
         switch kind {
         case .terminal:
             return "terminal"

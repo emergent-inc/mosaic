@@ -9,7 +9,7 @@ export type VmImageManifestEntry = {
   readonly imageId: string;
   readonly envVar: string;
   readonly defaultForLocalDev?: boolean;
-  readonly cmuxdRemoteCommit: string;
+  readonly mosaicdRemoteCommit: string;
   readonly builtAt: string;
   readonly builderScriptVersion: string;
   readonly agentToolResolvedVersions?: Record<string, string>;
@@ -32,7 +32,7 @@ const typedManifest = manifest as {
 export function providerImageEnvKey(provider: ProviderId): string {
   switch (provider) {
     case "e2b":
-      return "E2B_CMUXD_WS_TEMPLATE";
+      return "E2B_MOSAICD_WS_TEMPLATE";
     case "freestyle":
       return "FREESTYLE_SANDBOX_SNAPSHOT";
     default:

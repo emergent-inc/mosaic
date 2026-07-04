@@ -3,14 +3,14 @@ set -euo pipefail
 
 # Deploy an ISOLATED dev presence worker for one developer (or feature), so
 # several people can work on / dogfood the presence + paired-Mac-backup worker at
-# the same time WITHOUT clobbering the shared `cmux-presence-dev` or each other.
+# the same time WITHOUT clobbering the shared `mosaic-presence-dev` or each other.
 #
-# Each named worker `cmux-presence-dev-<slug>` gets:
+# Each named worker `mosaic-presence-dev-<slug>` gets:
 #   - its own `*.workers.dev` URL, and
 #   - its own Durable Object namespace (presence + backup state fully isolated).
 #
 # Point your dev builds (Mac heartbeat + iOS presence/backup) at the printed URL
-# via CMUX_PRESENCE_BASE_URL; the reload scripts bake it into the tagged build.
+# via MOSAIC_PRESENCE_BASE_URL; the reload scripts bake it into the tagged build.
 #
 # Usage:
 #   ./scripts/deploy-dev.sh            # slug = your git email prefix (one per dev)
@@ -20,9 +20,9 @@ set -euo pipefail
 # .dev.vars: STACK_PROJECT_ID and STACK_PUBLISHABLE_CLIENT_KEY. STACK_API_URL is
 # optional and defaults in code to https://api.stack-auth.com.
 #
-# Do NOT deploy the shared `cmux-presence-dev` from a feature branch: that single
-# instance is the integration baseline, and `wrangler deploy --name cmux-presence`
-# / `--name cmux-presence-dev` inherits the PRODUCTION presence.cmux.dev custom
+# Do NOT deploy the shared `mosaic-presence-dev` from a feature branch: that single
+# instance is the integration baseline, and `wrangler deploy --name mosaic-presence`
+# / `--name mosaic-presence-dev` inherits the PRODUCTION presence.mosaic.dev custom
 # domain (see README + wrangler.dev.toml). This script refuses those names.
 
 cd "$(dirname "$0")/.."
@@ -56,7 +56,7 @@ put_worker_secret() {
   printf '%s' "$value" | bunx wrangler secret put "$key" --config wrangler.dev.toml --name "$name" >/dev/null
 }
 
-raw="${1:-${CMUX_PRESENCE_DEV_SLUG:-$(git config user.email 2>/dev/null | cut -d@ -f1 || true)}}"
+raw="${1:-${MOSAIC_PRESENCE_DEV_SLUG:-$(git config user.email 2>/dev/null | cut -d@ -f1 || true)}}"
 raw="${raw:-${USER:-}}"
 slug="$(printf '%s' "$raw" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/--*/-/g; s/^-//; s/-*$//')"
 
@@ -65,13 +65,13 @@ if [ -z "$slug" ]; then
   exit 1
 fi
 case "$slug" in
-  dev|prod|presence|cmux-presence|cmux-presence-dev)
+  dev|prod|presence|mosaic-presence|mosaic-presence-dev)
     echo "error: '$slug' is reserved (shared/prod). Pick a personal slug." >&2
     exit 1
     ;;
 esac
 
-name="cmux-presence-dev-${slug}"
+name="mosaic-presence-dev-${slug}"
 stack_project_id="$(read_dev_value STACK_PROJECT_ID)"
 stack_client_key="$(read_dev_value STACK_PUBLISHABLE_CLIENT_KEY)"
 stack_api_url="$(read_dev_value STACK_API_URL)"
@@ -116,10 +116,10 @@ Isolated dev presence + paired-Mac-backup worker:
 Point ALL your dev builds at it (Mac that heartbeats + the iPhone that
 subscribes/backs up must use the SAME worker), then reload:
 
-  export CMUX_PRESENCE_BASE_URL=${url}
+  export MOSAIC_PRESENCE_BASE_URL=${url}
 
 The reload scripts inject it into the tagged build, so a normally-tapped dev app
 uses your worker, not the shared one. Unset it to go back to the shared
-cmux-presence-dev baseline.
+mosaic-presence-dev baseline.
 ================================================================
 EOF

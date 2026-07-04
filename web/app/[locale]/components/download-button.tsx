@@ -68,7 +68,7 @@ export function DownloadButton({
   }`;
 
   const captureMac = () => {
-    posthog.capture("cmuxterm_download_clicked", { location, platform: "mac" });
+    posthog.capture("mosaicterm_download_clicked", { location, platform: "mac" });
     captureWebAcquisitionEvent("web_download_clicked", {
       entrypoint: "download_button",
       result: "started",
@@ -162,7 +162,7 @@ export function DownloadButton({
                   render={<Link href="/ios" target="_blank" rel="noreferrer" />}
                   onClick={() =>
                   {
-                    posthog.capture("cmuxterm_download_clicked", {
+                    posthog.capture("mosaicterm_download_clicked", {
                       location,
                       platform: "ios",
                     });
@@ -189,7 +189,7 @@ export function DownloadButton({
                     <Menu.Item
                       key={platform}
                       onClick={() => {
-                        posthog.capture("cmuxterm_waitlist_opened", {
+                        posthog.capture("mosaicterm_waitlist_opened", {
                           location,
                           platform,
                         });

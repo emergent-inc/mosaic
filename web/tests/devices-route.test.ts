@@ -3,7 +3,7 @@ import postgres, { type Sql } from "postgres";
 
 import { closeCloudDbForTests } from "../db/client";
 
-const runDbTests = process.env.CMUX_DB_TEST === "1";
+const runDbTests = process.env.MOSAIC_DB_TEST === "1";
 const dbTest = runDbTests ? test : test.skip;
 
 // Stack user in two teams ("team-a" default-selected, plus "team-b"), so the
@@ -40,12 +40,12 @@ function authHeaders(teamId?: string): Record<string, string> {
     "x-stack-refresh-token": "refresh-token",
     "content-type": "application/json",
   };
-  if (teamId) base["x-cmux-team-id"] = teamId;
+  if (teamId) base["x-mosaic-team-id"] = teamId;
   return base;
 }
 
 function registerRequest(body: Record<string, unknown>, teamId?: string): Request {
-  return new Request("https://cmux.test/api/devices", {
+  return new Request("https://mosaic.test/api/devices", {
     method: "POST",
     headers: authHeaders(teamId),
     body: JSON.stringify(body),
@@ -56,7 +56,7 @@ beforeAll(() => {
   if (!runDbTests) return;
   const databaseURL = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseURL) {
-    throw new Error("DATABASE_URL is required when CMUX_DB_TEST=1");
+    throw new Error("DATABASE_URL is required when MOSAIC_DB_TEST=1");
   }
   sql = postgres(databaseURL, { max: 1 });
 });
@@ -89,7 +89,7 @@ describe("device registry route", () => {
     expect(register.status).toBe(200);
 
     const listResponse = await GET(
-      new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }),
+      new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }),
     );
     expect(listResponse.status).toBe(200);
     const list = (await listResponse.json()) as {
@@ -137,7 +137,7 @@ describe("device registry route", () => {
     expect(total).toBe(1);
 
     const list = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }))
     ).json()) as { devices: Array<{ instances: Array<{ routes: Array<{ endpoint: { host: string } }> }> }> };
     expect(list.devices[0].instances[0].routes[0].endpoint.host).toBe("100.9.9.9");
   });
@@ -206,7 +206,7 @@ describe("device registry route", () => {
   dbTest("registers the same device UUID in two teams the user belongs to", async () => {
     if (!sql) throw new Error("test database not initialized");
 
-    // Same physical Mac (same cmux UUID), registered under team-a then team-b.
+    // Same physical Mac (same mosaic UUID), registered under team-a then team-b.
     const inA = await POST(
       registerRequest({ deviceId: DEVICE_A, platform: "mac", tag: "stable", routes: [] }, "team-a"),
     );
@@ -224,7 +224,7 @@ describe("device registry route", () => {
 
     // Each team only sees its own row for the device.
     const listA = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders("team-a") }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders("team-a") }))
     ).json()) as { teamId: string; devices: Array<{ deviceId: string }> };
     expect(listA.teamId).toBe("team-a");
     expect(listA.devices.map((d) => d.deviceId)).toEqual([DEVICE_A]);
@@ -299,7 +299,7 @@ describe("device registry route", () => {
     await POST(registerRequest({ deviceId: DEVICE_B, platform: "mac", tag: "stable", routes: [] }));
 
     const del = await DELETE(
-      new Request("https://cmux.test/api/devices", {
+      new Request("https://mosaic.test/api/devices", {
         method: "DELETE",
         headers: authHeaders(),
         body: JSON.stringify({ deviceId: DEVICE_A }),
@@ -311,7 +311,7 @@ describe("device registry route", () => {
     // Deleting an unknown deviceId is an idempotent no-op, but `deleted` is 0 so
     // the CLI can report "not found" instead of a false success.
     const noop = await DELETE(
-      new Request("https://cmux.test/api/devices", {
+      new Request("https://mosaic.test/api/devices", {
         method: "DELETE",
         headers: authHeaders(),
         body: JSON.stringify({ deviceId: "99999999-9999-4999-8999-999999999999" }),
@@ -330,7 +330,7 @@ describe("device registry route", () => {
     expect(instancesTotal).toBe(0);
   });
 
-  // --- Manual remotes (cmux remotes add) ---
+  // --- Manual remotes (mosaic remotes add) ---
 
   test("hostIsLoopback classifies loopback and reachable hosts", () => {
     // Loopback in every spelling a phone could be tricked into dialing itself.
@@ -512,10 +512,10 @@ describe("device registry route", () => {
     expect(resp.status).toBe(200); // not the manual path, so not rejected
 
     const list = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }))
     ).json()) as { devices: Array<{ deviceId: string; labels: Record<string, unknown> }> };
     const row = list.devices.find((d) => d.deviceId === DEVICE_A);
-    // The spoofed labels.manual was stripped, so `cmux remotes` (which filters on
+    // The spoofed labels.manual was stripped, so `mosaic remotes` (which filters on
     // labels.manual === true) will NOT treat this self-registered row as manual.
     expect(row?.labels.manual ?? false).toBe(false);
   });
@@ -577,7 +577,7 @@ describe("device registry route", () => {
     expect(add.status).toBe(200);
 
     const list = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }))
     ).json()) as {
       devices: Array<{
         deviceId: string;
@@ -594,7 +594,7 @@ describe("device registry route", () => {
   dbTest("marks manual remotes with labels.manual; self-registration is unmarked", async () => {
     if (!sql) throw new Error("test database not initialized");
 
-    // A manual remote (cmux remotes add) and a self-registered Mac.
+    // A manual remote (mosaic remotes add) and a self-registered Mac.
     await POST(
       registerRequest({
         deviceId: DEVICE_A,
@@ -614,13 +614,13 @@ describe("device registry route", () => {
     );
 
     const list = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }))
     ).json()) as {
       devices: Array<{ deviceId: string; labels: Record<string, unknown> }>;
     };
     const byId = new Map(list.devices.map((d) => [d.deviceId, d.labels]));
     // The CLI (RemotesClient.list) filters on `labels.manual === true`, so only
-    // the manual remote is listed/removable by `cmux remotes`.
+    // the manual remote is listed/removable by `mosaic remotes`.
     expect(byId.get(DEVICE_A)?.manual).toBe(true);
     expect(byId.get(DEVICE_B)?.manual ?? false).toBe(false);
   });
@@ -653,7 +653,7 @@ describe("device registry route", () => {
     expect(total).toBe(1);
 
     const list = (await (
-      await GET(new Request("https://cmux.test/api/devices", { method: "GET", headers: authHeaders() }))
+      await GET(new Request("https://mosaic.test/api/devices", { method: "GET", headers: authHeaders() }))
     ).json()) as { devices: Array<{ instances: Array<{ routes: Array<{ endpoint: { host: string } }> }> }> };
     expect(list.devices[0].instances[0].routes[0].endpoint.host).toBe("100.99.99.99");
   });
@@ -688,7 +688,7 @@ describe("device registry route", () => {
     expect(overwrite.status).toBe(403);
 
     await DELETE(
-      new Request("https://cmux.test/api/devices", {
+      new Request("https://mosaic.test/api/devices", {
         method: "DELETE",
         headers: authHeaders(),
         body: JSON.stringify({ deviceId: DEVICE_A }),
@@ -715,7 +715,7 @@ describe("device registry route", () => {
     // A second same-team member tries to delete it: the row must survive.
     currentUserId = "registry-user-2";
     const del = await DELETE(
-      new Request("https://cmux.test/api/devices", {
+      new Request("https://mosaic.test/api/devices", {
         method: "DELETE",
         headers: authHeaders(),
         body: JSON.stringify({ deviceId: DEVICE_A }),

@@ -1,5 +1,5 @@
 import AppKit
-import CmuxCanvasUI
+import MosaicCanvasUI
 
 /// How a panel's content view mounts into a canvas pane.
 ///
@@ -17,7 +17,7 @@ enum CanvasPaneContent {
 }
 
 /// Owns the mounted content of one canvas pane and its teardown. This is the
-/// app-side witness of the `CmuxCanvasUI` content seam: the package drives
+/// app-side witness of the `MosaicCanvasUI` content seam: the package drives
 /// lifecycle through ``CanvasPaneContentMounting`` without seeing panel
 /// types.
 @MainActor

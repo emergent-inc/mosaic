@@ -1,4 +1,4 @@
-import CmuxWorkspaces
+import MosaicWorkspaces
 import Foundation
 
 /// One drawable item in the workspace sidebar.

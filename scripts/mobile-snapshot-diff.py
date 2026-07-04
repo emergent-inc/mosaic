@@ -18,13 +18,13 @@ import sys
 import time
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-CMUX_TAG = os.environ.get("CMUX_TAG", "mobile")
-DEBUG_CLI = os.path.join(REPO_ROOT, "scripts", "cmux-debug-cli.sh")
+MOSAIC_TAG = os.environ.get("MOSAIC_TAG", "mobile")
+DEBUG_CLI = os.path.join(REPO_ROOT, "scripts", "mosaic-debug-cli.sh")
 
 
 def run_cli(*args):
     env = os.environ.copy()
-    env["CMUX_TAG"] = CMUX_TAG
+    env["MOSAIC_TAG"] = MOSAIC_TAG
     result = subprocess.run(
         [DEBUG_CLI, *args],
         env=env,
@@ -50,7 +50,7 @@ def selected_workspace_and_terminal():
 
 
 def mac_visible_lines(workspace_id: str, terminal_id: str, lines: int = 45):
-    """The Mac side via `cmux read-screen`, the canonical CLI used by
+    """The Mac side via `mosaic read-screen`, the canonical CLI used by
     other automation. Returns the last `lines` trimmed lines from the
     visible viewport."""
     raw = run_cli(
@@ -112,11 +112,11 @@ def diff(mac_lines, mobile_lines, cursor_row, cursor_col, fidelity):
 
 
 def send_input(text: str):
-    # Use the cmux debug CLI to send raw input to the selected terminal.
+    # Use the mosaic debug CLI to send raw input to the selected terminal.
     workspace_id, terminal_id = selected_workspace_and_terminal()
     subprocess.run(
         [DEBUG_CLI, "send", "--workspace", workspace_id, "--surface", terminal_id, text],
-        env={**os.environ, "CMUX_TAG": CMUX_TAG},
+        env={**os.environ, "MOSAIC_TAG": MOSAIC_TAG},
         check=True,
         timeout=10,
     )

@@ -1,0 +1,155 @@
+import Testing
+
+@testable import MosaicMobileShellModel
+
+/// Behavioral coverage for the pure Send Feedback routing decision and the
+/// build-type / stamp formatting that every report carries.
+struct MobileFeedbackRouteTests {
+    // MARK: - Routing decision
+
+    @Test func privilegedWhenEmergentIncConnectedAndHostSupportsSink() {
+        #expect(
+            MobileFeedbackRoute.resolve(
+                email: "lawrence@emergent.inc",
+                hasActiveMacConnection: true,
+                hostSupportsAgentSink: true
+            ) == .privilegedAgent
+        )
+    }
+
+    @Test func emailWhenEmergentIncButNotConnected() {
+        #expect(
+            MobileFeedbackRoute.resolve(
+                email: "lawrence@emergent.inc",
+                hasActiveMacConnection: false,
+                hostSupportsAgentSink: true
+            ) == .email
+        )
+    }
+
+    @Test func emailWhenConnectedButNotEmergentInc() {
+        #expect(
+            MobileFeedbackRoute.resolve(
+                email: "someone@gmail.com",
+                hasActiveMacConnection: true,
+                hostSupportsAgentSink: true
+            ) == .email
+        )
+    }
+
+    @Test func emailWhenSignedOut() {
+        #expect(
+            MobileFeedbackRoute.resolve(
+                email: nil,
+                hasActiveMacConnection: true,
+                hostSupportsAgentSink: true
+            ) == .email
+        )
+    }
+
+    @Test func emailWhenHostDoesNotAdvertiseSink() {
+        // Version skew: a privileged user on an active connection to an older Mac
+        // that does not expose `dogfood.feedback.submit` must fall back to email,
+        // not take the agent path and fail with `method_not_found`.
+        #expect(
+            MobileFeedbackRoute.resolve(
+                email: "lawrence@emergent.inc",
+                hasActiveMacConnection: true,
+                hostSupportsAgentSink: false
+            ) == .email
+        )
+    }
+
+    @Test func emergentIncMatchIsCaseAndWhitespaceInsensitive() {
+        #expect(MobileFeedbackRoute.isEmergentIncEmail("  Lawrence@emergent.inc \n"))
+        #expect(MobileFeedbackRoute.resolve(
+            email: "  Lawrence@emergent.inc ",
+            hasActiveMacConnection: true,
+            hostSupportsAgentSink: true
+        ) == .privilegedAgent)
+    }
+
+    @Test func lookalikeDomainsAreNotPrivileged() {
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail("evil@emergent.inc.attacker.com"))
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail("evil@notemergent.inc")) // suffix guard alone would pass; ensure "@" anchor
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail("emergent.inc"))
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail(""))
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail(nil))
+    }
+
+    @Test func subdomainImpersonationIsNotPrivileged() {
+        // "x@emergent.inc" is the only privileged shape; a subdomain is not.
+        #expect(!MobileFeedbackRoute.isEmergentIncEmail("x@sub.emergent.inc"))
+    }
+
+    // MARK: - Build-type derivation
+
+    @Test func debugBuildIsAlwaysDev() {
+        #expect(MobileBuildType.resolve(isDebugBuild: true, bundleIdentifier: "dev.mosaic.app.beta") == .dev)
+        #expect(MobileBuildType.resolve(isDebugBuild: true, bundleIdentifier: "dev.mosaic.app") == .dev)
+        #expect(MobileBuildType.resolve(isDebugBuild: true, bundleIdentifier: nil) == .dev)
+    }
+
+    @Test func releaseBetaBundleIsBeta() {
+        #expect(MobileBuildType.resolve(isDebugBuild: false, bundleIdentifier: "dev.mosaic.app.beta") == .beta)
+    }
+
+    @Test func releaseNonBetaBundleIsProd() {
+        #expect(MobileBuildType.resolve(isDebugBuild: false, bundleIdentifier: "dev.mosaic.app") == .prod)
+        #expect(MobileBuildType.resolve(isDebugBuild: false, bundleIdentifier: nil) == .prod)
+    }
+
+    // MARK: - Stamp formatting
+
+    @Test func versionDisplayCombinesVersionAndBuild() {
+        let stamp = makeStamp(version: "0.64.13", build: "42")
+        #expect(stamp.versionDisplay == "0.64.13 (42)")
+    }
+
+    @Test func versionDisplayFallsBackWhenFieldsMissing() {
+        #expect(makeStamp(version: "0.64.13", build: "").versionDisplay == "0.64.13")
+        #expect(makeStamp(version: "", build: "42").versionDisplay == "build 42")
+        #expect(makeStamp(version: "", build: "").versionDisplay == "unknown")
+    }
+
+    @Test func subjectSuffixStampsBuildTypeAndVersion() {
+        let beta = MobileFeedbackStamp(
+            buildType: .beta, appVersion: "0.64.13", appBuild: "42",
+            bundleIdentifier: "dev.mosaic.app.beta", osVersion: "iOS 18.5", deviceModel: "iPhone16,2"
+        )
+        #expect(beta.subjectSuffix == "[Beta 0.64.13 (42)]")
+
+        let prod = MobileFeedbackStamp(
+            buildType: .prod, appVersion: "1.0.0", appBuild: "",
+            bundleIdentifier: "dev.mosaic.app", osVersion: "", deviceModel: ""
+        )
+        #expect(prod.subjectSuffix == "[Prod 1.0.0]")
+    }
+
+    @Test func agentBuildStampDropsEmptyFields() {
+        let full = MobileFeedbackStamp(
+            buildType: .beta, appVersion: "0.64.13", appBuild: "42",
+            bundleIdentifier: "dev.mosaic.app.beta", osVersion: "iOS 18.5", deviceModel: "iPhone16,2"
+        )
+        #expect(full.agentBuildStamp == "beta · 0.64.13 (42) · iOS 18.5 · iPhone16,2")
+
+        let sparse = MobileFeedbackStamp(
+            buildType: .dev, appVersion: "", appBuild: "",
+            bundleIdentifier: "dev.mosaic.ios", osVersion: "", deviceModel: ""
+        )
+        #expect(sparse.agentBuildStamp == "dev · unknown")
+    }
+
+    // MARK: - Helpers
+
+    private func makeStamp(version: String, build: String) -> MobileFeedbackStamp {
+        MobileFeedbackStamp(
+            buildType: .beta,
+            appVersion: version,
+            appBuild: build,
+            bundleIdentifier: "dev.mosaic.app.beta",
+            osVersion: "iOS 18.5",
+            deviceModel: "iPhone16,2"
+        )
+    }
+}

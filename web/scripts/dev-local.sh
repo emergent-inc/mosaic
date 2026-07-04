@@ -27,12 +27,12 @@ dev_lock_key() {
   if [[ -z "$slug" ]]; then
     slug="worktree"
   fi
-  printf '%s-dev-%s' "$slug" "$CMUX_PORT"
+  printf '%s-dev-%s' "$slug" "$MOSAIC_PORT"
 }
 
 claim_dev_lock() {
   local lock_dir
-  lock_dir="${TMPDIR:-/tmp}/cmux-web-dev"
+  lock_dir="${TMPDIR:-/tmp}/mosaic-web-dev"
   mkdir -p "$lock_dir"
   dev_lock_file="$lock_dir/$(dev_lock_key).pid"
   printf '%s\n' "$$" > "$dev_lock_file"
@@ -44,15 +44,15 @@ owns_dev_lock() {
 
 stop_local_services() {
   if ! owns_dev_lock; then
-    echo "cmux web dev: skipped local service stop because another dev process owns CMUX_PORT=$CMUX_PORT"
+    echo "mosaic web dev: skipped local service stop because another dev process owns MOSAIC_PORT=$MOSAIC_PORT"
     return
   fi
   bash "$ROOT_DIR/scripts/db-local.sh" down >/dev/null 2>&1 || true
-  echo "cmux web dev: stopped local Postgres for CMUX_PORT=$CMUX_PORT"
+  echo "mosaic web dev: stopped local Postgres for MOSAIC_PORT=$MOSAIC_PORT"
 }
 
 start_cleanup_watcher() {
-  if [[ "${CMUX_DEV_STOP_DB_ON_EXIT:-1}" == "0" ]]; then
+  if [[ "${MOSAIC_DEV_STOP_DB_ON_EXIT:-1}" == "0" ]]; then
     return
   fi
 
@@ -70,7 +70,7 @@ start_cleanup_watcher() {
 }
 
 start_db_watchdog() {
-  if [[ "${CMUX_DEV_WATCH_DB:-1}" == "0" ]]; then
+  if [[ "${MOSAIC_DEV_WATCH_DB:-1}" == "0" ]]; then
     return
   fi
 
@@ -79,7 +79,7 @@ start_db_watchdog() {
     trap '' INT HUP
     while kill -0 "$parent_pid" >/dev/null 2>&1; do
       if owns_dev_lock && ! bash "$ROOT_DIR/scripts/db-local.sh" ready >/dev/null 2>&1; then
-        echo "cmux web dev: local Postgres unavailable; restarting for CMUX_PORT=$CMUX_PORT"
+        echo "mosaic web dev: local Postgres unavailable; restarting for MOSAIC_PORT=$MOSAIC_PORT"
         if bash "$ROOT_DIR/scripts/db-local.sh" up >/dev/null 2>&1; then
           bunx drizzle-kit migrate --config "$ROOT_DIR/drizzle.config.ts" >/dev/null
         fi
@@ -100,7 +100,7 @@ cleanup() {
     wait "$next_pid" >/dev/null 2>&1 || true
   fi
 
-  if [[ "$started_db" == "1" && "${CMUX_DEV_STOP_DB_ON_EXIT:-1}" != "0" ]]; then
+  if [[ "$started_db" == "1" && "${MOSAIC_DEV_STOP_DB_ON_EXIT:-1}" != "0" ]]; then
     if [[ -n "$db_watchdog_pid" ]] && kill -0 "$db_watchdog_pid" >/dev/null 2>&1; then
       kill "$db_watchdog_pid" >/dev/null 2>&1 || true
       wait "$db_watchdog_pid" >/dev/null 2>&1 || true
@@ -123,7 +123,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-if [[ "${CMUX_DEV_START_DB:-1}" != "0" ]]; then
+if [[ "${MOSAIC_DEV_START_DB:-1}" != "0" ]]; then
   started_db=1
   claim_dev_lock
   start_cleanup_watcher
@@ -132,17 +132,17 @@ if [[ "${CMUX_DEV_START_DB:-1}" != "0" ]]; then
   start_db_watchdog
 fi
 
-redacted_database_url="postgres://${CMUX_DB_USER}:<redacted>@localhost:${CMUX_DB_PORT}/${CMUX_DB_NAME}"
+redacted_database_url="postgres://${MOSAIC_DB_USER}:<redacted>@localhost:${MOSAIC_DB_PORT}/${MOSAIC_DB_NAME}"
 cat <<EOF
-cmux web dev
-  CMUX_PORT=$CMUX_PORT
-  CMUX_VM_API_BASE_URL=$CMUX_VM_API_BASE_URL
+mosaic web dev
+  MOSAIC_PORT=$MOSAIC_PORT
+  MOSAIC_VM_API_BASE_URL=$MOSAIC_VM_API_BASE_URL
   DATABASE_URL=$redacted_database_url
-  CMUX_WEB_SECRET_ENV_FILE=$CMUX_WEB_SECRET_ENV_FILE
-  CMUX_WEB_EXTRA_SECRET_ENV_FILE=${CMUX_WEB_EXTRA_SECRET_ENV_FILE:-}
+  MOSAIC_WEB_SECRET_ENV_FILE=$MOSAIC_WEB_SECRET_ENV_FILE
+  MOSAIC_WEB_EXTRA_SECRET_ENV_FILE=${MOSAIC_WEB_EXTRA_SECRET_ENV_FILE:-}
 EOF
 
-next dev --port "$CMUX_PORT" &
+next dev --port "$MOSAIC_PORT" &
 next_pid=$!
 
 set +e

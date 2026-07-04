@@ -6,22 +6,22 @@ test("code view CSS keeps Pierre structural surfaces transparent", () => {
 
   expect(css).toContain("--diffs-light-bg: transparent");
   expect(css).toContain("--diffs-dark-bg: transparent");
-  expect(css).toContain("--diffs-bg-buffer-override: color-mix(in srgb, var(--cmux-diff-fg) 12%, transparent)");
+  expect(css).toContain("--diffs-bg-buffer-override: color-mix(in srgb, var(--mosaic-diff-fg) 12%, transparent)");
   expect(css).toContain("--diffs-bg-context-override: transparent");
   expect(css).toContain("--diffs-bg-context-gutter-override: transparent");
   expect(css).toContain("background-color: transparent");
-  expect(css).toContain("--cmux-diff-surface-bg: transparent");
-  expect(css).toContain("--cmux-diff-header-bg: color-mix(in srgb, var(--cmux-diff-bg) 42%, transparent)");
-  expect(css).not.toContain("color-mix(in srgb, var(--cmux-diff-bg) 94%, #3e3d32)");
+  expect(css).toContain("--mosaic-diff-surface-bg: transparent");
+  expect(css).toContain("--mosaic-diff-header-bg: color-mix(in srgb, var(--mosaic-diff-bg) 42%, transparent)");
+  expect(css).not.toContain("color-mix(in srgb, var(--mosaic-diff-bg) 94%, #3e3d32)");
   expect(css).not.toContain("[data-diffs-header][data-sticky]");
   expect(css).toContain("--diffs-bg-addition-override: color-mix");
   expect(css).toContain("--diffs-bg-deletion-override: color-mix");
   expect(css).toContain("[data-diffs-header] {");
-  expect(css).toContain("background-color: var(--cmux-diff-header-bg) !important");
+  expect(css).toContain("background-color: var(--mosaic-diff-header-bg) !important");
   expect(css).toContain("-webkit-backdrop-filter: blur(8px) saturate(1.08)");
   expect(css).toContain("backdrop-filter: blur(8px) saturate(1.08)");
   expect(css).toContain("min-height: 30px");
-  expect(css).not.toContain("border-block: 1px solid var(--cmux-diff-border)");
+  expect(css).not.toContain("border-block: 1px solid var(--mosaic-diff-border)");
   expect(css).not.toContain("@container sticky-header scroll-state");
   expect(css).toContain("[data-separator='line-info'] {");
   expect(css).toContain("[data-separator='line-info'] {\n      background-color: transparent;");
@@ -37,10 +37,10 @@ test("code view CSS keeps Pierre structural surfaces transparent", () => {
 test("file tree sticky overlays use a non-transparent surface", () => {
   const css = fileTreeUnsafeCSS();
 
-  expect(css).toContain("background-color: var(--cmux-diff-sidebar-bg)");
-  expect(css).toContain("--cmux-diff-tree-sticky-bg: var(--cmux-diff-bg)");
+  expect(css).toContain("background-color: var(--mosaic-diff-sidebar-bg)");
+  expect(css).toContain("--mosaic-diff-tree-sticky-bg: var(--mosaic-diff-bg)");
   expect(css).toContain("[data-file-tree-sticky-overlay-content]");
-  expect(css).toContain("background-color: var(--cmux-diff-tree-sticky-bg) !important");
+  expect(css).toContain("background-color: var(--mosaic-diff-tree-sticky-bg) !important");
   expect(css).toContain("box-shadow: 0 1px 0 var(--trees-border-color)");
 });
 

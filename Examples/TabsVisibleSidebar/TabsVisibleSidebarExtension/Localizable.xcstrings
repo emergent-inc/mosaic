@@ -6,7 +6,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux did not allow that action"
+            "value": "mosaic did not allow that action"
           }
         }
       }
@@ -36,7 +36,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No workspaces shared by cmux"
+            "value": "No workspaces shared by mosaic"
           }
         }
       }
@@ -56,7 +56,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waiting for cmux"
+            "value": "Waiting for mosaic"
           }
         }
       }
@@ -66,7 +66,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waiting for cmux"
+            "value": "Waiting for mosaic"
           }
         }
       }

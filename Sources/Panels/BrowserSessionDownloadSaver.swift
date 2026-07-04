@@ -210,13 +210,13 @@ final class BrowserSessionDownloadSaver {
         let tempURL = temporaryURL(for: destinationURL)
         do {
             try data.write(to: tempURL, options: .atomic)
-            try tempURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL)
+            try tempURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL)
             if fileManager.fileExists(atPath: destinationURL.path) {
                 _ = try fileManager.replaceItemAt(destinationURL, withItemAt: tempURL)
             } else {
                 try fileManager.moveItem(at: tempURL, to: destinationURL)
             }
-            try? destinationURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL)
+            try? destinationURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL)
         } catch {
             try? fileManager.removeItem(at: tempURL)
             throw error
@@ -232,7 +232,7 @@ final class BrowserSessionDownloadSaver {
         let tempURL = temporaryURL(for: destinationURL)
         do {
             try data.write(to: tempURL, options: .atomic)
-            try tempURL.cmuxApplyWebDownloadQuarantine(sourceURL: sourceURL)
+            try tempURL.mosaicApplyWebDownloadQuarantine(sourceURL: sourceURL)
             try fileManager.moveItem(at: tempURL, to: destinationURL)
         } catch {
             try? fileManager.removeItem(at: tempURL)
@@ -243,6 +243,6 @@ final class BrowserSessionDownloadSaver {
     private nonisolated static func temporaryURL(for destinationURL: URL) -> URL {
         destinationURL
             .deletingLastPathComponent()
-            .appendingPathComponent(".cmux-\(UUID().uuidString).download", isDirectory: false)
+            .appendingPathComponent(".mosaic-\(UUID().uuidString).download", isDirectory: false)
     }
 }

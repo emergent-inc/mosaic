@@ -13,13 +13,13 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "../../Packages/macOS/CmuxExtensionKit"),
+        .package(path: "../../Packages/macOS/MosaicExtensionKit"),
     ],
     targets: [
         .target(
             name: "StubAgentSidebarExtension",
             dependencies: [
-                .product(name: "CmuxExtensionKit", package: "CmuxExtensionKit"),
+                .product(name: "MosaicExtensionKit", package: "MosaicExtensionKit"),
             ],
             resources: [
                 .process("Resources"),

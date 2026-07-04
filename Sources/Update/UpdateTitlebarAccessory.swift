@@ -1,10 +1,10 @@
 import AppKit
 import Bonsplit
 import Combine
-import CmuxFoundation
-import CmuxSettings
-import CmuxSettingsUI
-import CmuxTestSupport
+import MosaicFoundation
+import MosaicSettings
+import MosaicSettingsUI
+import MosaicTestSupport
 import SwiftUI
 
 enum TitlebarControlsStyle: Int, CaseIterable, Identifiable {
@@ -203,7 +203,7 @@ private final class DetachedNotificationsPopoverDelegate: NSObject, NSPopoverDel
 }
 
 extension Notification.Name {
-    static let cmuxNotificationsPopoverVisibilityDidChange = Notification.Name("cmux.notificationsPopoverVisibilityDidChange")
+    static let mosaicNotificationsPopoverVisibilityDidChange = Notification.Name("mosaic.notificationsPopoverVisibilityDidChange")
 }
 
 private enum NotificationsPopoverVisibilityUserInfoKey {
@@ -289,7 +289,7 @@ private func postNotificationsPopoverVisibilityDidChange(isShown: Bool, source: 
         userInfo[NotificationsPopoverVisibilityUserInfoKey.windowNumber] = windowNumber
     }
     NotificationCenter.default.post(
-        name: .cmuxNotificationsPopoverVisibilityDidChange,
+        name: .mosaicNotificationsPopoverVisibilityDidChange,
         object: nil,
         userInfo: userInfo
     )
@@ -669,7 +669,7 @@ struct TitlebarControlButton<Content: View>: View {
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel(accessibilityLabel)
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
         .overlay {
             if let rightClickAction {
                 TitlebarControlRightClickView(onRightMouseDown: rightClickAction)
@@ -820,7 +820,7 @@ struct TitlebarControlsView: View {
     let visibilityMode: TitlebarControlsVisibilityMode
     @ObservedObject private var popoverVisibilityState = NotificationsPopoverVisibilityState.shared
     @AppStorage("titlebarControlsStyle") private var styleRawValue = TitlebarControlsStyle.classic.rawValue
-    @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontPercent
+    @Environment(\.mosaicGlobalFontMagnificationPercent) private var globalFontPercent
     @State private var shortcutRefreshTick = 0
     @State private var appearanceRefreshTick = 0
     @State private var isHoveringControls = false
@@ -956,12 +956,12 @@ struct TitlebarControlsView: View {
                 accessibilityLabel: String(localized: "titlebar.sidebar.accessibilityLabel", defaultValue: "Toggle Sidebar"),
                 action: {
                 #if DEBUG
-                cmuxDebugLog("titlebar.toggleSidebar")
+                mosaicDebugLog("titlebar.toggleSidebar")
                 #endif
                 onToggleSidebar()
             },
                 rightClickAction: { anchorView, event in
-                    CmuxExtensionSidebarSelection.showMenu(anchorView: anchorView, event: event)
+                    MosaicExtensionSidebarSelection.showMenu(anchorView: anchorView, event: event)
                 }) {
                 sidebarIconLabel(config: config, iconGeometryKeyPrefix: "titlebarControl_toggleSidebarIcon")
             }
@@ -974,7 +974,7 @@ struct TitlebarControlsView: View {
                 accessibilityLabel: String(localized: "titlebar.notifications.accessibilityLabel", defaultValue: "Notifications"),
                 action: {
                 #if DEBUG
-                cmuxDebugLog("titlebar.notifications")
+                mosaicDebugLog("titlebar.notifications")
                 #endif
                 onToggleNotifications()
             }) {
@@ -988,10 +988,10 @@ struct TitlebarControlsView: View {
                     if notificationStore.unreadCount > 0 {
                         Text("\(min(notificationStore.unreadCount, 99))")
                             // Fixed-size badge; cap effective glyph size.
-                            .cmuxFont(size: badgeBaseFontSize, weight: .semibold)
+                            .mosaicFont(size: badgeBaseFontSize, weight: .semibold)
                             .foregroundColor(.white)
                             .frame(width: config.badgeSize, height: config.badgeSize)
-                            .background(Circle().fill(cmuxAccentColor()))
+                            .background(Circle().fill(mosaicAccentColor()))
                             .offset(x: config.badgeOffset.width, y: config.badgeOffset.height)
                     }
                 }
@@ -1007,7 +1007,7 @@ struct TitlebarControlsView: View {
                 accessibilityLabel: String(localized: "titlebar.newWorkspace.accessibilityLabel", defaultValue: "New Workspace"),
                 action: {
                 #if DEBUG
-                cmuxDebugLog("titlebar.newTab")
+                mosaicDebugLog("titlebar.newTab")
                 #endif
                 onNewTab()
             },
@@ -1180,7 +1180,7 @@ struct TitlebarControlsView: View {
         iconGeometryKeyPrefix: String? = nil
     ) -> some View {
         titlebarIconChrome(config: config, iconGeometryKeyPrefix: iconGeometryKeyPrefix) {
-            CmuxSystemSymbolImage(systemName: systemName, pointSize: config.iconSize, weight: TitlebarControlIconStyle.weight)
+            MosaicSystemSymbolImage(systemName: systemName, pointSize: config.iconSize, weight: TitlebarControlIconStyle.weight)
         }
     }
 
@@ -1368,7 +1368,7 @@ struct HiddenTitlebarSidebarControlsView: View {
                 }
                 #if DEBUG
                 TitlebarChromeUITestRecorder.recordTrafficLightFrames(window: window)
-                _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
+                _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
                     payload["minimalSidebarHostWindowNumber"] = String(nextWindowNumber)
                     payload["minimalSidebarHostPinned"] = String(
                         isHoveringHost || nextHoveringWindowChrome || popoverVisibilityState.isShown(in: nextWindowNumber)
@@ -1456,7 +1456,7 @@ struct HiddenTitlebarSidebarControlsView: View {
         .onReceive(MinimalModeSidebarChromeHoverState.shared.$hoveredWindowNumber) { hoveredWindowNumber in
             isHoveringWindowChrome = hostWindowNumber == hoveredWindowNumber
             #if DEBUG
-            _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
+            _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
                 payload["minimalSidebarObservedHoverWindowNumber"] = hoveredWindowNumber.map(String.init) ?? "nil"
                 payload["minimalSidebarObservedHostWindowNumber"] = hostWindowNumber.map(String.init) ?? "nil"
                 payload["minimalSidebarObservedPinned"] = String(shouldPinControls)
@@ -1669,10 +1669,10 @@ private struct PassthroughHoverTrackingView: NSViewRepresentable {
 
         private func recordFrameForUITest() {
             #if DEBUG
-            guard ProcessInfo.processInfo.environment["CMUX_UI_TEST_BONSPLIT_TAB_DRAG_SETUP"] == "1" else { return }
+            guard ProcessInfo.processInfo.environment["MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_SETUP"] == "1" else { return }
             guard window != nil else { return }
             let frameInWindow = convert(bounds, to: nil)
-            _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
+            _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "MOSAIC_UI_TEST_BONSPLIT_TAB_DRAG_PATH") { payload in
                 payload["minimalSidebarHostFrameInWindow"] = NSStringFromRect(frameInWindow)
             }
             #endif
@@ -2087,9 +2087,9 @@ private struct NotificationsPopoverView: View {
     @ObservedObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
     let onDismiss: () -> Void
 
-    @AppStorage("cmux.notifications.popover.width")
+    @AppStorage("mosaic.notifications.popover.width")
     private var savedWidth: Double = Double(NotificationsPopoverMetrics.defaultWidth)
-    @AppStorage("cmux.notifications.popover.height")
+    @AppStorage("mosaic.notifications.popover.height")
     private var savedHeight: Double = Double(NotificationsPopoverMetrics.defaultHeight)
 
     // Live size while the user drags the resize handle. We avoid writing through @AppStorage
@@ -2186,24 +2186,24 @@ private struct NotificationsPopoverView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(String(localized: "notifications.title", defaultValue: "Notifications"))
-                .cmuxFont(size: 14, weight: .semibold)
+                .mosaicFont(size: 14, weight: .semibold)
             if unreadCount > 0 {
                 Text("\(unreadCount)")
-                    .cmuxFont(size: 11, weight: .semibold)
+                    .mosaicFont(size: 11, weight: .semibold)
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
-                    .background(Capsule().fill(cmuxAccentColor()))
+                    .background(Capsule().fill(mosaicAccentColor()))
             }
             Spacer()
             TrackedButton("updatetitlebaraccessory_button_2199", action: jumpToLatestUnread) {
                 HStack(spacing: 5) {
-                    CmuxSystemSymbolImage(systemName: "arrow.down.to.line", pointSize: 10, weight: .semibold)
+                    MosaicSystemSymbolImage(systemName: "arrow.down.to.line", pointSize: 10, weight: .semibold)
                     Text(String(localized: "notifications.jumpToLatest", defaultValue: "Jump to Latest"))
-                        .cmuxFont(size: 11)
+                        .mosaicFont(size: 11)
                     if !jumpToUnreadShortcut.displayString.isEmpty {
                         Text(jumpToUnreadShortcut.displayString)
-                            .cmuxFont(size: 10.5, weight: .medium)
+                            .mosaicFont(size: 10.5, weight: .medium)
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
@@ -2236,7 +2236,7 @@ private struct NotificationsPopoverView: View {
 
             TrackedButton("updatetitlebaraccessory_button_2237", action: { notificationStore.clearAll() }) {
                 Text(String(localized: "notifications.clearAll", defaultValue: "Clear All"))
-                    .cmuxFont(size: 11)
+                    .mosaicFont(size: 11)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
             }
@@ -2272,7 +2272,7 @@ private struct NotificationsPopoverView: View {
             // so the row closures don't reach back into the ObservableObject. Reading the
             // store from inside the ForEach builder reintroduces a store dependency below
             // the list boundary, which is the same anti-pattern CLAUDE.md flags for the
-            // sidebar/sessions panel (https://github.com/emergent-inc/cmux/issues/2586).
+            // sidebar/sessions panel (https://github.com/emergent-inc/mosaic/issues/2586).
             let snapshot = notificationStore.notifications
             let lastIndex = snapshot.count - 1
             // One tabId -> title index per render, not an O(tabs) scan per row (#5794).
@@ -2324,14 +2324,14 @@ private struct NotificationsPopoverView: View {
 
     private func emptyState(systemImage: String, title: String, subtitle: String?) -> some View {
         VStack(spacing: 10) {
-            CmuxSystemSymbolImage(systemName: systemImage, pointSize: 30, weight: .light)
+            MosaicSystemSymbolImage(systemName: systemImage, pointSize: 30, weight: .light)
                 .foregroundColor(.secondary.opacity(0.7))
             Text(title)
-                .cmuxFont(size: 14, weight: .medium)
+                .mosaicFont(size: 14, weight: .medium)
                 .foregroundColor(.primary)
             if let subtitle {
                 Text(subtitle)
-                    .cmuxFont(size: 12)
+                    .mosaicFont(size: 12)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -2463,26 +2463,26 @@ struct NotificationPopoverRow: View, Equatable {
     private var rowContent: some View {
         HStack(spacing: 0) {
             Rectangle()
-                .fill(notification.isRead ? Color.clear : cmuxAccentColor())
+                .fill(notification.isRead ? Color.clear : mosaicAccentColor())
                 .frame(width: 2.5)
                 .padding(.vertical, 6)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(notification.title)
-                        .cmuxFont(size: 12.5, weight: .semibold)
+                        .mosaicFont(size: 12.5, weight: .semibold)
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     Text(notification.createdAt.formatted(date: .omitted, time: .shortened))
-                        .cmuxFont(size: 10.5)
+                        .mosaicFont(size: 10.5)
                         .foregroundColor(.secondary)
                         .padding(.trailing, 34)
                 }
 
                 if !notification.body.isEmpty {
                     Text(notification.body)
-                        .cmuxFont(size: 11.5)
+                        .mosaicFont(size: 11.5)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2490,7 +2490,7 @@ struct NotificationPopoverRow: View, Equatable {
 
                 if let tabTitle, !tabTitle.isEmpty {
                     Text(tabTitle)
-                        .cmuxFont(size: 10)
+                        .mosaicFont(size: 10)
                         .foregroundColor(.secondary.opacity(0.85))
                         .lineLimit(1)
                 }
@@ -2509,13 +2509,13 @@ struct NotificationPopoverRow: View, Equatable {
             ZStack {
                 Circle()
                     .fill(Color.primary.opacity(0.1))
-                CmuxSystemSymbolImage(systemName: "xmark", pointSize: 9, weight: .bold)
+                MosaicSystemSymbolImage(systemName: "xmark", pointSize: 9, weight: .bold)
                     .foregroundColor(.primary.opacity(0.7))
             }
             .frame(width: 20, height: 20)
         }
         .buttonStyle(.plain)
-        .cmuxCursorOnHover(.pointingHand)
+        .mosaicCursorOnHover(.pointingHand)
     }
 }
 
@@ -2733,8 +2733,8 @@ final class UpdateTitlebarAccessoryController {
     private var observers: [NSObjectProtocol] = []
     private var pendingAttachRetries: [ObjectIdentifier: Int] = [:]
     private var startupScanWorkItems: [DispatchWorkItem] = []
-    private let controlsIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarControls")
-    private let logoIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarMosaicLogo")
+    private let controlsIdentifier = NSUserInterfaceItemIdentifier("mosaic.titlebarControls")
+    private let logoIdentifier = NSUserInterfaceItemIdentifier("mosaic.titlebarMosaicLogo")
     private let controlsControllers = NSHashTable<TitlebarControlsAccessoryViewController>.weakObjects()
     private var lastKnownPresentationMode: WorkspacePresentationModeSettings.Mode = WorkspacePresentationModeSettings.mode()
     private var detachedNotificationsPopover: NSPopover?
@@ -2837,7 +2837,7 @@ final class UpdateTitlebarAccessoryController {
                 }
 #if DEBUG
                 let env = ProcessInfo.processInfo.environment
-                if env["CMUX_UI_TEST_MODE"] == "1" {
+                if env["MOSAIC_UI_TEST_MODE"] == "1" {
                     let ids = NSApp.windows.map { $0.identifier?.rawValue ?? "<nil>" }
                     let delayText = String(format: "%.2f", delay)
                     self?.updateLog.append("startup window scan (delay=\(delayText)) count=\(NSApp.windows.count) ids=\(ids.joined(separator: ","))")
@@ -2908,7 +2908,7 @@ final class UpdateTitlebarAccessoryController {
 
 #if DEBUG
         let env = ProcessInfo.processInfo.environment
-        if env["CMUX_UI_TEST_MODE"] == "1" {
+        if env["MOSAIC_UI_TEST_MODE"] == "1" {
             let ident = window.identifier?.rawValue ?? "<nil>"
             updateLog.append("attached titlebar accessories to window id=\(ident)")
         }
@@ -2965,7 +2965,7 @@ final class UpdateTitlebarAccessoryController {
 
 #if DEBUG
         let env = ProcessInfo.processInfo.environment
-        if env["CMUX_UI_TEST_MODE"] == "1" {
+        if env["MOSAIC_UI_TEST_MODE"] == "1" {
             let ident = window.identifier?.rawValue ?? "<nil>"
             updateLog.append("removed titlebar accessories from window id=\(ident)")
         }
@@ -2973,7 +2973,7 @@ final class UpdateTitlebarAccessoryController {
     }
 
     private func isSettingsWindow(_ window: NSWindow) -> Bool {
-        if window.identifier?.rawValue == "cmux.settings" {
+        if window.identifier?.rawValue == "mosaic.settings" {
             return true
         }
         return window.title == "Settings"
@@ -2981,7 +2981,7 @@ final class UpdateTitlebarAccessoryController {
 
     private func isMainTerminalWindow(_ window: NSWindow) -> Bool {
         guard let raw = window.identifier?.rawValue else { return false }
-        return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+        return raw == "mosaic.main" || raw.hasPrefix("mosaic.main.")
     }
 
     private func canAccessTitlebarAccessories(on window: NSWindow) -> Bool {

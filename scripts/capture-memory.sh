@@ -6,7 +6,7 @@ usage() {
 Usage: scripts/capture-memory.sh --pid <pid> [--out <dir>] [--heavy]
 
 Capture memory diagnostics for a live process. The default capture is lightweight
-and safe for a primary cmux instance: ps, footprint, and vmmap -summary. Pass
+and safe for a primary mosaic instance: ps, footprint, and vmmap -summary. Pass
 --heavy to also run leaks and malloc_history; use that only on a fresh profiled
 instance because heap walks can freeze a busy terminal host.
 USAGE
@@ -90,7 +90,7 @@ Skipped leaks and malloc_history.
 
 Pass --heavy only for a fresh instance launched with MallocStackLogging when a
 heap walk is acceptable. Running heavy tools against a primary terminal-hosting
-cmux process can freeze the user's active terminal.
+mosaic process can freeze the user's active terminal.
 EOF
 fi
 

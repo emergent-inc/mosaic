@@ -17,36 +17,36 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux-debug.sock")
-DOCKER_SSH_HOST = os.environ.get("CMUX_SSH_TEST_DOCKER_HOST", "127.0.0.1")
-DOCKER_PUBLISH_ADDR = os.environ.get("CMUX_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
-REMOTE_HTTP_PORT = int(os.environ.get("CMUX_SSH_TEST_REMOTE_HTTP_PORT", "8000"))
+SOCKET_PATH = os.environ.get("MOSAIC_SOCKET_PATH", "/tmp/mosaic-debug.sock")
+DOCKER_SSH_HOST = os.environ.get("MOSAIC_SSH_TEST_DOCKER_HOST", "127.0.0.1")
+DOCKER_PUBLISH_ADDR = os.environ.get("MOSAIC_SSH_TEST_DOCKER_BIND_ADDR", "127.0.0.1")
+REMOTE_HTTP_PORT = int(os.environ.get("MOSAIC_SSH_TEST_REMOTE_HTTP_PORT", "8000"))
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 OSC_ESCAPE_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
 
 
 def _must(cond: bool, msg: str) -> None:
     if not cond:
-        raise cmuxError(msg)
+        raise mosaicError(msg)
 
 
 def _find_cli_binary() -> str:
-    env_cli = os.environ.get("CMUXTERM_CLI")
+    env_cli = os.environ.get("MOSAICTERM_CLI")
     if env_cli and os.path.isfile(env_cli) and os.access(env_cli, os.X_OK):
         return env_cli
 
-    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/cmux-tests-v2/Build/Products/Debug/cmux")
+    fixed = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/mosaic-tests-v2/Build/Products/Debug/mosaic")
     if os.path.isfile(fixed) and os.access(fixed, os.X_OK):
         return fixed
 
-    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/cmux"), recursive=True)
-    candidates += glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux")
+    candidates = glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug/mosaic"), recursive=True)
+    candidates += glob.glob("/tmp/mosaic-*/Build/Products/Debug/mosaic")
     candidates = [p for p in candidates if os.path.isfile(p) and os.access(p, os.X_OK)]
     if not candidates:
-        raise cmuxError("Could not locate cmux CLI binary; set CMUXTERM_CLI")
+        raise mosaicError("Could not locate mosaic CLI binary; set MOSAICTERM_CLI")
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
@@ -55,22 +55,22 @@ def _run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = Tru
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if check and proc.returncode != 0:
         merged = f"{proc.stdout}\n{proc.stderr}".strip()
-        raise cmuxError(f"Command failed ({' '.join(cmd)}): {merged}")
+        raise mosaicError(f"Command failed ({' '.join(cmd)}): {merged}")
     return proc
 
 
 def _run_cli_json(cli: str, args: list[str]) -> dict:
     env = dict(os.environ)
-    env.pop("CMUX_SOCKET_PATH", None)
-    env.pop("CMUX_WORKSPACE_ID", None)
-    env.pop("CMUX_SURFACE_ID", None)
-    env.pop("CMUX_TAB_ID", None)
+    env.pop("MOSAIC_SOCKET_PATH", None)
+    env.pop("MOSAIC_WORKSPACE_ID", None)
+    env.pop("MOSAIC_SURFACE_ID", None)
+    env.pop("MOSAIC_TAB_ID", None)
 
     proc = _run([cli, "--socket", SOCKET_PATH, "--json", *args], env=env)
     try:
         return json.loads(proc.stdout or "{}")
     except Exception as exc:  # noqa: BLE001
-        raise cmuxError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})") from exc
+        raise mosaicError(f"Invalid JSON output for {' '.join(args)}: {proc.stdout!r} ({exc})") from exc
 
 
 def _docker_available() -> bool:
@@ -83,7 +83,7 @@ def _docker_available() -> bool:
 def _parse_host_port(docker_port_output: str) -> int:
     text = docker_port_output.strip()
     if not text:
-        raise cmuxError("docker port output was empty")
+        raise mosaicError("docker port output was empty")
     return int(text.split(":")[-1])
 
 
@@ -119,10 +119,10 @@ def _wait_for_ssh(host: str, host_port: int, key_path: Path, timeout: float = 20
         if probe.returncode == 0 and "ready" in probe.stdout:
             return
         time.sleep(0.5)
-    raise cmuxError("Timed out waiting for SSH server in docker fixture to become ready")
+    raise mosaicError("Timed out waiting for SSH server in docker fixture to become ready")
 
 
-def _wait_remote_ready(client: cmux, workspace_id: str, timeout: float = 45.0) -> dict:
+def _wait_remote_ready(client: mosaic, workspace_id: str, timeout: float = 45.0) -> dict:
     deadline = time.time() + timeout
     last_status = {}
     while time.time() < deadline:
@@ -132,7 +132,7 @@ def _wait_remote_ready(client: cmux, workspace_id: str, timeout: float = 45.0) -
         if str(remote.get("state") or "") == "connected" and str(daemon.get("state") or "") == "ready":
             return last_status
         time.sleep(0.5)
-    raise cmuxError(f"Remote did not reach connected+ready state: {last_status}")
+    raise mosaicError(f"Remote did not reach connected+ready state: {last_status}")
 
 
 def _is_terminal_surface_not_found(exc: Exception) -> bool:
@@ -146,7 +146,7 @@ def _clean_text(raw: str) -> str:
 
 
 def _wait_surface_contains(
-    client: cmux,
+    client: mosaic,
     workspace_id: str,
     surface_id: str,
     token: str,
@@ -164,7 +164,7 @@ def _wait_surface_contains(
             text = _clean_text(str(payload.get("text") or ""))
             if token in text:
                 return
-        except cmuxError as exc:
+        except mosaicError as exc:
             if _is_terminal_surface_not_found(exc):
                 saw_missing_surface = True
                 time.sleep(0.2)
@@ -173,36 +173,36 @@ def _wait_surface_contains(
         time.sleep(0.2)
 
     if saw_missing_surface:
-        raise cmuxError("terminal surface not found")
-    raise cmuxError(f"Timed out waiting for terminal token: {token}")
+        raise mosaicError("terminal surface not found")
+    raise mosaicError(f"Timed out waiting for terminal token: {token}")
 
 
-def _workspace_row(client: cmux, workspace_id: str) -> dict:
+def _workspace_row(client: mosaic, workspace_id: str) -> dict:
     payload = client._call("workspace.list", {}) or {}
     for row in payload.get("workspaces") or []:
         if str(row.get("id") or "") == workspace_id:
             return row
-    raise cmuxError(f"workspace {workspace_id} missing from workspace.list payload: {payload}")
+    raise mosaicError(f"workspace {workspace_id} missing from workspace.list payload: {payload}")
 
 
-def _debug_terminal_row(client: cmux, workspace_id: str, surface_id: str) -> dict:
+def _debug_terminal_row(client: mosaic, workspace_id: str, surface_id: str) -> dict:
     payload = client._call("debug.terminals", {}) or {}
     for row in payload.get("terminals") or []:
         if str(row.get("workspace_id") or "") == workspace_id and str(row.get("surface_id") or "") == surface_id:
             return row
-    raise cmuxError(
+    raise mosaicError(
         f"debug.terminals missing workspace={workspace_id!r} surface={surface_id!r}: {payload}"
     )
 
 
-def _wait_surface_tty(client: cmux, workspace_id: str, surface_id: str, timeout: float = 20.0) -> str:
+def _wait_surface_tty(client: mosaic, workspace_id: str, surface_id: str, timeout: float = 20.0) -> str:
     deadline = time.time() + timeout
     last_row = {}
     last_error: Exception | None = None
     while time.time() < deadline:
         try:
             last_row = _debug_terminal_row(client, workspace_id, surface_id)
-        except cmuxError as exc:
+        except mosaicError as exc:
             last_error = exc
             time.sleep(0.2)
             continue
@@ -211,18 +211,18 @@ def _wait_surface_tty(client: cmux, workspace_id: str, surface_id: str, timeout:
             return tty_name
         time.sleep(0.2)
     if last_error is not None:
-        raise cmuxError(f"Timed out waiting for surface tty after terminal lookup retries: {last_error}")
-    raise cmuxError(f"Timed out waiting for surface tty: {last_row}")
+        raise mosaicError(f"Timed out waiting for surface tty after terminal lookup retries: {last_error}")
+    raise mosaicError(f"Timed out waiting for surface tty: {last_row}")
 
 
 def _launch_startup_command_pty(startup_command: str, workspace_id: str, surface_id: str) -> tuple[subprocess.Popen[bytes], int]:
-    _must(bool(startup_command.strip()), "cmux ssh output missing ssh_terminal_startup_command for PTY fallback")
+    _must(bool(startup_command.strip()), "mosaic ssh output missing ssh_terminal_startup_command for PTY fallback")
     env = dict(os.environ)
-    env.pop("CMUX_SOCKET_PATH", None)
-    env["CMUX_WORKSPACE_ID"] = workspace_id
-    env["CMUX_SURFACE_ID"] = surface_id
-    env["CMUX_TAB_ID"] = workspace_id
-    env["CMUX_PANEL_ID"] = surface_id
+    env.pop("MOSAIC_SOCKET_PATH", None)
+    env["MOSAIC_WORKSPACE_ID"] = workspace_id
+    env["MOSAIC_SURFACE_ID"] = surface_id
+    env["MOSAIC_TAB_ID"] = workspace_id
+    env["MOSAIC_PANEL_ID"] = surface_id
 
     master_fd, slave_fd = pty.openpty()
     try:
@@ -242,7 +242,7 @@ def _launch_startup_command_pty(startup_command: str, workspace_id: str, surface
     return proc, master_fd
 
 
-def _wait_for_remote_port(client: cmux, workspace_id: str, port: int, timeout: float = 15.0) -> tuple[dict, dict]:
+def _wait_for_remote_port(client: mosaic, workspace_id: str, port: int, timeout: float = 15.0) -> tuple[dict, dict]:
     deadline = time.time() + timeout
     last_status = {}
     last_row = {}
@@ -266,7 +266,7 @@ def _wait_for_remote_port(client: cmux, workspace_id: str, port: int, timeout: f
             return last_status, last_row
         time.sleep(0.4)
 
-    raise cmuxError(
+    raise mosaicError(
         "Remote listening port did not surface in remote status + workspace list: "
         f"status={last_status} workspace={last_row}"
     )
@@ -282,9 +282,9 @@ def main() -> int:
     fixture_dir = repo_root / "tests" / "fixtures" / "ssh-remote"
     _must(fixture_dir.is_dir(), f"Missing docker fixture directory: {fixture_dir}")
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="cmux-ssh-port-detection-"))
-    image_tag = f"cmux-ssh-test:{secrets.token_hex(4)}"
-    container_name = f"cmux-ssh-port-detect-{secrets.token_hex(4)}"
+    temp_dir = Path(tempfile.mkdtemp(prefix="mosaic-ssh-port-detection-"))
+    image_tag = f"mosaic-ssh-test:{secrets.token_hex(4)}"
+    container_name = f"mosaic-ssh-port-detect-{secrets.token_hex(4)}"
     workspace_id = ""
     surface_id = ""
     pty_proc: subprocess.Popen[bytes] | None = None
@@ -316,7 +316,7 @@ def main() -> int:
         host = f"root@{DOCKER_SSH_HOST}"
         _wait_for_ssh(host, host_ssh_port, key_path)
 
-        with cmux(SOCKET_PATH) as client:
+        with mosaic(SOCKET_PATH) as client:
             payload = _run_cli_json(
                 cli,
                 [
@@ -342,7 +342,7 @@ def main() -> int:
                     if str(row.get("ref") or "") == workspace_ref:
                         workspace_id = str(row.get("id") or "")
                         break
-            _must(bool(workspace_id), f"cmux ssh output missing workspace_id: {payload}")
+            _must(bool(workspace_id), f"mosaic ssh output missing workspace_id: {payload}")
 
             ready_status = _wait_remote_ready(client, workspace_id)
             initial_remote = ready_status.get("remote") or {}
@@ -379,7 +379,7 @@ def main() -> int:
             try:
                 client.send_surface(surface_id, f"python3 -m http.server {REMOTE_HTTP_PORT}\n")
                 _wait_surface_contains(client, workspace_id, surface_id, f"port {REMOTE_HTTP_PORT}", timeout=20.0)
-            except cmuxError as exc:
+            except mosaicError as exc:
                 if _is_terminal_surface_not_found(exc):
                     print("WARN: readable terminal surface unavailable; falling back to generated ssh startup command PTY")
                     server_started_via_surface = False
@@ -443,14 +443,14 @@ def main() -> int:
 
         if surface_id and workspace_id:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.send_key_surface(surface_id, "ctrl-c")
             except Exception:
                 pass
 
         if workspace_id:
             try:
-                with cmux(SOCKET_PATH) as cleanup_client:
+                with mosaic(SOCKET_PATH) as cleanup_client:
                     cleanup_client.close_workspace(workspace_id)
             except Exception:
                 pass

@@ -1,15 +1,15 @@
 import AppKit
-import CmuxFoundation
-import CmuxWorkspaces
+import MosaicFoundation
+import MosaicWorkspaces
 import SwiftUI
 
 struct ConfigSettingsView: View {
     static let windowID = "config-editor"
 
-    @State private var configSource: ConfigSource = .cmux
+    @State private var configSource: ConfigSource = .mosaic
     @State private var snapshots: [ConfigSource: ConfigSourceSnapshot] = [:]
-    @State private var cmuxDraft = ""
-    @State private var cmuxLastLoadedContents = ""
+    @State private var mosaicDraft = ""
+    @State private var mosaicLastLoadedContents = ""
     @State private var statusMessage = ""
     @State private var statusIsError = false
 
@@ -17,15 +17,15 @@ struct ConfigSettingsView: View {
         snapshots[configSource] ?? configSource.snapshot(environment: .live())
     }
 
-    private var hasUnsavedCmuxChanges: Bool {
-        cmuxDraft != cmuxLastLoadedContents
+    private var hasUnsavedMosaicChanges: Bool {
+        mosaicDraft != mosaicLastLoadedContents
     }
 
     private var currentBannerText: String? {
         switch configSource {
-        case .cmux:
+        case .mosaic:
             return String(
-                localized: "settings.config.banner.cmux",
+                localized: "settings.config.banner.mosaic",
                 defaultValue: "This is the mosaic Ghostty config selected for this build. Edit it here, then Save to reload mosaic."
             )
         case .synced:
@@ -65,7 +65,7 @@ struct ConfigSettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(currentSnapshot.displayPaths, id: \.self) { path in
                     Text(verbatim: path)
-                        .cmuxFont(size: 12, weight: .regular, design: .monospaced)
+                        .mosaicFont(size: 12, weight: .regular, design: .monospaced)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -77,11 +77,11 @@ struct ConfigSettingsView: View {
             }
 
             Group {
-                if configSource == .cmux {
-                    ConfigSettingsTextView(text: $cmuxDraft, isEditable: true)
+                if configSource == .mosaic {
+                    ConfigSettingsTextView(text: $mosaicDraft, isEditable: true)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(editorBackground)
-                        .accessibilityIdentifier("ConfigSettingsCmuxEditor")
+                        .accessibilityIdentifier("ConfigSettingsMosaicEditor")
                 } else {
                     ConfigSettingsTextView(text: .constant(currentSnapshot.contents), isEditable: false)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -99,7 +99,7 @@ struct ConfigSettingsView: View {
             HStack(spacing: 8) {
                 if !statusMessage.isEmpty {
                     Text(statusMessage)
-                        .cmuxFont(.caption)
+                        .mosaicFont(.caption)
                         .foregroundColor(statusIsError ? .red : .secondary)
                 }
 
@@ -124,10 +124,10 @@ struct ConfigSettingsView: View {
                 .controlSize(.small)
 
                 TrackedButton("configsettingsview_button_126", String(localized: "settings.config.action.save", defaultValue: "Save")) {
-                    saveCmuxConfig()
+                    saveMosaicConfig()
                 }
                 .buttonStyle(.mosaicAccent)
-                .disabled(configSource != .cmux || !hasUnsavedCmuxChanges)
+                .disabled(configSource != .mosaic || !hasUnsavedMosaicChanges)
             }
         }
         .padding(16)
@@ -139,14 +139,14 @@ struct ConfigSettingsView: View {
             }
         )
         .onAppear {
-            refreshSnapshots(preserveCmuxDraft: false)
+            refreshSnapshots(preserveMosaicDraft: false)
         }
         .onChange(of: configSource) { _ in
             statusMessage = ""
             statusIsError = false
         }
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
-            refreshSnapshots(preserveCmuxDraft: true)
+            refreshSnapshots(preserveMosaicDraft: true)
         }
     }
 
@@ -176,19 +176,19 @@ struct ConfigSettingsView: View {
     }
 
     private func configureWindow(_ window: NSWindow) {
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.configEditor")
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.configEditor")
         window.minSize = NSSize(width: 700, height: 500)
         window.tabbingMode = .disallowed
         window.animationBehavior = .utilityWindow
         // The Config editor is a top-level peer window, not a floating
         // inspector: clicking the main window must be able to raise it above
-        // the editor (https://github.com/emergent-inc/cmux/issues/5081).
-        window.adoptCmuxPeerWindowLevel()
+        // the editor (https://github.com/emergent-inc/mosaic/issues/5081).
+        window.adoptMosaicPeerWindowLevel()
         window.collectionBehavior.insert(.fullScreenAuxiliary)
     }
 
-    private func refreshSnapshots(preserveCmuxDraft: Bool) {
-        let wasDirty = hasUnsavedCmuxChanges
+    private func refreshSnapshots(preserveMosaicDraft: Bool) {
+        let wasDirty = hasUnsavedMosaicChanges
         let environment = ConfigSourceEnvironment.live()
         let newSnapshots = Dictionary(
             uniqueKeysWithValues: ConfigSource.allCases.map { source in
@@ -197,15 +197,15 @@ struct ConfigSettingsView: View {
         )
         snapshots = newSnapshots
 
-        let latestCmuxContents = newSnapshots[.cmux]?.contents ?? ""
-        if !preserveCmuxDraft || !wasDirty {
-            cmuxDraft = latestCmuxContents
+        let latestMosaicContents = newSnapshots[.mosaic]?.contents ?? ""
+        if !preserveMosaicDraft || !wasDirty {
+            mosaicDraft = latestMosaicContents
         }
-        cmuxLastLoadedContents = latestCmuxContents
+        mosaicLastLoadedContents = latestMosaicContents
     }
 
     private func reloadFromDisk() {
-        refreshSnapshots(preserveCmuxDraft: false)
+        refreshSnapshots(preserveMosaicDraft: false)
         if let appDelegate = AppDelegate.shared {
             appDelegate.reloadConfiguration(source: "settings.configWindow.reload")
         } else {
@@ -218,13 +218,13 @@ struct ConfigSettingsView: View {
         statusIsError = false
     }
 
-    private func saveCmuxConfig() {
+    private func saveMosaicConfig() {
         let environment = ConfigSourceEnvironment.live()
 
         do {
-            try environment.writeCmuxConfigContents(cmuxDraft)
-            cmuxLastLoadedContents = cmuxDraft
-            refreshSnapshots(preserveCmuxDraft: true)
+            try environment.writeMosaicConfigContents(mosaicDraft)
+            mosaicLastLoadedContents = mosaicDraft
+            refreshSnapshots(preserveMosaicDraft: true)
             if let appDelegate = AppDelegate.shared {
                 appDelegate.reloadConfiguration(source: "settings.configWindow.save")
             } else {
@@ -246,12 +246,12 @@ struct ConfigSettingsView: View {
     }
 
     private func openCurrentSourceInEditor() {
-        guard let url = materializedCmuxConfigURL() else { return }
+        guard let url = materializedMosaicConfigURL() else { return }
         PreferredEditorService(defaults: .standard).open(url)
     }
 
     private func revealCurrentSourceInFinder() {
-        guard let url = materializedCmuxConfigURL() else { return }
+        guard let url = materializedMosaicConfigURL() else { return }
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } else {
@@ -259,10 +259,10 @@ struct ConfigSettingsView: View {
         }
     }
 
-    private func materializedCmuxConfigURL() -> URL? {
+    private func materializedMosaicConfigURL() -> URL? {
         let environment = ConfigSourceEnvironment.live()
         do {
-            return try environment.materializeCmuxConfigFileIfNeeded()
+            return try environment.materializeMosaicConfigFileIfNeeded()
         } catch {
             NSSound.beep()
             statusMessage = String(
@@ -283,7 +283,7 @@ private struct ConfigSettingsBanner: View {
             Image(systemName: "info.circle")
                 .foregroundStyle(.secondary)
             Text(text)
-                .cmuxFont(.footnote)
+                .mosaicFont(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -384,8 +384,8 @@ private struct ConfigSettingsTextView: NSViewRepresentable {
 private extension ConfigSource {
     var localizedTitle: String {
         switch self {
-        case .cmux:
-            return String(localized: "settings.config.source.cmux", defaultValue: "mosaic")
+        case .mosaic:
+            return String(localized: "settings.config.source.mosaic", defaultValue: "mosaic")
         case .synced:
             return String(localized: "settings.config.source.synced", defaultValue: "synced")
         }

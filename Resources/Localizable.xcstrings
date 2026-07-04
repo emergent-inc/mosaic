@@ -3169,7 +3169,7 @@
         }
       }
     },
-    "browser.import.destination.cmux": {
+    "browser.import.destination.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -3873,7 +3873,7 @@
         }
       }
     },
-    "browser.proceedInCmux": {
+    "browser.proceedInMosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -4561,7 +4561,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: mosaic set-status <key> <value> [flags]\n\nSet a sidebar status entry for a workspace. Status entries appear as\npills in the sidebar tab row. Use a unique key so different tools\n(e.g. \"claude_code\", \"build\") can manage their own entries.\n\nFlags:\n  --icon <name>          Icon name (e.g. \"sparkle\", \"hammer\")\n  --color <#hex>         Pill color (e.g. \"#ff9500\")\n  --priority <n>         Sort priority; higher appears first (default: 0)\n  --workspace <id|ref>   Target workspace (default: $CMUX_WORKSPACE_ID)\n\nExample:\n  mosaic set-status build \"compiling\" --icon hammer --color \"#ff9500\" --priority 80\n  mosaic set-status deploy \"v1.2.3\" --workspace workspace:2"
+            "value": "Usage: mosaic set-status <key> <value> [flags]\n\nSet a sidebar status entry for a workspace. Status entries appear as\npills in the sidebar tab row. Use a unique key so different tools\n(e.g. \"claude_code\", \"build\") can manage their own entries.\n\nFlags:\n  --icon <name>          Icon name (e.g. \"sparkle\", \"hammer\")\n  --color <#hex>         Pill color (e.g. \"#ff9500\")\n  --priority <n>         Sort priority; higher appears first (default: 0)\n  --workspace <id|ref>   Target workspace (default: $MOSAIC_WORKSPACE_ID)\n\nExample:\n  mosaic set-status build \"compiling\" --icon hammer --color \"#ff9500\" --priority 80\n  mosaic set-status deploy \"v1.2.3\" --workspace workspace:2"
           }
         }
       }
@@ -4572,7 +4572,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux ssh <destination> [flags] [-- <remote-command-args>]\n\nCreate a new workspace, mark it as remote-SSH, and start an SSH session in that workspace.\nmosaic will also establish a local SSH proxy endpoint so browser traffic can egress from the remote host.\n\nFlags:\n  --name <title>          Optional workspace title\n  --port <n>              SSH port\n  --identity <path>       SSH identity file path\n  -A, --forward-agent     Forward the caller's SSH agent; also honors ForwardAgent yes from ssh_config\n  -a, --no-forward-agent  Disable SSH agent forwarding for this workspace\n  --ssh-option <opt>      Extra SSH -o option (repeatable)\n  --window <id|ref|index> Target window for the managed workspace\n  --no-focus              Create workspace without switching to it\n\nExample:\n  cmux ssh dev@my-host\n  cmux ssh dev@my-host --name \"gpu-box\" --port 2222 --identity ~/.ssh/id_ed25519\n  cmux ssh dev@my-host --forward-agent\n  cmux ssh dev@my-host --ssh-option UserKnownHostsFile=/dev/null --ssh-option StrictHostKeyChecking=no"
+            "value": "Usage: mosaic ssh <destination> [flags] [-- <remote-command-args>]\n\nCreate a new workspace, mark it as remote-SSH, and start an SSH session in that workspace.\nmosaic will also establish a local SSH proxy endpoint so browser traffic can egress from the remote host.\n\nFlags:\n  --name <title>          Optional workspace title\n  --port <n>              SSH port\n  --identity <path>       SSH identity file path\n  -A, --forward-agent     Forward the caller's SSH agent; also honors ForwardAgent yes from ssh_config\n  -a, --no-forward-agent  Disable SSH agent forwarding for this workspace\n  --ssh-option <opt>      Extra SSH -o option (repeatable)\n  --window <id|ref|index> Target window for the managed workspace\n  --no-focus              Create workspace without switching to it\n\nExample:\n  mosaic ssh dev@my-host\n  mosaic ssh dev@my-host --name \"gpu-box\" --port 2222 --identity ~/.ssh/id_ed25519\n  mosaic ssh dev@my-host --forward-agent\n  mosaic ssh dev@my-host --ssh-option UserKnownHostsFile=/dev/null --ssh-option StrictHostKeyChecking=no"
           }
         }
       }
@@ -4583,7 +4583,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]\n\nOpen a dedicated mosaic window that mirrors a remote host's tmux sessions over\ntmux control mode (tmux -CC) via SSH: each tmux session becomes a workspace,\neach window a tab, and a multi-pane window a native split. Requires the\n\"Remote tmux\" beta to be enabled in Settings.\n\nIf the host needs interactive authentication (password, host-key confirmation,\nMFA, or a security-key touch), mosaic runs ssh inline in this terminal so you can\nauthenticate, then mirrors the sessions over the shared SSH connection. Hosts\nthat authenticate non-interactively (ssh-agent / key in ~/.ssh/config) mirror\nwith no prompt. ~/.ssh/config aliases and their IdentityFile/ProxyJump/Port\nsettings are honored.\n\nFlags:\n  --port <n>          SSH port\n  --identity <path>   SSH identity file path\n  --no-focus          Open the mirror window without activating it\n\nExample:\n  cmux ssh-tmux dev@my-host\n  cmux ssh-tmux my-ssh-alias\n  cmux ssh-tmux dev@my-host --port 2222 --identity ~/.ssh/id_ed25519"
+            "value": "Usage: mosaic ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]\n\nOpen a dedicated mosaic window that mirrors a remote host's tmux sessions over\ntmux control mode (tmux -CC) via SSH: each tmux session becomes a workspace,\neach window a tab, and a multi-pane window a native split. Requires the\n\"Remote tmux\" beta to be enabled in Settings.\n\nIf the host needs interactive authentication (password, host-key confirmation,\nMFA, or a security-key touch), mosaic runs ssh inline in this terminal so you can\nauthenticate, then mirrors the sessions over the shared SSH connection. Hosts\nthat authenticate non-interactively (ssh-agent / key in ~/.ssh/config) mirror\nwith no prompt. ~/.ssh/config aliases and their IdentityFile/ProxyJump/Port\nsettings are honored.\n\nFlags:\n  --port <n>          SSH port\n  --identity <path>   SSH identity file path\n  --no-focus          Open the mirror window without activating it\n\nExample:\n  mosaic ssh-tmux dev@my-host\n  mosaic ssh-tmux my-ssh-alias\n  mosaic ssh-tmux dev@my-host --port 2222 --identity ~/.ssh/id_ed25519"
           }
         }
       }
@@ -4693,7 +4693,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "mosaic could not create the hooks directory: a file exists at %@; remove or rename the conflicting file and re-run `cmux hooks setup`"
+            "value": "mosaic could not create the hooks directory: a file exists at %@; remove or rename the conflicting file and re-run `mosaic hooks setup`"
           }
         }
       }
@@ -4703,7 +4703,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kiro applies these hooks only when run as the mosaic agent. Start Kiro with `kiro-cli chat --agent cmux`, or make it the default with `kiro-cli settings chat.defaultAgent cmux`."
+            "value": "Kiro applies these hooks only when run as the mosaic agent. Start Kiro with `kiro-cli chat --agent mosaic`, or make it the default with `kiro-cli settings chat.defaultAgent mosaic`."
           }
         }
       }
@@ -4741,7 +4741,7 @@
         }
       }
     },
-    "cli.hooks.omp.error.notCmuxExtension": {
+    "cli.hooks.omp.error.notMosaicExtension": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -4840,7 +4840,7 @@
         }
       }
     },
-    "cli.hooks.pi.error.notCmuxExtension": {
+    "cli.hooks.pi.error.notMosaicExtension": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -5671,7 +5671,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: mosaic sessions list [options]\n       mosaic sessions [options]\n\nPrint saved agent session records from ~/.cmuxterm/*-hook-sessions.json.\nThis command does not require a running mosaic socket.\n\nOptions:\n  --agent <name>        Filter to one agent, for example codex or claude\n  --session <id>        Filter to one agent session id\n  --workspace <id>      Filter to one saved workspace id\n  --surface <id>        Filter to one saved surface id\n  --cwd <text>          Filter by saved cwd or launch working directory\n  --state-dir <path>    Override hook state directory\n  --codex-home <path>   Override the default Codex home used for transcript checks\n  --limit <n>           Limit text output (default: 100)\n  --all                 Print all matches\n  --json                Print structured JSON\n\nCodex rows include whether the saved id exists in CODEX_HOME/session_index.jsonl\nand whether a matching transcript file exists under CODEX_HOME/sessions or\nCODEX_HOME/archived_sessions.\n\nCompatibility aliases:\n  mosaic sessions debug [options]\n  mosaic session-debug [options]"
+            "value": "Usage: mosaic sessions list [options]\n       mosaic sessions [options]\n\nPrint saved agent session records from ~/.mosaicterm/*-hook-sessions.json.\nThis command does not require a running mosaic socket.\n\nOptions:\n  --agent <name>        Filter to one agent, for example codex or claude\n  --session <id>        Filter to one agent session id\n  --workspace <id>      Filter to one saved workspace id\n  --surface <id>        Filter to one saved surface id\n  --cwd <text>          Filter by saved cwd or launch working directory\n  --state-dir <path>    Override hook state directory\n  --codex-home <path>   Override the default Codex home used for transcript checks\n  --limit <n>           Limit text output (default: 100)\n  --all                 Print all matches\n  --json                Print structured JSON\n\nCodex rows include whether the saved id exists in CODEX_HOME/session_index.jsonl\nand whether a matching transcript file exists under CODEX_HOME/sessions or\nCODEX_HOME/archived_sessions.\n\nCompatibility aliases:\n  mosaic sessions debug [options]\n  mosaic session-debug [options]"
           }
         }
       }
@@ -5858,7 +5858,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: mosaic sidebar <validate|reload|select|open> [name|--all] [--json]\n\nValidate, reload, select, or open custom sidebars from ~/.config/cmux/sidebars.\nSwift files win over JSON files with the same base name.\n\nCommands:\n  validate [name]   Validate all custom sidebars, or one named sidebar\n  reload [name]     Validate all sidebars, then reload every valid one\n  select <name>     Validate and activate one custom sidebar\n  open <name>       Open one custom sidebar as a Bonsplit pane\n\nExamples:\n  mosaic sidebar validate\n  mosaic sidebar reload --all\n  mosaic sidebar select finder.tree\n  mosaic sidebar open finder.tree"
+            "value": "Usage: mosaic sidebar <validate|reload|select|open> [name|--all] [--json]\n\nValidate, reload, select, or open custom sidebars from ~/.config/mosaic/sidebars.\nSwift files win over JSON files with the same base name.\n\nCommands:\n  validate [name]   Validate all custom sidebars, or one named sidebar\n  reload [name]     Validate all sidebars, then reload every valid one\n  select <name>     Validate and activate one custom sidebar\n  open <name>       Open one custom sidebar as a Bonsplit pane\n\nExamples:\n  mosaic sidebar validate\n  mosaic sidebar reload --all\n  mosaic sidebar select finder.tree\n  mosaic sidebar open finder.tree"
           }
         }
       }
@@ -5869,7 +5869,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Refusing to choose socket: CMUX_SOCKET_PATH and CMUX_SOCKET differ. Use CMUX_SOCKET_PATH or unset CMUX_SOCKET."
+            "value": "Refusing to choose socket: MOSAIC_SOCKET_PATH and MOSAIC_SOCKET differ. Use MOSAIC_SOCKET_PATH or unset MOSAIC_SOCKET."
           }
         }
       }
@@ -6078,7 +6078,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: mosaic themes\n       mosaic themes list\n\nTerminal colors are fixed to Anysphere Dark and cannot be changed.\nUse `cmux themes list` to inspect bundled themes and the managed\ncurrent theme.\n\nCommands:\n  list                      List available themes and mark Anysphere Dark as managed\n\nExamples:\n  mosaic themes\n  mosaic themes list"
+            "value": "Usage: mosaic themes\n       mosaic themes list\n\nTerminal colors are fixed to Anysphere Dark and cannot be changed.\nUse `mosaic themes list` to inspect bundled themes and the managed\ncurrent theme.\n\nCommands:\n  list                      List available themes and mark Anysphere Dark as managed\n\nExamples:\n  mosaic themes\n  mosaic themes list"
           }
         }
       }
@@ -6089,7 +6089,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: mosaic workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace,\n                          including --env KEY=VALUE and --env-file <path>)\n  env [workspace] [--mask]\n                          Print a workspace's configured environment\n                          variables (--mask redacts the values)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  group <subcommand>      Workspace group operations (see mosaic workspace-group --help)\n\nenv/reconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  mosaic workspace list --json\n  mosaic workspace create --name Build --cwd ~/projects/myapp\n  mosaic workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  mosaic workspace env workspace:3 --mask\n  mosaic workspace close workspace:3\n  mosaic workspace reconnect\n  mosaic workspace disconnect --workspace workspace:3"
+            "value": "Usage: mosaic workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace,\n                          including --env KEY=VALUE and --env-file <path>)\n  env [workspace] [--mask]\n                          Print a workspace's configured environment\n                          variables (--mask redacts the values)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  group <subcommand>      Workspace group operations (see mosaic workspace-group --help)\n\nenv/reconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  mosaic workspace list --json\n  mosaic workspace create --name Build --cwd ~/projects/myapp\n  mosaic workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.mosaic.env\n  mosaic workspace env workspace:3 --mask\n  mosaic workspace close workspace:3\n  mosaic workspace reconnect\n  mosaic workspace disconnect --workspace workspace:3"
           }
         }
       }
@@ -6595,7 +6595,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open a terminal and run `cmux auth status`, `cmux vm ls`, then `cmux vm new`. If you hit the active VM limit, delete one with `cmux vm rm <id>` and retry."
+            "value": "Open a terminal and run `mosaic auth status`, `mosaic vm ls`, then `mosaic vm new`. If you hit the active VM limit, delete one with `mosaic vm rm <id>` and retry."
           }
         }
       }
@@ -6606,7 +6606,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reload mosaic so the bundled CLI is available, then try again. If it still fails, run `cmux vm new` in a terminal and send us the output."
+            "value": "Reload mosaic so the bundled CLI is available, then try again. If it still fails, run `mosaic vm new` in a terminal and send us the output."
           }
         }
       }
@@ -6617,7 +6617,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Install or reload a fresh mosaic build, then try Start Cloud VM again. You can also run `cmux vm new` in a terminal to see the full error."
+            "value": "Install or reload a fresh mosaic build, then try Start Cloud VM again. You can also run `mosaic vm new` in a terminal to see the full error."
           }
         }
       }
@@ -6650,7 +6650,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux vm new exited with status %d."
+            "value": "mosaic vm new exited with status %d."
           }
         }
       }
@@ -6661,7 +6661,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux vm new could not be launched."
+            "value": "mosaic vm new could not be launched."
           }
         }
       }
@@ -6710,7 +6710,7 @@
         }
       }
     },
-    "command.cmuxConfig.customTitle": {
+    "command.mosaicConfig.customTitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6721,7 +6721,7 @@
         }
       }
     },
-    "command.cmuxConfig.defaultClaudeCodeTitle": {
+    "command.mosaicConfig.defaultClaudeCodeTitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6732,7 +6732,7 @@
         }
       }
     },
-    "command.cmuxConfig.defaultCodexTitle": {
+    "command.mosaicConfig.defaultCodexTitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6743,7 +6743,7 @@
         }
       }
     },
-    "command.cmuxConfig.issue.newWorkspaceActionNotFound.detail": {
+    "command.mosaicConfig.issue.newWorkspaceActionNotFound.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6754,7 +6754,7 @@
         }
       }
     },
-    "command.cmuxConfig.issue.newWorkspaceActionRequiresWorkspaceCommand.detail": {
+    "command.mosaicConfig.issue.newWorkspaceActionRequiresWorkspaceCommand.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6765,7 +6765,7 @@
         }
       }
     },
-    "command.cmuxConfig.issue.newWorkspaceCommandNotFound.detail": {
+    "command.mosaicConfig.issue.newWorkspaceCommandNotFound.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6776,7 +6776,7 @@
         }
       }
     },
-    "command.cmuxConfig.issue.newWorkspaceCommandRequiresWorkspace.detail": {
+    "command.mosaicConfig.issue.newWorkspaceCommandRequiresWorkspace.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6787,7 +6787,7 @@
         }
       }
     },
-    "command.cmuxConfig.issue.schemaError.detail": {
+    "command.mosaicConfig.issue.schemaError.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6798,29 +6798,29 @@
         }
       }
     },
-    "command.cmuxConfig.issue.schemaError.fallback": {
+    "command.mosaicConfig.issue.schemaError.fallback": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invalid cmux.json"
+            "value": "Invalid mosaic.json"
           }
         }
       }
     },
-    "command.cmuxConfig.issue.schemaError.title": {
+    "command.mosaicConfig.issue.schemaError.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux.json Schema Error"
+            "value": "mosaic.json Schema Error"
           }
         }
       }
     },
-    "command.cmuxConfig.issue.subtitle": {
+    "command.mosaicConfig.issue.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -6831,24 +6831,24 @@
         }
       }
     },
-    "command.cmuxConfig.issue.warning.title": {
+    "command.mosaicConfig.issue.warning.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux.json Configuration Warning"
+            "value": "mosaic.json Configuration Warning"
           }
         }
       }
     },
-    "command.cmuxConfig.subtitle": {
+    "command.mosaicConfig.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux.json"
+            "value": "mosaic.json"
           }
         }
       }
@@ -7101,7 +7101,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shell Command: Install 'cmux' in PATH"
+            "value": "Shell Command: Install 'mosaic' in PATH"
           }
         }
       }
@@ -8178,7 +8178,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shell Command: Uninstall 'cmux' from PATH"
+            "value": "Shell Command: Uninstall 'mosaic' from PATH"
           }
         }
       }
@@ -11333,7 +11333,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmCommand.cancel": {
+    "dialog.mosaicConfig.confirmCommand.cancel": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11344,7 +11344,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmCommand.messageWithCommand": {
+    "dialog.mosaicConfig.confirmCommand.messageWithCommand": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11355,7 +11355,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmCommand.run": {
+    "dialog.mosaicConfig.confirmCommand.run": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11366,7 +11366,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmCommand.title": {
+    "dialog.mosaicConfig.confirmCommand.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11377,7 +11377,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmCommand.trustAndRun": {
+    "dialog.mosaicConfig.confirmCommand.trustAndRun": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11388,7 +11388,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmRestart.cancel": {
+    "dialog.mosaicConfig.confirmRestart.cancel": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11399,7 +11399,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmRestart.message": {
+    "dialog.mosaicConfig.confirmRestart.message": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11410,7 +11410,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmRestart.recreate": {
+    "dialog.mosaicConfig.confirmRestart.recreate": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11421,7 +11421,7 @@
         }
       }
     },
-    "dialog.cmuxConfig.confirmRestart.title": {
+    "dialog.mosaicConfig.confirmRestart.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11641,7 +11641,7 @@
         }
       }
     },
-    "dialog.quitCmux.message": {
+    "dialog.quitMosaic.message": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11652,7 +11652,7 @@
         }
       }
     },
-    "dialog.quitCmux.quit": {
+    "dialog.quitMosaic.quit": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11663,7 +11663,7 @@
         }
       }
     },
-    "dialog.quitCmux.title": {
+    "dialog.quitMosaic.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -11966,7 +11966,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux ssh exited with status %d."
+            "value": "mosaic ssh exited with status %d."
           }
         }
       }
@@ -11977,7 +11977,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux ssh could not be launched."
+            "value": "mosaic ssh could not be launched."
           }
         }
       }
@@ -13462,7 +13462,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Set up mosaic Dock controls for the current context.\n\nFirst, learn the feature before editing:\n1. Run `cmux docs dock` if the mosaic CLI is available. If it is not, read https://mosaic.inc/docs/dock.\n2. Inspect the repository or current directory to understand the project type, scripts, package manager, dev servers, logs, task runners, test commands, and any existing TUI tools.\n3. If the desired Dock is ambiguous, ask the user what they want monitored or controlled before writing files.\n\nDock is mosaic's right-sidebar terminal control area. A Dock config is JSON with a top-level `controls` array. Each control runs a command in its own Ghostty-backed terminal section using the user's login shell. Controls are useful for project dashboards, git/status views, dev server or build status, test watchers, log tails, queues, local services, or a custom TUI such as `cmux feed tui --opentui` when that feed is useful.\n\nChoose where to write the config:\n- In a repository or project directory, create or edit `.cmux/dock.json` so teammates can share it.\n- For a personal default outside a repo, create or edit `~/.config/cmux/dock.json`.\n- If both exist, project `.cmux/dock.json` is more specific for that project. Nested project configs apply to that directory tree; use the nearest relevant project config instead of writing unrelated controls globally.\n- If there is no repo and no clear project root, use the global config only after confirming the user wants a personal Dock.\n\nSchema:\n{\n  \"controls\": [\n    {\n      \"id\": \"short-stable-id\",\n      \"title\": \"Human label\",\n      \"command\": \"safe command to run\",\n      \"cwd\": \"optional/path\",\n      \"height\": 220,\n      \"env\": { \"NAME\": \"value\" }\n    }\n  ]\n}\n\nRules:\n- Keep ids stable, lowercase, and unique.\n- Use `cwd` for subdirectories; relative paths resolve from the config base.\n- Use `height` only when a control needs a fixed amount of vertical space.\n- Use `env` only for non-secret values needed by one control.\n- Do not put secrets, tokens, or machine-specific private paths in a shared project config.\n- Prefer commands that are safe to start repeatedly and make sense in a terminal.\n- Do not invent unavailable scripts. Read package files, Makefiles, Procfiles, README docs, config files, and existing tooling first.\n- Keep shared project Docks portable for teammates. Put personal or machine-specific controls in the global Dock.\n\nDeliverable:\n- Create or update the appropriate dock.json.\n- Preserve existing useful controls unless the user asked to replace them.\n- Validate that the JSON parses.\n- Summarize what each control does and any commands the user should review before trusting the Dock config."
+            "value": "Set up mosaic Dock controls for the current context.\n\nFirst, learn the feature before editing:\n1. Run `mosaic docs dock` if the mosaic CLI is available. If it is not, read https://mosaic.inc/docs/dock.\n2. Inspect the repository or current directory to understand the project type, scripts, package manager, dev servers, logs, task runners, test commands, and any existing TUI tools.\n3. If the desired Dock is ambiguous, ask the user what they want monitored or controlled before writing files.\n\nDock is mosaic's right-sidebar terminal control area. A Dock config is JSON with a top-level `controls` array. Each control runs a command in its own Ghostty-backed terminal section using the user's login shell. Controls are useful for project dashboards, git/status views, dev server or build status, test watchers, log tails, queues, local services, or a custom TUI such as `mosaic feed tui --opentui` when that feed is useful.\n\nChoose where to write the config:\n- In a repository or project directory, create or edit `.mosaic/dock.json` so teammates can share it.\n- For a personal default outside a repo, create or edit `~/.config/mosaic/dock.json`.\n- If both exist, project `.mosaic/dock.json` is more specific for that project. Nested project configs apply to that directory tree; use the nearest relevant project config instead of writing unrelated controls globally.\n- If there is no repo and no clear project root, use the global config only after confirming the user wants a personal Dock.\n\nSchema:\n{\n  \"controls\": [\n    {\n      \"id\": \"short-stable-id\",\n      \"title\": \"Human label\",\n      \"command\": \"safe command to run\",\n      \"cwd\": \"optional/path\",\n      \"height\": 220,\n      \"env\": { \"NAME\": \"value\" }\n    }\n  ]\n}\n\nRules:\n- Keep ids stable, lowercase, and unique.\n- Use `cwd` for subdirectories; relative paths resolve from the config base.\n- Use `height` only when a control needs a fixed amount of vertical space.\n- Use `env` only for non-secret values needed by one control.\n- Do not put secrets, tokens, or machine-specific private paths in a shared project config.\n- Prefer commands that are safe to start repeatedly and make sense in a terminal.\n- Do not invent unavailable scripts. Read package files, Makefiles, Procfiles, README docs, config files, and existing tooling first.\n- Keep shared project Docks portable for teammates. Put personal or machine-specific controls in the global Dock.\n\nDeliverable:\n- Create or update the appropriate dock.json.\n- Preserve existing useful controls unless the user asked to replace them.\n- Validate that the JSON parses.\n- Summarize what each control does and any commands the user should review before trusting the Dock config."
           }
         }
       }
@@ -13561,7 +13561,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add controls to .cmux/dock.json."
+            "value": "Add controls to .mosaic/dock.json."
           }
         }
       }
@@ -16313,7 +16313,7 @@
         }
       }
     },
-    "fileExplorer.contextMenu.openInCmux": {
+    "fileExplorer.contextMenu.openInMosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -17402,13 +17402,13 @@
         }
       }
     },
-    "menu.app.openCmuxSettingsFile": {
+    "menu.app.openMosaicSettingsFile": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open cmux.json"
+            "value": "Open mosaic.json"
           }
         }
       }
@@ -18579,7 +18579,7 @@
         }
       }
     },
-    "menu.quitCmux": {
+    "menu.quitMosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -22490,7 +22490,7 @@
         }
       }
     },
-    "settings.app.openMarkdownInCmuxViewer": {
+    "settings.app.openMarkdownInMosaicViewer": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -22501,7 +22501,7 @@
         }
       }
     },
-    "settings.app.openMarkdownInCmuxViewer.subtitle": {
+    "settings.app.openMarkdownInMosaicViewer.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -22600,7 +22600,7 @@
         }
       }
     },
-    "settings.app.openSupportedFilesInCmux": {
+    "settings.app.openSupportedFilesInMosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -22611,7 +22611,7 @@
         }
       }
     },
-    "settings.app.openSupportedFilesInCmux.subtitle": {
+    "settings.app.openSupportedFilesInMosaic.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -22782,7 +22782,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open cmux.json"
+            "value": "Open mosaic.json"
           }
         }
       }
@@ -23409,7 +23409,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hooks must be installed with `cmux hooks amp install`. They no-op outside mosaic terminals. When disabled, the installed Amp plugin stays inactive without needing to be removed."
+            "value": "Hooks must be installed with `mosaic hooks amp install`. They no-op outside mosaic terminals. When disabled, the installed Amp plugin stays inactive without needing to be removed."
           }
         }
       }
@@ -23629,7 +23629,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "When enabled, mosaic wraps the codex command to inject session tracking and notification hooks. Disable if you prefer to manage Codex hooks yourself. mosaic still tracks live Codex sessions it can observe even when this is off. To also track Codex launched through a custom launcher that bypasses the wrapper (e.g. a subrouter), run `cmux hooks setup --agent codex`, which installs hooks into ~/.codex/hooks.json."
+            "value": "When enabled, mosaic wraps the codex command to inject session tracking and notification hooks. Disable if you prefer to manage Codex hooks yourself. mosaic still tracks live Codex sessions it can observe even when this is off. To also track Codex launched through a custom launcher that bypasses the wrapper (e.g. a subrouter), run `mosaic hooks setup --agent codex`, which installs hooks into ~/.codex/hooks.json."
           }
         }
       }
@@ -23673,7 +23673,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hooks must be installed with `cmux hooks cursor install`. They no-op outside mosaic terminals."
+            "value": "Hooks must be installed with `mosaic hooks cursor install`. They no-op outside mosaic terminals."
           }
         }
       }
@@ -23717,7 +23717,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hooks must be installed with `cmux hooks gemini install`. They no-op outside mosaic terminals."
+            "value": "Hooks must be installed with `mosaic hooks gemini install`. They no-op outside mosaic terminals."
           }
         }
       }
@@ -23761,7 +23761,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hooks must be installed with `cmux hooks kiro install`, then run Kiro with `kiro-cli chat --agent cmux` (or set it as your default agent). They no-op outside mosaic terminals."
+            "value": "Hooks must be installed with `mosaic hooks kiro install`, then run Kiro with `kiro-cli chat --agent mosaic` (or set it as your default agent). They no-op outside mosaic terminals."
           }
         }
       }
@@ -23904,7 +23904,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Each workspace gets CMUX_PORT and CMUX_PORT_END env vars with a dedicated port range. New terminals inherit these values."
+            "value": "Each workspace gets MOSAIC_PORT and MOSAIC_PORT_END env vars with a dedicated port range. New terminals inherit these values."
           }
         }
       }
@@ -23926,7 +23926,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starting port for CMUX_PORT env var."
+            "value": "Starting port for MOSAIC_PORT env var."
           }
         }
       }
@@ -24014,7 +24014,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Overrides: CMUX_SOCKET_ENABLE, CMUX_SOCKET_MODE, and CMUX_SOCKET_PATH (set CMUX_ALLOW_SOCKET_OVERRIDE=1 for stable/nightly builds)."
+            "value": "Overrides: MOSAIC_SOCKET_ENABLE, MOSAIC_SOCKET_MODE, and MOSAIC_SOCKET_PATH (set MOSAIC_ALLOW_SOCKET_OVERRIDE=1 for stable/nightly builds)."
           }
         }
       }
@@ -24289,7 +24289,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lists your sidebars from ~/.config/cmux/sidebars in the sidebar picker, rendered in an isolated helper process."
+            "value": "Lists your sidebars from ~/.config/mosaic/sidebars in the sidebar picker, rendered in an isolated helper process."
           }
         }
       }
@@ -25350,7 +25350,7 @@
         }
       }
     },
-    "settings.config.banner.cmux": {
+    "settings.config.banner.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -25383,7 +25383,7 @@
         }
       }
     },
-    "settings.config.source.cmux": {
+    "settings.config.source.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -25499,7 +25499,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lists your sidebars from ~/.config/cmux/sidebars in the sidebar picker."
+            "value": "Lists your sidebars from ~/.config/mosaic/sidebars in the sidebar picker."
           }
         }
       }
@@ -25510,7 +25510,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Custom sidebars are SwiftUI-style files in ~/.config/cmux/sidebars. Pick one from the sidebar toggle button's right-click menu; edits hot-reload on save. Use the in-app renderer only for sidebars you trust."
+            "value": "Custom sidebars are SwiftUI-style files in ~/.config/mosaic/sidebars. Pick one from the sidebar toggle button's right-click menu; edits hot-reload on save. Use the in-app renderer only for sidebars you trust."
           }
         }
       }
@@ -26080,7 +26080,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Run a shell command when a notification arrives. $CMUX_NOTIFICATION_TITLE, $CMUX_NOTIFICATION_SUBTITLE, $CMUX_NOTIFICATION_BODY are set."
+            "value": "Run a shell command when a notification arrives. $MOSAIC_NOTIFICATION_TITLE, $MOSAIC_NOTIFICATION_SUBTITLE, $MOSAIC_NOTIFICATION_BODY are set."
           }
         }
       }
@@ -27257,7 +27257,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "automation.portBase cmux_port start first base env environment variable"
+            "value": "automation.portBase mosaic_port start first base env environment variable"
           }
         }
       }
@@ -27268,7 +27268,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "automation.portRange cmux_port_end range size count env ports"
+            "value": "automation.portRange mosaic_port_end range size count env ports"
           }
         }
       }
@@ -27950,7 +27950,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux.json"
+            "value": "mosaic.json"
           }
         }
       }
@@ -28082,7 +28082,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open cmux.json"
+            "value": "Open mosaic.json"
           }
         }
       }
@@ -28115,7 +28115,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add tmux-style multi-step shortcuts in cmux.json, for example [\"ctrl+b\", \"c\"]."
+            "value": "Add tmux-style multi-step shortcuts in mosaic.json, for example [\"ctrl+b\", \"c\"]."
           }
         }
       }
@@ -28125,7 +28125,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Managed in cmux.json"
+            "value": "Managed in mosaic.json"
           }
         }
       }
@@ -29302,7 +29302,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Edit cmux.json to add or remove named colors. \"Choose Custom Color...\" still adds local Custom N entries."
+            "value": "Edit mosaic.json to add or remove named colors. \"Choose Custom Color...\" still adds local Custom N entries."
           }
         }
       }
@@ -29313,7 +29313,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No palette entries. Add colors in cmux.json or use \"Choose Custom Color...\" from a workspace context menu."
+            "value": "No palette entries. Add colors in mosaic.json or use \"Choose Custom Color...\" from a workspace context menu."
           }
         }
       }
@@ -32955,7 +32955,7 @@
         }
       }
     },
-    "sleepyMode.glow.cmux": {
+    "sleepyMode.glow.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -33043,7 +33043,7 @@
         }
       }
     },
-    "sleepyMode.mascot.cmux": {
+    "sleepyMode.mascot.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -33362,7 +33362,7 @@
         }
       }
     },
-    "sleepyMode.theme.cmux": {
+    "sleepyMode.theme.mosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -33923,7 +33923,7 @@
         }
       }
     },
-    "socketControl.cmuxOnly.description": {
+    "socketControl.mosaicOnly.description": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -33934,7 +33934,7 @@
         }
       }
     },
-    "socketControl.cmuxOnly.name": {
+    "socketControl.mosaicOnly.name": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -34671,7 +34671,7 @@
         }
       }
     },
-    "statusMenu.showCmux": {
+    "statusMenu.showMosaic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -38328,7 +38328,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reachable cmux room peers:"
+            "value": "Reachable mosaic room peers:"
           }
         }
       }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression test: `cmux claude-teams` reuses an existing tmux shim.
+Regression test: `mosaic claude-teams` reuses an existing tmux shim.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from claude_teams_test_utils import resolve_cmux_cli
+from claude_teams_test_utils import resolve_mosaic_cli
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -21,37 +21,37 @@ def make_executable(path: Path, content: str) -> None:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_mosaic_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="cmux-claude-teams-shim-") as td:
+    with tempfile.TemporaryDirectory(prefix="mosaic-claude-teams-shim-") as td:
         tmp = Path(td)
         home = tmp / "home"
-        cmux_shim_bin = tmp / "cmux-shim-bin"
+        mosaic_shim_bin = tmp / "mosaic-shim-bin"
         real_bin = tmp / "real-bin"
         home.mkdir(parents=True, exist_ok=True)
-        cmux_shim_bin.mkdir(parents=True, exist_ok=True)
+        mosaic_shim_bin.mkdir(parents=True, exist_ok=True)
         real_bin.mkdir(parents=True, exist_ok=True)
 
-        shim_dir = home / ".cmuxterm" / "claude-teams-bin"
+        shim_dir = home / ".mosaicterm" / "claude-teams-bin"
         shim_dir.mkdir(parents=True, exist_ok=True)
         shim_path = shim_dir / "tmux"
         shim_path.write_text(
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
-            "exec \"${CMUX_CLAUDE_TEAMS_CMUX_BIN:-cmux}\" __tmux-compat \"$@\"\n",
+            "exec \"${MOSAIC_CLAUDE_TEAMS_MOSAIC_BIN:-mosaic}\" __tmux-compat \"$@\"\n",
             encoding="utf-8",
         )
         shim_path.chmod(0o555)
         shim_dir.chmod(0o555)
 
         make_executable(
-            cmux_shim_bin / "claude",
+            mosaic_shim_bin / "claude",
             """#!/usr/bin/env bash
 set -euo pipefail
-echo cmux-claude-command-shim-should-not-run
+echo mosaic-claude-command-shim-should-not-run
 exit 42
 """,
         )
@@ -65,9 +65,9 @@ printf 'shim=%s\\n' "$(command -v tmux)"
 
         env = os.environ.copy()
         env["HOME"] = str(home)
-        env["PATH"] = f"{cmux_shim_bin}:{real_bin}:/usr/bin:/bin"
-        env["CMUX_CLAUDE_WRAPPER_SHIM"] = str(cmux_shim_bin / "claude")
-        env["CMUX_CLAUDE_WRAPPER_SHIM_ROOT"] = str(cmux_shim_bin)
+        env["PATH"] = f"{mosaic_shim_bin}:{real_bin}:/usr/bin:/bin"
+        env["MOSAIC_CLAUDE_WRAPPER_SHIM"] = str(mosaic_shim_bin / "claude")
+        env["MOSAIC_CLAUDE_WRAPPER_SHIM_ROOT"] = str(mosaic_shim_bin)
 
         proc = subprocess.run(
             [cli_path, "claude-teams", "--version"],
@@ -82,7 +82,7 @@ printf 'shim=%s\\n' "$(command -v tmux)"
         shim_path.chmod(0o755)
 
         if proc.returncode != 0:
-            print("FAIL: `cmux claude-teams --version` failed with an existing shim")
+            print("FAIL: `mosaic claude-teams --version` failed with an existing shim")
             print(f"exit={proc.returncode}")
             print(f"stdout={proc.stdout.strip()}")
             print(f"stderr={proc.stderr.strip()}")
@@ -94,7 +94,7 @@ printf 'shim=%s\\n' "$(command -v tmux)"
             print(f"FAIL: expected existing shim path {expected!r}, got {actual!r}")
             return 1
 
-    print("PASS: cmux claude-teams reuses an existing tmux shim")
+    print("PASS: mosaic claude-teams reuses an existing tmux shim")
     return 0
 
 

@@ -2,13 +2,13 @@
 # One-time, idempotent team dogfood onboarding.
 #
 # Each developer runs this ONCE to store their own Stack account in
-# ~/.secrets/cmuxterm-dev.env. Thereafter every DEBUG build they make with
+# ~/.secrets/mosaicterm-dev.env. Thereafter every DEBUG build they make with
 # scripts/dev-setup.sh --tag <x> auto-signs-in as THEM and auto-attaches to
 # THEIR Mac, with zero manual steps. DEBUG-only and per-user: the file lives
 # outside the repo and is never committed.
 #
 # This script:
-#   1. If ~/.secrets/cmuxterm-dev.env already has a complete dogfood pair, prints
+#   1. If ~/.secrets/mosaicterm-dev.env already has a complete dogfood pair, prints
 #      who it is configured as and exits 0 (re-running is safe).
 #   2. Otherwise prompts for the developer's Stack email + password (the password
 #      is read with `read -s` and never echoed), writes the file with chmod 600.
@@ -30,11 +30,11 @@ if [[ -z "$HOME_DIR" ]]; then
   exit 1
 fi
 SECRETS_DIR="$HOME_DIR/.secrets"
-DEV_ENV_FILE="$SECRETS_DIR/cmuxterm-dev.env"
+DEV_ENV_FILE="$SECRETS_DIR/mosaicterm-dev.env"
 
 # The DEBUG (development) Stack project the macOS/iOS dev builds sign in against.
 # Mirrors AuthConfig.swift development defaults so this verify path matches what
-# the app actually does. (DEBUG => CMUXAuthEnvironment.development.)
+# the app actually does. (DEBUG => MosaicAuthEnvironment.development.)
 STACK_BASE_URL="https://api.stack-auth.com"
 STACK_PROJECT_ID="454ecd03-1db2-4050-845e-4ce5b0cd9895"
 STACK_PUBLISHABLE_CLIENT_KEY="pck_xb63160bwe9699vtxfzfj6emmxpafg5mkjrtp6ehzxv5g"
@@ -55,12 +55,12 @@ EOF
 }
 
 # --- idempotent: already configured? ----------------------------------------
-# cmux_dev_secrets_load resolves a COMPLETE pair from the same precedence chain
+# mosaic_dev_secrets_load resolves a COMPLETE pair from the same precedence chain
 # the app uses. If the dogfood pair already resolves from the dev file (or env),
 # we are done. Run it in a subshell so the exported password never enters this
 # process environment.
 existing_email="$(
-  cmux_dev_secrets_load >/dev/null 2>&1 && printf '%s' "${CMUX_UITEST_STACK_EMAIL:-}" || true
+  mosaic_dev_secrets_load >/dev/null 2>&1 && printf '%s' "${MOSAIC_UITEST_STACK_EMAIL:-}" || true
 )"
 if [[ -n "$existing_email" ]]; then
   echo "==> already configured as ${existing_email}"
@@ -70,7 +70,7 @@ if [[ -n "$existing_email" ]]; then
 fi
 
 # --- prompt for the developer's own Stack account ----------------------------
-echo "==> cmux team dogfood setup (one-time, per developer)"
+echo "==> mosaic team dogfood setup (one-time, per developer)"
 echo "    Stores YOUR Stack account in $DEV_ENV_FILE so DEBUG builds sign in as you."
 echo
 
@@ -168,10 +168,10 @@ chmod 700 "$SECRETS_DIR" 2>/dev/null || true
 umask_old="$(umask)"
 umask 077
 {
-  echo "# cmux per-developer dogfood credentials. Written by scripts/setup-team-dev.sh."
-  echo "# DEBUG-only, per-user; never commit. See scripts/cmuxterm-dev.env.example."
-  printf 'CMUX_DOGFOOD_STACK_EMAIL=%s\n' "$email"
-  printf 'CMUX_DOGFOOD_STACK_PASSWORD=%s\n' "$password"
+  echo "# mosaic per-developer dogfood credentials. Written by scripts/setup-team-dev.sh."
+  echo "# DEBUG-only, per-user; never commit. See scripts/mosaicterm-dev.env.example."
+  printf 'MOSAIC_DOGFOOD_STACK_EMAIL=%s\n' "$email"
+  printf 'MOSAIC_DOGFOOD_STACK_PASSWORD=%s\n' "$password"
 } > "$DEV_ENV_FILE"
 umask "$umask_old"
 chmod 600 "$DEV_ENV_FILE"

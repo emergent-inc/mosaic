@@ -1,6 +1,6 @@
-import CMUXMobileCore
-import CmuxAuthRuntime
-import CmuxSettings
+import MosaicMobileCore
+import MosaicAuthRuntime
+import MosaicSettings
 import CryptoKit
 import Foundation
 @preconcurrency import Network
@@ -8,11 +8,11 @@ import OSLog
 import StackAuth
 import os
 
-private let mobileHostLog = Logger(subsystem: "dev.cmux", category: "mobile-host")
+private let mobileHostLog = Logger(subsystem: "dev.mosaic", category: "mobile-host")
 
 extension Notification.Name {
     static let mobileHostEventSubscriptionsDidChange = Notification.Name(
-        "cmux.mobileHostEventSubscriptionsDidChange"
+        "mosaic.mobileHostEventSubscriptionsDidChange"
     )
 
     /// Posted whenever the mobile pairing host's observable status changes:
@@ -21,7 +21,7 @@ extension Notification.Name {
     /// `AsyncStream` so the Mobile settings section can show the live bound
     /// port and connection count without polling.
     static let mobileHostStatusDidChange = Notification.Name(
-        "cmux.mobileHostStatusDidChange"
+        "mosaic.mobileHostStatusDidChange"
     )
 }
 
@@ -368,7 +368,7 @@ final class MobileHostService {
         return MobileHostPublicStatusCache.result(includeIdentity: verified)
     }
 
-    private let callbackQueue = DispatchQueue(label: "dev.cmux.mobile.host-listener")
+    private let callbackQueue = DispatchQueue(label: "dev.mosaic.mobile.host-listener")
     private let routeResolver = MobileRouteResolver()
     private let ticketStore = MobileAttachTicketStore()
     private var listener: NWListener?
@@ -445,13 +445,13 @@ final class MobileHostService {
         let connections = MobileHostConnectionRegistry.shared.snapshot()
         guard !connections.isEmpty else { return }
         #if DEBUG
-        cmuxDebugLog("mobile.emit topic=\(topic) connections=\(connections.count)")
+        mosaicDebugLog("mobile.emit topic=\(topic) connections=\(connections.count)")
         #endif
         for connection in connections {
             Task {
                 let delivered = await connection.sendEvent(topic: topic, payload: payload)
                 #if DEBUG
-                cmuxDebugLog("mobile.emit -> connection delivered=\(delivered) topic=\(topic)")
+                mosaicDebugLog("mobile.emit -> connection delivered=\(delivered) topic=\(topic)")
                 #endif
             }
         }
@@ -1971,7 +1971,7 @@ actor MobileHostConnection {
     ) {
         self.id = id
         self.connection = connection
-        self.callbackQueue = DispatchQueue(label: "dev.cmux.mobile.host-connection.\(id.uuidString)")
+        self.callbackQueue = DispatchQueue(label: "dev.mosaic.mobile.host-connection.\(id.uuidString)")
         self.firstFrameTimeoutNanoseconds = firstFrameTimeoutNanoseconds
         self.idleTimeoutNanoseconds = idleTimeoutNanoseconds
         self.authorizeRequest = authorizeRequest
@@ -2230,7 +2230,7 @@ actor MobileHostConnection {
             let alreadySubscribed = subscriptions[streamID] != nil
             subscribe(streamID: streamID, topics: topics)
             #if DEBUG
-            cmuxDebugLog("mobile.subscribe streamID=\(streamID) topics=\(topics.sorted()) existing=\(alreadySubscribed) connID=\(self.id.uuidString)")
+            mosaicDebugLog("mobile.subscribe streamID=\(streamID) topics=\(topics.sorted()) existing=\(alreadySubscribed) connID=\(self.id.uuidString)")
             #endif
             return .ok([
                 "stream_id": streamID,
@@ -2305,13 +2305,13 @@ actor MobileHostConnection {
     func sendEvent(topic: String, payload: [String: Any]) async -> Bool {
         guard !isClosed else {
             #if DEBUG
-            cmuxDebugLog("mobile.send skip: closed topic=\(topic) connID=\(self.id.uuidString)")
+            mosaicDebugLog("mobile.send skip: closed topic=\(topic) connID=\(self.id.uuidString)")
             #endif
             return false
         }
         guard isSubscribed(to: topic) else {
             #if DEBUG
-            cmuxDebugLog("mobile.send skip: not subscribed topic=\(topic) connID=\(self.id.uuidString) subs=\(subscriptions.count)")
+            mosaicDebugLog("mobile.send skip: not subscribed topic=\(topic) connID=\(self.id.uuidString) subs=\(subscriptions.count)")
             #endif
             return false
         }

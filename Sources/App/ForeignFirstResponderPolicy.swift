@@ -6,7 +6,7 @@ import AppKit
 ///
 /// A terminal yields only to a *legitimate* in-window focus owner: a focused text editor
 /// (`NSText` field editor) or a right-sidebar / dock / feed host. Crucially it must also still
-/// belong to `window`. cmux hosts terminal surfaces through a portal that reparents views between
+/// belong to `window`. mosaic hosts terminal surfaces through a portal that reparents views between
 /// windows; a focus owner can be reparented out of a window without resigning, leaving
 /// `window.firstResponder` pointing at a view that no longer belongs to the window (a "stranded"
 /// responder, see issue #5269). The previous guard checked responder *type* only, so it treated a

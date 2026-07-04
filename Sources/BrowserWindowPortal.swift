@@ -1,15 +1,15 @@
 import AppKit
 import Bonsplit
-import CmuxAppKitSupportUI
+import MosaicAppKitSupportUI
 import ObjectiveC
 import SwiftUI
 import WebKit
 
-private var cmuxWindowBrowserPortalKey: UInt8 = 0
-private var cmuxWindowBrowserPortalCloseObserverKey: UInt8 = 0
-private var cmuxBrowserSearchOverlayPanelIdAssociationKey: UInt8 = 0
-private var cmuxBrowserPortalNeedsRenderingStateReattachKey: UInt8 = 0
-private var cmuxWindowInteractiveSplitDividerDragKey: UInt8 = 0
+private var mosaicWindowBrowserPortalKey: UInt8 = 0
+private var mosaicWindowBrowserPortalCloseObserverKey: UInt8 = 0
+private var mosaicBrowserSearchOverlayPanelIdAssociationKey: UInt8 = 0
+private var mosaicBrowserPortalNeedsRenderingStateReattachKey: UInt8 = 0
+private var mosaicWindowInteractiveSplitDividerDragKey: UInt8 = 0
 
 #if DEBUG
 private func browserPortalDebugToken(_ view: NSView?) -> String {
@@ -50,13 +50,13 @@ private extension NSWindow {
     var browserPortalHasInteractiveSplitDividerDrag: Bool {
         get {
             let isActive =
-                (objc_getAssociatedObject(self, &cmuxWindowInteractiveSplitDividerDragKey) as? NSNumber)?
+                (objc_getAssociatedObject(self, &mosaicWindowInteractiveSplitDividerDragKey) as? NSNumber)?
                     .boolValue ?? false
             guard isActive else { return false }
             guard (NSEvent.pressedMouseButtons & 1) != 0 else {
                 objc_setAssociatedObject(
                     self,
-                    &cmuxWindowInteractiveSplitDividerDragKey,
+                    &mosaicWindowInteractiveSplitDividerDragKey,
                     NSNumber(value: false),
                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                 )
@@ -67,7 +67,7 @@ private extension NSWindow {
         set {
             objc_setAssociatedObject(
                 self,
-                &cmuxWindowInteractiveSplitDividerDragKey,
+                &mosaicWindowInteractiveSplitDividerDragKey,
                 NSNumber(value: newValue),
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
@@ -78,13 +78,13 @@ private extension NSWindow {
 private extension WKWebView {
     private var browserPortalNeedsRenderingStateReattach: Bool {
         get {
-            (objc_getAssociatedObject(self, &cmuxBrowserPortalNeedsRenderingStateReattachKey) as? NSNumber)?
+            (objc_getAssociatedObject(self, &mosaicBrowserPortalNeedsRenderingStateReattachKey) as? NSNumber)?
                 .boolValue ?? false
         }
         set {
             objc_setAssociatedObject(
                 self,
-                &cmuxBrowserPortalNeedsRenderingStateReattachKey,
+                &mosaicBrowserPortalNeedsRenderingStateReattachKey,
                 NSNumber(value: newValue),
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
@@ -102,7 +102,7 @@ private extension WKWebView {
         }
 #if DEBUG
         if !firedSelectors.isEmpty {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.webview.hidden web=\(browserPortalDebugToken(self)) " +
                 "reason=\(reason) selectors=\(firedSelectors.joined(separator: ","))"
             )
@@ -137,7 +137,7 @@ private extension WKWebView {
 
 #if DEBUG
         if !firedSelectors.isEmpty {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.webview.reattach web=\(browserPortalDebugToken(self)) " +
                 "reason=\(reason) selectors=\(firedSelectors.joined(separator: ",")) " +
                 "frame=\(browserPortalDebugFrame(frame))"
@@ -367,7 +367,7 @@ final class WindowBrowserHostView: NSView {
             return "kind=\(kind),hosted=\(dividerHit.isInHostedContent ? 1 : 0)"
         }()
         let windowPoint = convert(point, to: nil)
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.pointer stage=\(stage) event=\(String(describing: event?.type)) " +
             "host=\(browserPortalDebugToken(self)) point=\(browserPortalDebugFrame(NSRect(origin: point, size: .zero))) " +
             "windowPoint=\(browserPortalDebugFrame(NSRect(origin: windowPoint, size: .zero))) " +
@@ -621,7 +621,7 @@ final class WindowBrowserHostView: NSView {
             initialInspectorFrame: hostedInspectorHit.inspectorView.frame
         )
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.manualInspectorDrag stage=start slot=\(browserPortalDebugToken(hostedInspectorHit.slotView)) " +
             "page=\(browserPortalDebugToken(hostedInspectorHit.pageView)) " +
             "inspector=\(browserPortalDebugToken(hostedInspectorHit.inspectorView)) " +
@@ -689,7 +689,7 @@ final class WindowBrowserHostView: NSView {
             )
         )
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.manualInspectorDrag stage=update slot=\(browserPortalDebugToken(dragState.slotView)) " +
             "dividerX=\(String(format: "%.1f", clampedDividerX)) " +
             "pageFrame=\(browserPortalDebugFrame(appliedFrames.pageFrame)) " +
@@ -702,7 +702,7 @@ final class WindowBrowserHostView: NSView {
         if let dragState = hostedInspectorDividerDrag {
             dragState.slotView.isHostedInspectorDividerDragActive = false
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.manualInspectorDrag stage=end slot=\(browserPortalDebugToken(dragState.slotView)) " +
                 "pageFrame=\(browserPortalDebugFrame(dragState.pageView.frame)) " +
                 "inspectorFrame=\(browserPortalDebugFrame(dragState.inspectorView.frame))"
@@ -1044,7 +1044,7 @@ final class WindowBrowserHostView: NSView {
     fileprivate func reapplyHostedInspectorDividerIfNeeded(in slot: WindowBrowserSlotView, reason: String) -> Bool {
         guard !slot.isHostedInspectorDividerDragActive else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.manualInspectorDrag stage=skipReapply slot=\(browserPortalDebugToken(slot)) " +
                 "reason=\(reason)"
             )
@@ -1109,7 +1109,7 @@ final class WindowBrowserHostView: NSView {
         hit.slotView.needsDisplay = true
         hit.slotView.setNeedsDisplay(hit.slotView.bounds)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.manualInspectorDrag stage=reapply slot=\(browserPortalDebugToken(hit.slotView)) " +
             "container=\(browserPortalDebugToken(hit.containerView)) reason=\(reason) " +
             "preferredWidth=\(String(format: "%.1f", preferredWidth)) " +
@@ -1203,7 +1203,7 @@ final class WindowBrowserHostView: NSView {
     }
 
     private static func isInspectorView(_ view: NSView) -> Bool {
-        cmuxIsWebInspectorObject(view)
+        mosaicIsWebInspectorObject(view)
     }
 
     private static func isVisibleHostedInspectorCandidate(_ view: NSView) -> Bool {
@@ -1443,7 +1443,7 @@ final class WindowBrowserSlotView: NSView {
             }
             return String(describing: type(of: firstResponder))
         }()
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.findbar.portal action=\(action) " +
             "panel=\(panelId?.uuidString.prefix(5) ?? "nil") " +
             "window=\(window?.windowNumber ?? -1) " +
@@ -1459,7 +1459,7 @@ final class WindowBrowserSlotView: NSView {
             if let overlay = searchOverlayHostingView {
                 objc_setAssociatedObject(
                     overlay,
-                    &cmuxBrowserSearchOverlayPanelIdAssociationKey,
+                    &mosaicBrowserSearchOverlayPanelIdAssociationKey,
                     nil,
                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                 )
@@ -1486,7 +1486,7 @@ final class WindowBrowserSlotView: NSView {
             overlay.rootView = rootView
             objc_setAssociatedObject(
                 overlay,
-                &cmuxBrowserSearchOverlayPanelIdAssociationKey,
+                &mosaicBrowserSearchOverlayPanelIdAssociationKey,
                 configuration.panelId,
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
@@ -1508,7 +1508,7 @@ final class WindowBrowserSlotView: NSView {
         overlay.translatesAutoresizingMaskIntoConstraints = false
         objc_setAssociatedObject(
             overlay,
-            &cmuxBrowserSearchOverlayPanelIdAssociationKey,
+            &mosaicBrowserSearchOverlayPanelIdAssociationKey,
             configuration.panelId,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
@@ -1526,7 +1526,7 @@ final class WindowBrowserSlotView: NSView {
 
     private func logOmnibarSuggestionsEvent(_ action: String, configuration: BrowserPortalOmnibarSuggestionsConfiguration?) {
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.omnibar.portal action=\(action) " +
             "panel=\(configuration?.panelId.uuidString.prefix(5) ?? "nil") " +
             "window=\(window?.windowNumber ?? -1) " +
@@ -1606,7 +1606,7 @@ final class WindowBrowserSlotView: NSView {
     func searchOverlayPanelId(for responder: NSResponder) -> UUID? {
         guard let overlay = searchOverlayHostingView else { return nil }
 
-        let panelId = objc_getAssociatedObject(overlay, &cmuxBrowserSearchOverlayPanelIdAssociationKey) as? UUID
+        let panelId = objc_getAssociatedObject(overlay, &mosaicBrowserSearchOverlayPanelIdAssociationKey) as? UUID
 
         if let view = responder as? NSView,
            view === overlay || view.isDescendant(of: overlay) {
@@ -1627,7 +1627,7 @@ final class WindowBrowserSlotView: NSView {
               searchOverlayPanelId(for: firstResponder) == panelId else {
             return false
         }
-        _ = cmuxRememberFindSelection(in: searchOverlayHostingView); return window.makeFirstResponder(nil)
+        _ = mosaicRememberFindSelection(in: searchOverlayHostingView); return window.makeFirstResponder(nil)
     }
 
     @discardableResult
@@ -1638,7 +1638,7 @@ final class WindowBrowserSlotView: NSView {
             return false
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.slot.firstResponder.yield reason=\(reason) " +
             "slot=\(browserPortalDebugToken(self)) " +
             "responder=\(String(describing: type(of: firstResponder)))"
@@ -1917,7 +1917,7 @@ final class WindowBrowserPortal: NSObject {
     private var webViewByAnchorId: [ObjectIdentifier: ObjectIdentifier] = [:]
 
 #if DEBUG
-    // Test seam for https://github.com/emergent-inc/cmux/issues/5733. Installs a
+    // Test seam for https://github.com/emergent-inc/mosaic/issues/5733. Installs a
     // slot container into the portal host without registering an Entry, so tests
     // can prove the find-overlay lookup resolves off the live slot view hierarchy
     // rather than by enumerating/copying Entry values out of entriesByWebViewId
@@ -2145,7 +2145,7 @@ final class WindowBrowserPortal: NSObject {
             hostView.frame = frameInContainer
             CATransaction.commit()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.hostFrame.update host=\(browserPortalDebugToken(hostView)) " +
                 "frame=\(browserPortalDebugFrame(frameInContainer))"
             )
@@ -2269,7 +2269,7 @@ final class WindowBrowserPortal: NSObject {
         var stack: [NSView] = [root]
         while let current = stack.popLast() {
             if current !== root {
-                if cmuxIsWebInspectorObject(current),
+                if mosaicIsWebInspectorObject(current),
                    !current.isHidden,
                    current.alphaValue > 0,
                    current.frame.width > 1,
@@ -2335,7 +2335,7 @@ final class WindowBrowserPortal: NSObject {
         var count = 0
         while let current = stack.popLast() {
             for subview in current.subviews {
-                if cmuxIsWebInspectorObject(subview) {
+                if mosaicIsWebInspectorObject(subview) {
                     count += 1
                 }
                 stack.append(subview)
@@ -2397,7 +2397,7 @@ final class WindowBrowserPortal: NSObject {
         for view in sourceSuperview.subviews {
             if view === primaryWebView { continue }
             let className = String(describing: type(of: view))
-            if cmuxIsWebInspectorClassName(className) || Self.containsInspectorView(in: view) {
+            if mosaicIsWebInspectorClassName(className) || Self.containsInspectorView(in: view) {
                 continue
             }
             guard className.contains("WK") else { continue }
@@ -2410,7 +2410,7 @@ final class WindowBrowserPortal: NSObject {
     private static func containsInspectorView(in root: NSView) -> Bool {
         var stack: [NSView] = [root]
         while let current = stack.popLast() {
-            if cmuxIsWebInspectorObject(current) {
+            if mosaicIsWebInspectorObject(current) {
                 return true
             }
             stack.append(contentsOf: current.subviews)
@@ -2460,7 +2460,7 @@ final class WindowBrowserPortal: NSObject {
     }
 
     private static func isInspectorFrontendWebView(_ webView: WKWebView) -> Bool {
-        cmuxIsWebInspectorObject(webView)
+        mosaicIsWebInspectorObject(webView)
     }
 
     private func notifyHostedWebKitHidden(
@@ -2490,7 +2490,7 @@ final class WindowBrowserPortal: NSObject {
         created.setOmnibarSuggestions(entry.omnibarSuggestions)
         created.setPaneTopChromeHeight(entry.paneTopChromeHeight)
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.container.create web=\(browserPortalDebugToken(webView)) " +
             "container=\(browserPortalDebugToken(created))"
         )
@@ -2508,7 +2508,7 @@ final class WindowBrowserPortal: NSObject {
         guard !containerView.isHidden else { return }
         guard !containerView.isHostedInspectorDividerDragActive else {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.refresh.skip web=\(browserPortalDebugToken(webView)) " +
                 "container=\(browserPortalDebugToken(containerView)) reason=\(reason) phase=\(phase) " +
                 "drag=1 reattach=\(reattachRenderingState ? 1 : 0)"
@@ -2557,7 +2557,7 @@ final class WindowBrowserPortal: NSObject {
         containerView.displayIfNeeded()
         (containerView.window ?? webView.window ?? hostView.window)?.displayIfNeeded()
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "\(reattachRenderingState ? "browser.portal.refresh" : "browser.portal.invalidate") " +
             "web=\(browserPortalDebugToken(webView)) " +
             "container=\(browserPortalDebugToken(containerView)) reason=\(reason) " +
@@ -2710,7 +2710,7 @@ final class WindowBrowserPortal: NSObject {
         )
         guard !relatedSubviews.isEmpty else { return }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.reparent.batch reason=\(reason) source=\(browserPortalDebugToken(sourceSuperview)) " +
             "container=\(browserPortalDebugToken(containerView)) count=\(relatedSubviews.count) " +
             "sourceType=\(String(describing: type(of: sourceSuperview))) targetType=\(String(describing: type(of: containerView))) " +
@@ -2726,7 +2726,7 @@ final class WindowBrowserPortal: NSObject {
             let convertedFrame = containerView.convert(frameInWindow, from: nil)
             view.frame = convertedFrame
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent.batch.item reason=\(reason) class=\(className) " +
                 "view=\(browserPortalDebugToken(view)) frameInWindow=\(browserPortalDebugFrame(frameInWindow)) " +
                 "converted=\(browserPortalDebugFrame(convertedFrame))"
@@ -2744,7 +2744,7 @@ final class WindowBrowserPortal: NSObject {
 #if DEBUG
         let hadContainerSuperview = (entry.containerView?.superview === hostView) ? 1 : 0
         let hadWebSuperview = entry.webView?.superview == nil ? 0 : 1
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.detach web=\(browserPortalDebugToken(entry.webView)) " +
             "container=\(browserPortalDebugToken(entry.containerView)) " +
             "anchor=\(browserPortalDebugToken(entry.anchorView)) " +
@@ -2777,7 +2777,7 @@ final class WindowBrowserPortal: NSObject {
 
         let portalOwnsWebView = entry.webView?.superview === entry.containerView
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.discard web=\(browserPortalDebugToken(entry.webView)) " +
             "container=\(browserPortalDebugToken(entry.containerView)) " +
             "anchor=\(browserPortalDebugToken(entry.anchorView)) " +
@@ -2856,7 +2856,7 @@ final class WindowBrowserPortal: NSObject {
 
         if let textView = responder as? NSTextView,
            textView.isFieldEditor,
-           let ownerView = cmuxFieldEditorOwnerView(textView),
+           let ownerView = mosaicFieldEditorOwnerView(textView),
            let context = paneDropContext(owning: ownerView) {
             return context
         }
@@ -2997,7 +2997,7 @@ final class WindowBrowserPortal: NSObject {
         let anchorId = ObjectIdentifier(anchorView)
         let previousEntry = entriesByWebViewId[webViewId]
         let shouldPreserveExternalFullscreenHost =
-            webView.cmuxIsManagedByExternalFullscreenWindow(relativeTo: window)
+            webView.mosaicIsManagedByExternalFullscreenWindow(relativeTo: window)
         let containerView = ensureContainerView(
             for: previousEntry ?? Entry(
                 webView: nil,
@@ -3021,7 +3021,7 @@ final class WindowBrowserPortal: NSObject {
             let previousToken = entriesByWebViewId[previousWebViewId]
                 .map { browserPortalDebugToken($0.webView) }
                 ?? String(describing: previousWebViewId)
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.bind.replace anchor=\(browserPortalDebugToken(anchorView)) " +
                 "oldWeb=\(previousToken) newWeb=\(browserPortalDebugToken(webView))"
             )
@@ -3064,7 +3064,7 @@ final class WindowBrowserPortal: NSObject {
             priorityIncreased ||
             webView.superview !== containerView ||
             containerView.superview !== hostView {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.bind web=\(browserPortalDebugToken(webView)) " +
                 "container=\(browserPortalDebugToken(containerView)) " +
                 "anchor=\(browserPortalDebugToken(anchorView)) prevAnchor=\(browserPortalDebugToken(previousEntry?.anchorView)) " +
@@ -3076,7 +3076,7 @@ final class WindowBrowserPortal: NSObject {
 
         if shouldPreserveExternalFullscreenHost {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent.skip web=\(browserPortalDebugToken(webView)) " +
                 "reason=fullscreenExternalHost super=\(browserPortalDebugToken(webView.superview)) " +
                 "container=\(browserPortalDebugToken(containerView)) " +
@@ -3085,7 +3085,7 @@ final class WindowBrowserPortal: NSObject {
 #endif
         } else if webView.superview !== containerView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent web=\(browserPortalDebugToken(webView)) " +
                 "reason=attachContainer super=\(browserPortalDebugToken(webView.superview)) " +
                 "container=\(browserPortalDebugToken(containerView))"
@@ -3110,7 +3110,7 @@ final class WindowBrowserPortal: NSObject {
 
         if containerView.superview !== hostView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent container=\(browserPortalDebugToken(containerView)) " +
                 "reason=attach super=\(browserPortalDebugToken(containerView.superview))"
             )
@@ -3118,7 +3118,7 @@ final class WindowBrowserPortal: NSObject {
             hostView.addSubview(containerView, positioned: .above, relativeTo: nil)
         } else if (becameVisible || priorityIncreased), hostView.subviews.last !== containerView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent container=\(browserPortalDebugToken(containerView)) reason=raise " +
                 "didChangeAnchor=\(didChangeAnchor ? 1 : 0) becameVisible=\(becameVisible ? 1 : 0) " +
                 "priorityIncreased=\(priorityIncreased ? 1 : 0)"
@@ -3155,13 +3155,13 @@ final class WindowBrowserPortal: NSObject {
         guard !hasDeferredFullSyncScheduled else { return }
         hasDeferredFullSyncScheduled = true
 #if DEBUG
-        cmuxDebugLog("browser.portal.sync.defer.schedule entries=\(entriesByWebViewId.count)")
+        mosaicDebugLog("browser.portal.sync.defer.schedule entries=\(entriesByWebViewId.count)")
 #endif
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.hasDeferredFullSyncScheduled = false
 #if DEBUG
-            cmuxDebugLog("browser.portal.sync.defer.tick entries=\(self.entriesByWebViewId.count)")
+            mosaicDebugLog("browser.portal.sync.defer.tick entries=\(self.entriesByWebViewId.count)")
 #endif
             self.synchronizeAllWebViews(excluding: nil, source: "deferredTick")
         }
@@ -3196,7 +3196,7 @@ final class WindowBrowserPortal: NSObject {
         }
 #if DEBUG
         if entry.transientRecoveryRetriesRemaining <= 0 {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.sync.deferRecover.skip web=\(browserPortalDebugToken(webView)) " +
                 "reason=\(reason) exhausted=1"
             )
@@ -3207,7 +3207,7 @@ final class WindowBrowserPortal: NSObject {
         entry.transientRecoveryRetriesRemaining -= 1
         entriesByWebViewId[webViewId] = entry
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.sync.deferRecover web=\(browserPortalDebugToken(webView)) " +
             "reason=\(reason) remaining=\(entry.transientRecoveryRetriesRemaining)"
         )
@@ -3277,7 +3277,7 @@ final class WindowBrowserPortal: NSObject {
             )
             guard didScheduleTransientRecovery else { return false }
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.hidden.deferKeep web=\(browserPortalDebugToken(webView)) " +
                 "reason=\(reason) frame=\(browserPortalDebugFrame(containerView.frame))"
             )
@@ -3300,7 +3300,7 @@ final class WindowBrowserPortal: NSObject {
             }
 #if DEBUG
             if !containerView.isHidden {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.portal.hidden container=\(browserPortalDebugToken(containerView)) " +
                     "web=\(browserPortalDebugToken(webView)) value=1 reason=missingAnchorOrWindow"
                 )
@@ -3332,7 +3332,7 @@ final class WindowBrowserPortal: NSObject {
             }
 #if DEBUG
             if !containerView.isHidden {
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.portal.hidden container=\(browserPortalDebugToken(containerView)) " +
                     "web=\(browserPortalDebugToken(webView)) value=1 " +
                     "reason=anchorWindowMismatch anchorWindow=\(browserPortalDebugToken(anchorView.window?.contentView))"
@@ -3349,7 +3349,7 @@ final class WindowBrowserPortal: NSObject {
         var refreshReasons: [String] = []
         if containerView.superview !== hostView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent container=\(browserPortalDebugToken(containerView)) " +
                 "reason=syncAttach super=\(browserPortalDebugToken(containerView.superview))"
             )
@@ -3358,14 +3358,14 @@ final class WindowBrowserPortal: NSObject {
             refreshReasons.append("syncAttachContainer")
         }
         let shouldPreserveExternalFullscreenHost =
-            webView.cmuxIsManagedByExternalFullscreenWindow(relativeTo: window)
+            webView.mosaicIsManagedByExternalFullscreenWindow(relativeTo: window)
         let shouldPreserveExternalHostForHiddenEntry =
             !shouldPreserveExternalFullscreenHost &&
             !entry.visibleInUI &&
             webView.superview !== containerView
         if shouldPreserveExternalFullscreenHost {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent.skip web=\(browserPortalDebugToken(webView)) " +
                 "reason=fullscreenExternalHost super=\(browserPortalDebugToken(webView.superview)) " +
                 "container=\(browserPortalDebugToken(containerView)) " +
@@ -3374,7 +3374,7 @@ final class WindowBrowserPortal: NSObject {
 #endif
         } else if shouldPreserveExternalHostForHiddenEntry {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent.skip web=\(browserPortalDebugToken(webView)) " +
                 "reason=hiddenEntryExternalHost super=\(browserPortalDebugToken(webView.superview)) " +
                 "container=\(browserPortalDebugToken(containerView))"
@@ -3382,7 +3382,7 @@ final class WindowBrowserPortal: NSObject {
 #endif
         } else if webView.superview !== containerView {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.reparent web=\(browserPortalDebugToken(webView)) " +
                 "reason=syncAttachContainer super=\(browserPortalDebugToken(webView.superview)) " +
                 "container=\(browserPortalDebugToken(containerView))"
@@ -3417,7 +3417,7 @@ final class WindowBrowserPortal: NSObject {
         let hostBoundsReady = hasFiniteHostBounds && hostBounds.width > 1 && hostBounds.height > 1
         if !hostBoundsReady {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.sync.defer container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) " +
                 "reason=hostBoundsNotReady host=\(browserPortalDebugFrame(hostBounds)) " +
@@ -3434,7 +3434,7 @@ final class WindowBrowserPortal: NSObject {
                     )
                 if shouldPreserveVisibleOnTransient {
 #if DEBUG
-                    cmuxDebugLog(
+                    mosaicDebugLog(
                         "browser.portal.hidden.deferKeep web=\(browserPortalDebugToken(webView)) " +
                         "reason=hostBoundsNotReady frame=\(browserPortalDebugFrame(containerView.frame))"
                     )
@@ -3511,7 +3511,7 @@ final class WindowBrowserPortal: NSObject {
 #if DEBUG
         let frameWasClamped = hasFiniteFrame && !Self.rectApproximatelyEqual(frameInHost, targetFrame)
         if frameWasClamped {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.frame.clamp container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) anchor=\(browserPortalDebugToken(anchorView)) " +
                 "raw=\(browserPortalDebugFrame(frameInHost)) clamped=\(browserPortalDebugFrame(targetFrame)) " +
@@ -3521,13 +3521,13 @@ final class WindowBrowserPortal: NSObject {
         let collapsedToTiny = oldFrame.width > 1 && oldFrame.height > 1 && tinyFrame
         let restoredFromTiny = (oldFrame.width <= 1 || oldFrame.height <= 1) && !tinyFrame
         if collapsedToTiny {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.frame.collapse container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) anchor=\(browserPortalDebugToken(anchorView)) " +
                 "old=\(browserPortalDebugFrame(oldFrame)) new=\(browserPortalDebugFrame(targetFrame))"
             )
         } else if restoredFromTiny {
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.frame.restore container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) anchor=\(browserPortalDebugToken(anchorView)) " +
                 "old=\(browserPortalDebugFrame(oldFrame)) new=\(browserPortalDebugFrame(targetFrame))"
@@ -3541,7 +3541,7 @@ final class WindowBrowserPortal: NSObject {
                 containerView.bounds.width > 1 &&
                 containerView.bounds.height > 1
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.hidden.deferKeep web=\(browserPortalDebugToken(webView)) " +
                 "reason=\(transientRecoveryReason ?? "unknown") frame=\(browserPortalDebugFrame(containerView.frame)) " +
                 "keepFrame=\(hasExistingVisibleFrame ? 1 : 0)"
@@ -3570,7 +3570,7 @@ final class WindowBrowserPortal: NSObject {
             containerView.bounds = expectedContainerBounds
             CATransaction.commit()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.bounds.normalize container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) old=\(browserPortalDebugFrame(oldContainerBounds)) " +
                 "target=\(browserPortalDebugFrame(expectedContainerBounds))"
@@ -3599,7 +3599,7 @@ final class WindowBrowserPortal: NSObject {
             webView.frame = repairedBottomDockFrame
             CATransaction.commit()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.webframe.bottomDockRepair web=\(browserPortalDebugToken(webView)) " +
                 "container=\(browserPortalDebugToken(containerView)) old=\(browserPortalDebugFrame(oldWebFrame)) " +
                 "new=\(browserPortalDebugFrame(repairedBottomDockFrame)) bounds=\(browserPortalDebugFrame(containerBounds)) " +
@@ -3618,7 +3618,7 @@ final class WindowBrowserPortal: NSObject {
             webView.frame = containerBounds
             CATransaction.commit()
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.webframe.normalize web=\(browserPortalDebugToken(webView)) " +
                 "container=\(browserPortalDebugToken(containerView)) old=\(browserPortalDebugFrame(oldWebFrame)) " +
                 "new=\(browserPortalDebugFrame(webView.frame)) bounds=\(browserPortalDebugFrame(containerBounds)) " +
@@ -3635,7 +3635,7 @@ final class WindowBrowserPortal: NSObject {
         let revealedForDisplay = !shouldHide && containerView.isHidden
         if shouldHide, !containerView.isHidden, !shouldPreserveVisibleOnTransientGeometry {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.hidden container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) value=\(shouldHide ? 1 : 0) " +
                 "visibleInUI=\(entry.visibleInUI ? 1 : 0) anchorHidden=\(anchorHidden ? 1 : 0) " +
@@ -3647,7 +3647,7 @@ final class WindowBrowserPortal: NSObject {
             hideContainerView(reason: transientRecoveryReason ?? "geometryHidden")
         } else if !shouldHide, containerView.isHidden {
 #if DEBUG
-            cmuxDebugLog(
+            mosaicDebugLog(
                 "browser.portal.hidden container=\(browserPortalDebugToken(containerView)) " +
                 "web=\(browserPortalDebugToken(webView)) value=0 " +
                 "visibleInUI=\(entry.visibleInUI ? 1 : 0) anchorHidden=\(anchorHidden ? 1 : 0) " +
@@ -3692,7 +3692,7 @@ final class WindowBrowserPortal: NSObject {
                 !recoveredFromTransientGeometry &&
                 !requiresRenderingStateReattach {
 #if DEBUG
-                cmuxDebugLog(
+                mosaicDebugLog(
                     "browser.portal.refresh.skip web=\(browserPortalDebugToken(webView)) " +
                     "container=\(browserPortalDebugToken(containerView)) reason=\(source):" +
                     "\(refreshReasons.joined(separator: ",")) adjustedDuringSync=1"
@@ -3727,7 +3727,7 @@ final class WindowBrowserPortal: NSObject {
             _ = hostView.reapplyHostedInspectorDividerIfNeeded(in: containerView, reason: "portal.sync.postRefresh")
         }
 #if DEBUG
-        cmuxDebugLog(
+        mosaicDebugLog(
             "browser.portal.sync.result web=\(browserPortalDebugToken(webView)) source=\(source) " +
             "container=\(browserPortalDebugToken(containerView)) " +
             "anchor=\(browserPortalDebugToken(anchorView)) host=\(browserPortalDebugToken(hostView)) " +
@@ -3869,7 +3869,7 @@ enum BrowserWindowPortalRegistry {
     }
 
     private static func installWindowCloseObserverIfNeeded(for window: NSWindow) {
-        guard objc_getAssociatedObject(window, &cmuxWindowBrowserPortalCloseObserverKey) == nil else { return }
+        guard objc_getAssociatedObject(window, &mosaicWindowBrowserPortalCloseObserverKey) == nil else { return }
         let windowId = ObjectIdentifier(window)
         let observer = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
@@ -3886,7 +3886,7 @@ enum BrowserWindowPortalRegistry {
         }
         objc_setAssociatedObject(
             window,
-            &cmuxWindowBrowserPortalCloseObserverKey,
+            &mosaicWindowBrowserPortalCloseObserverKey,
             observer,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
@@ -3903,11 +3903,11 @@ enum BrowserWindowPortalRegistry {
         webViewToWindowId = webViewToWindowId.filter { $0.value != windowId }
 
         guard let window else { return }
-        if let observer = objc_getAssociatedObject(window, &cmuxWindowBrowserPortalCloseObserverKey) {
+        if let observer = objc_getAssociatedObject(window, &mosaicWindowBrowserPortalCloseObserverKey) {
             NotificationCenter.default.removeObserver(observer)
         }
-        objc_setAssociatedObject(window, &cmuxWindowBrowserPortalCloseObserverKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        objc_setAssociatedObject(window, &cmuxWindowBrowserPortalKey, nil, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &mosaicWindowBrowserPortalCloseObserverKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(window, &mosaicWindowBrowserPortalKey, nil, .OBJC_ASSOCIATION_RETAIN)
     }
 
     private static func pruneWebViewMappings(for windowId: ObjectIdentifier, validWebViewIds: Set<ObjectIdentifier>) {
@@ -3917,14 +3917,14 @@ enum BrowserWindowPortalRegistry {
     }
 
     private static func portal(for window: NSWindow) -> WindowBrowserPortal {
-        if let existing = objc_getAssociatedObject(window, &cmuxWindowBrowserPortalKey) as? WindowBrowserPortal {
+        if let existing = objc_getAssociatedObject(window, &mosaicWindowBrowserPortalKey) as? WindowBrowserPortal {
             portalsByWindowId[ObjectIdentifier(window)] = existing
             installWindowCloseObserverIfNeeded(for: window)
             return existing
         }
 
         let portal = WindowBrowserPortal(window: window)
-        objc_setAssociatedObject(window, &cmuxWindowBrowserPortalKey, portal, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(window, &mosaicWindowBrowserPortalKey, portal, .OBJC_ASSOCIATION_RETAIN)
         portalsByWindowId[ObjectIdentifier(window)] = portal
         installWindowCloseObserverIfNeeded(for: window)
         return portal

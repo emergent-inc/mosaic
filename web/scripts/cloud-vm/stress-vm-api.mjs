@@ -116,11 +116,11 @@ async function runCase(index) {
   const started = Date.now();
   try {
     user = await stack.createUser({
-      primaryEmail: `cmux-${project.stackLabel}-stress+${suffix}@emergent.inc.dev`,
+      primaryEmail: `mosaic-${project.stackLabel}-stress+${suffix}@emergent.inc.dev`,
       primaryEmailVerified: true,
       primaryEmailAuthEnabled: true,
       password: randomBytes(24).toString("base64url"),
-      displayName: `cmux ${project.stackLabel} stress ${index}`,
+      displayName: `mosaic ${project.stackLabel} stress ${index}`,
     });
     throwIfInterrupted();
     const session = await user.createSession({ expiresInMillis: 20 * 60 * 1000, isImpersonation: true });

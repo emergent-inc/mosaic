@@ -5,10 +5,10 @@ import os
 nonisolated private let cliForwardingLogger = Logger(subsystem: "mosaic.com.emergent.app", category: "CLIForwarding")
 
 enum CLIForwardingLaunchRouter {
-    private static let guardKey = "CMUX_CLI_FORWARDED"
+    private static let guardKey = "MOSAIC_CLI_FORWARDED"
 
     /// If `argv` looks like a CLI invocation, exec the bundled CLI at
-    /// `Contents/Resources/bin/cmux` and never return. macOS-launch arguments
+    /// `Contents/Resources/bin/mosaic` and never return. macOS-launch arguments
     /// (`-psn_...`, other `-` flags) and `mosaic://` URLs are left to the GUI.
     static func forwardToBundledCLIIfNeeded(
         arguments argv: [String] = CommandLine.arguments,
@@ -20,7 +20,7 @@ enum CLIForwardingLaunchRouter {
 
         guard let cliURL = bundledCLIURL(bundle: bundle, fileManager: fileManager) else {
             #if DEBUG
-            let resourcePath = bundle.resourceURL?.appendingPathComponent("bin/cmux").path ?? "<missing>"
+            let resourcePath = bundle.resourceURL?.appendingPathComponent("bin/mosaic").path ?? "<missing>"
             let executablePath = processExecutableURL()?.path ?? "<missing>"
             cliForwardingLogger.debug("bundled CLI not found for forwarding; bundleID=\(bundle.bundleIdentifier ?? "<missing>", privacy: .public) resourcePath=\(resourcePath, privacy: .public) executablePath=\(executablePath, privacy: .public)")
             #endif
@@ -72,7 +72,7 @@ enum CLIForwardingLaunchRouter {
         fileManager: FileManager = .default,
         executableURL: URL? = processExecutableURL()
     ) -> URL? {
-        let bundleCandidate = bundle.resourceURL?.appendingPathComponent("bin/cmux")
+        let bundleCandidate = bundle.resourceURL?.appendingPathComponent("bin/mosaic")
         if let bundleCandidate, fileManager.isExecutableFile(atPath: bundleCandidate.path) {
             return bundleCandidate
         }
@@ -82,7 +82,7 @@ enum CLIForwardingLaunchRouter {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Resources")
-        let executableCandidate = resourcesURL.appendingPathComponent("bin/cmux")
+        let executableCandidate = resourcesURL.appendingPathComponent("bin/mosaic")
         if fileManager.isExecutableFile(atPath: executableCandidate.path) {
             return executableCandidate
         }

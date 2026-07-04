@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Stability regression test: browser panels should not crash cmux when:
+Stability regression test: browser panels should not crash mosaic when:
   1) Creating a browser surface then immediately creating a new terminal surface
   2) Rapidly switching focus between panes when one pane is a loaded browser
 
 This test uses the control socket only (no osascript / Accessibility required).
 
 Requires:
-  - cmux running
+  - mosaic running
 """
 
 import os
@@ -18,7 +18,7 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cmux import cmux, cmuxError
+from mosaic import mosaic, mosaicError
 
 # Use an inline data: URL so the webview loads a real page without depending on
 # live external network reachability. The stability assertions below only check
@@ -27,8 +27,8 @@ from cmux import cmux, cmuxError
 # in CI for non-code reasons. Mirrors the data: URL pattern used by the sibling
 # browser tests (e.g. test_browser_api_comprehensive.py).
 BROWSER_TEST_URL = "data:text/html;charset=utf-8," + urllib.parse.quote(
-    "<!doctype html><html><head><title>cmux stability</title></head>"
-    "<body><h1>cmux browser stability</h1></body></html>"
+    "<!doctype html><html><head><title>mosaic stability</title></head>"
+    "<body><h1>mosaic browser stability</h1></body></html>"
 )
 
 
@@ -40,7 +40,7 @@ def wait_for_socket(path: str, timeout_s: float = 5.0) -> None:
         time.sleep(0.1)
 
 
-def ensure_webview_focused(client: cmux, panel_id: str, timeout_s: float = 2.0) -> None:
+def ensure_webview_focused(client: mosaic, panel_id: str, timeout_s: float = 2.0) -> None:
     """
     Best-effort: focus the surface, then force WKWebView first responder, and verify it stuck.
     This is important because the crash regression only reproduces when WebKit is actually first responder.
@@ -59,7 +59,7 @@ def ensure_webview_focused(client: cmux, panel_id: str, timeout_s: float = 2.0) 
     raise RuntimeError(f"Timed out waiting for webview focus (panel={panel_id}): {last_error}")
 
 
-def test_open_browser_then_new_surface_loop(client: cmux) -> tuple[bool, str]:
+def test_open_browser_then_new_surface_loop(client: mosaic) -> tuple[bool, str]:
     ws_id = client.new_workspace()
     client.select_workspace(ws_id)
     time.sleep(0.5)
@@ -113,7 +113,7 @@ def test_open_browser_then_new_surface_loop(client: cmux) -> tuple[bool, str]:
     return True, "Repeated open browser + new surface did not crash"
 
 
-def test_focus_panes_with_loaded_browser(client: cmux) -> tuple[bool, str]:
+def test_focus_panes_with_loaded_browser(client: mosaic) -> tuple[bool, str]:
     ws_id = client.new_workspace()
     client.select_workspace(ws_id)
     time.sleep(0.5)
@@ -167,11 +167,11 @@ def test_focus_panes_with_loaded_browser(client: cmux) -> tuple[bool, str]:
 
 def run_tests() -> int:
     print("=" * 60)
-    print("cmux Browser Panel Stability Test")
+    print("mosaic Browser Panel Stability Test")
     print("=" * 60)
     print()
 
-    probe = cmux()
+    probe = mosaic()
     wait_for_socket(probe.socket_path, timeout_s=5.0)
 
     tests = [
@@ -183,7 +183,7 @@ def run_tests() -> int:
     failed = 0
 
     try:
-        with cmux(socket_path=probe.socket_path) as client:
+        with mosaic(socket_path=probe.socket_path) as client:
             for name, fn in tests:
                 print(f"  Running: {name} ... ", end="", flush=True)
                 try:
@@ -196,7 +196,7 @@ def run_tests() -> int:
                     passed += 1
                 else:
                     failed += 1
-    except cmuxError as e:
+    except mosaicError as e:
         print(f"Error: {e}")
         return 1
 
