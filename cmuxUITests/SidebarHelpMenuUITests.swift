@@ -23,7 +23,7 @@ final class SidebarHelpMenuUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testTutorialVideoReplayButtonOpensVideoWindow() {
+    func testTutorialVideoReplayButtonOpensInWindowPopup() {
         let app = XCUIApplication()
         app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
         launchAndActivate(app)
@@ -41,9 +41,10 @@ final class SidebarHelpMenuUITests: XCTestCase {
 
         XCTAssertTrue(
             sidebarHelpPollUntil(timeout: 4.0) {
-                app.windows.count > windowCountBeforeReplay
+                app.otherElements["TutorialVideoWindowContent"].exists &&
+                    app.windows.count == windowCountBeforeReplay
             },
-            "Expected replaying the tutorial video to open an auxiliary window"
+            "Expected replaying the tutorial video to show an in-window popup"
         )
     }
 
@@ -57,8 +58,7 @@ final class SidebarHelpMenuUITests: XCTestCase {
         XCTAssertTrue(waitForWindowCount(atLeast: 1, app: app, timeout: 6.0))
         XCTAssertFalse(
             sidebarHelpPollUntil(timeout: 1.0) {
-                app.windows["Welcome to mosaic"].exists ||
-                    app.otherElements["TutorialVideoWindowContent"].exists
+                app.otherElements["TutorialVideoWindowContent"].exists
             }
         )
     }

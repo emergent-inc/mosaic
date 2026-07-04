@@ -1826,7 +1826,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return
         }
         Task { @MainActor in
-            TutorialVideoWindowController.shared.show()
+            TutorialVideoPresentationCenter.shared.requestPresentation()
         }
     }
 
@@ -3376,18 +3376,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 to: primaryContext,
                 window: primaryWindow
             )
-        } else {
-            let displays = currentDisplayGeometries()
-            let fallbackGeometry = persistedWindowGeometry()
-            if let restoredFrame = Self.resolvedStartupPrimaryWindowFrame(
-                primarySnapshot: nil,
-                fallbackFrame: fallbackGeometry?.frame,
-                fallbackDisplaySnapshot: fallbackGeometry?.display,
-                availableDisplays: displays.available,
-                fallbackDisplay: displays.fallback
-            ) {
-                primaryWindow.setFrame(restoredFrame, display: true)
-            }
         }
 
         guard let startupSnapshot else { return false }
@@ -8578,7 +8566,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let shouldTemporarilyDisallowFullScreenTiling =
             sessionWindowSnapshot == nil && sourceWindowIsNativeFullScreen
         let restoredFrame = resolvedWindowFrame(from: sessionWindowSnapshot)
-        let persistedGeometryFrame = (restoredFrame == nil && sourceWindow == nil)
+        let persistedGeometryFrame = (restoredFrame == nil && sourceWindow == nil && !mainWindowContexts.isEmpty)
             ? resolvedPersistedWindowGeometryFrame()
             : nil
         let initialRect: NSRect

@@ -172,6 +172,7 @@ function nativeReturnResponse(
   const escapedTitle = escapeHtml(messages.title);
   const escapedBody = escapeHtml(messages.body);
   const escapedButton = escapeHtml(messages.button);
+  const bodyHTML = escapedBody ? `    <p>${escapedBody}</p>\n` : "";
   const autoOpenScript = autoOpen
     ? `  <script>\n    window.location.replace(${scriptHref});\n  </script>\n`
     : "";
@@ -183,48 +184,103 @@ function nativeReturnResponse(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapedTitle}</title>
   <style>
+    :root {
+      color-scheme: light;
+      --background: #fafafa;
+      --foreground: #171717;
+      --muted: #737373;
+      --border: #e5e5e5;
+      --card: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+    }
     body {
       align-items: center;
-      background: #fff;
-      color: #111;
+      background:
+        radial-gradient(circle at top, rgba(23, 23, 23, 0.07), transparent 34rem),
+        var(--background);
+      color: var(--foreground);
       display: flex;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       justify-content: center;
       margin: 0;
       min-height: 100vh;
       padding: 24px;
     }
     main {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08);
       max-width: 440px;
+      padding: 40px;
       text-align: center;
+      width: 100%;
+    }
+    .mark {
+      align-items: center;
+      background: #171717;
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+      color: #fff;
+      display: inline-flex;
+      font-size: 20px;
+      font-weight: 650;
+      height: 48px;
+      justify-content: center;
+      letter-spacing: -0.04em;
+      margin-bottom: 24px;
+      width: 48px;
     }
     h1 {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: 28px;
+      font-weight: 650;
+      letter-spacing: -0.04em;
       margin: 0 0 12px;
     }
     p {
-      color: #555;
+      color: var(--muted);
+      font-size: 15px;
       line-height: 1.5;
-      margin: 0 0 24px;
+      margin: 0 0 28px;
     }
     a {
-      background: #111;
-      border-radius: 8px;
+      background: #171717;
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
       color: #fff;
       display: inline-block;
       font-size: 14px;
-      font-weight: 500;
-      padding: 10px 18px;
+      font-weight: 600;
+      padding: 11px 18px;
       text-decoration: none;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+    a:hover {
+      background: #262626;
+      transform: translateY(-1px);
+    }
+    a:focus-visible {
+      outline: 2px solid rgba(23, 23, 23, 0.35);
+      outline-offset: 3px;
+    }
+    @media (max-width: 480px) {
+      main {
+        border-radius: 18px;
+        padding: 32px 24px;
+      }
+      h1 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
 <body>
   <main>
+    <div class="mark" aria-hidden="true">M</div>
     <h1>${escapedTitle}</h1>
-    <p>${escapedBody}</p>
-    <a href="${escapedHref}">${escapedButton}</a>
+${bodyHTML}    <a href="${escapedHref}">${escapedButton}</a>
   </main>
 ${autoOpenScript}
 </body>

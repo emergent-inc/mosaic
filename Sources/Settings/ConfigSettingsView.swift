@@ -126,8 +126,7 @@ struct ConfigSettingsView: View {
                 TrackedButton("configsettingsview_button_126", String(localized: "settings.config.action.save", defaultValue: "Save")) {
                     saveCmuxConfig()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .buttonStyle(.mosaicAccent)
                 .disabled(configSource != .cmux || !hasUnsavedCmuxChanges)
             }
         }
