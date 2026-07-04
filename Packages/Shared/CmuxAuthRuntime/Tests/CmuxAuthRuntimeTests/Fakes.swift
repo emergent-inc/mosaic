@@ -28,6 +28,8 @@ actor FakeAuthClient: AuthClient {
     var teams: [CMUXAuthTeam] = []
     var throwOnCurrentUser: (any Error)?
     var throwOnListTeams: (any Error)?
+    private(set) var forceRefreshAccessTokenCallCount = 0
+    private(set) var currentUserCallCount = 0
     var nonce = "nonce-123"
     private(set) var signedInWithMagicLink = false
     private(set) var lastMagicLinkCode: String?
@@ -64,6 +66,7 @@ actor FakeAuthClient: AuthClient {
     func accessToken() async -> String? { access }
     func refreshToken() async -> String? { refresh }
     func forceRefreshAccessToken() async -> String? {
+        forceRefreshAccessTokenCallCount += 1
         if case let .some(scripted) = forceRefreshResult {
             return scripted
         }
@@ -71,6 +74,7 @@ actor FakeAuthClient: AuthClient {
     }
 
     func currentUser(throwOnMissing: Bool) async throws -> CMUXAuthUser? {
+        currentUserCallCount += 1
         if let throwOnCurrentUser { throw throwOnCurrentUser }
         return user
     }

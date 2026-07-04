@@ -1,21 +1,47 @@
 import { NextResponse } from "next/server";
-import { refreshNativeSessionTokenPair } from "../../../../../services/auth/nativeSession";
+import { clerkClient } from "@clerk/nextjs/server";
+import { nativeIdentityClaimsFor, type ClerkUserIdentityLike } from "../../../../../services/auth/clerkIdentity";
+import { mintNativeSessionTokenPair, verifyNativeAuthToken } from "../../../../../services/auth/nativeSession";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
-  const refreshToken = request.headers.get("x-cmux-refresh-token")?.trim()
-    ?? (await refreshTokenFromBody(request));
-  if (!refreshToken) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+type NativeRefreshHandlerDependencies = {
+  getUser: (userId: string) => Promise<ClerkUserIdentityLike | null>;
+};
 
-  const tokens = refreshNativeSessionTokenPair(refreshToken);
-  if (!tokens) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+export const POST = makeNativeRefreshHandler({
+  getUser: async (userId) => {
+    const client = await clerkClient();
+    return client.users.getUser(userId);
+  },
+});
 
-  return NextResponse.json(tokens);
+export function makeNativeRefreshHandler(dependencies: NativeRefreshHandlerDependencies) {
+  return async function POST(request: Request) {
+    const refreshToken = request.headers.get("x-mosaic-refresh-token")?.trim()
+      ?? request.headers.get("x-cmux-refresh-token")?.trim()
+      ?? (await refreshTokenFromBody(request));
+    if (!refreshToken) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const claims = verifyNativeAuthToken(refreshToken);
+    if (!claims || claims.kind !== "refresh") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const identity = nativeIdentityClaimsFor(await dependencies.getUser(claims.userId));
+    const tokens = mintNativeSessionTokenPair({
+      userId: claims.userId,
+      displayName: identity.displayName,
+      primaryEmail: identity.primaryEmail,
+      imageURL: identity.imageURL,
+      selectedTeamId: claims.selectedTeamId,
+      teamIds: claims.teamIds,
+      teamWorkspaces: claims.teamWorkspaces,
+    });
+    return NextResponse.json(tokens);
+  };
 }
 
 async function refreshTokenFromBody(request: Request): Promise<string | null> {

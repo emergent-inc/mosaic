@@ -131,6 +131,34 @@ struct NativeAuthClientTests {
     }
 
     @Test
+    func forceRefreshAccessTokenPostsRefreshHeaderAndPersistsReturnedPair() async throws {
+        let store = FlowInMemoryTokenStore()
+        await store.setTokens(accessToken: "old-access", refreshToken: "refresh-1")
+        let client = NativeAuthClient(
+            apiBaseURL: try #require(URL(string: "https://cmux.test")),
+            tokenStore: store,
+            session: Self.urlSession()
+        )
+
+        NativeAuthClientURLProtocol.handler = { request in
+            #expect(request.url?.path == "/api/auth/native/refresh")
+            #expect(request.httpMethod == "POST")
+            #expect(request.value(forHTTPHeaderField: "X-Mosaic-Refresh-Token") == "refresh-1")
+            return try Self.jsonResponse([
+                "accessToken": "fresh-access",
+                "refreshToken": "fresh-refresh",
+            ])
+        }
+        defer { NativeAuthClientURLProtocol.reset() }
+
+        let accessToken = await client.forceRefreshAccessToken()
+
+        #expect(accessToken == "fresh-access")
+        #expect(await store.getStoredAccessToken() == "fresh-access")
+        #expect(await store.getStoredRefreshToken() == "fresh-refresh")
+    }
+
+    @Test
     func currentUserReturnsNilWhenRefreshFailsAndThrowOnMissingIsFalse() async throws {
         let store = FlowInMemoryTokenStore()
         await store.setTokens(accessToken: "expired-access", refreshToken: "refresh-1")

@@ -59,11 +59,34 @@ struct TabItem: Identifiable, Hashable, Codable {
     }
 
     func hash(into hasher: inout Hasher) {
+        // Hashing by id alone stays consistent with the content-based `==`
+        // below: content-equal values necessarily share an id.
         hasher.combine(id)
     }
 
+    /// Content equality, NOT identity.
+    ///
+    /// SwiftUI uses `Equatable` conformance when diffing `ForEach` rows and
+    /// view inputs. The previous id-only `==` told SwiftUI "nothing changed"
+    /// for any in-place mutation of an existing tab (icon swap, title change,
+    /// loading state), so the tab row skipped invalidation and kept rendering
+    /// the stale value until an unrelated structural change (e.g. a split)
+    /// rebuilt it. Concretely: a collaboration avatar applied to a shared
+    /// terminal's tab, or cleared on session end, only showed up after the
+    /// user's *next* action. Every rendered field must participate here.
     static func == (lhs: TabItem, rhs: TabItem) -> Bool {
         lhs.id == rhs.id
+            && lhs.title == rhs.title
+            && lhs.hasCustomTitle == rhs.hasCustomTitle
+            && lhs.icon == rhs.icon
+            && lhs.iconImageData == rhs.iconImageData
+            && lhs.kind == rhs.kind
+            && lhs.isDirty == rhs.isDirty
+            && lhs.showsNotificationBadge == rhs.showsNotificationBadge
+            && lhs.isLoading == rhs.isLoading
+            && lhs.isAudioMuted == rhs.isAudioMuted
+            && lhs.isAudioPlaying == rhs.isAudioPlaying
+            && lhs.isPinned == rhs.isPinned
     }
 
     private enum CodingKeys: String, CodingKey {

@@ -43,6 +43,12 @@ import Testing
             button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
         )
         #expect(foreground == .black)
+
+        let cell = try #require(button.cell as? NSButtonCell)
+        let cellForeground = try #require(
+            cell.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+        )
+        #expect(cellForeground == .black)
     }
 
     @Test func joinAcknowledgementSucceedsWhenRelayJoinedFrameArrives() async {

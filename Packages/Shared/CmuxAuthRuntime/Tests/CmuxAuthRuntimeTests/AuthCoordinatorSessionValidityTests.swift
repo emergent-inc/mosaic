@@ -90,6 +90,88 @@ import Testing
         #expect(store.bool(forKey: "has_tokens") == true)
     }
 
+    @Test func refreshCurrentUserIdentityPublishesHydratedProfileImage() async throws {
+        let staleUser = CMUXAuthUser(id: "u1", primaryEmail: "a@b.com", displayName: "A", imageURL: nil)
+        let freshUser = CMUXAuthUser(
+            id: "u1",
+            primaryEmail: "a@b.com",
+            displayName: "A",
+            imageURL: "https://img.example/a.png"
+        )
+        let client = FakeAuthClient(access: "old-access", refresh: "refresh", user: staleUser)
+        let (coordinator, store) = try await signedInCoordinator(client: client)
+        await client.setUser(freshUser)
+        await client.setForceRefreshResult("fresh-access")
+
+        let refreshed = try await coordinator.refreshCurrentUserIdentity()
+
+        #expect(refreshed == freshUser)
+        #expect(coordinator.currentUser == freshUser)
+        #expect(coordinator.isAuthenticated == true)
+        #expect(store.bool(forKey: "has_tokens") == true)
+    }
+
+    @Test func refreshCurrentUserIdentityForceRefreshesAndRefetchesEvenWhenIdentityIsUnchanged() async throws {
+        let user = CMUXAuthUser(
+            id: "u1",
+            primaryEmail: "a@b.com",
+            displayName: "A",
+            imageURL: "https://img.example/a.png"
+        )
+        let client = FakeAuthClient(access: "old-access", refresh: "refresh", user: user)
+        let (coordinator, store) = try await signedInCoordinator(client: client)
+        let callsAfterSignIn = await (
+            forceRefreshes: client.forceRefreshAccessTokenCallCount,
+            currentUserFetches: client.currentUserCallCount
+        )
+        await client.setForceRefreshResult("fresh-access")
+
+        let refreshed = try await coordinator.refreshCurrentUserIdentity()
+
+        let callsAfterRefresh = await (
+            forceRefreshes: client.forceRefreshAccessTokenCallCount,
+            currentUserFetches: client.currentUserCallCount
+        )
+        #expect(refreshed == user)
+        #expect(coordinator.currentUser == user)
+        #expect(callsAfterRefresh.forceRefreshes == callsAfterSignIn.forceRefreshes + 1)
+        #expect(callsAfterRefresh.currentUserFetches == callsAfterSignIn.currentUserFetches + 1)
+        #expect(coordinator.isAuthenticated == true)
+        #expect(store.bool(forKey: "has_tokens") == true)
+    }
+
+    @Test func refreshCurrentUserIdentityTransientFailurePreservesPublishedUser() async throws {
+        let user = CMUXAuthUser(id: "u1", primaryEmail: "a@b.com", displayName: "A", imageURL: nil)
+        let client = FakeAuthClient(access: "old-access", refresh: "refresh", user: user)
+        let (coordinator, store) = try await signedInCoordinator(client: client)
+        await client.setForceRefreshResult(nil)
+        await client.setTokens(access: nil, refresh: "refresh")
+
+        await #expect(throws: AuthError.networkError) {
+            _ = try await coordinator.refreshCurrentUserIdentity()
+        }
+
+        #expect(coordinator.currentUser == user)
+        #expect(coordinator.isAuthenticated == true)
+        #expect(store.bool(forKey: "has_tokens") == true)
+    }
+
+    @Test func refreshCurrentUserIdentityDefinitiveFailureClearsSession() async throws {
+        let user = CMUXAuthUser(id: "u1", primaryEmail: "a@b.com", displayName: "A", imageURL: nil)
+        let client = FakeAuthClient(access: "old-access", refresh: "refresh", user: user)
+        let (coordinator, store) = try await signedInCoordinator(client: client)
+        await client.setForceRefreshResult(nil)
+        await client.setTokens(access: nil, refresh: nil)
+
+        await #expect(throws: AuthError.unauthorized) {
+            _ = try await coordinator.refreshCurrentUserIdentity()
+        }
+
+        #expect(coordinator.currentUser == nil)
+        #expect(coordinator.isAuthenticated == false)
+        #expect(store.bool(forKey: "has_tokens") == false)
+    }
+
     // (c) A definitive failure (no access token AND no refresh token; the SDK
     // definitively rejected and cleared the session) self-clears and routes to
     // login from both definitive accessors.
