@@ -12899,7 +12899,7 @@ private struct SidebarAccountButton: View {
 
     var body: some View {
         TrackedButton("contentview_button_12893", action: {
-            handleAccountButtonPressed()
+            openAccountSettings()
         }) {
             ZStack(alignment: .topTrailing) {
                 accountImage
@@ -12952,19 +12952,6 @@ private struct SidebarAccountButton: View {
 
     private var iconColor: Color {
         isSignedIn ? cmuxAccentColor() : Color(nsColor: .secondaryLabelColor)
-    }
-
-    private func handleAccountButtonPressed() {
-        if isWorkingOnAuth {
-            return
-        }
-        if isSignedIn {
-            openAccountSettings()
-        } else if let browserSignIn {
-            browserSignIn.beginSignIn()
-        } else {
-            openAccountSettings()
-        }
     }
 
     private func openAccountSettings() {
