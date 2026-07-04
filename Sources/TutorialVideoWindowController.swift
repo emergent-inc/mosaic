@@ -57,6 +57,7 @@ extension Notification.Name {
 enum TutorialVideoStyle {
     static let cornerRadius: CGFloat = 16
     static let fallbackVideoSize = CGSize(width: 960, height: 620)
+    static let popupPreferredScale: CGFloat = 0.74
 }
 
 enum TutorialVideoResource {
@@ -119,8 +120,8 @@ struct TutorialVideoView: View {
     private var closeButton: some View {
         let label = String(localized: "tutorial.video.close", defaultValue: "Close tutorial video")
         return Button(action: onClose) {
-            Text(verbatim: "X")
-                .font(.system(size: 16, weight: .bold))
+            Text(verbatim: "x")
+                .font(.system(size: 18, weight: .regular))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
