@@ -4,6 +4,7 @@ import CMUXMobileCore
 import CmuxCollaboration
 import CmuxFoundation
 import Foundation
+import ImageIO
 import Observation
 import SwiftUI
 
@@ -38,6 +39,11 @@ private struct CollaborationPeerWire: Codable {
     var stableParticipantID: String {
         participantID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? peerID
     }
+}
+
+private struct CollaborationPeerUpdateWire: Codable {
+    let type: String
+    let peer: CollaborationPeerWire
 }
 
 private struct CollaborationJoinedWire: Decodable {
@@ -622,7 +628,10 @@ private struct CollaborationTerminalOwnerAvatarRenderer {
     }
 
     func profilePNGData(from imageData: Data) -> Data? {
-        guard let image = NSImage(data: imageData) else { return nil }
+        guard let image = Self.decodeImage(from: imageData) else {
+            NSLog("[Collaboration] owner avatar decode failed bytes=\(imageData.count)")
+            return nil
+        }
         return renderPNG { size in
             let circleRect = NSRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
             let clipPath = NSBezierPath(ovalIn: circleRect)
@@ -637,6 +646,25 @@ private struct CollaborationTerminalOwnerAvatarRenderer {
                 hints: nil
             )
         }
+    }
+
+    /// Decodes raw image bytes the same way the sidebar's `AsyncImage` does.
+    ///
+    /// `NSImage(data:)` is tried first; if it cannot decode the payload (some
+    /// macOS versions refuse certain WebP/AVIF variants that ImageIO can still
+    /// read), fall back to a direct `CGImageSource` decode so the tab matches
+    /// the sidebar avatar for every format Clerk might serve.
+    private static func decodeImage(from data: Data) -> NSImage? {
+        if let image = NSImage(data: data), image.isValid, !image.representations.isEmpty {
+            return image
+        }
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            return nil
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
     private func renderPNG(_ draw: (NSSize) -> Void) -> Data? {
@@ -669,36 +697,27 @@ private struct CollaborationTerminalOwnerAvatarRenderer {
     }
 }
 
-private actor CollaborationTerminalOwnerProfileImageCache {
-    private static let maximumImageBytes = 4 * 1024 * 1024
-
-    private var cachedDataByURL: [String: Data] = [:]
-    private var failedURLs: Set<String> = []
-
-    func imageData(for url: URL) async -> Data? {
-        let key = url.absoluteString
-        if let cached = cachedDataByURL[key] {
-            return cached
-        }
-        if failedURLs.contains(key) {
-            return nil
-        }
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard
-                data.count <= Self.maximumImageBytes,
-                let httpResponse = response as? HTTPURLResponse,
-                (200..<300).contains(httpResponse.statusCode)
-            else {
-                failedURLs.insert(key)
-                return nil
+extension CollaborationTerminalOwnerAvatarImageCache {
+    /// The production cache used by the app: fetches over `URLSession` and logs
+    /// each rejected/failed fetch so a stuck-on-initials tab is diagnosable.
+    /// Failures are never cached, so a later retry can still render the photo —
+    /// matching the self-retrying sidebar `AsyncImage`.
+    static func liveTerminalOwnerCache() -> CollaborationTerminalOwnerAvatarImageCache {
+        CollaborationTerminalOwnerAvatarImageCache(
+            fetcher: { url in
+                let (data, response) = try await URLSession.shared.data(from: url)
+                return CollaborationTerminalOwnerAvatarFetchResponse(
+                    data: data,
+                    statusCode: (response as? HTTPURLResponse)?.statusCode
+                )
+            },
+            onOutcome: { url, outcome in
+                NSLog("[Collaboration] owner avatar rejected outcome=\(outcome) url=\(url.absoluteString)")
+            },
+            onError: { url, error in
+                NSLog("[Collaboration] owner avatar fetch error=\(error.localizedDescription) url=\(url.absoluteString)")
             }
-            cachedDataByURL[key] = data
-            return data
-        } catch {
-            failedURLs.insert(key)
-            return nil
-        }
+        )
     }
 }
 
@@ -744,7 +763,7 @@ final class CollaborationRuntime {
     private var peerIdentity: CollaborationPeerIdentity
     private let localAvatarSeed: String
     private let terminalOwnerAvatarRenderer = CollaborationTerminalOwnerAvatarRenderer()
-    private let terminalOwnerProfileImageCache = CollaborationTerminalOwnerProfileImageCache()
+    private let terminalOwnerProfileImageCache = CollaborationTerminalOwnerAvatarImageCache.liveTerminalOwnerCache()
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
@@ -978,6 +997,22 @@ final class CollaborationRuntime {
         )
     }
 
+    private func refreshTerminalOwnerSnapshots(
+        for peer: CollaborationPeerWire,
+        in connection: CollaborationRelayConnection
+    ) {
+        let ownerParticipantID = peer.stableParticipantID
+        let snapshot = ownerSnapshot(forPeerID: peer.peerID, in: connection)
+        for (terminalID, participantID) in terminalOwnerParticipantIDsByID where participantID == ownerParticipantID {
+            guard terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else { continue }
+            if var state = terminalStatesByID[terminalID] {
+                state.ownerSnapshot = snapshot
+                terminalStatesByID[terminalID] = state
+            }
+            syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: snapshot)
+        }
+    }
+
     private static func normalizedProfileImageURL(from rawValue: String?) -> URL? {
         let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
@@ -990,15 +1025,27 @@ final class CollaborationRuntime {
         terminalID: String,
         ownerSnapshot: CollaborationParticipantAvatarSnapshot?
     ) {
+        #if DEBUG
+        cmuxDebugLog("[avatardbg] sync enter terminal=\(terminalID) owner=\(ownerSnapshot?.displayName ?? "nil") imageURL=\(ownerSnapshot?.imageURL ?? "nil")")
+        #endif
         guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
+            #if DEBUG
+            cmuxDebugLog("[avatardbg] sync bail: no panel terminal=\(terminalID)")
+            #endif
             return
         }
         guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
+            #if DEBUG
+            cmuxDebugLog("[avatardbg] sync bail: no workspace panel=\(panel.id) terminal=\(terminalID)")
+            #endif
             return
         }
         let title = ownerSnapshot.map { CollaborationStrings.terminalOwnerTitle(displayName: $0.displayName) }
         let avatarPlan = CollaborationTerminalOwnerAvatarPlan(ownerSnapshot: ownerSnapshot, title: title)
         let iconImageData = avatarPlan.fallbackSnapshot.flatMap { terminalOwnerAvatarRenderer.pngData(for: $0) }
+        #if DEBUG
+        cmuxDebugLog("[avatardbg] sync set-fallback panel=\(panel.id) titleNil=\(avatarPlan.title == nil) fallbackBytes=\(iconImageData?.count ?? -1) profileURL=\(avatarPlan.profileImageURL?.absoluteString ?? "nil")")
+        #endif
         workspace.setCollaborationTerminalTabPresentation(
             panelId: panel.id,
             title: avatarPlan.title,
@@ -1012,18 +1059,42 @@ final class CollaborationRuntime {
         terminalOwnerAvatarRequestKeysByID[terminalID] = requestKey
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else { return }
-            guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else { return }
+            guard let imageData = await terminalOwnerProfileImageCache.imageData(for: profileImageURL) else {
+                #if DEBUG
+                cmuxDebugLog("[avatardbg] async bail: fetch nil terminal=\(terminalID) url=\(profileImageURL.absoluteString)")
+                #endif
+                return
+            }
+            guard let profileIconData = terminalOwnerAvatarRenderer.profilePNGData(from: imageData) else {
+                #if DEBUG
+                cmuxDebugLog("[avatardbg] async bail: decode nil terminal=\(terminalID) bytes=\(imageData.count)")
+                #endif
+                return
+            }
             guard CollaborationTerminalOwnerAvatarPlan.shouldApplyProfileImage(
                 requestKey: requestKey,
                 currentRequestKey: terminalOwnerAvatarRequestKeysByID[terminalID]
-            ) else { return }
+            ) else {
+                #if DEBUG
+                cmuxDebugLog("[avatardbg] async bail: stale key terminal=\(terminalID) want=\(requestKey) cur=\(terminalOwnerAvatarRequestKeysByID[terminalID] ?? "nil")")
+                #endif
+                return
+            }
             guard let panel = hostedTerminalsByID[terminalID]?.panel ?? mirroredTerminalsByID[terminalID]?.panel else {
+                #if DEBUG
+                cmuxDebugLog("[avatardbg] async bail: no panel terminal=\(terminalID)")
+                #endif
                 return
             }
             guard let workspace = TerminalController.shared.tabManager?.tabs.first(where: { $0.id == panel.workspaceId }) else {
+                #if DEBUG
+                cmuxDebugLog("[avatardbg] async bail: no workspace terminal=\(terminalID)")
+                #endif
                 return
             }
+            #if DEBUG
+            cmuxDebugLog("[avatardbg] async APPLY photo terminal=\(terminalID) panel=\(panel.id) bytes=\(profileIconData.count)")
+            #endif
             workspace.setCollaborationTerminalTabPresentation(
                 panelId: panel.id,
                 title: avatarPlan.title,
@@ -1036,6 +1107,25 @@ final class CollaborationRuntime {
         let terminalIDs = Set(hostedTerminalsByID.keys).union(mirroredTerminalsByID.keys)
         for terminalID in terminalIDs {
             syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
+        }
+    }
+
+    private func terminalIDsForSessionCleanup(_ sessionCode: String) -> [String] {
+        let normalizedCode = Self.normalizedSessionCode(from: sessionCode)
+        guard !normalizedCode.isEmpty else { return [] }
+        return CollaborationTerminalSessionCleanupPlan(
+            sessionCode: normalizedCode,
+            terminalSessionRouter: terminalSessionRouter,
+            hostedTerminalIDs: Array(hostedTerminalsByID.keys),
+            mirroredTerminalIDs: Array(mirroredTerminalsByID.keys)
+        ).terminalIDs
+    }
+
+    private func clearTerminalTabPresentations(forSession sessionCode: String) {
+        let terminalIDs = terminalIDsForSessionCleanup(sessionCode)
+        for terminalID in terminalIDs {
+            syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: nil)
+            terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
         }
     }
 
@@ -1136,8 +1226,12 @@ final class CollaborationRuntime {
                 result: .started,
                 properties: ["workspace_has_session": sessionCode != nil]
             )
-            if activeConnection != nil {
-                share(panel: panel, entrypoint: entrypoint)
+            if let connection = activeConnection {
+                Task { @MainActor in
+                    await refreshPeerIdentityForCollaborationAdvertise()
+                    guard activeConnection === connection else { return }
+                    share(panel: panel, entrypoint: entrypoint)
+                }
             } else {
                 scheduleStartDialog(thenShare: panel)
             }
@@ -1221,7 +1315,10 @@ final class CollaborationRuntime {
                     if let connection = connectionsBySessionCode[workspaceSessionCode] {
                         sessionCode = workspaceSessionCode
                         connectionLabel = connection.connectionLabel
-                        share(terminal: terminal, via: connection, entrypoint: entrypoint)
+                        Task { @MainActor in
+                            await refreshPeerIdentityForCollaborationAdvertise()
+                            share(terminal: terminal, via: connection, entrypoint: entrypoint)
+                        }
                         return
                     }
                     Task {
@@ -1292,13 +1389,11 @@ final class CollaborationRuntime {
         Task { @MainActor in
             let members = await loadDirectoryMembers()
             guard !members.isEmpty else {
-                let info = NSAlert()
-                info.messageText = CollaborationStrings.shareWithTeammateTitle
-                info.informativeText = CollaborationStrings.directoryEmpty
-                applyCollaborationAccentAlertButtonTitleStyle(
-                    info.addButton(withTitle: CollaborationStrings.okButton)
-                )
-                info.runModal()
+                CollaborationMessagePanel(
+                    title: CollaborationStrings.shareWithTeammateTitle,
+                    message: CollaborationStrings.directoryEmpty,
+                    buttonTitle: CollaborationStrings.okButton
+                ).run()
                 return
             }
             let alert = NSAlert()
@@ -1432,6 +1527,29 @@ final class CollaborationRuntime {
         }
     }
 
+    private func refreshPeerIdentityForCollaborationAdvertise() async {
+        let previousIdentity = peerIdentity
+        if AppDelegate.shared?.auth?.coordinator.isAuthenticated == true {
+            try? await AppDelegate.shared?.auth?.coordinator.refreshCurrentUserIdentity()
+        }
+        let didChange = refreshPeerIdentityFromAuth()
+        guard didChange || previousIdentity != peerIdentity else { return }
+        let peer = localPeerWire()
+        for connection in connectionsBySessionCode.values {
+            try? await send(CollaborationPeerUpdateWire(type: "peer.update", peer: peer), via: connection)
+        }
+    }
+
+    private func localPeerWire() -> CollaborationPeerWire {
+        CollaborationPeerWire(
+            peerID: peerIdentity.peerID,
+            participantID: peerIdentity.participantID,
+            displayName: peerIdentity.displayName,
+            color: peerIdentity.color,
+            imageURL: peerIdentity.imageURL
+        )
+    }
+
     func recipientSnapshots(for terminal: TerminalPanel) -> [CollaborationTerminalRecipientSnapshot] {
         _ = workspaceParticipantSnapshotRevision
         let terminalID = hostedTerminalIDsBySurfaceID[terminal.id] ?? mirroredTerminalIDsBySurfaceID[terminal.id]
@@ -1525,11 +1643,13 @@ final class CollaborationRuntime {
         guard let workspaceSessionCode = terminalScopedSessionCode(for: terminal) else { return }
         let normalizedCode = Self.normalizedSessionCode(from: workspaceSessionCode)
         guard !normalizedCode.isEmpty else { return }
-        let terminalIDs = terminalSessionRouter.terminalIDs(inSession: normalizedCode)
+        let terminalIDs = terminalIDsForSessionCleanup(normalizedCode)
+        clearTerminalTabPresentations(forSession: normalizedCode)
         trackCollaborationLayoutSnapshot(reason: "session_left", sessionCode: normalizedCode, workspaceID: terminal.workspaceId)
         for terminalID in terminalIDs {
             leave(terminalID: terminalID)
         }
+        clearTerminalTabPresentations(forSession: normalizedCode)
         trackCollaborationSessionEnded(sessionCode: normalizedCode, reason: "workspace_session_left")
         trackCollaboration(
             .sessionLeft,
@@ -3447,6 +3567,7 @@ final class CollaborationRuntime {
     }
 
     private func createSessionViaBackend() async throws -> CollaborationCreateSessionResponse? {
+        await refreshPeerIdentityForCollaborationAdvertise()
         guard let orgID = resolvedCollaborationOrgID,
               let token = await collaborationAccessToken() else { return nil }
         let created = try await collaborationBackendClient.createSession(
@@ -3565,6 +3686,7 @@ final class CollaborationRuntime {
     @discardableResult
     func shareCurrentSessionWithTeammate(userID: String) async -> Bool {
         guard let connection = activeConnection else { return false }
+        await refreshPeerIdentityForCollaborationAdvertise()
         let descriptor = sessionDescriptorsByRoom[normalizedRoomKey(connection.sessionCode)]
             ?? sessionDescriptorsByRoom[connection.sessionCode]
         guard let descriptor else { return false }
@@ -3634,7 +3756,7 @@ final class CollaborationRuntime {
     }
 
     private func connect(sessionID: String, code: String) async -> CollaborationRelayConnection? {
-        refreshPeerIdentityFromAuth()
+        await refreshPeerIdentityForCollaborationAdvertise()
         let normalizedCode = Self.normalizedSessionCode(from: code)
         if let existing = connectionsBySessionCode[normalizedCode] {
             guard await existing.joinAcknowledgement.wait(timeout: Self.joinAcknowledgementTimeout) else {
@@ -3827,7 +3949,10 @@ final class CollaborationRuntime {
             )
             return
         }
-        share(terminal: terminal, via: connection, entrypoint: .terminalHeaderButton)
+        Task { @MainActor in
+            await refreshPeerIdentityForCollaborationAdvertise()
+            share(terminal: terminal, via: connection, entrypoint: .terminalHeaderButton)
+        }
     }
 
     private func share(
@@ -4574,6 +4699,13 @@ final class CollaborationRuntime {
                 )
                 trackCollaborationLayoutSnapshot(reason: "participant_joined", sessionCode: connection.sessionCode)
                 sendHostedTerminalSeedsForNewPeer(peer, via: connection)
+            }
+        case "peer.update":
+            let peer = try decoder.decode(CollaborationPeerUpdateWire.self, from: data).peer
+            if peer.peerID != peerIdentity.peerID {
+                connection.peersByID[peer.peerID] = peer
+                refreshTerminalOwnerSnapshots(for: peer, in: connection)
+                refreshPeerSummaries(for: connection)
             }
         case "peer.left":
             let left = try decoder.decode(CollaborationPeerLeftWire.self, from: data)
@@ -5557,8 +5689,7 @@ func applyCollaborationAccentAlertButtonTitleStyle(_ button: NSButton, font: NSF
         weight: .regular
     )
 
-    button.contentTintColor = .black
-    button.attributedTitle = NSAttributedString(
+    let title = NSAttributedString(
         string: button.title,
         attributes: [
             .foregroundColor: NSColor.black,
@@ -5566,38 +5697,13 @@ func applyCollaborationAccentAlertButtonTitleStyle(_ button: NSButton, font: NSF
             .font: resolvedFont,
         ]
     )
-}
-
-private struct CollaborationDialogChrome<Content: View>: View {
-    let width: CGFloat
-    let height: CGFloat
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.98))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.primary.opacity(0.28), lineWidth: 1)
-                }
-
-            content
-                .padding(.horizontal, 28)
-                .padding(.vertical, 28)
-        }
-        .frame(width: width, height: height)
-    }
-}
-
-private struct CollaborationDialogBackgroundShape: View {
-    var body: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(Color(nsColor: .windowBackgroundColor).opacity(0.98))
-            .overlay {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.primary.opacity(0.28), lineWidth: 1)
-            }
+    button.font = resolvedFont
+    button.contentTintColor = .black
+    button.attributedTitle = title
+    button.attributedAlternateTitle = title
+    if let cell = button.cell as? NSButtonCell {
+        cell.attributedTitle = title
+        cell.attributedAlternateTitle = title
     }
 }
 
@@ -5606,66 +5712,183 @@ private final class CollaborationDialogPanel: NSPanel {
     override var canBecomeMain: Bool { true }
 }
 
-private struct CollaborationDialogPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .regular))
-            .foregroundStyle(.black)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color(nsColor: NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor))
-            )
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+private final class CollaborationDialogBackgroundView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        updateLayerColors()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateLayerColors()
+    }
+
+    private func updateLayerColors() {
+        layer?.cornerRadius = 28
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+        layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.98).cgColor
+        layer?.borderColor = NSColor.labelColor.withAlphaComponent(0.28).cgColor
+        layer?.borderWidth = 1
     }
 }
 
-private struct CollaborationSignInRequiredDialogView: View {
-    let onSignIn: () -> Void
-    let onCancel: () -> Void
+@MainActor
+private final class CollaborationMessagePanel {
+    private let window: NSPanel
+    private var response: NSApplication.ModalResponse = .alertFirstButtonReturn
+    private var actionBoxes: [ButtonActionBox] = []
 
-    private var appIcon: NSImage {
-        NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+    init(title: String, message: String, buttonTitle: String) {
+        let size = NSSize(width: 420, height: 286)
+        window = CollaborationDialogPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .modalPanel
+        window.isMovableByWindowBackground = true
+
+        let contentView = NSView(frame: NSRect(origin: .zero, size: size))
+        contentView.wantsLayer = true
+        window.contentView = contentView
+
+        let background = CollaborationDialogBackgroundView(frame: contentView.bounds)
+        background.frame = contentView.bounds
+        background.autoresizingMask = [.width, .height]
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+        stack.setCustomSpacing(24, after: iconView)
+
+        let titleField = NSTextField(labelWithString: title)
+        titleField.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleField.textColor = .labelColor
+        stack.addArrangedSubview(titleField)
+        stack.setCustomSpacing(12, after: titleField)
+
+        let messageField = NSTextField(wrappingLabelWithString: message)
+        messageField.font = .systemFont(ofSize: 16, weight: .regular)
+        messageField.textColor = .labelColor
+        messageField.maximumNumberOfLines = 0
+        messageField.preferredMaxLayoutWidth = 364
+        stack.addArrangedSubview(messageField)
+        stack.setCustomSpacing(28, after: messageField)
+
+        let button = makeButton(title: buttonTitle, keyEquivalent: "\r") { [weak self] in
+            self?.finish(.alertFirstButtonReturn)
+        }
+        stylePrimaryButton(button)
+        stack.addArrangedSubview(button)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+
+            iconView.widthAnchor.constraint(equalToConstant: 64),
+            iconView.heightAnchor.constraint(equalToConstant: 64),
+            titleField.widthAnchor.constraint(equalToConstant: 364),
+            messageField.widthAnchor.constraint(equalToConstant: 364),
+            button.widthAnchor.constraint(equalToConstant: 364),
+            button.heightAnchor.constraint(equalToConstant: 36),
+        ])
     }
 
-    var body: some View {
-        CollaborationDialogChrome(width: 420, height: 230) {
-            VStack(alignment: .center, spacing: 0) {
-                Image(nsImage: appIcon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 64, height: 64)
-                    .accessibilityHidden(true)
+    @discardableResult
+    func run() -> NSApplication.ModalResponse {
+        guard let parent = NSApp.keyWindow ?? NSApp.mainWindow else {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.runModal(for: window)
+            window.orderOut(nil)
+            return response
+        }
 
-                Text(CollaborationStrings.signInRequiredTitle)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.top, 24)
+        parent.beginSheet(window)
+        window.makeKey()
+        NSApp.runModal(for: window)
+        parent.endSheet(window)
+        window.orderOut(nil)
+        return response
+    }
 
-                Spacer(minLength: 0)
+    private func finish(_ response: NSApplication.ModalResponse) {
+        self.response = response
+        NSApp.stopModal()
+    }
 
-                HStack(spacing: 16) {
-                    TrackedButton("collaboration_sign_in_cancel", action: {
-                        onCancel()
-                    }) {
-                        Text(CollaborationStrings.cancel)
-                            .frame(width: 86)
-                    }
-                    .buttonStyle(.mosaicSecondaryRegular)
-                    .keyboardShortcut(.cancelAction)
+    private func makeButton(
+        title: String,
+        keyEquivalent: String,
+        action: @escaping () -> Void
+    ) -> NSButton {
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.cell = CollaborationCenteredButtonCell(textCell: title)
+        button.bezelStyle = .rounded
+        button.controlSize = .large
+        button.font = .systemFont(ofSize: 16, weight: .regular)
+        button.alignment = .center
+        button.keyEquivalent = keyEquivalent
+        button.translatesAutoresizingMaskIntoConstraints = false
 
-                    TrackedButton("collaboration_sign_in_confirm", action: {
-                        onSignIn()
-                    }) {
-                        Text(CollaborationStrings.signIn)
-                            .frame(width: 86)
-                    }
-                    .buttonStyle(CollaborationDialogPrimaryButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-                }
-            }
+        let actionBox = ButtonActionBox(action)
+        actionBoxes.append(actionBox)
+        button.target = actionBox
+        button.action = #selector(ButtonActionBox.invoke)
+        return button
+    }
+
+    private func stylePrimaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
+        applyCollaborationAccentAlertButtonTitleStyle(
+            button,
+            font: NSFont.systemFont(ofSize: 16, weight: .regular)
+        )
+    }
+
+    private final class CollaborationCenteredButtonCell: NSButtonCell {
+        override func titleRect(forBounds rect: NSRect) -> NSRect {
+            var titleRect = super.titleRect(forBounds: rect)
+            let titleHeight = attributedTitle.size().height
+            titleRect.origin.y = rect.origin.y + ((rect.height - titleHeight) / 2)
+            titleRect.size.height = titleHeight
+            return titleRect
+        }
+    }
+
+    private final class ButtonActionBox: NSObject {
+        private let action: () -> Void
+
+        init(_ action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func invoke() {
+            action()
         }
     }
 }
@@ -5695,7 +5918,7 @@ private final class CollaborationSignInRequiredPanel {
         contentView.wantsLayer = true
         window.contentView = contentView
 
-        let background = NSHostingView(rootView: CollaborationDialogBackgroundShape())
+        let background = CollaborationDialogBackgroundView(frame: contentView.bounds)
         background.frame = contentView.bounds
         background.autoresizingMask = [.width, .height]
         contentView.addSubview(background)
@@ -5873,7 +6096,7 @@ private final class CollaborationJoinSessionPanel {
         contentView.wantsLayer = true
         window.contentView = contentView
 
-        let background = NSHostingView(rootView: CollaborationDialogBackgroundShape())
+        let background = CollaborationDialogBackgroundView(frame: contentView.bounds)
         background.frame = contentView.bounds
         background.autoresizingMask = [.width, .height]
         contentView.addSubview(background)
@@ -6046,83 +6269,11 @@ private final class CollaborationJoinSessionPanel {
     }
 }
 
-private struct CollaborationSessionCreatedDialogView: View {
-    let code: String
-    let onCopy: () -> Void
-    let onDone: () -> Void
-
-    private var appIcon: NSImage {
-        NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
-    }
-
-    var body: some View {
-        CollaborationDialogChrome(width: 420, height: 286) {
-            VStack(alignment: .leading, spacing: 0) {
-                Image(nsImage: appIcon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 64, height: 64)
-                    .accessibilityHidden(true)
-
-                Text(CollaborationStrings.sessionCreatedTitle)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.top, 12)
-
-                Text(CollaborationStrings.sessionCreatedMessage)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 10)
-
-                HStack {
-                    Spacer()
-                    Text(code)
-                        .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.primary)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
-                        }
-                    Spacer()
-                }
-                .padding(.top, 14)
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 16) {
-                    TrackedButton("session_created_done", action: {
-                        onDone()
-                    }) {
-                        Text(CollaborationStrings.done)
-                            .frame(width: 86)
-                    }
-                    .buttonStyle(.mosaicSecondaryRegular)
-                    .keyboardShortcut(.cancelAction)
-
-                    TrackedButton("session_created_copy_code", action: {
-                        onCopy()
-                    }) {
-                        Text(CollaborationStrings.copyCode)
-                            .frame(width: 86)
-                    }
-                    .buttonStyle(CollaborationDialogPrimaryButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-        }
-    }
-}
-
 @MainActor
 private final class CollaborationSessionCreatedPanel {
     private let window: NSPanel
     private var response: NSApplication.ModalResponse = .alertSecondButtonReturn
+    private var actionBoxes: [ButtonActionBox] = []
 
     init(code: String) {
         let size = NSSize(width: 420, height: 286)
@@ -6139,19 +6290,101 @@ private final class CollaborationSessionCreatedPanel {
         window.level = .modalPanel
         window.isMovableByWindowBackground = true
 
-        let dialog = CollaborationSessionCreatedDialogView(
-            code: code,
-            onCopy: { [weak self] in
-                self?.finish(.alertFirstButtonReturn)
-            },
-            onDone: { [weak self] in
-                self?.finish(.alertSecondButtonReturn)
-            }
-        )
-        let hostingView = NSHostingView(rootView: dialog)
-        hostingView.frame = NSRect(origin: .zero, size: size)
-        hostingView.autoresizingMask = [.width, .height]
-        window.contentView = hostingView
+        let contentView = NSView(frame: NSRect(origin: .zero, size: size))
+        contentView.wantsLayer = true
+        window.contentView = contentView
+
+        let background = CollaborationDialogBackgroundView(frame: contentView.bounds)
+        background.frame = contentView.bounds
+        background.autoresizingMask = [.width, .height]
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.Name("AppIconLight")) ?? NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+        stack.setCustomSpacing(12, after: iconView)
+
+        let titleField = NSTextField(labelWithString: CollaborationStrings.sessionCreatedTitle)
+        titleField.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleField.textColor = .labelColor
+        stack.addArrangedSubview(titleField)
+        stack.setCustomSpacing(10, after: titleField)
+
+        let messageField = NSTextField(wrappingLabelWithString: CollaborationStrings.sessionCreatedMessage)
+        messageField.font = .systemFont(ofSize: 16, weight: .regular)
+        messageField.textColor = .labelColor
+        messageField.maximumNumberOfLines = 0
+        messageField.preferredMaxLayoutWidth = 364
+        stack.addArrangedSubview(messageField)
+        stack.setCustomSpacing(14, after: messageField)
+
+        let codeRow = NSStackView()
+        codeRow.orientation = .horizontal
+        codeRow.alignment = .centerY
+        codeRow.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(codeRow)
+        codeRow.addArrangedSubview(NSView())
+
+        let codeField = NSTextField(labelWithString: code)
+        codeField.font = .monospacedSystemFont(ofSize: 24, weight: .semibold)
+        codeField.textColor = .labelColor
+        codeField.alignment = .center
+        codeField.isSelectable = true
+        codeField.wantsLayer = true
+        codeField.layer?.cornerRadius = 8
+        codeField.layer?.cornerCurve = .continuous
+        codeField.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.72).cgColor
+        codeField.translatesAutoresizingMaskIntoConstraints = false
+        codeRow.addArrangedSubview(codeField)
+        codeRow.addArrangedSubview(NSView())
+        stack.setCustomSpacing(22, after: codeRow)
+
+        let buttonRow = NSStackView()
+        buttonRow.orientation = .horizontal
+        buttonRow.alignment = .centerY
+        buttonRow.spacing = 16
+        buttonRow.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(buttonRow)
+
+        let doneButton = makeButton(title: CollaborationStrings.done, keyEquivalent: "\u{1b}") { [weak self] in
+            self?.finish(.alertSecondButtonReturn)
+        }
+        let copyButton = makeButton(title: CollaborationStrings.copyCode, keyEquivalent: "\r") { [weak self] in
+            self?.finish(.alertFirstButtonReturn)
+        }
+        styleSecondaryButton(doneButton)
+        stylePrimaryButton(copyButton)
+        buttonRow.addArrangedSubview(doneButton)
+        buttonRow.addArrangedSubview(copyButton)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 28),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
+
+            iconView.widthAnchor.constraint(equalToConstant: 64),
+            iconView.heightAnchor.constraint(equalToConstant: 64),
+            titleField.widthAnchor.constraint(equalToConstant: 364),
+            messageField.widthAnchor.constraint(equalToConstant: 364),
+            codeRow.widthAnchor.constraint(equalToConstant: 364),
+            codeField.heightAnchor.constraint(equalToConstant: 46),
+            codeField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
+            doneButton.widthAnchor.constraint(equalToConstant: 144),
+            copyButton.widthAnchor.constraint(equalToConstant: 144),
+            doneButton.heightAnchor.constraint(equalToConstant: 36),
+            copyButton.heightAnchor.constraint(equalToConstant: 36),
+        ])
     }
 
     func run() -> NSApplication.ModalResponse {
@@ -6175,19 +6408,61 @@ private final class CollaborationSessionCreatedPanel {
         self.response = response
         NSApp.stopModal()
     }
-}
 
-#if DEBUG
-#Preview("Session Created Dialog") {
-    CollaborationSessionCreatedDialogView(
-        code: "TZLS",
-        onCopy: {},
-        onDone: {}
-    )
-    .padding(24)
-    .background(Color.black)
+    private func makeButton(
+        title: String,
+        keyEquivalent: String,
+        action: @escaping () -> Void
+    ) -> NSButton {
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.bezelStyle = .rounded
+        button.controlSize = .large
+        button.font = .systemFont(ofSize: 16, weight: .regular)
+        button.keyEquivalent = keyEquivalent
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let actionBox = ButtonActionBox(action)
+        actionBoxes.append(actionBox)
+        button.target = actionBox
+        button.action = #selector(ButtonActionBox.invoke)
+        return button
+    }
+
+    private func stylePrimaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
+        applyCollaborationAccentAlertButtonTitleStyle(
+            button,
+            font: NSFont.systemFont(ofSize: 16, weight: .regular)
+        )
+    }
+
+    private func styleSecondaryButton(_ button: NSButton) {
+        button.bezelColor = NSColor(hex: "#2D2D2D") ?? NSColor.controlColor.withAlphaComponent(0.40)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        button.contentTintColor = .white
+        button.attributedTitle = NSAttributedString(
+            string: button.title,
+            attributes: [
+                .foregroundColor: NSColor.white,
+                .paragraphStyle: paragraph,
+                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
+            ]
+        )
+    }
+
+    private final class ButtonActionBox: NSObject {
+        private let action: () -> Void
+
+        init(_ action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func invoke() {
+            action()
+        }
+    }
 }
-#endif
 
 @MainActor
 private final class CollaborationStartChooserPanel {
@@ -6265,18 +6540,10 @@ private final class CollaborationStartChooserPanel {
         let createButton = makeButton(title: CollaborationStrings.createSession, keyEquivalent: "\r") { [weak self] in
             self?.finish(.alertFirstButtonReturn)
         }
-        createButton.bezelColor = .controlAccentColor
-        // The accent bezel is the yellow primary color; use black title text so it
-        // stays legible (the default prominent-button title is white).
-        let createButtonTitleStyle = NSMutableParagraphStyle()
-        createButtonTitleStyle.alignment = .center
-        createButton.attributedTitle = NSAttributedString(
-            string: CollaborationStrings.createSession,
-            attributes: [
-                .foregroundColor: NSColor.black,
-                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
-                .paragraphStyle: createButtonTitleStyle,
-            ]
+        createButton.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
+        applyCollaborationAccentAlertButtonTitleStyle(
+            createButton,
+            font: NSFont.systemFont(ofSize: 16, weight: .regular)
         )
         let joinButton = makeButton(title: CollaborationStrings.joinSession, keyEquivalent: "") { [weak self] in
             self?.finish(.alertSecondButtonReturn)

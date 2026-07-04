@@ -3980,9 +3980,15 @@ final class Workspace: Identifiable, ObservableObject {
 
     private func syncPanelTabPresentation(panelId: UUID) {
         guard let panel = panels[panelId], let tabId = surfaceIdFromPanelId(panelId) else {
+            #if DEBUG
+            cmuxDebugLog("[avatardbg] syncPanel bail panel=\(panelId) panelNil=\(panels[panelId] == nil) tabIdNil=\(surfaceIdFromPanelId(panelId) == nil)")
+            #endif
             return
         }
         if let collaborationPresentation = collaborationTerminalTabPresentations[panelId] {
+            #if DEBUG
+            cmuxDebugLog("[avatardbg] syncPanel updateTab(collab) panel=\(panelId) tab=\(tabId) iconBytes=\(collaborationPresentation.iconImageData?.count ?? -1)")
+            #endif
             bonsplitController.updateTab(
                 tabId,
                 title: collaborationPresentation.title,
@@ -3992,6 +3998,9 @@ final class Workspace: Identifiable, ObservableObject {
             )
             return
         }
+        #if DEBUG
+        cmuxDebugLog("[avatardbg] syncPanel updateTab(base) panel=\(panelId) tab=\(tabId) — clearing collab icon")
+        #endif
 
         let baseTitle = panelTitles[panelId] ?? panel.displayTitle
         bonsplitController.updateTab(

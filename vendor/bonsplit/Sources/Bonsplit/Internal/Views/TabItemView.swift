@@ -550,7 +550,20 @@ struct TabItemView: View {
             ? TabBarColors.nsColorActiveText(for: appearance)
             : TabBarColors.nsColorInactiveText(for: appearance)
         let iconTint = Color(nsColor: iconTintColor)
-        let faviconImage = renderedFaviconImage ?? tab.iconImageData.flatMap { NSImage(data: $0) }
+        // The decoded-favicon cache is only trustworthy when it was built from
+        // the data this evaluation is rendering. `onChange(of:)` refreshes the
+        // cache asynchronously relative to body evaluation, so an in-place
+        // icon swap (e.g. a collaboration avatar applied to a shared terminal,
+        // or cleared on session end) could otherwise keep displaying the
+        // previous image: the stale cache took precedence over the fresh
+        // `tab.iconImageData` until the *next* unrelated update re-primed it.
+        // Deriving the display strictly from the current data makes the icon
+        // correct on the first evaluation; the cache only skips re-decoding.
+        let cachedFaviconImage = renderedFaviconData == tab.iconImageData ? renderedFaviconImage : nil
+        let faviconImage = cachedFaviconImage ?? tab.iconImageData.flatMap { NSImage(data: $0) }
+        #if DEBUG
+        let _ = bonsplitAvatarDebugLog("leadingIcon eval tab=\(tab.id.uuidString.prefix(4)) bytes=\(tab.iconImageData?.count ?? -1) icon=\(tab.icon ?? "nil") cacheValid=\(renderedFaviconData == tab.iconImageData) renderedFavicon=\(renderedFaviconImage != nil)")
+        #endif
 
         Group {
             if tab.isLoading {
@@ -591,6 +604,9 @@ struct TabItemView: View {
         }
         .onChange(of: tab.isLoading) { _ in updateGlobeFallback() }
         .onChange(of: tab.iconImageData) { _ in
+            #if DEBUG
+            bonsplitAvatarDebugLog("TabItemView.onChange(iconImageData) tab=\(tab.id) newBytes=\(tab.iconImageData?.count ?? -1)")
+            #endif
             updateRenderedFaviconImage()
             updateGlobeFallback()
         }

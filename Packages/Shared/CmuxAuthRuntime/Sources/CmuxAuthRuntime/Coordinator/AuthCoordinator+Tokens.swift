@@ -1,4 +1,4 @@
-internal import CMUXAuthCore
+public import CMUXAuthCore
 import Foundation
 import OSLog
 
@@ -139,5 +139,35 @@ extension AuthCoordinator {
             throw AuthError.networkError
         }
         throw AuthError.unauthorized
+    }
+
+    /// Force-refreshes tokens, fetches the current user, and republishes changed identity metadata.
+    ///
+    /// Use this before flows that advertise local account metadata to another
+    /// process, such as collaboration relay joins. It closes the gap where a
+    /// cached user was restored from older native tokens that did not contain a
+    /// provider profile-image URL.
+    /// - Returns: The refreshed current user, if one is present.
+    /// - Throws: ``AuthError`` for token/user refresh failures, or
+    ///   `CancellationError` if a newer session transition wins the race.
+    public func refreshCurrentUserIdentity() async throws -> CMUXAuthUser? {
+        await awaitBootstrapped()
+        let generation = sessionGeneration
+        _ = try await forceRefreshAccessToken()
+        guard generation == sessionGeneration else {
+            throw CancellationError()
+        }
+        let client = self.client
+        let user = try await runPhase(.fetchUser, timeout: timeouts.network) {
+            try await client.currentUser(throwOnMissing: true)
+        }
+        guard generation == sessionGeneration else {
+            throw CancellationError()
+        }
+        guard let user else { return nil }
+        if user != currentUser {
+            await applySignedInUser(user)
+        }
+        return user
     }
 }
