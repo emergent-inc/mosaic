@@ -22,6 +22,16 @@ public struct CollaborationTerminalSessionRouter: Equatable, Sendable {
         sessionCodesByTerminalID[terminalID]
     }
 
+    /// Returns the terminals owned by a session.
+    /// - Parameter sessionCode: The normalized invite code for the owning session.
+    /// - Returns: The session-scoped terminal identifiers owned by the session.
+    public func terminalIDs(inSession sessionCode: String) -> [String] {
+        sessionCodesByTerminalID
+            .filter { $0.value == sessionCode }
+            .map(\.key)
+            .sorted()
+    }
+
     /// Removes ownership for a terminal.
     /// - Parameter terminalID: The session-scoped terminal identifier.
     public mutating func remove(terminalID: String) {

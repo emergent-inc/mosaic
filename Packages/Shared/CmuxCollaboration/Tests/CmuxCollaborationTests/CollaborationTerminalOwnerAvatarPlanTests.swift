@@ -14,6 +14,7 @@ struct CollaborationTerminalOwnerAvatarPlanTests {
 
         #expect(plan.title == "Ada's terminal")
         #expect(plan.fallbackSnapshot == snapshot)
+        #expect(plan.avatarContent == snapshot.avatarContent)
         #expect(plan.profileImageURL == URL(string: "https://img.example/ada.png?size=64"))
         #expect(plan.requestKey == "peer-ada|https://img.example/ada.png?size=64")
     }
@@ -36,6 +37,7 @@ struct CollaborationTerminalOwnerAvatarPlanTests {
         )
 
         #expect(plan.fallbackSnapshot == snapshot)
+        #expect(plan.avatarContent == snapshot.avatarContent)
         #expect(plan.profileImageURL == nil)
         #expect(plan.requestKey == nil)
     }
@@ -49,6 +51,7 @@ struct CollaborationTerminalOwnerAvatarPlanTests {
 
         #expect(plan.title == nil)
         #expect(plan.fallbackSnapshot == nil)
+        #expect(plan.avatarContent == nil)
         #expect(plan.profileImageURL == nil)
         #expect(plan.requestKey == nil)
     }

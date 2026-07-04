@@ -1295,7 +1295,9 @@ final class CollaborationRuntime {
                 let info = NSAlert()
                 info.messageText = CollaborationStrings.shareWithTeammateTitle
                 info.informativeText = CollaborationStrings.directoryEmpty
-                info.addButton(withTitle: CollaborationStrings.okButton)
+                applyCollaborationAccentAlertButtonTitleStyle(
+                    info.addButton(withTitle: CollaborationStrings.okButton)
+                )
                 info.runModal()
                 return
             }
@@ -1308,8 +1310,12 @@ final class CollaborationRuntime {
                 popup.lastItem?.representedObject = member.userId
             }
             alert.accessoryView = popup
-            alert.addButton(withTitle: CollaborationStrings.shareButton)
-            alert.addButton(withTitle: CollaborationStrings.cancelButton)
+            applyCollaborationRegularAlertButtonTitleStyle(
+                alert.addButton(withTitle: CollaborationStrings.shareButton)
+            )
+            applyCollaborationRegularAlertButtonTitleStyle(
+                alert.addButton(withTitle: CollaborationStrings.cancelButton)
+            )
             guard alert.runModal() == .alertFirstButtonReturn,
                   let userID = popup.selectedItem?.representedObject as? String else { return }
             let shared = await shareCurrentSessionWithTeammate(userID: userID)
@@ -1338,7 +1344,9 @@ final class CollaborationRuntime {
             let info = NSAlert()
             info.messageText = CollaborationStrings.incomingSessionsTitle
             info.informativeText = CollaborationStrings.incomingSessionsEmpty
-            info.addButton(withTitle: CollaborationStrings.okButton)
+            applyCollaborationAccentAlertButtonTitleStyle(
+                info.addButton(withTitle: CollaborationStrings.okButton)
+            )
             info.runModal()
             return
         }
@@ -1355,8 +1363,12 @@ final class CollaborationRuntime {
             popup.lastItem?.representedObject = invite.session
         }
         alert.accessoryView = popup
-        alert.addButton(withTitle: CollaborationStrings.incomingSessionJoin)
-        alert.addButton(withTitle: CollaborationStrings.cancelButton)
+        applyCollaborationRegularAlertButtonTitleStyle(
+            alert.addButton(withTitle: CollaborationStrings.incomingSessionJoin)
+        )
+        applyCollaborationRegularAlertButtonTitleStyle(
+            alert.addButton(withTitle: CollaborationStrings.cancelButton)
+        )
         guard alert.runModal() == .alertFirstButtonReturn,
               let sessionToken = popup.selectedItem?.representedObject as? String,
               let invite = invites.first(where: { $0.session == sessionToken }) else { return }
@@ -1513,9 +1525,7 @@ final class CollaborationRuntime {
         guard let workspaceSessionCode = terminalScopedSessionCode(for: terminal) else { return }
         let normalizedCode = Self.normalizedSessionCode(from: workspaceSessionCode)
         guard !normalizedCode.isEmpty else { return }
-        let terminalIDs = terminalStatesByID.keys.filter {
-            terminalSessionRouter.sessionCode(forTerminalID: $0) == normalizedCode
-        }
+        let terminalIDs = terminalSessionRouter.terminalIDs(inSession: normalizedCode)
         trackCollaborationLayoutSnapshot(reason: "session_left", sessionCode: normalizedCode, workspaceID: terminal.workspaceId)
         for terminalID in terminalIDs {
             leave(terminalID: terminalID)
@@ -3031,6 +3041,7 @@ final class CollaborationRuntime {
         disconnectAllConnections()
         sessionCode = nil
         restoreAllTerminalTabPresentations()
+        terminalOwnerAvatarRequestKeysByID.removeAll()
         panelsByDocumentID.removeAll()
         descriptorsByDocumentID.removeAll()
         sessionCodesByDocumentID.removeAll()
@@ -5522,12 +5533,28 @@ enum CollaborationStrings {
 /// `NSAlert` default buttons do not reliably honor only `attributedTitle`, so set
 /// the control tint as well as the attributed fallback.
 @MainActor
+func applyCollaborationRegularAlertButtonTitleStyle(_ button: NSButton) {
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.alignment = .center
+    let fontSize = button.font?.pointSize ?? NSFont.systemFontSize
+    let font = NSFont.systemFont(ofSize: fontSize, weight: .regular)
+    button.font = font
+    button.attributedTitle = NSAttributedString(
+        string: button.title,
+        attributes: [
+            .paragraphStyle: paragraph,
+            .font: font,
+        ]
+    )
+}
+
+@MainActor
 func applyCollaborationAccentAlertButtonTitleStyle(_ button: NSButton, font: NSFont? = nil) {
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = .center
-    let resolvedFont = font ?? button.font ?? NSFont.systemFont(
-        ofSize: NSFont.systemFontSize,
-        weight: .semibold
+    let resolvedFont = font ?? NSFont.systemFont(
+        ofSize: button.font?.pointSize ?? NSFont.systemFontSize,
+        weight: .regular
     )
 
     button.contentTintColor = .black
@@ -5582,7 +5609,7 @@ private final class CollaborationDialogPanel: NSPanel {
 private struct CollaborationDialogPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .bold))
+            .font(.system(size: 13, weight: .regular))
             .foregroundStyle(.black)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
@@ -5626,7 +5653,7 @@ private struct CollaborationSignInRequiredDialogView: View {
                         Text(CollaborationStrings.cancel)
                             .frame(width: 86)
                     }
-                    .buttonStyle(.mosaicSecondary)
+                    .buttonStyle(.mosaicSecondaryRegular)
                     .keyboardShortcut(.cancelAction)
 
                     TrackedButton("collaboration_sign_in_confirm", action: {
@@ -5712,8 +5739,8 @@ private final class CollaborationSignInRequiredPanel {
 
         NSLayoutConstraint.activate([
             stack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
-            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            stack.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            stack.widthAnchor.constraint(equalToConstant: 364),
             stack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 28),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -28),
 
@@ -5758,7 +5785,7 @@ private final class CollaborationSignInRequiredPanel {
         button.cell = CollaborationCenteredButtonCell(textCell: title)
         button.bezelStyle = .rounded
         button.controlSize = .large
-        button.font = .systemFont(ofSize: 16, weight: .bold)
+        button.font = .systemFont(ofSize: 16, weight: .regular)
         button.alignment = .center
         button.keyEquivalent = keyEquivalent
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -5774,7 +5801,7 @@ private final class CollaborationSignInRequiredPanel {
         button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
         applyCollaborationAccentAlertButtonTitleStyle(
             button,
-            font: NSFont.systemFont(ofSize: 16, weight: .bold)
+            font: NSFont.systemFont(ofSize: 16, weight: .regular)
         )
     }
 
@@ -5788,7 +5815,7 @@ private final class CollaborationSignInRequiredPanel {
             attributes: [
                 .foregroundColor: NSColor.white,
                 .paragraphStyle: paragraph,
-                .font: NSFont.systemFont(ofSize: 16, weight: .bold),
+                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
             ]
         )
     }
@@ -5972,7 +5999,7 @@ private final class CollaborationJoinSessionPanel {
         let button = NSButton(title: title, target: nil, action: nil)
         button.bezelStyle = .rounded
         button.controlSize = .large
-        button.font = .systemFont(ofSize: 16, weight: .bold)
+        button.font = .systemFont(ofSize: 16, weight: .regular)
         button.keyEquivalent = keyEquivalent
         button.translatesAutoresizingMaskIntoConstraints = false
 
@@ -5987,7 +6014,7 @@ private final class CollaborationJoinSessionPanel {
         button.bezelColor = NSColor(hex: MosaicChromePalette.accentHex) ?? .controlAccentColor
         applyCollaborationAccentAlertButtonTitleStyle(
             button,
-            font: NSFont.systemFont(ofSize: 16, weight: .bold)
+            font: NSFont.systemFont(ofSize: 16, weight: .regular)
         )
     }
 
@@ -6001,7 +6028,7 @@ private final class CollaborationJoinSessionPanel {
             attributes: [
                 .foregroundColor: NSColor.white,
                 .paragraphStyle: paragraph,
-                .font: NSFont.systemFont(ofSize: 16, weight: .bold),
+                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
             ]
         )
     }
@@ -6074,7 +6101,7 @@ private struct CollaborationSessionCreatedDialogView: View {
                         Text(CollaborationStrings.done)
                             .frame(width: 86)
                     }
-                    .buttonStyle(.mosaicSecondary)
+                    .buttonStyle(.mosaicSecondaryRegular)
                     .keyboardShortcut(.cancelAction)
 
                     TrackedButton("session_created_copy_code", action: {
@@ -6247,7 +6274,7 @@ private final class CollaborationStartChooserPanel {
             string: CollaborationStrings.createSession,
             attributes: [
                 .foregroundColor: NSColor.black,
-                .font: NSFont.systemFont(ofSize: 16, weight: .semibold),
+                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
                 .paragraphStyle: createButtonTitleStyle,
             ]
         )
@@ -6308,7 +6335,7 @@ private final class CollaborationStartChooserPanel {
         let button = NSButton(title: title, target: nil, action: nil)
         button.bezelStyle = .rounded
         button.controlSize = .large
-        button.font = .systemFont(ofSize: 16, weight: .semibold)
+        button.font = .systemFont(ofSize: 16, weight: .regular)
         button.keyEquivalent = keyEquivalent
         button.translatesAutoresizingMaskIntoConstraints = false
 
