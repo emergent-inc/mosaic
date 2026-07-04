@@ -131,12 +131,10 @@ describe("cmux native session tokens", () => {
     expect(verifyNativeAuthToken(withNullImage.accessToken)!.imageURL).toBeNull();
   });
 
-  // Regression: this reproduces the exact cause of profile pictures not
-  // rendering in shared sessions. A native token minted before the `imageURL`
-  // claim existed is still accepted (so the user stays signed in), but it
-  // carries no image, so every avatar falls back to initials. Refreshing that
-  // token cannot recover the image — the null propagates forward — which is why
-  // a full re-sign-in is required after the imageURL claim ships.
+  // Legacy native tokens minted before the `imageURL` claim existed are still
+  // accepted so the user stays signed in. The browser sign-in handoff is the
+  // authoritative moment where Clerk profile data is captured; refresh preserves
+  // the signed-in token claims it is handed.
   test("accepts legacy tokens without an imageURL claim and reports null", () => {
     const legacyAccess = signLegacyToken(baseLegacyClaims("access"));
 
@@ -146,7 +144,7 @@ describe("cmux native session tokens", () => {
     expect(claims!.imageURL).toBeNull();
   });
 
-  test("refreshing a legacy refresh token keeps imageURL null (no recovery without re-auth)", () => {
+  test("pure refresh helper preserves a legacy refresh token imageURL null", () => {
     const legacyRefresh = signLegacyToken(baseLegacyClaims("refresh"));
 
     const refreshed = refreshNativeSessionTokenPair(legacyRefresh);
