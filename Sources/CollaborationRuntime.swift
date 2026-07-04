@@ -822,6 +822,14 @@ final class CollaborationRuntime {
     private let agentRoomContextPackTranscriptLimit = 8
     private let agentRoomTranscriptTurnCharacterLimit = 1_200
     private let agentRoomBackfillTurnsPerMember = 6
+    /// Wire-time/recap transcript backfill only shares turns newer than this
+    /// window before the join. Claude session transcript files are long-lived
+    /// and reused across many rooms and test runs, so an unbounded tail read
+    /// would resurrect ancient conversations (e.g. a prior test's messages)
+    /// into a freshly created room. The window is generous enough to capture
+    /// legitimate pre-wire context (type in one agent, then wire a peer moments
+    /// later) while excluding stale history.
+    private let agentRoomBackfillFreshnessWindow: TimeInterval = 30 * 60
     @ObservationIgnored private var terminalSurfaceReadyObserver: NSObjectProtocol?
 
     private init() {
@@ -834,22 +842,49 @@ final class CollaborationRuntime {
         }
     }
 
-    /// Rehydrates the per-surface room membership maps and header pills from
-    /// rooms the store loaded off disk. Surface IDs are stable across app
-    /// relaunches (unlike workspace IDs), so persisted members rebind to their
-    /// panes and hooks resolve rooms again without the user re-wiring anything.
+    /// Rehydrates cached room snapshots from disk and rebinds only surfaces
+    /// that still have a current Claude hook session record. Persisted ledgers
+    /// are history/debug data until a live pane proves it still owns that
+    /// surface; otherwise a new pair of panes can accidentally inherit stale
+    /// test-room context after an app restart.
     private func restorePersistedAgentRooms() async {
         let rooms = await agentRoomStore.allRooms()
         guard !rooms.isEmpty else { return }
         for room in rooms {
             cacheAgentRoom(room)
-            reconcileAgentRoomMembership(with: room)
+            reconcileAgentRoomMembership(with: liveHookBackedRoom(from: room))
         }
-        // Hooks without an explicit surface fall back to latestAgentRoomID, so
-        // point it at the room that most recently saw activity.
-        latestAgentRoomID = rooms.max { lhs, rhs in
-            (lhs.events.last?.createdAt ?? .distantPast) < (rhs.events.last?.createdAt ?? .distantPast)
-        }?.id
+        // Do not seed latestAgentRoomID from persisted history. It is only a
+        // convenience for explicit surface-less CLI/debug workflows in this app
+        // run; using an old room as the default for fresh panes replays stale
+        // test messages into new wiring sessions.
+    }
+
+    private func liveHookBackedRoom(from room: ClaudeRoomSnapshot) -> ClaudeRoomSnapshot {
+        var liveRoom = room
+        liveRoom.members = room.members.filter { member in
+            guard let surfaceID = UUID(uuidString: member.surfaceID),
+                  terminalPanel(surfaceID: surfaceID) != nil,
+                  let hook = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
+                  let agentSessionID = member.agentSessionID else {
+                return false
+            }
+            return hook.sessionID == agentSessionID
+        }
+        return liveRoom
+    }
+
+    private func restorePersistedAgentRoomMembershipIfNeeded(surfaceID: UUID?) async {
+        guard let surfaceID, agentRoomIDsBySurfaceID[surfaceID] == nil else { return }
+        let surfaceIDString = surfaceID.uuidString
+        let rooms = await agentRoomStore.allRooms()
+        for room in rooms where room.members.contains(where: { $0.surfaceID == surfaceIDString }) {
+            cacheAgentRoom(room)
+            reconcileAgentRoomMembership(with: liveHookBackedRoom(from: room))
+            if agentRoomIDsBySurfaceID[surfaceID] != nil {
+                return
+            }
+        }
     }
 
     /// A mirrored terminal's ghostty surface is created lazily on the first AppKit
@@ -867,7 +902,10 @@ final class CollaborationRuntime {
             queue: .main
         ) { [weak self] notification in
             guard let surfaceID = notification.userInfo?["surfaceId"] as? UUID else { return }
-            Task { @MainActor in self?.presentMirroredTerminalIfReady(surfaceID: surfaceID) }
+            Task { @MainActor in
+                self?.presentMirroredTerminalIfReady(surfaceID: surfaceID)
+                await self?.restorePersistedAgentRoomMembershipIfNeeded(surfaceID: surfaceID)
+            }
         }
     }
 
@@ -2105,7 +2143,7 @@ final class CollaborationRuntime {
                 )
             } else {
                 _ = await connectAgentRoomSurfaceForAutomation(
-                    roomID: latestAgentRoomID,
+                    roomID: nil,
                     surfaceID: panel.id.uuidString,
                     agentSessionID: nil,
                     displayName: panel.displayTitle
@@ -2123,10 +2161,11 @@ final class CollaborationRuntime {
             defer { endAgentRoomWireDrag() }
             let sourceUUID = UUID(uuidString: sourceSurfaceID)
             let targetUUID = targetSurfaceID
-            let roomID = sourceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-                ?? agentRoomIDsBySurfaceID[targetUUID]
-                ?? latestAgentRoomID
-                ?? UUID().uuidString
+            let roomID = AgentRoomSelection.roomIDForWire(
+                sourceRoomID: sourceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+                targetRoomID: agentRoomIDsBySurfaceID[targetUUID],
+                newRoomID: UUID().uuidString
+            )
 
             if let sourceUUID, sourceUUID != targetUUID {
                 _ = await connectAgentRoomSurfaceForAutomation(
@@ -2410,13 +2449,19 @@ final class CollaborationRuntime {
         agentSessionID: String?,
         displayName: String?
     ) async -> [String: Any] {
-        let roomID = requestedRoomID ?? latestAgentRoomID ?? UUID().uuidString
-        if latestAgentRoomID == nil {
+        let resolvedSurfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID)
+        let roomID = AgentRoomSelection.roomIDForSurfaceConnection(
+            requestedRoomID: requestedRoomID,
+            surfaceWasExplicit: requestedSurfaceID != nil,
+            mappedSurfaceRoomID: resolvedSurfaceID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID,
+            newRoomID: UUID().uuidString
+        )
+        if await agentRoomStore.room(id: roomID) == nil {
             let room = await agentRoomStore.createRoom(id: roomID)
             cacheAgentRoom(room)
-            latestAgentRoomID = roomID
         }
-        guard let surfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID) else {
+        guard let surfaceID = resolvedSurfaceID else {
             return ["connected": false, "error": "No terminal surface is available."]
         }
         let hookSession = Self.claudeHookSessionRef(surfaceID: surfaceID.uuidString)
@@ -2572,6 +2617,48 @@ final class CollaborationRuntime {
         return ["requested": true]
     }
 
+    func resetAgentRoomForAutomation(roomID requestedRoomID: String?) async -> [String: Any] {
+        if let requestedRoomID {
+            let removed = await agentRoomStore.removeRoom(id: requestedRoomID)
+            guard let removed else {
+                agentRoomSnapshotsByID.removeValue(forKey: requestedRoomID)
+                if latestAgentRoomID == requestedRoomID {
+                    latestAgentRoomID = nil
+                }
+                return ["reset": false, "error": "Claude room not found.", "room_id": requestedRoomID]
+            }
+            for member in removed.members {
+                if let surfaceID = UUID(uuidString: member.surfaceID) {
+                    agentRoomIDsBySurfaceID.removeValue(forKey: surfaceID)
+                    agentRoomMemberIDsBySurfaceID.removeValue(forKey: surfaceID)
+                    agentRoomDegradedSurfaceIDs.remove(surfaceID)
+                }
+            }
+            agentRoomSnapshotsByID.removeValue(forKey: requestedRoomID)
+            if latestAgentRoomID == requestedRoomID {
+                latestAgentRoomID = nil
+            }
+            agentRoomHeaderRevision &+= 1
+            return ["reset": true, "room_id": requestedRoomID]
+        }
+
+        await agentRoomStore.clearAllRooms()
+        agentRoomIDsBySurfaceID.removeAll()
+        agentRoomMemberIDsBySurfaceID.removeAll()
+        agentRoomSnapshotsByID.removeAll()
+        agentRoomDegradedSurfaceIDs.removeAll()
+        latestAgentRoomID = nil
+        agentRoomHeaderRevision &+= 1
+        return ["reset": true, "all": true]
+    }
+
+    func resetAgentRoomForAutomationRequest(roomID: String?) -> [String: Any] {
+        Task { @MainActor in
+            _ = await resetAgentRoomForAutomation(roomID: roomID)
+        }
+        return ["requested": true]
+    }
+
     func postAgentRoomEventForAutomation(
         roomID requestedRoomID: String?,
         kind rawKind: String?,
@@ -2580,14 +2667,15 @@ final class CollaborationRuntime {
         text: String
     ) async -> [String: Any] {
         let fromSurfaceUUID = resolveAgentRoomSurfaceID(rawFromSurfaceID)
-        let roomID: String?
-        if let requestedRoomID {
-            roomID = requestedRoomID
-        } else if rawFromSurfaceID != nil {
-            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        if rawFromSurfaceID != nil {
+            await restorePersistedAgentRoomMembershipIfNeeded(surfaceID: fromSurfaceUUID)
         }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: requestedRoomID,
+            surfaceWasExplicit: rawFromSurfaceID != nil,
+            mappedSurfaceRoomID: fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID else {
             #if DEBUG
             cmuxDebugLog("agentRoom.post dropped: no active room (from raw=\(rawFromSurfaceID ?? "nil") resolved=\(fromSurfaceUUID?.uuidString ?? "nil"))")
@@ -2666,14 +2754,12 @@ final class CollaborationRuntime {
         text: String
     ) -> [String: Any] {
         let fromSurfaceUUID = resolveAgentRoomSurfaceID(rawFromSurfaceID)
-        let roomID: String?
-        if let requestedRoomID {
-            roomID = requestedRoomID
-        } else if rawFromSurfaceID != nil {
-            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
-        }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: requestedRoomID,
+            surfaceWasExplicit: rawFromSurfaceID != nil,
+            mappedSurfaceRoomID: fromSurfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID else {
             return ["payload": ["posted": false, "error": "No Claude room is active."]]
         }
@@ -2705,14 +2791,15 @@ final class CollaborationRuntime {
 
     func agentRoomDigestForAutomation(roomID requestedRoomID: String?, surfaceID rawSurfaceID: String? = nil, since: Int?) async -> [String: Any] {
         let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
-        let roomID: String?
-        if let requestedRoomID {
-            roomID = requestedRoomID
-        } else if rawSurfaceID != nil {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+        if rawSurfaceID != nil {
+            await restorePersistedAgentRoomMembershipIfNeeded(surfaceID: surfaceUUID)
         }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: requestedRoomID,
+            surfaceWasExplicit: rawSurfaceID != nil,
+            mappedSurfaceRoomID: surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
             return ["digest": "", "error": "Claude room not found."]
         }
@@ -2733,14 +2820,12 @@ final class CollaborationRuntime {
 
     func agentRoomDigestPayloadSnapshot(roomID requestedRoomID: String?, surfaceID rawSurfaceID: String? = nil, since: Int?) -> [String: Any] {
         let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
-        let roomID: String?
-        if let requestedRoomID {
-            roomID = requestedRoomID
-        } else if rawSurfaceID != nil {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
-        }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: requestedRoomID,
+            surfaceWasExplicit: rawSurfaceID != nil,
+            mappedSurfaceRoomID: surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID, let room = agentRoomSnapshotsByID[roomID] else {
             return ["digest": "", "error": "Claude room not found."]
         }
@@ -2805,12 +2890,15 @@ final class CollaborationRuntime {
     /// ledger-only kinds (summaries, status, etc.) are consumed but never injected.
     func agentRoomConsumePendingForAutomation(surfaceID rawSurfaceID: String?) async -> [String: Any] {
         let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
-        let roomID: String?
         if rawSurfaceID != nil {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+            await restorePersistedAgentRoomMembershipIfNeeded(surfaceID: surfaceUUID)
         }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: nil,
+            surfaceWasExplicit: rawSurfaceID != nil,
+            mappedSurfaceRoomID: surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
             return ["text": ""]
         }
@@ -2859,12 +2947,15 @@ final class CollaborationRuntime {
     /// silent failure that motivated the deterministic file path).
     func agentRoomRecapForAutomation(surfaceID rawSurfaceID: String?) async -> [String: Any] {
         let surfaceUUID = resolveAgentRoomSurfaceID(rawSurfaceID)
-        let roomID: String?
         if rawSurfaceID != nil {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] }
-        } else {
-            roomID = surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] } ?? latestAgentRoomID
+            await restorePersistedAgentRoomMembershipIfNeeded(surfaceID: surfaceUUID)
         }
+        let roomID = AgentRoomSelection.roomIDForSurfaceOperation(
+            requestedRoomID: nil,
+            surfaceWasExplicit: rawSurfaceID != nil,
+            mappedSurfaceRoomID: surfaceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
+            latestRoomID: latestAgentRoomID
+        )
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
             return ["text": ""]
         }
@@ -2910,12 +3001,26 @@ final class CollaborationRuntime {
     /// (`resolveLiveSession` + `history`) whose warm-up races at wire time
     /// silently dropped pre-wire messages from the shared room.
     private func ingestAgentRoomTranscriptFiles(roomID: String, members: [ClaudeRoomMember]) async {
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-agentRoomBackfillFreshnessWindow)
         for member in members {
             guard let ref = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
                   let transcriptPath = ref.transcriptPath else { continue }
-            let turns = ClaudeTranscriptFileParser.parseTurns(
-                fileURL: URL(fileURLWithPath: transcriptPath),
+            let fileURL = URL(fileURLWithPath: transcriptPath)
+            let parsedTurns = ClaudeTranscriptFileParser.parseTurns(
+                fileURL: fileURL,
                 limit: agentRoomTranscriptHistoryLimit
+            )
+            // Bound backfill to recent turns so a long-lived/reused session's
+            // transcript file cannot drag ancient conversation into a freshly
+            // created room. Untimestamped turns fall back to the file's own
+            // modification date, so a stale file is excluded wholesale.
+            let fileModifiedAt = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate ?? now
+            let turns = ClaudeTranscriptFileParser.recentTurns(
+                parsedTurns,
+                notOlderThan: cutoff,
+                fallbackDate: fileModifiedAt
             )
             for turn in turns {
                 _ = await agentRoomStore.appendTranscriptTurn(
@@ -2938,10 +3043,14 @@ final class CollaborationRuntime {
         let updatedAt: TimeInterval
     }
 
-    /// Resolves a surface's newest Claude hook session record straight from the
+    /// Resolves the Claude hook session to bind a surface to, straight from the
     /// on-disk hook store (`~/.cmuxterm/claude-hook-sessions.json`, written by
-    /// `cmux hooks claude ...`). Prefers records that carry a transcript path,
-    /// newest `updatedAt` first.
+    /// `cmux hooks claude ...`).
+    ///
+    /// Prefers the surface's *currently active* session (the live Claude that
+    /// last drove hooks in that pane) so wiring binds to the running agent
+    /// rather than a stale session that merely lingers in the store. Falls back
+    /// to the newest session that carries a transcript path.
     static func claudeHookSessionRef(surfaceID: String) -> ClaudeHookSessionRef? {
         let file = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".cmuxterm", isDirectory: true)
@@ -2951,6 +3060,23 @@ final class CollaborationRuntime {
             return nil
         }
         let sessions = (root["sessions"] as? [String: Any]) ?? root
+        func ref(forSessionID sessionID: String) -> ClaudeHookSessionRef? {
+            guard let entry = sessions[sessionID] as? [String: Any] else { return nil }
+            return ClaudeHookSessionRef(
+                sessionID: sessionID,
+                transcriptPath: (entry["transcriptPath"] as? String)?.nilIfEmpty,
+                updatedAt: (entry["updatedAt"] as? TimeInterval) ?? 0
+            )
+        }
+        // The live session for this pane, if the store tracks one, wins so long
+        // as it has a transcript to read.
+        if let activeBySurface = root["activeSessionsBySurface"] as? [String: Any],
+           let activeEntry = activeBySurface[surfaceID] as? [String: Any],
+           let activeSessionID = (activeEntry["sessionId"] as? String)?.nilIfEmpty,
+           let activeRef = ref(forSessionID: activeSessionID),
+           activeRef.transcriptPath != nil {
+            return activeRef
+        }
         let candidates = sessions.compactMap { sessionID, value -> ClaudeHookSessionRef? in
             guard let entry = value as? [String: Any],
                   (entry["surfaceId"] as? String) == surfaceID else {

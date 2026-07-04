@@ -3660,6 +3660,30 @@ struct CMUXCLI {
                 let response = try client.sendV2(method: "agent.room.disconnect_surface", params: params)
                 printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Disconnected surface from Claude room")
 
+            case "reset", "clear":
+                let (roomID, remaining) = parseOption(rest, name: "--room-id")
+                if let extra = remaining.first {
+                    throw CLIError(message: String(
+                        format: String(
+                            localized: "cli.agentRoom.reset.unexpectedArgument",
+                            defaultValue: "cmux agent-room reset: unexpected argument '%@'"
+                        ),
+                        extra
+                    ))
+                }
+                var params: [String: Any] = [:]
+                if let roomID { params["room_id"] = roomID }
+                let response = try client.sendV2(method: "agent.room.reset", params: params)
+                printV2Payload(
+                    response,
+                    jsonOutput: jsonOutput,
+                    idFormat: idFormat,
+                    fallbackText: String(
+                        localized: "cli.agentRoom.reset.fallback",
+                        defaultValue: "Reset Claude room state"
+                    )
+                )
+
             case "post":
                 let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
                 let (kind, afterKind) = parseOption(afterRoom, name: "--kind")
@@ -3700,7 +3724,10 @@ struct CMUXCLI {
                 }
 
             default:
-                throw CLIError(message: "Usage: cmux agent-room <status|create|connect|disconnect|post|digest>")
+                throw CLIError(message: String(
+                    localized: "cli.agentRoom.usage",
+                    defaultValue: "Usage: cmux agent-room <status|create|connect|disconnect|reset|post|digest>"
+                ))
             }
 
         case "agent-hibernation":
@@ -24989,12 +25016,20 @@ struct CMUXCLI {
     ) {
         guard mappedSession == nil, let sessionId = parsedInput.sessionId else { return }
         telemetry.breadcrumb("claude-hook.room.session-selfheal")
+        // The session firing this room hook is the live Claude for the pane, so
+        // mark it active and replaceable. `markActive` repoints the surface's
+        // active-session slot at this live session (so wiring/backfill bind to
+        // it instead of a stale predecessor), and `allowsNewSessionReplacement`
+        // lets the next fresh Claude in the same pane reclaim the surface rather
+        // than staying pinned to this one forever.
         try? sessionStore.upsert(
             sessionId: sessionId,
             workspaceId: workspaceId,
             surfaceId: surfaceId,
             cwd: parsedInput.cwd,
-            transcriptPath: parsedInput.transcriptPath
+            transcriptPath: parsedInput.transcriptPath,
+            markActive: true,
+            allowsNewSessionReplacement: true
         )
     }
 
