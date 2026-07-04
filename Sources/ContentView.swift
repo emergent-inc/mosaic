@@ -1188,6 +1188,7 @@ struct ContentView: View {
     @State private var isFeedbackComposerPresented = false
     @State private var isTutorialVideoPresented = false
     @State private var tutorialVideoNaturalSize: CGSize?
+    @State private var didRequestAutomaticTutorialVideoPresentation = false
     @AppStorage(AppCatalogSection().renameSelectsExistingName.userDefaultsKey)
     private var commandPaletteRenameSelectAllOnFocus = AppCatalogSection().renameSelectsExistingName.defaultValue
     @AppStorage(AppCatalogSection().commandPaletteSearchesAllSurfaces.userDefaultsKey)
@@ -2713,8 +2714,8 @@ struct ContentView: View {
             updateTitlebarText()
             syncTrafficLightInset()
 
-            if TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: observedWindow) {
-                presentTutorialVideo()
+            if let kind = TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: observedWindow) {
+                presentTutorialVideo(kind: kind)
             }
 
             // Startup recovery (#399): if session restore or a race condition leaves the
@@ -3157,11 +3158,26 @@ struct ContentView: View {
 
         view = AnyView(view.onReceive(NotificationCenter.default.publisher(for: .tutorialVideoPresentationRequested)) { notification in
             let requestedWindow = notification.object as? NSWindow
-            guard TutorialVideoPresentationCenter.shared.consumePendingPresentation(
+            guard let kind = TutorialVideoPresentationCenter.shared.consumePendingPresentation(
                 for: observedWindow,
                 requestedWindow: requestedWindow
             ) else { return }
-            presentTutorialVideo()
+            presentTutorialVideo(kind: kind)
+        })
+
+        let authIsAuthenticated = AppDelegate.shared?.auth?.coordinator.isAuthenticated ?? false
+        let authIsRestoringSession = AppDelegate.shared?.auth?.coordinator.isRestoringSession ?? true
+        view = AnyView(view.onAppear {
+            requestAutomaticTutorialVideoIfNeeded(for: observedWindow)
+        })
+        view = AnyView(view.onChange(of: observedWindow?.windowNumber ?? 0) { _, _ in
+            requestAutomaticTutorialVideoIfNeeded(for: observedWindow)
+        })
+        view = AnyView(view.onChange(of: authIsAuthenticated) { _, _ in
+            requestAutomaticTutorialVideoIfNeeded(for: observedWindow)
+        })
+        view = AnyView(view.onChange(of: authIsRestoringSession) { _, _ in
+            requestAutomaticTutorialVideoIfNeeded(for: observedWindow)
         })
 
         view = AnyView(view.background(WindowAccessor(dedupeByWindow: false) { window in
@@ -3378,9 +3394,10 @@ struct ContentView: View {
                 syncCommandPaletteDebugStateForObservedWindow()
                 installSidebarResizerPointerMonitorIfNeeded()
                 updateSidebarResizerBandState()
-                if TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: window) {
-                    presentTutorialVideo()
+                if let kind = TutorialVideoPresentationCenter.shared.consumePendingPresentation(for: window) {
+                    presentTutorialVideo(kind: kind)
                 }
+                requestAutomaticTutorialVideoIfNeeded(for: window)
             }
         }
 
@@ -8874,9 +8891,29 @@ struct ContentView: View {
         }
     }
 
-    private func presentTutorialVideo() {
+    private func requestAutomaticTutorialVideoIfNeeded(for window: NSWindow?) {
+        guard let window else { return }
+        guard !didRequestAutomaticTutorialVideoPresentation else { return }
+        guard let coordinator = AppDelegate.shared?.auth?.coordinator else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard TutorialVideoFirstRunPresentation.shouldPresentAutomatically(
+            isRunningUnderXCTest: TutorialVideoFirstRunPresentation.isRunningUnderXCTest(environment: environment),
+            isAuthenticated: coordinator.isAuthenticated,
+            isRestoringSession: coordinator.isRestoringSession,
+            environment: environment
+        ) else {
+            return
+        }
+        didRequestAutomaticTutorialVideoPresentation = true
+        TutorialVideoPresentationCenter.shared.requestPresentation(in: window, kind: .automaticFirstRun)
+    }
+
+    private func presentTutorialVideo(kind: TutorialVideoPresentationKind = .manual) {
         tutorialVideoNaturalSize = TutorialVideoResource.naturalVideoSize()
         isTutorialVideoPresented = true
+        if case .automaticFirstRun = kind {
+            TutorialVideoSettings.markSeen()
+        }
     }
 
     private func dismissTutorialVideo() {
