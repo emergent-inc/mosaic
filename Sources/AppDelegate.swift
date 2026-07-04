@@ -24,6 +24,7 @@ import WebKit
 import Combine
 import ObjectiveC.runtime
 import Darwin
+import CmuxCollaboration
 import CmuxFoundation
 import CmuxSidebar
 
@@ -790,6 +791,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// The auth graph, injected once via `configure(...)` at app startup.
     private(set) var auth: MacAuthComposition?
     private let authAnalyticsIdentityObserver = MacAuthAnalyticsIdentityObserver()
+    /// Keeps the collaboration peer identity (display name, profile image)
+    /// in sync with the auth user as it hydrates after launch restore or a
+    /// token refresh, so shared-terminal owner avatars self-correct instead
+    /// of showing stale initials until the next collaboration action.
+    private let collaborationIdentityAutoRefresher = CollaborationIdentityAutoRefresher(refresh: {
+        CollaborationRuntime.shared.refreshPeerIdentityFromCurrentAuth()
+    })
     /// Strongly-held observers for every active TabManager. Each observer owns
     /// Combine subscriptions that publish workspace.updated to mobile clients.
     private var mobileWorkspaceListObservers: [ObjectIdentifier: MobileWorkspaceListObserver] = [:]
@@ -2089,6 +2097,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         TerminalController.shared.agentChatTranscriptService = agentChatTranscriptService
         auth.start()
         authAnalyticsIdentityObserver.start(coordinator: auth.coordinator)
+        collaborationIdentityAutoRefresher.start(trackUser: { [weak coordinator = auth.coordinator] in
+            _ = coordinator?.currentUser
+        })
         ensureMobileWorkspaceListObserver(for: tabManager)
         MobileTerminalRenderObserver.shared.start()
         agentChatTranscriptService.start()
