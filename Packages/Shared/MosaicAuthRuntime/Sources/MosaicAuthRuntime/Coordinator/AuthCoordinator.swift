@@ -585,6 +585,21 @@ public final class AuthCoordinator {
             }
             guard generation == sessionGeneration else { return }
             availableTeams = teams
+            // First sign-in with no persisted selection: honor the team the
+            // server activated (e.g. the org www set active after accepting an
+            // invite) when it is one of the user's teams. A persisted choice
+            // always wins, so this never overrides an explicit switch. Best
+            // effort: a failure falls through to the default first-team pick.
+            if selectedTeamID == nil,
+               let serverSelected = try? await runPhase(.listTeams, timeout: timeouts.network, {
+                   try await client.serverSelectedTeamID()
+               }),
+               generation == sessionGeneration,
+               teams.contains(where: { $0.id == serverSelected }) {
+                selectedTeamID = serverSelected
+                return
+            }
+            guard generation == sessionGeneration else { return }
             selectedTeamID = Self.resolveTeamID(selectedTeamID: selectedTeamID, teams: teams)
         } catch {
             authLog.error("Failed to list teams: \(error.localizedDescription, privacy: .private)")

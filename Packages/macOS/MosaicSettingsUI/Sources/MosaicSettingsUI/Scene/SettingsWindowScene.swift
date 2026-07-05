@@ -87,6 +87,7 @@ public struct SettingsWindowRoot: View {
     private var catalog: SettingCatalog { runtime.catalog }
     private var hostActions: SettingsHostActions { runtime.hostActions }
     private var accountFlow: AccountFlow? { runtime.accountFlow }
+    private var presentation: SettingsPresentation { runtime.presentation }
 
     /// Resolves the selected section pane from the persisted raw value,
     /// defaulting to ``SettingsSectionID/account`` when the stored value
@@ -116,6 +117,16 @@ public struct SettingsWindowRoot: View {
     }
 
     public var body: some View {
+        Group {
+            if presentation.showsSidebar {
+                fullSettingsBody
+            } else {
+                accountOnlyBody
+            }
+        }
+    }
+
+    private var fullSettingsBody: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebar
         } detail: {
@@ -130,7 +141,7 @@ public struct SettingsWindowRoot: View {
         // Legacy SettingsRootView pins the window minimum to
         // SettingsWindowPresenter.minimumSize (820 x 540); mirror that
         // so the package window can shrink to the same lower bound.
-        .frame(minWidth: 820, minHeight: 540)
+        .frame(minWidth: presentation.minimumWidth, minHeight: presentation.minimumHeight)
         .settingsErrorAlert(log: runtime.errorLog)
         .onReceive(NotificationCenter.default.publisher(for: Self.navigationRequestName)) { notification in
             applyNavigationRequest(notification)
@@ -143,6 +154,38 @@ public struct SettingsWindowRoot: View {
             guard newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             selectedSidebarEntryID = sectionEntryID(for: selectedSection)
         }
+        .onAppear {
+            reconcileStoredSelectionWithPresentation()
+        }
+    }
+
+    private var accountOnlyBody: some View {
+        ScrollView {
+            SettingsCard {
+                AccountIdentityCard(flow: accountFlow)
+                // Mirror AccountSection: solo sign-in uses account-only
+                // presentation (no sidebar), but multi-org users still need
+                // the team picker here — accountOnlyBody previously showed
+                // only the identity row and hid org switching entirely.
+                if let accountFlow, accountFlow.availableTeams.count > 1 {
+                    SettingsCardDivider()
+                    AccountTeamPicker(flow: accountFlow)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 20)
+        }
+        .navigationTitle(presentation.windowTitle)
+        .frame(minWidth: presentation.minimumWidth, minHeight: presentation.minimumHeight)
+        .settingsErrorAlert(log: runtime.errorLog)
+    }
+
+    private func reconcileStoredSelectionWithPresentation() {
+        guard !presentation.contains(selectedSection) else { return }
+        selectedSectionRaw = SettingsSectionID.account.rawValue
+        selectedSidebarEntryID = sectionEntryID(for: .account)
     }
 
     public static let navigationRequestName = Notification.Name("mosaic.settings.navigate")
@@ -159,6 +202,10 @@ public struct SettingsWindowRoot: View {
             let rawValue = notification.userInfo?["target"] as? String,
             let target = SettingsSectionID(rawValue: rawValue)
         else { return }
+        guard presentation.contains(target) else {
+            navigate(to: .account, preferSectionSelection: true)
+            return
+        }
         // Legacy preserves the highlighted search hit when an external
         // navigation request resolves to the same section the currently
         // selected sidebar entry already lives in. Without this, typing
@@ -425,105 +472,98 @@ public struct SettingsWindowRoot: View {
 
     @ViewBuilder
     private var sectionStack: some View {
-        // Order matches the legacy in-app SettingsView scroll order:
-        // Account, App, Terminal, TextBox, Mobile, Sidebar, Beta Features,
-        // Automation, Browser (with embedded Import), Global Hotkey,
-        // Keyboard Shortcuts, Workspace Colors, mosaic.json, Reset.
-        AccountSection(
-            defaultsStore: defaultsStore,
-            catalog: catalog,
-            accountFlow: accountFlow
-        )
-        .id(anchorID(for: .account))
+        ForEach(presentation.visibleSections) { section in
+            sectionView(for: section)
+                .id(anchorID(for: section))
+        }
+    }
 
-        AppSection(
-            defaultsStore: defaultsStore,
-            catalog: catalog,
-            hostActions: hostActions
-        )
-        .id(anchorID(for: .app))
-
-        TerminalSection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            catalog: catalog,
-            hostActions: hostActions
-        )
-        .id(anchorID(for: .terminal))
-
-        TextBoxSection(defaultsStore: defaultsStore, catalog: catalog)
-            .id(anchorID(for: .textBox))
-
-        SleepyModeSection(hostActions: hostActions, store: hostActions.sleepyModeStore())
-            .id(anchorID(for: .sleepyMode))
-
-        MobileSection(defaultsStore: defaultsStore, catalog: catalog, hostActions: hostActions)
-            .id(anchorID(for: .mobile))
-
-        SidebarSection(defaultsStore: defaultsStore, catalog: catalog, hostActions: hostActions)
-            .id(anchorID(for: .sidebarAppearance))
-
-        CustomSidebarsSection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            catalog: catalog,
-            errorLog: runtime.errorLog
-        )
-        .id(anchorID(for: .customSidebars))
-
-        BetaFeaturesSection(defaultsStore: defaultsStore, catalog: catalog)
-            .id(anchorID(for: .betaFeatures))
-
-        AutomationSection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            secretStore: secretStore,
-            catalog: catalog,
-            errorLog: runtime.errorLog
-        )
-        .id(anchorID(for: .automation))
-
-        BrowserSection(
-            defaultsStore: defaultsStore,
-            catalog: catalog,
-            hostActions: hostActions,
-            importAnchorID: anchorID(for: .browserImport)
-        )
-        .id(anchorID(for: .browser))
-
-        GlobalHotkeySection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            catalog: catalog,
-            errorLog: runtime.errorLog
-        )
-        .id(anchorID(for: .globalHotkey))
-
-        KeyboardShortcutsSection(
-            jsonStore: jsonStore,
-            catalog: catalog,
-            errorLog: runtime.errorLog,
-            hostActions: hostActions
-        )
-        .id(anchorID(for: .keyboardShortcuts))
-
-        WorkspaceColorsSection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            catalog: catalog,
-            errorLog: runtime.errorLog
-        )
-        .id(anchorID(for: .workspaceColors))
-
-        SettingsJSONSection(jsonStore: jsonStore, hostActions: hostActions)
-            .id(anchorID(for: .settingsJSON))
-
-        ResetSection(
-            defaultsStore: defaultsStore,
-            jsonStore: jsonStore,
-            catalog: catalog
-        )
-        .id(anchorID(for: .reset))
+    @ViewBuilder
+    private func sectionView(for section: SettingsSectionID) -> some View {
+        switch section {
+        case .account:
+            AccountSection(
+                defaultsStore: defaultsStore,
+                catalog: catalog,
+                accountFlow: accountFlow
+            )
+        case .app:
+            AppSection(
+                defaultsStore: defaultsStore,
+                catalog: catalog,
+                hostActions: hostActions
+            )
+        case .terminal:
+            TerminalSection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                catalog: catalog,
+                hostActions: hostActions
+            )
+        case .textBox:
+            TextBoxSection(defaultsStore: defaultsStore, catalog: catalog)
+        case .sleepyMode:
+            SleepyModeSection(hostActions: hostActions, store: hostActions.sleepyModeStore())
+        case .mobile:
+            MobileSection(defaultsStore: defaultsStore, catalog: catalog, hostActions: hostActions)
+        case .sidebarAppearance:
+            SidebarSection(defaultsStore: defaultsStore, catalog: catalog, hostActions: hostActions)
+        case .customSidebars:
+            CustomSidebarsSection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                catalog: catalog,
+                errorLog: runtime.errorLog
+            )
+        case .betaFeatures:
+            BetaFeaturesSection(defaultsStore: defaultsStore, catalog: catalog)
+        case .automation:
+            AutomationSection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                secretStore: secretStore,
+                catalog: catalog,
+                errorLog: runtime.errorLog
+            )
+        case .browser:
+            BrowserSection(
+                defaultsStore: defaultsStore,
+                catalog: catalog,
+                hostActions: hostActions,
+                importAnchorID: anchorID(for: .browserImport)
+            )
+        case .globalHotkey:
+            GlobalHotkeySection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                catalog: catalog,
+                errorLog: runtime.errorLog
+            )
+        case .keyboardShortcuts:
+            KeyboardShortcutsSection(
+                jsonStore: jsonStore,
+                catalog: catalog,
+                errorLog: runtime.errorLog,
+                hostActions: hostActions
+            )
+        case .workspaceColors:
+            WorkspaceColorsSection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                catalog: catalog,
+                errorLog: runtime.errorLog
+            )
+        case .settingsJSON:
+            SettingsJSONSection(jsonStore: jsonStore, hostActions: hostActions)
+        case .reset:
+            ResetSection(
+                defaultsStore: defaultsStore,
+                jsonStore: jsonStore,
+                catalog: catalog
+            )
+        case .browserImport:
+            EmptyView()
+        }
     }
 
     private func anchorID(for section: SettingsSectionID) -> String {
