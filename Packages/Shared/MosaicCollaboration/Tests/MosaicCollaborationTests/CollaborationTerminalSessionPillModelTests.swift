@@ -9,7 +9,7 @@ import Testing
         )
         #expect(!model.hasSession)
         #expect(!model.showsParticipantCount)
-        #expect(model.otherParticipantCount == 0)
+        #expect(model.totalParticipantCount == 0)
     }
 
     @Test func noSessionIgnoresStaleParticipantCount() {
@@ -20,33 +20,32 @@ import Testing
             participantCount: 3
         )
         #expect(!model.showsParticipantCount)
-        #expect(model.otherParticipantCount == 0)
+        #expect(model.totalParticipantCount == 0)
     }
 
-    @Test func freshSessionWithOnlyLocalParticipantShowsZero() {
-        // The local user is always a participant, so a session no one else
-        // has joined reads "0 other people".
+    @Test func freshSessionWithOnlyLocalParticipantShowsOne() {
+        // The session pill shows total people, including the local user.
         let model = CollaborationTerminalSessionPillModel(
             workspaceSessionCode: "ABC123",
             participantCount: 1
         )
         #expect(model.hasSession)
         #expect(model.showsParticipantCount)
-        #expect(model.otherParticipantCount == 0)
+        #expect(model.totalParticipantCount == 1)
     }
 
     @Test(arguments: [
-        (participantCount: 2, expected: 1),
-        (participantCount: 3, expected: 2),
-        (participantCount: 6, expected: 5),
+        (participantCount: 2, expected: 2),
+        (participantCount: 3, expected: 3),
+        (participantCount: 6, expected: 6),
     ])
-    func sessionCountExcludesLocalUser(participantCount: Int, expected: Int) {
+    func sessionCountIncludesLocalUser(participantCount: Int, expected: Int) {
         let model = CollaborationTerminalSessionPillModel(
             workspaceSessionCode: "ABC123",
             participantCount: participantCount
         )
         #expect(model.showsParticipantCount)
-        #expect(model.otherParticipantCount == expected)
+        #expect(model.totalParticipantCount == expected)
     }
 
     @Test func sessionWithNoSnapshotsClampsToZero() {
@@ -56,7 +55,7 @@ import Testing
             workspaceSessionCode: "ABC123",
             participantCount: 0
         )
-        #expect(model.otherParticipantCount == 0)
+        #expect(model.totalParticipantCount == 0)
     }
 
     @Test func defaultsToNoIncomingBadge() {
@@ -88,7 +87,7 @@ import Testing
             incomingInviteCount: 1
         )
         #expect(model.showsParticipantCount)
-        #expect(model.otherParticipantCount == 2)
+        #expect(model.totalParticipantCount == 3)
         #expect(model.showsIncomingBadge)
     }
 

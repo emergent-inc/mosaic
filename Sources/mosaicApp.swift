@@ -860,16 +860,25 @@ struct mosaicApp: App {
             windowAndViewCommands
         }
 
-        Window(String(localized: "settings.title", defaultValue: "Settings"), id: SettingsWindowPresenter.windowID) {
+        Window(settingsRuntime.presentation.windowTitle, id: SettingsWindowPresenter.windowID) {
             SettingsWindowRoot(runtime: settingsRuntime)
                 .settingsRuntime(settingsRuntime)
                 .mosaicFontMagnificationEnvironment()
                 .background(WindowAccessor(dedupeByWindow: false) { window in
                     SettingsWindowPresenter.configure(window: window)
+                    let minSize = NSSize(
+                        width: settingsRuntime.presentation.minimumWidth,
+                        height: settingsRuntime.presentation.minimumHeight
+                    )
+                    window.minSize = minSize
+                    window.contentMinSize = minSize
                 })
                 .mosaicAppearanceColorScheme(appearanceMode)
         }
-        .defaultSize(width: 980, height: 680)
+        .defaultSize(
+            width: settingsRuntime.presentation.showsSidebar ? 980 : 480,
+            height: settingsRuntime.presentation.showsSidebar ? 680 : 260
+        )
         .windowResizability(.contentMinSize)
         .commands {
             SidebarCommands()
