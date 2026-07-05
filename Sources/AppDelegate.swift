@@ -798,6 +798,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private let collaborationIdentityAutoRefresher = CollaborationIdentityAutoRefresher(refresh: {
         CollaborationRuntime.shared.refreshPeerIdentityFromCurrentAuth()
     })
+    /// Re-resolves collaboration entitlements (and drops the directory-member
+    /// cache) whenever the active org changes — the user switching teams in
+    /// Settings. Sign-in/restore already refresh via `onSignedIn`; this closes
+    /// the in-session team-switch gap that previously left the sharing UI (and
+    /// its directory member list) pinned to the old org.
+    private let collaborationOrgSwitchRefresher = CollaborationIdentityAutoRefresher(refresh: {
+        Task { @MainActor in
+            await CollaborationRuntime.shared.handleActiveCollaborationOrgChanged()
+        }
+    })
     /// Strongly-held observers for every active TabManager. Each observer owns
     /// Combine subscriptions that publish workspace.updated to mobile clients.
     private var mobileWorkspaceListObservers: [ObjectIdentifier: MobileWorkspaceListObserver] = [:]
@@ -2086,6 +2096,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         authAnalyticsIdentityObserver.start(coordinator: auth.coordinator)
         collaborationIdentityAutoRefresher.start(trackUser: { [weak coordinator = auth.coordinator] in
             _ = coordinator?.currentUser
+        })
+        collaborationOrgSwitchRefresher.start(trackUser: { [weak coordinator = auth.coordinator] in
+            _ = coordinator?.resolvedTeamID
         })
         ensureMobileWorkspaceListObserver(for: tabManager)
         MobileTerminalRenderObserver.shared.start()

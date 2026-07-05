@@ -21599,7 +21599,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in with your mosaic account to enable sync across devices."
+            "value": "Sign in with your Mosaic account to enable sync across devices."
           }
         }
       }
@@ -37833,7 +37833,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "People in session"
+            "value": "People in session (%lld)"
           }
         }
       }
@@ -37970,6 +37970,17 @@
         }
       }
     },
+    "collaboration.action.addTeammate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add teammate"
+          }
+        }
+      }
+    },
     "collaboration.action.shareWithTeammate": {
       "extractionState": "manual",
       "localizations": {
@@ -38010,6 +38021,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Start a session before sharing it with a teammate."
+          }
+        }
+      }
+    },
+    "collaboration.directory.preparing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing session…"
           }
         }
       }
@@ -38295,18 +38317,18 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect Claude Room"
+            "value": "Link agent room"
           }
         }
       }
     },
-    "collaboration.agentRoom.connectedFormat": {
+    "collaboration.agentRoom.labelFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude room %@"
+            "value": "Room %d"
           }
         }
       }

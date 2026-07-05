@@ -17,6 +17,33 @@ protocol CollaborationEditablePanel: AnyObject {
     func applyCollaborationText(_ text: String)
 }
 
+/// Encodes and writes high-throughput collaboration relay frames off the main
+/// actor.
+///
+/// `CollaborationRuntime` is `@MainActor`, and the terminal render / keystroke
+/// path shares that thread. Doing reflective `JSONEncoder` work (plus base64 for
+/// terminal output) and awaiting the socket write on the main actor injected
+/// latency into typing. This actor moves that work onto its own executor; the
+/// main actor only hands over `Sendable` value frames. The actor serializes its
+/// own calls, so concurrent `send` calls preserve the order in which they reach
+/// the actor (terminal output additionally carries per-frame sequence numbers,
+/// so it does not rely on strict socket ordering).
+///
+/// Note: the cursor pointer stream is deliberately NOT routed here -- it encodes
+/// and sends inline on the main actor to keep its low-latency ordering exact.
+actor CollaborationRelayCodec {
+    private let encoder = JSONEncoder()
+
+    func send<T: Encodable & Sendable>(_ frame: T, over task: URLSessionWebSocketTask) async throws {
+        let data = try encoder.encode(frame)
+        try await task.send(.string(String(decoding: data, as: UTF8.self)))
+    }
+
+    func send(encoded data: Data, over task: URLSessionWebSocketTask) async throws {
+        try await task.send(.string(String(decoding: data, as: UTF8.self)))
+    }
+}
+
 struct CollaborationDocumentHeaderState: Equatable {
     var isShared = false
     var statusText = ""
@@ -149,6 +176,31 @@ private struct CollaborationTerminalRenderGridWire: Codable {
     }
 }
 
+/// Viewer -> host request to (re)send the full render-grid seed for a shared
+/// terminal. Sent when a mirror pane exists but no full seed has been applied
+/// (the one-shot seed can be dropped by the relay's size cap, raced past the
+/// pane registration, or never produced because the host surface wasn't live
+/// at share time). The relay forwards unknown `terminal.*` types opaquely, so
+/// this needs no worker change.
+private struct CollaborationTerminalRenderGridRequestWire: Codable {
+    let type: String
+    let terminalID: String
+    let fromPeerID: String?
+    let recipientParticipantIDs: [String]?
+
+    init(
+        type: String,
+        terminalID: String,
+        fromPeerID: String? = nil,
+        recipientParticipantIDs: [String]? = nil
+    ) {
+        self.type = type
+        self.terminalID = terminalID
+        self.fromPeerID = fromPeerID
+        self.recipientParticipantIDs = recipientParticipantIDs
+    }
+}
+
 enum CollaborationTerminalRenderGridSeedLimiter {
     /// The collaboration relay silently drops any websocket message over
     /// 1 MiB (`parseEnvelope` in workers/collaboration/src/protocol.ts), and
@@ -216,6 +268,7 @@ private struct CollaborationTerminalPointerWire: Codable {
     let contentRow: Double?
     let contentRowFromBottom: Double?
     let viewportRowFromBottom: Double?
+    let scrolledToBottom: Bool?
 }
 
 private struct CollaborationTerminalSelectionRectWire: Codable {
@@ -420,6 +473,10 @@ private final class CollaborationRelayConnection {
     var webSocketTask: URLSessionWebSocketTask?
     var eventsTask: Task<Void, Never>?
     var heartbeatTask: Task<Void, Never>?
+    /// Tail of the ordered frame-processing chain. Incoming frames are handled
+    /// strictly in arrival order, but decoupled from the socket read so the
+    /// next `receive` can be armed before (potentially heavy) processing runs.
+    var frameProcessingTask: Task<Void, Never>?
     var peersByID: [String: CollaborationPeerWire] = [:]
     var connectionLabel = CollaborationStrings.connecting
     let joinAcknowledgement = CollaborationJoinAcknowledgementGate()
@@ -444,6 +501,8 @@ private final class CollaborationRelayConnection {
         webSocketTask = nil
         eventsTask?.cancel()
         eventsTask = nil
+        frameProcessingTask?.cancel()
+        frameProcessingTask = nil
     }
 }
 
@@ -480,6 +539,10 @@ struct AgentRoomHeaderState: Equatable {
     /// True when any locally connected member of this room has no Claude hook
     /// session record (context will not sync for that member).
     var isDegraded = false
+    /// 1-based room number among active rooms on this machine.
+    var displayNumber: Int?
+    /// Stable palette index for accent color and pane highlight.
+    var paletteIndex: Int?
 }
 
 private final class AgentRoomWireAnchor {
@@ -749,6 +812,20 @@ extension CollaborationTerminalOwnerAvatarImageCache {
     }
 }
 
+extension Notification.Name {
+    static let collaborationIncomingInviteCountDidChange = Notification.Name(
+        "collaborationIncomingInviteCountDidChange"
+    )
+    static let collaborationIncomingInviteAlertDidChange = Notification.Name(
+        "collaborationIncomingInviteAlertDidChange"
+    )
+}
+
+private struct DirectoryMemberCacheEntry {
+    let members: [CollaborationDirectoryMember]
+    let fetchedAt: Date
+}
+
 @MainActor
 @Observable
 final class CollaborationRuntime {
@@ -764,6 +841,7 @@ final class CollaborationRuntime {
     private static let terminalRecipientSelectionStore = CollaborationTerminalRecipientSelectionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
     )
+    private static let directoryMemberCacheTTL: TimeInterval = 5 * 60
 
     private(set) var relayURLString = CollaborationRuntime.defaultRelayURLString
     private(set) var sessionCode: String?
@@ -795,6 +873,16 @@ final class CollaborationRuntime {
     /// Signed session descriptors keyed by relay room, used to invite a
     /// teammate (via the org directory) into an already-created session.
     @ObservationIgnored private var sessionDescriptorsByRoom: [String: String] = [:]
+    /// Teammate user ids we've sent directory invites to, keyed by relay room, so
+    /// ending the session can withdraw those invites from their inbox instead of
+    /// leaving stale invites that keep resurfacing after the session ends.
+    @ObservationIgnored private var invitedTeammateUserIDsByRoom: [String: Set<String>] = [:]
+    @ObservationIgnored private var directoryMemberCacheByOrgID: [String: DirectoryMemberCacheEntry] = [:]
+    @ObservationIgnored private var directoryMemberRefreshTasksByOrgID: [String: Task<[CollaborationDirectoryMember], Never>] = [:]
+    /// The org whose entitlements are currently reflected in
+    /// `collaborationEntitlements`, so an active-org observation can skip
+    /// redundant refreshes when the resolved org id has not actually changed.
+    @ObservationIgnored private var lastEntitlementsOrgID: String?
     @ObservationIgnored private var incomingSharedSessionsPollTask: Task<Void, Never>?
     /// Persistent relay WebSocket that pushes invite nudges for the signed-in
     /// user, plus the user id it is bound to (so we restart on user change).
@@ -807,6 +895,12 @@ final class CollaborationRuntime {
     private let terminalOwnerProfileImageCache = CollaborationTerminalOwnerAvatarImageCache.liveTerminalOwnerCache()
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    /// Encodes + writes high-throughput outbound frames (terminal output) off
+    /// the main actor so the render/keystroke path is never blocked by JSON +
+    /// base64 encoding. Inbound frames decode synchronously on main (a tight
+    /// receive loop with no per-frame actor round-trip), and the cursor sends
+    /// inline on main, both to preserve the smooth low-latency pointer path.
+    private let frameWriter = CollaborationRelayCodec()
     private var connectionsBySessionCode: [String: CollaborationRelayConnection] = [:]
     private var panelsByDocumentID: [String: WeakCollaborationPanel] = [:]
     private var descriptorsByDocumentID: [String: SharedFileDescriptor] = [:]
@@ -828,11 +922,34 @@ final class CollaborationRuntime {
     private var terminalOwnerAvatarRequestKeysByID: [String: String] = [:]
     private var mirroredTerminalRenderGridPatchSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
+    /// Render-grid frames that arrived before the mirror pane registered
+    /// (the seed can race `terminal.open` handling); drained on open.
+    private var pendingMirroredRenderGridFramesByID: [String: [MobileTerminalRenderGridFrame]] = [:]
+    /// Caps the pre-open seed buffer so a terminal that never opens cannot
+    /// accumulate frames without bound.
+    private static let pendingMirroredRenderGridFrameLimit = 4
+    /// Delayed watchdogs that re-request the full seed from the host when a
+    /// mirror pane exists but no full render-grid seed has been applied.
+    private var mirroredRenderGridSeedRequestTasksByID: [String: Task<Void, Never>] = [:]
+    private static let mirroredRenderGridSeedRequestDelay: Duration = .seconds(2)
+    private static let mirroredRenderGridSeedRequestAttempts = 2
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
-    private var terminalPointerLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
     private var terminalSelectionLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
+    /// Last send timestamp per surface, used to throttle pointer frames to the
+    /// mouse-event cadence. Fired fire-and-forget (concurrent), which keeps
+    /// motion smooth: send-completion latency never gates the update rate.
+    private var terminalPointerLastSentAtBySurfaceID: [UUID: TimeInterval] = [:]
+    /// Minimum spacing between pointer sends. 60 Hz matches the mouse-event
+    /// stream and was the smooth baseline before the coalescing regression.
+    private static let terminalPointerMinSendInterval: TimeInterval = 1.0 / 60.0
+    /// Last time we probed a hosted terminal's grid size to detect a resize.
+    /// The probe (`gridCells()` -> `ghostty_surface_size`) piggybacks on output,
+    /// but output fires per keystroke, so we throttle the probe to a human-scale
+    /// cadence to keep the typing path off that C call on every chunk.
+    private var hostedTerminalDimensionsProbedAtByID: [String: TimeInterval] = [:]
+    private static let hostedTerminalDimensionsProbeInterval: TimeInterval = 0.25
     private var snapshotFallbackTasks: [String: Task<Void, Never>] = [:]
     private var sessionStartedAtBySessionCode: [String: TimeInterval] = [:]
     private var isPresentingStartDialog = false
@@ -858,6 +975,7 @@ final class CollaborationRuntime {
     @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
     @ObservationIgnored private let productAnalytics = ProductAnalytics.shared
     private var latestAgentRoomID: String?
+    private static let agentRoomDisplayOrderDefaultsKey = "collaboration.agentRoom.displayOrder"
     private let agentRoomActiveDispatchPromptBuilder = AgentRoomActiveDispatchPromptBuilder()
     private let agentRoomTranscriptHistoryLimit = 24
     private let agentRoomContextPackTranscriptLimit = 8
@@ -1424,6 +1542,10 @@ final class CollaborationRuntime {
     /// Presents the org-directory teammate picker for the active session and,
     /// on selection, sends a directory invite (the teammate receives it in
     /// their incoming-sessions inbox). Team/enterprise only.
+    ///
+    /// Existing-session entry: share an already-live session with a teammate.
+    /// Requires an active connection (the session pill and recipient popovers
+    /// only surface this once a session exists).
     func presentTeammateDirectorySharePicker() {
         guard activeConnection != nil else {
             lastErrorMessage = CollaborationStrings.shareWithTeammateNoSession
@@ -1431,36 +1553,72 @@ final class CollaborationRuntime {
             return
         }
         Task { @MainActor in
-            let members = await loadDirectoryMembers()
-            guard !members.isEmpty else {
-                CollaborationMessagePanel(
-                    title: CollaborationStrings.shareWithTeammateTitle,
-                    message: CollaborationStrings.directoryEmpty,
-                    buttonTitle: CollaborationStrings.okButton
-                ).run()
+            await runTeammateDirectorySharePicker(pendingSession: nil)
+        }
+    }
+
+    /// Create-path entry: the session created by `pendingSession` may still be
+    /// creating/connecting. Presents the picker immediately from the warm
+    /// directory cache; once the owner picks a teammate, waits for the session
+    /// to be ready (showing a spinner only if it hasn't landed yet) before
+    /// sending the invite. This keeps the NSAlert off the relay-connect
+    /// critical path. `pendingSession` resolves to whether the concurrent
+    /// create + connect established a live connection.
+    func presentTeammateDirectorySharePicker(pendingSession: Task<Bool, Never>) {
+        Task { @MainActor in
+            await runTeammateDirectorySharePicker(pendingSession: pendingSession)
+        }
+    }
+
+    /// Shared picker core. When `pendingSession` is non-nil the session is
+    /// being created concurrently, so the invite waits on it after selection;
+    /// when nil the caller already guaranteed a live `activeConnection`.
+    @MainActor
+    private func runTeammateDirectorySharePicker(pendingSession: Task<Bool, Never>?) async {
+        let members = await loadDirectoryMembers()
+        guard !members.isEmpty else {
+            CollaborationMessagePanel(
+                title: CollaborationStrings.shareWithTeammateTitle,
+                message: CollaborationStrings.directoryEmpty,
+                buttonTitle: CollaborationStrings.okButton
+            ).run()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = CollaborationStrings.shareWithTeammateTitle
+        alert.informativeText = CollaborationStrings.shareWithTeammateMessage
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        for member in members {
+            popup.addItem(withTitle: member.label)
+            popup.lastItem?.representedObject = member.userId
+        }
+        alert.accessoryView = popup
+        applyCollaborationRegularAlertButtonTitleStyle(
+            alert.addButton(withTitle: CollaborationStrings.shareButton)
+        )
+        applyCollaborationRegularAlertButtonTitleStyle(
+            alert.addButton(withTitle: CollaborationStrings.cancelButton)
+        )
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let userID = popup.selectedItem?.representedObject as? String else { return }
+        // On the create path the session may still be connecting (though it has
+        // usually finished during the picker's own modal run loop). Wait for it
+        // before inviting; the progress panel only surfaces if the wait exceeds
+        // a short grace period, so a ready session never flashes a dialog.
+        if let pendingSession {
+            let progress = CollaborationProgressPanel(title: CollaborationStrings.sharePreparing)
+            progress.present()
+            let ready = await pendingSession.value
+            progress.dismiss()
+            guard ready else {
+                lastErrorMessage = CollaborationStrings.shareWithTeammateNoSession
+                NSSound.beep()
                 return
             }
-            let alert = NSAlert()
-            alert.messageText = CollaborationStrings.shareWithTeammateTitle
-            alert.informativeText = CollaborationStrings.shareWithTeammateMessage
-            let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-            for member in members {
-                popup.addItem(withTitle: member.label)
-                popup.lastItem?.representedObject = member.userId
-            }
-            alert.accessoryView = popup
-            applyCollaborationRegularAlertButtonTitleStyle(
-                alert.addButton(withTitle: CollaborationStrings.shareButton)
-            )
-            applyCollaborationRegularAlertButtonTitleStyle(
-                alert.addButton(withTitle: CollaborationStrings.cancelButton)
-            )
-            guard alert.runModal() == .alertFirstButtonReturn,
-                  let userID = popup.selectedItem?.representedObject as? String else { return }
-            let shared = await shareCurrentSessionWithTeammate(userID: userID)
-            if !shared {
-                NSSound.beep()
-            }
+        }
+        let shared = await shareCurrentSessionWithTeammate(userID: userID)
+        if !shared {
+            NSSound.beep()
         }
     }
 
@@ -1708,6 +1866,7 @@ final class CollaborationRuntime {
         )
         sessionCodesByWorkspaceID.removeValue(forKey: terminal.workspaceId)
         Self.workspaceSessionStore.remove(workspaceID: terminal.workspaceId)
+        withdrawTeammateInvites(forRoom: normalizedCode)
         if let connection = connectionsBySessionCode.removeValue(forKey: normalizedCode) {
             PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
                 "reason": "workspace_session_left",
@@ -1814,6 +1973,8 @@ final class CollaborationRuntime {
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
+        pendingMirroredRenderGridFramesByID.removeValue(forKey: terminalID)
+        mirroredRenderGridSeedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
@@ -1855,9 +2016,18 @@ final class CollaborationRuntime {
             }
         }
         // A host resize produces redraw output; piggyback a column re-broadcast
-        // so peers re-lock their mirror width when the host grid changes.
-        if let connection = connection(forTerminalID: terminalID) {
-            broadcastHostedTerminalDimensions(terminalID: terminalID, connection: connection)
+        // so peers re-lock their mirror width when the host grid changes. Output
+        // fires per keystroke, so throttle the grid probe to a human-scale
+        // cadence -- a resize is a human action and 250ms detection latency is
+        // imperceptible, but probing every chunk kept the typing path on a
+        // per-keystroke `ghostty_surface_size` call.
+        let now = ProcessInfo.processInfo.systemUptime
+        let lastProbedAt = hostedTerminalDimensionsProbedAtByID[terminalID] ?? 0
+        if now - lastProbedAt >= Self.hostedTerminalDimensionsProbeInterval {
+            hostedTerminalDimensionsProbedAtByID[terminalID] = now
+            if let connection = connection(forTerminalID: terminalID) {
+                broadcastHostedTerminalDimensions(terminalID: terminalID, connection: connection)
+            }
         }
     }
 
@@ -1888,43 +2058,57 @@ final class CollaborationRuntime {
         contentRow: Double?,
         contentRowFromBottom: Double?,
         viewportRowFromBottom: Double?,
+        scrolledToBottom: Bool,
         visible: Bool,
         coordinateSpace: String
     ) {
         let terminalID = hostedTerminalIDsBySurfaceID[surfaceID] ?? mirroredTerminalIDsBySurfaceID[surfaceID]
         guard let terminalID else { return }
 
+        // Throttle to the mouse-event cadence and fire the send concurrently
+        // (fire-and-forget). Updates ride the natural pointer-move stream, which
+        // keeps spacing even and motion smooth. A timer-coalesced drain was
+        // tried and reverted: `Task.sleep` jitter made the flush interval wobble
+        // and the cursor advanced in irregular time steps (stuttery/jumpy).
         let now = ProcessInfo.processInfo.systemUptime
         if visible {
             let lastSentAt = terminalPointerLastSentAtBySurfaceID[surfaceID] ?? 0
-            guard now - lastSentAt >= (1.0 / 60.0) else { return }
+            guard now - lastSentAt >= Self.terminalPointerMinSendInterval else { return }
             terminalPointerLastSentAtBySurfaceID[surfaceID] = now
         } else {
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
         }
 
-        Task {
-            if let connection = connection(forTerminalID: terminalID) {
-                try? await send(CollaborationTerminalPointerWire(
-                    type: "terminal.pointer",
-                    terminalID: terminalID,
-                    fromPeerID: peerIdentity.peerID,
-                    recipientParticipantIDs: recipientParticipantIDsForSending(
-                        terminalID: terminalID,
-                        connection: connection
-                    ),
-                    x: min(max(normalizedX, 0), 1),
-                    y: min(max(normalizedY, 0), 1),
-                    visible: visible,
-                    coordinateSpace: coordinateSpace,
-                    row: row,
-                    column: column,
-                    contentRow: contentRow,
-                    contentRowFromBottom: contentRowFromBottom,
-                    viewportRowFromBottom: viewportRowFromBottom
-                ), via: connection)
-            }
-        }
+        guard let connection = connection(forTerminalID: terminalID),
+              let task = connection.webSocketTask else { return }
+        let wire = CollaborationTerminalPointerWire(
+            type: "terminal.pointer",
+            terminalID: terminalID,
+            fromPeerID: peerIdentity.peerID,
+            recipientParticipantIDs: recipientParticipantIDsForSending(
+                terminalID: terminalID,
+                connection: connection
+            ),
+            x: min(max(normalizedX, 0), 1),
+            y: min(max(normalizedY, 0), 1),
+            visible: visible,
+            coordinateSpace: coordinateSpace,
+            row: row,
+            column: column,
+            contentRow: contentRow,
+            contentRowFromBottom: contentRowFromBottom,
+            viewportRowFromBottom: viewportRowFromBottom,
+            scrolledToBottom: scrolledToBottom
+        )
+        // Encode synchronously and hand the frame straight to URLSession's
+        // FIFO send queue via the completion-handler API. Deliberately NOT
+        // routed through `frameWriter` (its actor serialization can let rapid
+        // fire-and-forget sends reach the socket out of creation order) and
+        // NOT wrapped in a per-move `Task {}` (scheduling a fresh task on a
+        // busy main actor added spacing jitter between consecutive pointer
+        // frames, which read as stutter on the receiving side).
+        guard let data = try? encoder.encode(wire) else { return }
+        task.send(.string(String(decoding: data, as: UTF8.self))) { _ in }
     }
 
     struct TerminalSelectionGridRect {
@@ -2037,8 +2221,8 @@ final class CollaborationRuntime {
         terminalOwnerParticipantIDsByID.removeValue(forKey: terminalID)
         terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
         for surfaceID in hostedSurfaceIDs + mirroredSurfaceIDs {
-            terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
             terminalSelectionLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
+            terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
         }
     }
 
@@ -2125,13 +2309,21 @@ final class CollaborationRuntime {
             let isDegraded = agentRoomDegradedSurfaceIDs.contains { surfaceID in
                 agentRoomIDsBySurfaceID[surfaceID] == roomID
             }
+            let activeRoomIDs = Set(agentRoomIDsBySurfaceID.values)
+            let orderedActiveRoomIDs = activeAgentRoomDisplayOrder(activeRoomIDs: activeRoomIDs)
+            let displayNumber = AgentRoomDisplayPalette.displayNumber(
+                for: roomID,
+                orderedRoomIDs: orderedActiveRoomIDs
+            )
             return AgentRoomHeaderState(
                 isConnected: true,
-                label: String(format: CollaborationStrings.agentRoomConnectedFormat, roomID.prefix(6).description),
-                isDegraded: isDegraded
+                label: CollaborationStrings.agentRoomLabel(number: displayNumber),
+                isDegraded: isDegraded,
+                displayNumber: displayNumber,
+                paletteIndex: AgentRoomDisplayPalette.paletteIndex(forDisplayNumber: displayNumber)
             )
         }
-        return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectClaudeRoom)
+        return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectAgentRoom)
     }
 
     func beginAgentRoomWireDrag(
@@ -2502,6 +2694,7 @@ final class CollaborationRuntime {
         if await agentRoomStore.room(id: roomID) == nil {
             let room = await agentRoomStore.createRoom(id: roomID)
             cacheAgentRoom(room)
+            registerAgentRoomDisplayOrder(roomID: roomID)
         }
         guard let surfaceID = resolvedSurfaceID else {
             return ["connected": false, "error": "No terminal surface is available."]
@@ -2527,6 +2720,7 @@ final class CollaborationRuntime {
         }
         agentRoomIDsBySurfaceID[surfaceID] = roomID
         agentRoomMemberIDsBySurfaceID[surfaceID] = member.id
+        registerAgentRoomDisplayOrder(roomID: roomID)
         _ = await agentRoomStore.setDeliveryPolicy(roomID: roomID, policy: .semiLive)
         let room = await agentRoomStore.connect(member: member, to: roomID)
         latestAgentRoomID = roomID
@@ -2680,6 +2874,7 @@ final class CollaborationRuntime {
             if latestAgentRoomID == requestedRoomID {
                 latestAgentRoomID = nil
             }
+            removeAgentRoomDisplayOrder(roomID: requestedRoomID)
             agentRoomHeaderRevision &+= 1
             return ["reset": true, "room_id": requestedRoomID]
         }
@@ -2690,6 +2885,7 @@ final class CollaborationRuntime {
         agentRoomSnapshotsByID.removeAll()
         agentRoomDegradedSurfaceIDs.removeAll()
         latestAgentRoomID = nil
+        agentRoomDisplayOrder = []
         agentRoomHeaderRevision &+= 1
         return ["reset": true, "all": true]
     }
@@ -3305,10 +3501,14 @@ final class CollaborationRuntime {
         terminalSessionRouter.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
         hostedTerminalOutputCaretSuppressionsByID.removeAll()
+        hostedTerminalDimensionsProbedAtByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
         mirroredTerminalRenderGridPatchSequencesByID.removeAll()
         mirroredTerminalRenderGridSequencesByID.removeAll()
+        pendingMirroredRenderGridFramesByID.removeAll()
+        mirroredRenderGridSeedRequestTasksByID.values.forEach { $0.cancel() }
+        mirroredRenderGridSeedRequestTasksByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
         terminalOwnerParticipantIDsByID.removeAll()
@@ -3523,7 +3723,14 @@ final class CollaborationRuntime {
             )
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
             share(panel: panel, entrypoint: .startDialogCreate)
-            presentPostCreateSharing(code: response.sessionCode)
+            // Documents connect before this point, so the session is already
+            // live: route directory plans through the guarded teammate picker
+            // and codes plans through the shareable-code dialog.
+            if collaborationEntitlements.directorySharing {
+                presentTeammateDirectorySharePicker()
+            } else {
+                presentCreatedSessionDialog(code: response.sessionCode)
+            }
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
@@ -3549,6 +3756,34 @@ final class CollaborationRuntime {
     }
 
     private func createSessionAndShare(terminal: TerminalPanel) async {
+        if collaborationEntitlements.directorySharing {
+            // Team/enterprise: the teammate picker is the first-class create
+            // surface. Present it immediately from the warm directory cache
+            // while session create + relay connect run concurrently, so the
+            // NSAlert is no longer gated behind connect latency (previously the
+            // picker only appeared after the up-to-5s join-ack wait). The invite
+            // is sent only once the session is ready — see the picker.
+            let sessionTask = Task<Bool, Never> { @MainActor [weak self] in
+                guard let self else { return false }
+                _ = await self.performCreateSessionConnectShare(terminal: terminal)
+                return self.activeConnection != nil
+            }
+            presentTeammateDirectorySharePicker(pendingSession: sessionTask)
+        } else {
+            let response = await performCreateSessionConnectShare(terminal: terminal)
+            if let response {
+                presentCreatedSessionDialog(code: response.sessionCode)
+            }
+        }
+    }
+
+    /// Create a session, connect to the relay, and share the terminal. Returns
+    /// the created-session response (nil only when session creation itself
+    /// failed). Analytics and error handling live here so both the codes and
+    /// directory create paths behave identically; the directory path runs this
+    /// concurrently with the teammate picker.
+    @discardableResult
+    private func performCreateSessionConnectShare(terminal: TerminalPanel) async -> CollaborationCreateSessionResponse? {
         #if DEBUG
         print("[PostHog] firing: collaboration_session_create_started")
         #endif
@@ -3577,7 +3812,7 @@ final class CollaborationRuntime {
                 recordWorkspaceSession(connection.sessionCode, workspaceID: terminal.workspaceId)
                 share(terminal: terminal, via: connection, entrypoint: .startDialogCreate)
             }
-            presentPostCreateSharing(code: response.sessionCode)
+            return response
         } catch {
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
@@ -3599,19 +3834,7 @@ final class CollaborationRuntime {
                 operation: "createSessionAndShareTerminal",
                 error: error
             )
-        }
-    }
-
-    /// After a session is created, route the owner to the right first-class
-    /// sharing surface. Directory-sharing plans (team/enterprise) open the org
-    /// teammate picker so the owner invites people directly; hobby plans get the
-    /// shareable code dialog. Keeping this in one place means every create
-    /// entrypoint (pill popover, command palette, etc.) behaves the same.
-    private func presentPostCreateSharing(code: String) {
-        if collaborationEntitlements.directorySharing {
-            presentTeammateDirectorySharePicker()
-        } else {
-            presentCreatedSessionDialog(code: code)
+            return nil
         }
     }
 
@@ -3719,6 +3942,7 @@ final class CollaborationRuntime {
             relayURLString = Self.normalizedRelayURL(from: created.relayURL)
         }
         collaborationEntitlements = created.entitlements
+        prefetchDirectoryMembersIfNeeded()
         storeGrant(created.grant, forRoom: created.room)
         sessionDescriptorsByRoom[normalizedRoomKey(created.room)] = created.session
     }
@@ -3788,6 +4012,22 @@ final class CollaborationRuntime {
         }
     }
 
+    /// React to the active org (`AuthCoordinator.resolvedTeamID`) changing —
+    /// e.g. the user switching teams in Settings. Drops the previous org's
+    /// directory-member cache and re-resolves entitlements so the session-
+    /// sharing UI (directory vs codes) tracks the newly active org. Deduped on
+    /// the resolved org id so redundant observation notifications (an
+    /// `availableTeams` refresh that leaves the resolved id unchanged) are
+    /// no-ops. Cloud/VM calls read `resolvedTeamID` live per request, so they
+    /// need no explicit refresh here.
+    func handleActiveCollaborationOrgChanged() async {
+        let orgID = resolvedCollaborationOrgID
+        guard orgID != lastEntitlementsOrgID else { return }
+        lastEntitlementsOrgID = orgID
+        directoryMemberCacheByOrgID.removeAll()
+        await refreshCollaborationEntitlements()
+    }
+
     /// Refresh the org's sharing entitlements (plan, directory sharing, codes).
     func refreshCollaborationEntitlements() async {
         guard let orgID = resolvedCollaborationOrgID,
@@ -3800,17 +4040,60 @@ final class CollaborationRuntime {
             orgId: orgID
         ) {
             collaborationEntitlements = entitlements
+            prefetchDirectoryMembersIfNeeded()
         }
     }
 
     /// The org members eligible to receive a directory share (team/enterprise).
     func loadDirectoryMembers() async -> [CollaborationDirectoryMember] {
-        guard let orgID = resolvedCollaborationOrgID,
-              let token = await collaborationAccessToken() else { return [] }
-        return (try? await collaborationBackendClient.directory(
-            accessToken: token,
-            orgId: orgID
-        )) ?? []
+        guard let orgID = resolvedCollaborationOrgID else { return [] }
+        if let cached = directoryMemberCacheByOrgID[orgID] {
+            if Date().timeIntervalSince(cached.fetchedAt) > Self.directoryMemberCacheTTL {
+                prefetchDirectoryMembers(orgID: orgID)
+            }
+            return cached.members
+        }
+        return await refreshDirectoryMembers(orgID: orgID)
+    }
+
+    private func prefetchDirectoryMembersIfNeeded() {
+        guard collaborationEntitlements.directorySharing,
+              let orgID = resolvedCollaborationOrgID else { return }
+        if let cached = directoryMemberCacheByOrgID[orgID],
+           Date().timeIntervalSince(cached.fetchedAt) <= Self.directoryMemberCacheTTL {
+            return
+        }
+        prefetchDirectoryMembers(orgID: orgID)
+    }
+
+    private func prefetchDirectoryMembers(orgID: String) {
+        guard directoryMemberRefreshTasksByOrgID[orgID] == nil else { return }
+        Task { @MainActor [weak self] in
+            _ = await self?.refreshDirectoryMembers(orgID: orgID)
+        }
+    }
+
+    private func refreshDirectoryMembers(orgID: String) async -> [CollaborationDirectoryMember] {
+        if let existing = directoryMemberRefreshTasksByOrgID[orgID] {
+            return await existing.value
+        }
+        let task = Task<[CollaborationDirectoryMember], Never> { @MainActor [weak self] in
+            guard let self,
+                  let token = await self.collaborationAccessToken() else { return [] }
+            let members = (try? await self.collaborationBackendClient.directory(
+                accessToken: token,
+                orgId: orgID
+            )) ?? []
+            self.directoryMemberCacheByOrgID[orgID] = DirectoryMemberCacheEntry(
+                members: members,
+                fetchedAt: Date()
+            )
+            return members
+        }
+        directoryMemberRefreshTasksByOrgID[orgID] = task
+        let members = await task.value
+        directoryMemberRefreshTasksByOrgID[orgID] = nil
+        return members
     }
 
     /// Share the currently active session with a teammate by user id. The
@@ -3830,11 +4113,42 @@ final class CollaborationRuntime {
                 inviteeUserId: userID,
                 relayURL: relayURLString
             )
+            invitedTeammateUserIDsByRoom[normalizedRoomKey(connection.sessionCode), default: []].insert(userID)
             await notifyInboxRealtime(inviteeUserID: userID)
             return true
         } catch {
             lastErrorMessage = error.localizedDescription
             return false
+        }
+    }
+
+    /// Withdraw every directory invite we sent for `room` so a teammate's inbox
+    /// stops surfacing an invite for a session that has ended, then clear the
+    /// local descriptor / grant / invitee bookkeeping for that room. Called from
+    /// the session-end paths (not single-terminal unshare, which may leave the
+    /// session live for other terminals/peers).
+    private func withdrawTeammateInvites(forRoom room: String) {
+        let key = normalizedRoomKey(room)
+        let descriptor = sessionDescriptorsByRoom[key] ?? sessionDescriptorsByRoom[room]
+        let invitedUserIDs = invitedTeammateUserIDsByRoom[key] ?? []
+        invitedTeammateUserIDsByRoom.removeValue(forKey: key)
+        sessionDescriptorsByRoom.removeValue(forKey: key)
+        sessionDescriptorsByRoom.removeValue(forKey: room)
+        grantsByRoom.removeValue(forKey: key)
+        grantsByRoom.removeValue(forKey: room)
+        guard let descriptor, !invitedUserIDs.isEmpty else { return }
+        Task { @MainActor [invitedUserIDs, descriptor] in
+            guard let token = await collaborationAccessToken() else { return }
+            for userID in invitedUserIDs {
+                try? await collaborationBackendClient.withdraw(
+                    accessToken: token,
+                    session: descriptor,
+                    inviteeUserId: userID
+                )
+                // Nudge the teammate to refetch immediately (parity with invite),
+                // so the withdrawn invite disappears without waiting for the poll.
+                await notifyInboxRealtime(inviteeUserID: userID)
+            }
         }
     }
 
@@ -3844,21 +4158,29 @@ final class CollaborationRuntime {
             incomingSharedSessions = []
             seenIncomingSessionIDs = []
             incomingInviteAlert = nil
+            publishIncomingInviteCount()
+            publishIncomingInviteAlert()
             return
         }
         if let invites = try? await collaborationBackendClient.inbox(accessToken: token) {
             let previouslySeen = seenIncomingSessionIDs
             let currentIDs = Set(invites.map(\.session))
+            let previousCount = incomingSharedSessions.count
             incomingSharedSessions = invites
             seenIncomingSessionIDs = currentIDs
+            if invites.count != previousCount {
+                publishIncomingInviteCount()
+            }
             // Auto-surface only genuinely new invites, so a routine refetch of an
             // invite the user already saw does not re-pop the alert.
             if let latestNew = invites.first(where: { !previouslySeen.contains($0.session) }) {
                 incomingInviteAlert = latestNew
                 incomingInviteAlertToken &+= 1
+                publishIncomingInviteAlert()
             } else if let current = incomingInviteAlert, !currentIDs.contains(current.session) {
                 // The pending alert was accepted or withdrawn elsewhere; clear it.
                 incomingInviteAlert = nil
+                publishIncomingInviteAlert()
             }
         }
     }
@@ -3867,6 +4189,27 @@ final class CollaborationRuntime {
     /// in the inbox (badge/popover) until accepted or withdrawn.
     func dismissIncomingInviteAlert() {
         incomingInviteAlert = nil
+        publishIncomingInviteAlert()
+    }
+
+    private func publishIncomingInviteCount() {
+        NotificationCenter.default.post(
+            name: .collaborationIncomingInviteCountDidChange,
+            object: nil,
+            userInfo: ["count": incomingSharedSessions.count]
+        )
+    }
+
+    private func publishIncomingInviteAlert() {
+        var userInfo: [String: Any] = [:]
+        if let incomingInviteAlert {
+            userInfo["invite"] = incomingInviteAlert
+        }
+        NotificationCenter.default.post(
+            name: .collaborationIncomingInviteAlertDidChange,
+            object: nil,
+            userInfo: userInfo
+        )
     }
 
     /// Accept an incoming shared session: swap the descriptor for a join grant
@@ -3886,8 +4229,10 @@ final class CollaborationRuntime {
             storeGrant(result.grant, forRoom: result.room)
             let connection = await connect(sessionID: result.room, code: result.code ?? result.room)
             incomingSharedSessions.removeAll { $0.session == invite.session }
+            publishIncomingInviteCount()
             if incomingInviteAlert?.session == invite.session {
                 incomingInviteAlert = nil
+                publishIncomingInviteAlert()
             }
             return connection != nil
         } catch {
@@ -4386,6 +4731,45 @@ final class CollaborationRuntime {
             ownerSnapshot: ownerSnapshot
         )
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: ownerSnapshot)
+        // Apply any render-grid seeds that raced ahead of this open frame,
+        // then watchdog the full seed: if none lands shortly, ask the host
+        // to resend it instead of sitting on a black pane.
+        if let pending = pendingMirroredRenderGridFramesByID.removeValue(forKey: terminalID) {
+            for frame in pending {
+                handleRemoteTerminalRenderGrid(terminalID: terminalID, frame: frame)
+            }
+        }
+        scheduleMirroredRenderGridSeedRequestIfNeeded(terminalID: terminalID, connection: connection)
+    }
+
+    /// Requests a fresh full render-grid seed from the host when the mirror
+    /// pane exists but no full seed has been applied after a grace period.
+    /// Covers every known dropped-seed case: the relay's 1 MiB cap eating the
+    /// frame, the host surface not being live when the share started, and a
+    /// seed that raced pane registration on a connection that then went idle.
+    private func scheduleMirroredRenderGridSeedRequestIfNeeded(
+        terminalID: String,
+        connection: CollaborationRelayConnection
+    ) {
+        mirroredRenderGridSeedRequestTasksByID[terminalID]?.cancel()
+        mirroredRenderGridSeedRequestTasksByID[terminalID] = Task { @MainActor [weak self] in
+            for _ in 0..<Self.mirroredRenderGridSeedRequestAttempts {
+                try? await Task.sleep(for: Self.mirroredRenderGridSeedRequestDelay)
+                if Task.isCancelled { return }
+                guard let self else { return }
+                guard self.mirroredTerminalsByID[terminalID]?.panel != nil else { return }
+                // A full seed has been applied; nothing to request.
+                if self.mirroredTerminalRenderGridSequencesByID[terminalID] != nil { break }
+                let recipients = self.terminalOwnerParticipantIDsByID[terminalID].map { [$0] }
+                try? await self.send(CollaborationTerminalRenderGridRequestWire(
+                    type: "terminal.render_grid.request",
+                    terminalID: terminalID,
+                    fromPeerID: self.peerIdentity.peerID,
+                    recipientParticipantIDs: recipients
+                ), via: connection)
+            }
+            self?.mirroredRenderGridSeedRequestTasksByID.removeValue(forKey: terminalID)
+        }
     }
 
     private func handleRemoteTerminalOutput(
@@ -4419,7 +4803,18 @@ final class CollaborationRuntime {
     }
 
     private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
-        guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        guard let panel = mirroredTerminalsByID[terminalID]?.panel else {
+            // The one-shot seed can race ahead of `terminal.open` registering
+            // the mirror pane. Dropping it here left the pane black until
+            // unrelated host output arrived; buffer it and drain on open.
+            var pending = pendingMirroredRenderGridFramesByID[terminalID] ?? []
+            pending.append(frame)
+            if pending.count > Self.pendingMirroredRenderGridFrameLimit {
+                pending.removeFirst(pending.count - Self.pendingMirroredRenderGridFrameLimit)
+            }
+            pendingMirroredRenderGridFramesByID[terminalID] = pending
+            return
+        }
         if let patchSequence = mirroredTerminalRenderGridPatchSequencesByID[terminalID],
            frame.stateSeq < patchSequence {
             return
@@ -4768,6 +5163,7 @@ final class CollaborationRuntime {
                 contentRow: pointer.contentRow,
                 contentRowFromBottom: pointer.contentRowFromBottom,
                 viewportRowFromBottom: pointer.viewportRowFromBottom,
+                scrolledToBottom: pointer.scrolledToBottom,
                 visible: pointer.visible,
                 coordinateSpace: pointer.coordinateSpace
             )
@@ -4853,8 +5249,11 @@ final class CollaborationRuntime {
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
         hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
         hostedTerminalBroadcastGridByID.removeValue(forKey: terminalID)
+        hostedTerminalDimensionsProbedAtByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
+        pendingMirroredRenderGridFramesByID.removeValue(forKey: terminalID)
+        mirroredRenderGridSeedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
         terminalStatesByID.removeValue(forKey: terminalID)
         terminalSessionRouter.remove(terminalID: terminalID)
     }
@@ -4921,25 +5320,79 @@ final class CollaborationRuntime {
             ])
             await connection.session.markDisconnected()
         case .success(let message):
+            let data: Data
+            switch message {
+            case .string(let string):
+                data = Data(string.utf8)
+            case .data(let frameData):
+                data = frameData
+            @unknown default:
+                receiveNextMessage(for: connection)
+                return
+            }
+            // Re-arm the socket read BEFORE processing the frame. Processing
+            // can be heavy (terminal.output replays PTY bytes through Ghostty
+            // on the main actor), and gating the next read on it made
+            // latency-sensitive collaborator pointer frames arrive in uneven
+            // bursts (visible as cursor stutter).
+            receiveNextMessage(for: connection)
+
+            // Fast path: collaborator pointer frames are tiny and
+            // latest-position-wins, so apply them immediately instead of
+            // queueing them behind earlier heavy frames in the ordered chain.
+            // A pointer that references not-yet-opened terminals or unknown
+            // peers is dropped harmlessly by the handler's guards.
+            if applyTerminalPointerFastPath(data, connection: connection) {
+                return
+            }
+            enqueueOrderedFrameProcessing(data, connection: connection)
+        }
+    }
+
+    /// Applies a `terminal.pointer` frame synchronously if `data` is one.
+    /// Returns `false` (without side effects) for every other frame type.
+    ///
+    /// The byte-token prescan avoids paying a full JSON parse on the hot
+    /// output path just to discover a frame is not a pointer: only frames
+    /// small enough to be a pointer and containing the quoted type token are
+    /// decoded. False positives fall through to the decode + type check.
+    private func applyTerminalPointerFastPath(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        guard data.count <= Self.terminalPointerFastPathMaxBytes,
+              data.range(of: Self.terminalPointerTypeToken) != nil,
+              let pointer = try? decoder.decode(CollaborationTerminalPointerWire.self, from: data),
+              pointer.type == "terminal.pointer" else {
+            return false
+        }
+        handleRemoteTerminalPointer(pointer, connection: connection)
+        return true
+    }
+
+    private static let terminalPointerTypeToken = Data("\"terminal.pointer\"".utf8)
+    private static let terminalPointerFastPathMaxBytes = 2048
+
+    /// Appends a frame to the connection's strictly-ordered processing chain.
+    /// Ordering matters for everything except pointers (e.g. terminal.open
+    /// must register the mirror pane before terminal.render_grid seeds it),
+    /// but processing must not block the socket read loop.
+    private func enqueueOrderedFrameProcessing(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) {
+        let previous = connection.frameProcessingTask
+        connection.frameProcessingTask = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self, !Task.isCancelled else { return }
             do {
-                let data: Data
-                switch message {
-                case .string(let string):
-                    data = Data(string.utf8)
-                case .data(let frameData):
-                    data = frameData
-                @unknown default:
-                    receiveNextMessage(for: connection)
-                    return
-                }
-                try await handleFrameData(data, connection: connection)
+                try await self.handleFrameData(data, connection: connection)
             } catch {
-                lastErrorMessage = error.localizedDescription
+                self.lastErrorMessage = error.localizedDescription
                 if !connection.joinAcknowledgement.isResolved {
                     connection.joinAcknowledgement.fail()
                 }
             }
-            receiveNextMessage(for: connection)
         }
     }
 
@@ -5045,6 +5498,9 @@ final class CollaborationRuntime {
         case "terminal.render_grid":
             let renderGrid = try decoder.decode(CollaborationTerminalRenderGridWire.self, from: data)
             handleRemoteTerminalRenderGrid(terminalID: renderGrid.terminalID, frame: renderGrid.frame)
+        case "terminal.render_grid.request":
+            let request = try decoder.decode(CollaborationTerminalRenderGridRequestWire.self, from: data)
+            handleTerminalRenderGridRequest(request, connection: connection)
         case "terminal.input":
             let input = try decoder.decode(CollaborationTerminalInputWire.self, from: data)
             if let bytes = Data(base64Encoded: input.dataBase64) {
@@ -5141,6 +5597,38 @@ final class CollaborationRuntime {
         try await send(encodedFrame: payload, via: connection)
     }
 
+    /// Host side of the viewer's seed re-request: resend the full render-grid
+    /// seed (and the grid lock) to the requesting participant only.
+    private func handleTerminalRenderGridRequest(
+        _ request: CollaborationTerminalRenderGridRequestWire,
+        connection: CollaborationRelayConnection
+    ) {
+        let terminalID = request.terminalID
+        guard hostedTerminalsByID[terminalID]?.panel != nil else { return }
+        guard let requesterParticipantID = participantID(for: request.fromPeerID, in: connection) else { return }
+        guard selectedRecipientParticipantIDs(for: terminalID, connection: connection)
+            .contains(requesterParticipantID) else { return }
+        let recipients = [requesterParticipantID]
+        Task {
+            try? await sendTerminalRenderGridSnapshotIfPossible(
+                terminalID: terminalID,
+                scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                full: true,
+                requireLiveScrollbackBottom: false,
+                recipientParticipantIDs: recipients,
+                via: connection
+            )
+            // Re-lock the mirror grid too: a viewer asking for a reseed may
+            // also have missed the initial dimensions frame.
+            broadcastHostedTerminalDimensions(
+                terminalID: terminalID,
+                connection: connection,
+                recipientParticipantIDs: recipients,
+                force: true
+            )
+        }
+    }
+
     private func terminalRenderGridFrameWithResolvedDefaults(
         _ frame: MobileTerminalRenderGridFrame
     ) -> MobileTerminalRenderGridFrame {
@@ -5191,6 +5679,16 @@ final class CollaborationRuntime {
                     requireLiveScrollbackBottom: false,
                     recipientParticipantIDs: recipients,
                     via: connection
+                )
+                // Late joiners must receive the host grid so their mirror locks
+                // to the same columns/rows (and scales its font to fit). The
+                // periodic per-output broadcast is de-duped against the last
+                // sent grid, so force a targeted send to this new recipient.
+                broadcastHostedTerminalDimensions(
+                    terminalID: terminalID,
+                    connection: connection,
+                    recipientParticipantIDs: recipients,
+                    force: true
                 )
             }
         }
@@ -5316,19 +5814,22 @@ final class CollaborationRuntime {
         ), via: connection)
     }
 
-    private func send<T: Encodable>(_ frame: T) async throws {
+    private func send<T: Encodable & Sendable>(_ frame: T) async throws {
         guard let connection = activeConnection else { throw CollaborationRuntimeError.notConnected }
         try await send(frame, via: connection)
     }
 
-    private func send<T: Encodable>(_ frame: T, via connection: CollaborationRelayConnection) async throws {
-        try await send(encodedFrame: try encoder.encode(frame), via: connection)
+    private func send<T: Encodable & Sendable>(_ frame: T, via connection: CollaborationRelayConnection) async throws {
+        guard let webSocketTask = connection.webSocketTask else { throw CollaborationRuntimeError.notConnected }
+        // Encode + write on the codec actor's executor, not the main actor, so
+        // the render/keystroke path is never blocked by JSON encoding (or the
+        // base64 pass for terminal output) or by awaiting the socket write.
+        try await frameWriter.send(frame, over: webSocketTask)
     }
 
     private func send(encodedFrame data: Data, via connection: CollaborationRelayConnection) async throws {
         guard let webSocketTask = connection.webSocketTask else { throw CollaborationRuntimeError.notConnected }
-        let text = String(decoding: data, as: UTF8.self)
-        try await webSocketTask.send(.string(text))
+        try await frameWriter.send(encoded: data, over: webSocketTask)
     }
 
     private func startHeartbeatLoop(for connection: CollaborationRelayConnection) {
@@ -5473,6 +5974,32 @@ final class CollaborationRuntime {
         agentRoomSnapshotsByID[room.id] = room
     }
 
+    private var agentRoomDisplayOrder: [String] {
+        get {
+            UserDefaults.standard.stringArray(forKey: Self.agentRoomDisplayOrderDefaultsKey) ?? []
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.agentRoomDisplayOrderDefaultsKey)
+        }
+    }
+
+    private func registerAgentRoomDisplayOrder(roomID: String) {
+        var order = agentRoomDisplayOrder
+        guard !order.contains(roomID) else { return }
+        order.append(roomID)
+        agentRoomDisplayOrder = order
+    }
+
+    private func removeAgentRoomDisplayOrder(roomID: String) {
+        var order = agentRoomDisplayOrder
+        order.removeAll { $0 == roomID }
+        agentRoomDisplayOrder = order
+    }
+
+    private func activeAgentRoomDisplayOrder(activeRoomIDs: Set<String>) -> [String] {
+        agentRoomDisplayOrder.filter { activeRoomIDs.contains($0) }
+    }
+
     /// Mirrors authoritative room membership into the per-surface maps that
     /// drive the header "Claude room" pill, so every locally connected surface
     /// shows the tag no matter which entrypoint (click, wire drag, header
@@ -5533,6 +6060,7 @@ final class CollaborationRuntime {
             PostHogAnalytics.shared.capture("collaboration_ws_disconnected", properties: [
                 "reason": "disconnect_all",
             ])
+            withdrawTeammateInvites(forRoom: connection.sessionCode)
             connection.disconnect()
         }
         connectionsBySessionCode.removeAll()
@@ -5636,6 +6164,10 @@ enum CollaborationStrings {
         String(localized: "collaboration.action.shareWithTeammate", defaultValue: "Share with teammate")
     }
 
+    static var addTeammate: String {
+        String(localized: "collaboration.action.addTeammate", defaultValue: "Add teammate")
+    }
+
     static var shareWithTeammateTitle: String {
         String(localized: "collaboration.directory.title", defaultValue: "Share with a teammate")
     }
@@ -5651,6 +6183,13 @@ enum CollaborationStrings {
         String(
             localized: "collaboration.directory.noSession",
             defaultValue: "Start a session before sharing it with a teammate."
+        )
+    }
+
+    static var sharePreparing: String {
+        String(
+            localized: "collaboration.directory.preparing",
+            defaultValue: "Preparing session…"
         )
     }
 
@@ -5783,8 +6322,11 @@ enum CollaborationStrings {
         )
     }
 
-    static var sessionParticipantsTitle: String {
-        String(localized: "collaboration.session.participants.title", defaultValue: "People in session")
+    static func sessionParticipantsTitle(count: Int) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "collaboration.session.participants.title", defaultValue: "People in session (%lld)"),
+            count
+        )
     }
 
     static var joinDifferentSession: String {
@@ -5818,12 +6360,15 @@ enum CollaborationStrings {
         String(localized: "collaboration.action.share", defaultValue: "Share")
     }
 
-    static var connectClaudeRoom: String {
-        String(localized: "collaboration.agentRoom.connect", defaultValue: "Connect Claude Room")
+    static var connectAgentRoom: String {
+        String(localized: "collaboration.agentRoom.connect", defaultValue: "Link agent room")
     }
 
-    static var agentRoomConnectedFormat: String {
-        String(localized: "collaboration.agentRoom.connectedFormat", defaultValue: "Claude room %@")
+    static func agentRoomLabel(number: Int) -> String {
+        String(
+            format: String(localized: "collaboration.agentRoom.labelFormat", defaultValue: "Room %d"),
+            number
+        )
     }
 
     static var stopSharingTerminal: String {
@@ -6032,6 +6577,110 @@ private final class CollaborationDialogBackgroundView: NSView {
         layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.98).cgColor
         layer?.borderColor = NSColor.labelColor.withAlphaComponent(0.28).cgColor
         layer?.borderWidth = 1
+    }
+}
+
+/// A non-blocking, indeterminate progress sheet used while awaiting async work
+/// that has no meaningful intermediate UI (e.g. waiting for a concurrently
+/// created collaboration session to finish connecting before an invite is
+/// sent). Unlike ``CollaborationMessagePanel`` it never runs a nested modal
+/// loop, so the awaiting caller keeps making progress and the run loop can
+/// service both the spinner animation and the work being awaited.
+///
+/// `present()` defers actually showing the window by a short grace period and
+/// `dismiss()` cancels that pending show, so a fast-resolving await never
+/// flashes a dialog for a single frame.
+@MainActor
+private final class CollaborationProgressPanel {
+    private let window: NSPanel
+    private let spinner = NSProgressIndicator()
+    private weak var parentWindow: NSWindow?
+    private var pendingShow: DispatchWorkItem?
+    private var isVisible = false
+
+    init(title: String) {
+        let size = NSSize(width: 320, height: 168)
+        window = CollaborationDialogPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .modalPanel
+        window.isMovableByWindowBackground = true
+
+        let contentView = NSView(frame: NSRect(origin: .zero, size: size))
+        contentView.wantsLayer = true
+        window.contentView = contentView
+
+        let background = CollaborationDialogBackgroundView(frame: contentView.bounds)
+        background.frame = contentView.bounds
+        background.autoresizingMask = [.width, .height]
+        contentView.addSubview(background)
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 20
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+
+        spinner.style = .spinning
+        spinner.isIndeterminate = true
+        spinner.controlSize = .regular
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(spinner)
+
+        let titleField = NSTextField(labelWithString: title)
+        titleField.font = .systemFont(ofSize: 16, weight: .regular)
+        titleField.textColor = .labelColor
+        titleField.alignment = .center
+        stack.addArrangedSubview(titleField)
+
+        NSLayoutConstraint.activate([
+            stack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -28),
+            spinner.widthAnchor.constraint(equalToConstant: 32),
+            spinner.heightAnchor.constraint(equalToConstant: 32),
+        ])
+    }
+
+    /// Schedule the sheet to appear after a short grace period. If ``dismiss()``
+    /// runs first, the window is never shown.
+    func present(afterDelay delay: TimeInterval = 0.15) {
+        let work = DispatchWorkItem { [weak self] in self?.show() }
+        pendingShow = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func show() {
+        guard !isVisible else { return }
+        isVisible = true
+        spinner.startAnimation(nil)
+        if let parent = NSApp.keyWindow ?? NSApp.mainWindow {
+            parentWindow = parent
+            parent.beginSheet(window)
+        } else {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    func dismiss() {
+        pendingShow?.cancel()
+        pendingShow = nil
+        guard isVisible else { return }
+        isVisible = false
+        spinner.stopAnimation(nil)
+        if let parentWindow {
+            parentWindow.endSheet(window)
+        }
+        window.orderOut(nil)
     }
 }
 

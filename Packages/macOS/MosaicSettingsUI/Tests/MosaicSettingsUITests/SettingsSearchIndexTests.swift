@@ -10,6 +10,20 @@ import Testing
 /// it can be tested without touching SwiftUI or AppKit.
 @Suite("SettingsSearchIndex")
 struct SettingsSearchIndexTests {
+    @Test func accountOnlyPresentationIndexesSingleSection() {
+        let index = SettingsSearchIndex(
+            catalog: SettingCatalog(),
+            curatedEntries: [],
+            visibleSections: SettingsPresentation.accountOnly.visibleSections
+        )
+        let sectionEntries = index.entries.filter {
+            if case .section = $0.kind { return true }
+            return false
+        }
+        #expect(sectionEntries.count == 1)
+        #expect(sectionEntries[0].id == "section:account")
+    }
+
     @MainActor
     @Test func settingsWindowRootsReuseRuntimeCachedIndex() throws {
         let catalog = SettingCatalog()

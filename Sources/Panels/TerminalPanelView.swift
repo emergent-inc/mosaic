@@ -9,6 +9,12 @@ import MosaicTerminal
 import MosaicFoundation
 import UniformTypeIdentifiers
 
+/// Shared styling for the terminal-header collaboration chips (session pill,
+/// participant count, share button) so they stay visually consistent.
+private enum TerminalCollaborationChipStyle {
+    static let cornerRadius: CGFloat = 7
+}
+
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
     @ObservedObject var panel: TerminalPanel
@@ -19,10 +25,13 @@ struct TerminalPanelView: View {
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
     @State private var isTerminalSessionPopoverPresented = false
     @State private var isTerminalRecipientPopoverPresented = false
+    @State private var incomingInviteCount = 0
     @State private var incomingInviteAlert: CollaborationIncomingSession?
     @State private var isTerminalSessionPillHovered = false
+    @State private var isTerminalShareButtonHovered = false
     @State private var isAgentRoomButtonHovered = false
     @State private var isAgentRoomWireDropTargeted = false
+    @State private var isPaneHovered = false
     let paneId: PaneID
     let isFocused: Bool
     let isVisibleInUI: Bool
@@ -69,8 +78,9 @@ struct TerminalPanelView: View {
     }
 
     private var terminalBody: some View {
-        VStack(spacing: 0) {
-            terminalHeader
+        let agentRoomState = CollaborationRuntime.shared.agentRoomState(for: panel)
+        return VStack(spacing: 0) {
+            terminalHeader(agentRoomState: agentRoomState)
             Divider()
 
             // Layering contract: terminal find UI is mounted in GhosttySurfaceScrollView (AppKit portal layer)
@@ -139,18 +149,22 @@ struct TerminalPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay {
+            agentRoomPaneHighlight(state: agentRoomState)
+        }
+        .onHover { hovering in
+            isPaneHovered = hovering
+        }
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
             terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
         }
     }
 
-    private var terminalHeader: some View {
+    private func terminalHeader(agentRoomState: AgentRoomHeaderState) -> some View {
         let state = CollaborationRuntime.shared.state(for: panel)
-        let agentRoomState = CollaborationRuntime.shared.agentRoomState(for: panel)
         return HStack(spacing: 8) {
-            terminalAgentRoomButton
+            agentRoomLeadingHeader(state: agentRoomState)
             Spacer(minLength: 8)
-            agentRoomStatusView(state: agentRoomState)
             terminalSessionPill(state: state)
             if state.workspaceSessionCode != nil || state.isMirrored {
                 terminalShareButton(state: state)
@@ -158,7 +172,7 @@ struct TerminalPanelView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 30)
-        .background(isAgentRoomWireDropTargeted ? Color.blue.opacity(0.14) : Color.clear)
+        .background(isAgentRoomWireDropTargeted ? agentRoomDropTargetColor(state: agentRoomState).opacity(0.14) : Color.clear)
         // The pane drop target only covers the terminal content area, so wire drops
         // released over the header (including the link button itself — the natural
         // button-to-button gesture) must be accepted here; otherwise the drop
@@ -197,55 +211,83 @@ struct TerminalPanelView: View {
     }
 
     @ViewBuilder
-    private func agentRoomStatusView(state: AgentRoomHeaderState) -> some View {
-        if state.isConnected {
-            HStack(spacing: 4) {
-                MosaicSystemSymbolImage(
-                    systemName: state.isDegraded ? "exclamationmark.triangle.fill" : "link",
-                    pointSize: 9,
-                    weight: .semibold
-                )
-                Text(state.label)
-                    .mosaicFont(size: 10, weight: .semibold)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(Color.blue))
-            .help(
-                state.isDegraded
-                    ? String(
-                        localized: "collaboration.agentRoom.degradedHelp",
-                        defaultValue: "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
-                    )
-                    : String(
-                        localized: "collaboration.agentRoom.connectedHelp",
-                        defaultValue: "Wired agents share context through this room."
-                    )
-            )
-            .accessibilityIdentifier("TerminalAgentRoomConnectedPill")
+    private func agentRoomLeadingHeader(state: AgentRoomHeaderState) -> some View {
+        HStack(spacing: 6) {
+            terminalAgentRoomButton(agentRoomState: state)
+            agentRoomLabel(state: state)
         }
+    }
+
+    @ViewBuilder
+    private func agentRoomLabel(state: AgentRoomHeaderState) -> some View {
+        if state.isConnected, let displayNumber = state.displayNumber {
+            Text(CollaborationStrings.agentRoomLabel(number: displayNumber))
+                .mosaicFont(size: 11)
+                .foregroundStyle(agentRoomLabelForeground(state: state))
+                .lineLimit(1)
+                .help(agentRoomHelp(state: state))
+                .accessibilityLabel(agentRoomAccessibilityLabel(state: state))
+                .accessibilityIdentifier("TerminalAgentRoomLabel")
+        }
+    }
+
+    private func agentRoomAccessibilityLabel(state: AgentRoomHeaderState) -> String {
+        guard state.isDegraded else { return state.label }
+        return "\(state.label). \(agentRoomHelp(state: state))"
+    }
+
+    @ViewBuilder
+    private func agentRoomPaneHighlight(state: AgentRoomHeaderState) -> some View {
+        if state.isConnected, let paletteIndex = state.paletteIndex {
+            let accent = AgentRoomDisplayPalette.color(at: paletteIndex)
+            Rectangle()
+                .strokeBorder(
+                    accent.opacity(isFocused ? 0.55 : 0.28),
+                    lineWidth: isFocused ? 2 : 1.5
+                )
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func agentRoomLabelForeground(state: AgentRoomHeaderState) -> Color {
+        if let paletteIndex = state.paletteIndex {
+            return AgentRoomDisplayPalette.color(at: paletteIndex).opacity(0.82)
+        }
+        return Color(nsColor: appearance.foregroundColor).opacity(0.68)
+    }
+
+    private func agentRoomDropTargetColor(state: AgentRoomHeaderState) -> Color {
+        if let paletteIndex = state.paletteIndex {
+            return AgentRoomDisplayPalette.color(at: paletteIndex)
+        }
+        return Color.accentColor
+    }
+
+    private func agentRoomHelp(state: AgentRoomHeaderState) -> String {
+        state.isDegraded
+            ? String(
+                localized: "collaboration.agentRoom.degradedHelp",
+                defaultValue: "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
+            )
+            : String(
+                localized: "collaboration.agentRoom.connectedHelp",
+                defaultValue: "Wired agents share context through this room."
+            )
     }
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalSessionPillLabel(state: state)
-        // Read the inbox count in the pill body so background inbox updates
-        // (poll or realtime nudge) re-render the always-visible badge.
-        let incomingInviteCount = CollaborationRuntime.shared.incomingSharedSessions.count
         let pillModel = CollaborationTerminalSessionPillModel(
             workspaceSessionCode: state.workspaceSessionCode,
             participantCount: CollaborationRuntime.shared.participantSnapshots(for: panel).count,
             incomingInviteCount: incomingInviteCount
         )
-        let hoverColor = Color.orange
-        let foregroundColor = Color.orange
+        let foregroundColor = isTerminalSessionPillHovered ? Color.primary : Color.secondary
         let backgroundColor = isTerminalSessionPillHovered
-            ? hoverColor.opacity(0.14)
-            : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.06 : 0.10)
-        let borderColor = isTerminalSessionPillHovered
-            ? hoverColor.opacity(0.24)
-            : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.10 : 0.16)
+            ? Color.primary.opacity(0.10)
+            : Color.primary.opacity(state.workspaceSessionCode == nil ? 0.05 : 0.07)
+        // Requested restyle: neutral gray border at 50% opacity, brightening on hover.
+        let borderColor = Color.gray.opacity(isTerminalSessionPillHovered ? 0.65 : 0.5)
         return TrackedButton("session_pill_open", action: {
 #if DEBUG
             print("[PostHog] firing: session_pill_tapped")
@@ -263,7 +305,7 @@ struct TerminalPanelView: View {
                 MosaicSystemSymbolImage(systemName: "person.2", pointSize: 10, weight: .semibold)
                     .accessibilityHidden(true)
                 Text(pillModel.showsParticipantCount
-                    ? String.localizedStringWithFormat("%d", pillModel.otherParticipantCount)
+                    ? String.localizedStringWithFormat("%d", pillModel.totalParticipantCount)
                     : label)
                     .mosaicFont(size: 10, weight: .semibold)
                     .lineLimit(1)
@@ -272,12 +314,12 @@ struct TerminalPanelView: View {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background {
-                Capsule()
+                RoundedRectangle(cornerRadius: TerminalCollaborationChipStyle.cornerRadius, style: .continuous)
                     .fill(backgroundColor)
             }
             .overlay {
-                Capsule()
-                    .stroke(borderColor, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: TerminalCollaborationChipStyle.cornerRadius, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -294,6 +336,9 @@ struct TerminalPanelView: View {
         .onHover { hovering in
             isTerminalSessionPillHovered = hovering
         }
+        .onAppear {
+            incomingInviteCount = CollaborationRuntime.shared.incomingSharedSessions.count
+        }
         .mosaicCursorOnHover(.pointingHand)
         .popover(item: $incomingInviteAlert, arrowEdge: .bottom) { invite in
             TerminalIncomingInviteAlertContent(
@@ -309,11 +354,14 @@ struct TerminalPanelView: View {
                 }
             )
         }
-        // Auto-surface a new invite as an alert anchored to this pill, but only
-        // on the focused panel so N panels don't each pop the same alert.
-        .onChange(of: CollaborationRuntime.shared.incomingInviteAlertToken) { _, _ in
+        .onReceive(NotificationCenter.default.publisher(for: .collaborationIncomingInviteCountDidChange)) { notification in
+            incomingInviteCount = notification.userInfo?["count"] as? Int ?? 0
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .collaborationIncomingInviteAlertDidChange)) { notification in
+            // Auto-surface a new invite as an alert anchored to this pill, but
+            // only on the focused panel so N panels don't each pop the same alert.
             guard isFocused, !isTerminalSessionPopoverPresented else { return }
-            incomingInviteAlert = CollaborationRuntime.shared.incomingInviteAlert
+            incomingInviteAlert = notification.userInfo?["invite"] as? CollaborationIncomingSession
         }
         .onChange(of: incomingInviteAlert == nil) { _, isNil in
             // Reconcile the runtime alert when the popover is dismissed.
@@ -365,7 +413,7 @@ struct TerminalPanelView: View {
 
     private func incomingInviteBadge(count: Int) -> some View {
         Text(count > 9 ? "9+" : String(count))
-            .cmuxFont(size: 8, weight: .bold)
+            .mosaicFont(size: 8, weight: .bold)
             .foregroundStyle(Color.white)
             .padding(.horizontal, 4)
             .frame(minWidth: 14, minHeight: 14)
@@ -377,12 +425,16 @@ struct TerminalPanelView: View {
     private func terminalShareButton(state: CollaborationTerminalHeaderState) -> some View {
         let label = terminalShareButtonLabel(state: state)
         let icon = terminalShareButtonIcon(state: state)
-        // All states share the orange tint; the passive "Viewing" (mirrored) and "Sharing"
-        // (hosted) states use a slightly lower-saturation orange, leaving the actionable
-        // "Share" call-to-action at full saturation.
-        let tint = (state.isMirrored || state.isHosted)
-            ? Color(hue: 0.085, saturation: 0.62, brightness: 0.98)
-            : Color.orange
+        // Requested restyle: neutral gray chip matching the session pill. Hover
+        // brightens the gray; "Viewing" (mirrored) is a passive indicator so it
+        // does not react to hover.
+        let isInteractive = !state.isMirrored
+        let isHovered = isInteractive && isTerminalShareButtonHovered
+        let foregroundColor = isHovered ? Color.primary : Color.secondary
+        let fillColor = isHovered
+            ? Color.primary.opacity(0.10)
+            : Color.primary.opacity(state.isHosted ? 0.07 : 0.05)
+        let borderColor = Color.gray.opacity(isHovered ? 0.65 : 0.5)
         return TrackedButton("terminal_share", action: {
             // "Viewing" is a read-only presence indicator in a shared session:
             // pressing it must do nothing.
@@ -399,27 +451,31 @@ struct TerminalPanelView: View {
                     .mosaicFont(size: 10, weight: .semibold)
                     .lineLimit(1)
             }
-            .foregroundStyle(tint)
+            .foregroundStyle(foregroundColor)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background {
-                Capsule()
-                    .fill(tint.opacity(state.isHosted ? 0.14 : 0.08))
+                RoundedRectangle(cornerRadius: TerminalCollaborationChipStyle.cornerRadius, style: .continuous)
+                    .fill(fillColor)
             }
             .overlay {
-                Capsule()
-                    .stroke(tint.opacity(state.isHosted ? 0.24 : 0.14), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: TerminalCollaborationChipStyle.cornerRadius, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TerminalCollaborationShareButton")
+        .onHover { hovering in
+            isTerminalShareButtonHovered = hovering
+        }
         .mosaicCursorOnHover(.pointingHand, enabled: !state.isMirrored)
         .popover(isPresented: $isTerminalRecipientPopoverPresented, arrowEdge: .bottom) {
             TerminalCollaborationRecipientPopoverContent(
                 recipients: CollaborationRuntime.shared.recipientSnapshots(for: panel),
                 codesEnabled: CollaborationRuntime.shared.collaborationEntitlements.codesEnabled,
+                directorySharingEnabled: CollaborationRuntime.shared.collaborationEntitlements.directorySharing,
                 onCopyInviteCode: {
                     CollaborationRuntime.shared.copyTerminalSessionInviteCode(for: panel)
                     isTerminalRecipientPopoverPresented = false
@@ -459,50 +515,65 @@ struct TerminalPanelView: View {
         return CollaborationStrings.sharingTerminal
     }
 
-    private var terminalAgentRoomButton: some View {
-        let state = CollaborationRuntime.shared.agentRoomState(for: panel)
-        return AgentRoomWireHandle {
-            agentRoomWirePin(isHovered: isAgentRoomButtonHovered)
-                .accessibilityIdentifier("TerminalAgentRoomButton")
-                .accessibilityLabel(state.label)
-                // Wire origin + drag source ride on the pin so the grab handle and
-                // the wire's start point are exactly the dot, not the whole cell.
-                .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
-                .overlay {
-                    AgentRoomWireDragSourceRepresentable(
-                        panel: panel,
-                        onHoverChanged: { isAgentRoomButtonHovered = $0 }
-                    ) {
-                        CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
-                    }
+    private func terminalAgentRoomButton(agentRoomState: AgentRoomHeaderState) -> some View {
+        agentRoomWireCircle(
+            isHovered: isAgentRoomButtonHovered,
+            isConnected: agentRoomState.isConnected,
+            accentColor: agentRoomCircleColor(state: agentRoomState)
+        )
+            .accessibilityIdentifier("TerminalAgentRoomButton")
+            .accessibilityLabel(agentRoomState.label)
+            // Wire origin + drag source ride on the circle so the grab handle and
+            // the wire's start point are exactly the port, not the whole cell.
+            .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
+            .overlay {
+                AgentRoomWireDragSourceRepresentable(
+                    panel: panel,
+                    onHoverChanged: { isAgentRoomButtonHovered = $0 }
+                ) {
+                    CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
                 }
-        }
-        .help(state.label)
+            }
+            .help(agentRoomState.label)
+            .animation(.easeOut(duration: 0.12), value: isPaneHovered)
     }
 
-    private func agentRoomWirePin(isHovered: Bool) -> some View {
-        VStack(spacing: 0) {
+    private func agentRoomCircleColor(state: AgentRoomHeaderState) -> Color {
+        if state.isConnected, let paletteIndex = state.paletteIndex {
+            return AgentRoomDisplayPalette.color(at: paletteIndex).opacity(0.88)
+        }
+        // Unlinked (gray) ports highlight blue while hovering the pane to advertise
+        // the wire affordance. Already-linked ports keep their palette color.
+        if isPaneHovered {
+            return Color.accentColor.opacity(0.9)
+        }
+        return Color.primary.opacity(0.28)
+    }
+
+    /// The wire port: a hollow ring while unlinked (an empty socket), filled
+    /// with the room color once connected (a plugged socket). The ring sits
+    /// centered in a larger invisible frame so the drag source and anchor
+    /// overlays (which match the layout bounds) give a comfortable grab target.
+    private func agentRoomWireCircle(isHovered: Bool, isConnected: Bool, accentColor: Color) -> some View {
+        ZStack {
             Circle()
-                .fill(AgentRoomWireMetrics.pinColor)
-                .frame(
-                    width: AgentRoomWireMetrics.dotSize,
-                    height: AgentRoomWireMetrics.dotSize
-                )
-                .scaleEffect(isHovered ? 1.08 : 1)
-            Rectangle()
-                .fill(AgentRoomWireMetrics.pinColor)
-                .frame(
-                    width: AgentRoomWireMetrics.stemWidth,
-                    height: AgentRoomWireMetrics.stemHeight
-                )
-                .offset(y: -AgentRoomWireMetrics.stemOverlap)
+                .strokeBorder(accentColor, lineWidth: AgentRoomWireMetrics.ringWidth)
+            if isConnected {
+                Circle()
+                    .fill(accentColor)
+                    .padding(AgentRoomWireMetrics.ringWidth + 1.5)
+            }
         }
         .frame(
             width: AgentRoomWireMetrics.dotSize,
-            height: AgentRoomWireMetrics.pinHeight,
-            alignment: .top
+            height: AgentRoomWireMetrics.dotSize
         )
-        .contentShape(Rectangle())
+        .scaleEffect(isHovered ? 1.12 : 1)
+        .frame(
+            width: AgentRoomWireMetrics.hitTargetSize,
+            height: AgentRoomWireMetrics.hitTargetSize
+        )
+        .contentShape(Circle())
         .animation(.easeOut(duration: 0.12), value: isHovered)
     }
 }
@@ -517,19 +588,21 @@ private struct TerminalIncomingInviteAlertContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                CmuxSystemSymbolImage(systemName: "person.crop.circle.badge.plus", pointSize: 14, weight: .semibold)
+                MosaicSystemSymbolImage(systemName: "person.crop.circle.badge.plus", pointSize: 14, weight: .semibold)
                     .foregroundStyle(Color.accentColor)
                     .accessibilityHidden(true)
                 Text(CollaborationStrings.incomingInviteAlertTitle)
-                    .cmuxFont(size: 12, weight: .semibold)
+                    .mosaicFont(size: 12, weight: .semibold)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(CollaborationStrings.incomingSessionSubtitle(
                 ownerName: invite.ownerName ?? invite.ownerUserId,
                 orgName: invite.orgName ?? ""
             ))
-            .cmuxFont(size: 11)
+            .mosaicFont(size: 11)
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -543,9 +616,10 @@ private struct TerminalIncomingInviteAlertContent: View {
                 }
                 .buttonStyle(.mosaicSecondaryRegular)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
-        .frame(width: 240)
+        .frame(width: 240, alignment: .leading)
     }
 }
 
@@ -594,15 +668,17 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                         : CollaborationStrings.sessionCodeLabel(code: sessionCode))
                         .mosaicFont(size: 11, weight: .semibold)
                         .textSelection(.enabled)
-                    Text(isConnected ? CollaborationStrings.sessionConnectedDetail(peerSummary: peerSummary) : CollaborationStrings.sessionJoinedDetail)
-                        .mosaicFont(size: 11)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if participants.isEmpty {
+                        Text(isConnected ? CollaborationStrings.sessionConnectedDetail(peerSummary: peerSummary) : CollaborationStrings.sessionJoinedDetail)
+                            .mosaicFont(size: 11)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 if !participants.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(CollaborationStrings.sessionParticipantsTitle)
+                        Text(CollaborationStrings.sessionParticipantsTitle(count: participants.count))
                             .mosaicFont(size: 11, weight: .semibold)
                         ForEach(participants) { participant in
                             HStack(spacing: 7) {
@@ -624,7 +700,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 // Team/enterprise "no codes" sharing: pick a teammate from the
                 // org directory; they get an in-app incoming-session invite.
                 if directorySharingEnabled {
-                    TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
+                    TrackedButton("session_share_teammate", CollaborationStrings.addTeammate) {
                         onShareWithTeammate()
                     }
                     .buttonStyle(.mosaicAccentRegular)
@@ -694,6 +770,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
 private struct TerminalCollaborationRecipientPopoverContent: View {
     let recipients: [CollaborationTerminalRecipientSnapshot]
     let codesEnabled: Bool
+    let directorySharingEnabled: Bool
     let onCopyInviteCode: () -> Void
     let onShareWithTeammate: () -> Void
     let onSelectionChanged: (Set<String>) -> Void
@@ -703,6 +780,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
     init(
         recipients: [CollaborationTerminalRecipientSnapshot],
         codesEnabled: Bool,
+        directorySharingEnabled: Bool,
         onCopyInviteCode: @escaping () -> Void,
         onShareWithTeammate: @escaping () -> Void,
         onSelectionChanged: @escaping (Set<String>) -> Void,
@@ -710,6 +788,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
     ) {
         self.recipients = recipients
         self.codesEnabled = codesEnabled
+        self.directorySharingEnabled = directorySharingEnabled
         self.onCopyInviteCode = onCopyInviteCode
         self.onShareWithTeammate = onShareWithTeammate
         self.onSelectionChanged = onSelectionChanged
@@ -736,33 +815,48 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
             }
 
             if model.showsInviteAction {
-                Text(CollaborationStrings.terminalRecipientsEmpty)
-                    .mosaicFont(size: 11)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack {
-                    if codesEnabled {
-                        TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
-                            onCopyInviteCode()
-                        }
-                        .buttonStyle(.mosaicAccentRegular)
-                        .keyboardShortcut(.defaultAction)
-                        .fixedSize()
-                    } else {
-                        TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
-                            onShareWithTeammate()
-                        }
-                        .buttonStyle(.mosaicAccentRegular)
-                        .keyboardShortcut(.defaultAction)
-                        .fixedSize()
-                    }
-                    Spacer()
+                if directorySharingEnabled {
+                    // Team/enterprise: invite codes don't apply. Teammates are added
+                    // through the directory share flow, so the only action offered
+                    // here is to stop sharing the terminal.
                     if model.showsStopSharingAction {
-                        TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
-                            onStopSharing()
+                        HStack {
+                            Spacer()
+                            TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
+                                onStopSharing()
+                            }
+                            .fixedSize()
                         }
-                        .fixedSize()
+                    }
+                } else {
+                    Text(CollaborationStrings.terminalRecipientsEmpty)
+                        .mosaicFont(size: 11)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack {
+                        if codesEnabled {
+                            TrackedButton("invite_code_copy", CollaborationStrings.copyInviteCode) {
+                                onCopyInviteCode()
+                            }
+                            .buttonStyle(.mosaicAccentRegular)
+                            .keyboardShortcut(.defaultAction)
+                            .fixedSize()
+                        } else {
+                            TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
+                                onShareWithTeammate()
+                            }
+                            .buttonStyle(.mosaicAccentRegular)
+                            .keyboardShortcut(.defaultAction)
+                            .fixedSize()
+                        }
+                        Spacer()
+                        if model.showsStopSharingAction {
+                            TrackedButton("terminal_share_stop", CollaborationStrings.stopSharingTerminal) {
+                                onStopSharing()
+                            }
+                            .fixedSize()
+                        }
                     }
                 }
             } else if model.showsRecipientSelection {
@@ -923,12 +1017,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
         }
         dragSessionActive = true
         dragSessionRanInCurrentPress = true
-        // Compute the wire's start point fresh from this view (it exactly overlays
-        // the link button) instead of trusting the layout-time anchor cache, which
-        // can hold a stale screen point after the window moves.
-        let buttonCenterInWindow = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
+        // Compute the wire's start point fresh from this view instead of trusting
+        // the layout-time anchor cache, which can hold a stale screen point after
+        // the window moves.
+        let dotCenterInWindow = convert(AgentRoomWireMetrics.dotCenter(in: bounds), to: nil)
         let buttonCenterOnScreen = window.map {
-            $0.convertToScreen(NSRect(origin: buttonCenterInWindow, size: .zero)).origin
+            $0.convertToScreen(NSRect(origin: dotCenterInWindow, size: .zero)).origin
         }
         CollaborationRuntime.shared.beginAgentRoomWireDrag(
             sourcePanel: panel,
@@ -1076,7 +1170,7 @@ private final class AgentRoomWireAnchorView: NSView {
             CollaborationRuntime.shared.removeAgentRoomWireAnchor(surfaceID: surfaceID, ownerID: ObjectIdentifier(self))
             return
         }
-        let centerInView = NSPoint(x: bounds.midX, y: bounds.midY)
+        let centerInView = AgentRoomWireMetrics.dotCenter(in: bounds)
         let centerInWindow = convert(centerInView, to: nil)
         let centerScreenRect = window.convertToScreen(NSRect(origin: centerInWindow, size: .zero))
         CollaborationRuntime.shared.updateAgentRoomWireAnchor(
@@ -1098,29 +1192,21 @@ private final class AgentRoomWireAnchorView: NSView {
 
 private enum AgentRoomWireMetrics {
     static let dotSize: CGFloat = 12
-    static let stemWidth: CGFloat = 3
-    static let stemHeight: CGFloat = 14
-    /// How far the stem tucks up under the dot so the join looks continuous.
-    static let stemOverlap: CGFloat = 2
-    static var pinHeight: CGFloat { dotSize + stemHeight - stemOverlap }
-    static let pinColor = Color(red: 0.04, green: 0.52, blue: 1.0).opacity(0.70)
+    static let ringWidth: CGFloat = 2
+    /// Invisible padded footprint around the ring that acts as the grab target.
+    static let hitTargetSize: CGFloat = 20
+
+    /// The ring is centered inside the hit-target frame, so the wire's start
+    /// and end points are simply the center of the anchor view's bounds.
+    static func dotCenter(in bounds: NSRect) -> NSPoint {
+        NSPoint(x: bounds.midX, y: bounds.midY)
+    }
 }
 
-/// The agent-room wire affordance: a solid blue pin (dot + stem) like a text-
-/// selection handle. The dot sits on the header edge and the stem hangs into
-/// the terminal. The pin content (with drag source + anchor overlays) is
-/// supplied by the caller.
-private struct AgentRoomWireHandle<Pin: View>: View {
-    @ViewBuilder var pin: () -> Pin
-
-    /// Fixed layout footprint so surrounding header items never shift.
-    private let footprintHeight: CGFloat = 30
-
-    var body: some View {
-        pin()
-            .frame(width: AgentRoomWireMetrics.dotSize, height: footprintHeight, alignment: .top)
-            .padding(.bottom, -AgentRoomWireMetrics.stemHeight)
-            .zIndex(2)
+private extension AgentRoomDisplayPalette {
+    static func color(at index: Int) -> Color {
+        let hex = accentHexColors[max(0, min(index, accentHexColors.count - 1))]
+        return Color(nsColor: NSColor(hex: hex) ?? .controlAccentColor)
     }
 }
 

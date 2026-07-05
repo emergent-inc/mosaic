@@ -89,6 +89,7 @@ The relay treats non-heartbeat frames as opaque JSON envelopes with a string `ty
 - `terminal.open`
 - `terminal.output`
 - `terminal.render_grid`
+- `terminal.render_grid.request`
 - `terminal.input`
 - `terminal.pointer`
 - `terminal.selection`

@@ -28,6 +28,8 @@ public struct SettingsRuntime: @unchecked Sendable {
     public let accountFlow: AccountFlow?
     /// Host callbacks for actions the package cannot perform itself.
     public let hostActions: SettingsHostActions
+    /// Which settings sections the host exposes in the settings window.
+    public let presentation: SettingsPresentation
 
     /// Creates the settings runtime bundle injected into the settings UI.
     ///
@@ -41,6 +43,7 @@ public struct SettingsRuntime: @unchecked Sendable {
     ///   - hostActions: Host callbacks for actions the package cannot perform itself.
     ///   - searchIndex: Prebuilt search index to share across settings roots. When `nil`,
     ///     the runtime builds one index from `catalog` and keeps it for its own lifetime.
+    ///   - presentation: Visible settings sections. Defaults to account-only.
     @MainActor
     public init(
         catalog: SettingCatalog,
@@ -50,10 +53,15 @@ public struct SettingsRuntime: @unchecked Sendable {
         errorLog: SettingsErrorLog,
         accountFlow: AccountFlow? = nil,
         hostActions: SettingsHostActions = NoopSettingsHostActions(),
-        searchIndex: SettingsSearchIndex? = nil
+        searchIndex: SettingsSearchIndex? = nil,
+        presentation: SettingsPresentation = .accountOnly
     ) {
         self.catalog = catalog
-        self.searchIndex = searchIndex ?? SettingsSearchIndex(catalog: catalog)
+        self.presentation = presentation
+        self.searchIndex = searchIndex ?? SettingsSearchIndex(
+            catalog: catalog,
+            visibleSections: presentation.visibleSections
+        )
         self.userDefaultsStore = userDefaultsStore
         self.jsonStore = jsonStore
         self.secretStore = secretStore

@@ -39,6 +39,13 @@ public protocol AuthClient: Sendable {
     /// - Returns: The user's teams; empty when no user is signed in.
     func listTeams() async throws -> [MosaicAuthTeam]
 
+    /// The server-side active/preferred team id, when the backend exposes one
+    /// (e.g. the org www activated after an invite). Used only to seed the very
+    /// first team selection when the device has no persisted choice yet; a
+    /// persisted selection always wins. Defaults to `nil` for backends that do
+    /// not expose it.
+    func serverSelectedTeamID() async throws -> String?
+
     /// Send a magic-link email and return the opaque nonce to combine with the
     /// user-entered code.
     /// - Parameters:
@@ -101,4 +108,10 @@ public protocol AuthClient: Sendable {
     /// session is already cleared. Best-effort: returns `nil` when no token
     /// could be resolved (offline, dead server).
     func freshAccessToken(accessToken: String?, refreshToken: String) async -> String?
+}
+
+public extension AuthClient {
+    /// Default: no server-side selection. Backends that surface an active team
+    /// (``NativeAuthClient``) override this.
+    func serverSelectedTeamID() async throws -> String? { nil }
 }

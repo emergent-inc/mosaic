@@ -12,7 +12,8 @@ final class RecordingURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        Task { await RecordingURLProtocol.recorder.record(request) }
+        let capturedRequest = request
+        Task { await RecordingURLProtocol.recorder.record(capturedRequest) }
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: 200,
