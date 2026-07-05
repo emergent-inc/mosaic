@@ -28,7 +28,13 @@ final class HostAccountFlow: AccountFlow {
 
     var availableTeams: [AccountTeamSummary] {
         coordinator.availableTeams.map { team in
-            AccountTeamSummary(id: team.id, displayName: team.displayName, slug: team.slug)
+            AccountTeamSummary(
+                id: team.id,
+                displayName: team.displayName,
+                slug: team.slug,
+                workspaceType: team.workspaceType,
+                planTier: team.planTier
+            )
         }
     }
 

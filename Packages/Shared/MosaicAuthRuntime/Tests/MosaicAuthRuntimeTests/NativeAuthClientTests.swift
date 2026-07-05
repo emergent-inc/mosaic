@@ -26,7 +26,12 @@ struct NativeAuthClientTests {
                     "imageURL": "https://img.example/clerk.png",
                 ],
                 "teams": [
-                    ["id": "org_1", "displayName": "Team One"],
+                    [
+                        "id": "org_1",
+                        "displayName": "Team One",
+                        "workspaceType": "team",
+                        "planTier": "enterprise",
+                    ],
                 ],
                 "selectedTeamId": "org_1",
             ])
@@ -35,6 +40,7 @@ struct NativeAuthClientTests {
 
         let user = try await client.currentUser(throwOnMissing: true)
         let teams = try await client.listTeams()
+        let serverSelected = try await client.serverSelectedTeamID()
 
         #expect(user == MosaicAuthUser(
             id: "user_clerk",
@@ -42,7 +48,13 @@ struct NativeAuthClientTests {
             displayName: "Clerk User",
             imageURL: "https://img.example/clerk.png"
         ))
-        #expect(teams == [MosaicAuthTeam(id: "org_1", displayName: "Team One")])
+        #expect(teams == [MosaicAuthTeam(
+            id: "org_1",
+            displayName: "Team One",
+            workspaceType: "team",
+            planTier: "enterprise"
+        )])
+        #expect(serverSelected == "org_1")
     }
 
     @Test

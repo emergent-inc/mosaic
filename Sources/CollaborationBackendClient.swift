@@ -127,6 +127,18 @@ struct CollaborationBackendClient {
         return body.invites
     }
 
+    /// Revoke a directory invite previously sent to `inviteeUserId` for the given
+    /// signed session descriptor. Used when a session ends so the teammate's
+    /// inbox stops surfacing an invite for a session that no longer exists.
+    func withdraw(
+        accessToken: String,
+        session: String,
+        inviteeUserId: String
+    ) async throws {
+        let body: [String: String] = ["session": session, "inviteeUserId": inviteeUserId]
+        let _: OKBody = try await post("api/collab/withdraw", accessToken: accessToken, body: body)
+    }
+
     func joinByDescriptor(
         accessToken: String,
         session: String,

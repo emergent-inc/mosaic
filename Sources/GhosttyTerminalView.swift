@@ -3510,6 +3510,27 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         #endif
     }
 
+    /// Opt-in diagnostics for the collaborator terminal cursor vertical-offset
+    /// investigation. Enable by launching with `MOSAIC_COLLAB_CURSOR_DEBUG=1`.
+    /// Prints the exact geometry used to encode (send) and decode (receive) a
+    /// collaborator pointer so the numbers can be compared side-by-side across
+    /// two machines (see the "collab cursor vertical offset" plan). Left
+    /// off by default so it never adds work to the 60Hz pointer path.
+    private static let collaboratorCursorDebugEnabled: Bool =
+        ProcessInfo.processInfo.environment["MOSAIC_COLLAB_CURSOR_DEBUG"] == "1"
+
+    private static let collaboratorCursorLogger = Logger(
+        subsystem: "mosaic.com.emergent.app",
+        category: "collab.cursor"
+    )
+
+    fileprivate static func collaboratorCursorLog(_ message: @autoclosure () -> String) {
+        guard collaboratorCursorDebugEnabled else { return }
+        let text = message()
+        collaboratorCursorLogger.debug("\(text, privacy: .public)")
+        NSLog("[COLLABCURSOR] %@", text)
+    }
+
     weak var terminalSurface: TerminalSurface?
     var scrollbar: GhosttyScrollbar?
     /// Pending scrollbar value written from the action callback thread;
@@ -3874,6 +3895,12 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
     }
 
+    /// Glide duration between successive collaborator pointer positions.
+    /// Slightly longer than the ~16ms wire cadence so network jitter is
+    /// absorbed into one continuous motion, but short enough that the
+    /// pointer trails the sender imperceptibly (~1-2 frames).
+    private static let collaboratorPointerInterpolationDuration: TimeInterval = 0.08
+
     func showTerminalCollaboratorPointer(
         peerID: String,
         displayName: String,
@@ -3885,6 +3912,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         contentRow: Double?,
         contentRowFromBottom: Double?,
         viewportRowFromBottom: Double?,
+        scrolledToBottom: Bool?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -3894,7 +3922,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
         terminalCollaboratorPointerViews[peerID] = view
 
-        terminalCollaboratorPointerHideTasks[peerID]?.cancel()
         let color = colorHex.flatMap(NSColor.init(hex:)) ?? .controlAccentColor
         if visible {
             guard let anchor = terminalCollaboratorPointerAnchor(
@@ -3905,14 +3932,44 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 contentRow: contentRow,
                 contentRowFromBottom: contentRowFromBottom,
                 viewportRowFromBottom: viewportRowFromBottom,
+                senderScrolledToBottom: scrolledToBottom,
                 coordinateSpace: coordinateSpace
             ) else {
-                view.fadeOut()
-                terminalCollaboratorPointerHideTasks[peerID] = nil
+                // A visible frame that momentarily can't be mapped (e.g. the
+                // absolute-line fallback lands off our viewport for one frame)
+                // must NOT trigger fadeOut: the 0.16s alpha animation followed by
+                // the next frame re-showing the view reads as flicker/stutter
+                // during motion. Keep the last good position and leave the
+                // existing idle-hide timer untouched so a genuinely departed
+                // pointer still fades.
                 return
             }
+            terminalCollaboratorPointerHideTasks[peerID]?.cancel()
             view.update(displayName: displayName, color: color)
-            view.frame = terminalCollaboratorPointerFrame(for: anchor, labelWidth: view.preferredLabelWidth)
+            let targetFrame = terminalCollaboratorPointerFrame(for: anchor, labelWidth: view.preferredLabelWidth)
+            // Interpolate between successive wire positions: pointer frames
+            // arrive at ~60Hz but with network jitter, so snapping the frame
+            // per update reads as stepping. Glide the layer's position from
+            // its CURRENT presentation value (not the model value -- an
+            // animator()/implicit animation restarts from the previous target
+            // and stutters when updates arrive faster than the glide) to the
+            // new target. Re-adding under the same key retargets an in-flight
+            // glide, so continuous motion stays one smooth curve with no
+            // display link. Snap instead of gliding when the pointer is
+            // (re)appearing, so it never sweeps in from a stale corner.
+            let canInterpolate = view.superview === self && !view.isHidden && view.frame != .zero
+            if canInterpolate, let layer = view.layer {
+                let fromPosition = layer.presentation()?.position ?? layer.position
+                view.frame = targetFrame
+                let glide = CABasicAnimation(keyPath: "position")
+                glide.fromValue = fromPosition
+                glide.toValue = layer.position
+                glide.duration = Self.collaboratorPointerInterpolationDuration
+                glide.timingFunction = CAMediaTimingFunction(name: .linear)
+                layer.add(glide, forKey: "collaboratorPointerGlide")
+            } else {
+                view.frame = targetFrame
+            }
             view.anchorPoint = convert(anchor, to: view)
             view.isHidden = false
             view.alphaValue = 1
@@ -3923,9 +3980,16 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 self?.terminalCollaboratorPointerHideTasks[peerID] = nil
             }
         } else {
+            terminalCollaboratorPointerHideTasks[peerID]?.cancel()
             view.fadeOut()
             terminalCollaboratorPointerHideTasks[peerID] = nil
         }
+    }
+
+    /// Whether this surface is currently viewing the live bottom of scrollback.
+    private var isViewingLiveScrollbackBottom: Bool {
+        guard let scrollbar else { return true }
+        return scrollbar.offset + scrollbar.len >= scrollbar.total
     }
 
     private func terminalCollaboratorPointerAnchor(
@@ -3936,6 +4000,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         contentRow: Double?,
         contentRowFromBottom: Double?,
         viewportRowFromBottom: Double?,
+        senderScrolledToBottom: Bool?,
         coordinateSpace: String?
     ) -> NSPoint? {
         let x = min(max(CGFloat(normalizedX), 0), 1)
@@ -3947,12 +4012,58 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
         if coordinateSpace == "terminalContentBottom",
            let column {
-            // Canonical anchor: map the host's absolute scrollback line
+            let padding = terminalCollaboratorGridPadding()
+
+            // Preferred anchor: top-origin identity mapping. In the common case
+            // both peers pin to the live bottom of scrollback, the mirror lock
+            // pins both grids to the same rows x columns, and Ghostty anchors
+            // content at the TOP-LEFT of the surface -- so the sender's
+            // top-origin viewport row IS our viewport row for the same text
+            // cell. Crucially this is independent of each side's *visible
+            // fitted* row count (derived from local pane height; it can differ
+            // from the locked grid via letterbox/clipping -- mapping through a
+            // distance-from-viewport-bottom baked that delta in as a constant
+            // vertical offset of a few rows). It also has NO dependency on
+            // either peer's never-synchronized, continuously-growing scrollback
+            // total, so a stationary pointer neither jitters nor flickers
+            // on/off. The absolute-line mapping below is only needed once a
+            // peer scrolls into history, where the shared-content assumption no
+            // longer holds.
+            if let row,
+               TerminalCollaboratorOverlayGeometry.prefersViewportBottomMapping(
+                senderScrolledToBottom: senderScrolledToBottom ?? false,
+                receiverScrolledToBottom: isViewingLiveScrollbackBottom
+               ) {
+                let clampedColumn = min(max(column, 0), Double(metrics.columns))
+                let mappedRow = TerminalCollaboratorOverlayGeometry.topAlignedViewportRow(
+                    senderRow: row,
+                    receiverViewportRows: metrics.rows
+                )
+                let anchor = terminalCollaboratorPointerAnchor(
+                    row: CGFloat(mappedRow),
+                    column: CGFloat(clampedColumn),
+                    metrics: metrics,
+                    topPadding: padding.top,
+                    leftPadding: padding.left
+                )
+                Self.collaboratorCursorLog(
+                    "recv-viewport surface=\(terminalSurface?.id.uuidString.prefix(8) ?? "?") " +
+                    "rows=\(metrics.rows) cols=\(metrics.columns) " +
+                    "cell=\(String(format: "%.2f", metrics.cellWidth))x\(String(format: "%.2f", metrics.cellHeight)) " +
+                    "senderRow=\(String(format: "%.3f", row)) " +
+                    "row=\(String(format: "%.3f", mappedRow)) col=\(String(format: "%.3f", clampedColumn)) " +
+                    "anchor=\(String(format: "%.1f", anchor.x)),\(String(format: "%.1f", anchor.y))"
+                )
+                return anchor
+            }
+
+            // Canonical anchor: map the sender's absolute scrollback line
             // (contentRowFromBottom) into THIS view's viewport using our own
-            // scrollback geometry. Column-locking keeps line numbering identical
-            // across sides, so this lands on the same text cell regardless of
-            // window height or independent scroll position. Hide (return nil)
-            // when the line is off our viewport rather than clamping to an edge.
+            // scrollback geometry, then render at our own cell height. This is
+            // the ONLY mapping that lands on the same text cell when the two
+            // peers have different grid row counts or cell heights (confirmed in
+            // the field: 27 rows @ 31px vs 25 rows @ 34px). Using the sender's
+            // raw viewport row directly would offset by the row-count delta.
             if let contentRowFromBottom, let scrollbar {
                 guard column >= 0, column <= Double(metrics.columns) else { return nil }
                 guard let viewportRow = TerminalCollaboratorOverlayGeometry.viewportRow(
@@ -3960,27 +4071,61 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     totalRows: scrollbar.total,
                     scrollOffset: scrollbar.offset,
                     viewportRows: metrics.rows
-                ) else { return nil }
-                return terminalCollaboratorPointerAnchor(
+                ) else {
+                    Self.collaboratorCursorLog(
+                        "recv-hidden surface=\(terminalSurface?.id.uuidString.prefix(8) ?? "?") " +
+                        "contentRowFromBottom=\(String(format: "%.3f", contentRowFromBottom)) " +
+                        "scroll(total=\(scrollbar.total),offset=\(scrollbar.offset)) rows=\(metrics.rows)"
+                    )
+                    return nil
+                }
+                let anchor = terminalCollaboratorPointerAnchor(
                     row: CGFloat(viewportRow),
                     column: CGFloat(column),
-                    metrics: metrics
+                    metrics: metrics,
+                    topPadding: padding.top,
+                    leftPadding: padding.left
                 )
-            }
-            // Fallbacks only when the absolute-line geometry is unavailable
-            // (peer has no scrollbar snapshot yet).
-            if let viewportRowFromBottom {
-                return terminalCollaboratorPointerAnchor(
-                    viewportRowFromBottom: CGFloat(viewportRowFromBottom),
-                    column: CGFloat(column),
-                    metrics: metrics
+                Self.collaboratorCursorLog(
+                    "recv surface=\(terminalSurface?.id.uuidString.prefix(8) ?? "?") " +
+                    "bounds=\(String(format: "%.1f", bounds.width))x\(String(format: "%.1f", bounds.height)) " +
+                    "capped=\(terminalSurface?.isViewportCellCapped == true ? 1 : 0) " +
+                    "locked=\(terminalSurface?.lockedMirrorGrid.map { "\($0.columns)x\($0.rows)" } ?? "nil") " +
+                    "rows=\(metrics.rows) cols=\(metrics.columns) " +
+                    "cell=\(String(format: "%.2f", metrics.cellWidth))x\(String(format: "%.2f", metrics.cellHeight)) " +
+                    "inset=\(String(format: "%.2f", metrics.xInset)),\(String(format: "%.2f", metrics.yInset)) " +
+                    "scroll(total=\(scrollbar.total),offset=\(scrollbar.offset)) " +
+                    "contentRowFromBottom=\(String(format: "%.3f", contentRowFromBottom)) " +
+                    "col=\(String(format: "%.3f", column)) -> viewportRow=\(String(format: "%.3f", viewportRow)) " +
+                    "anchor=\(String(format: "%.1f", anchor.x)),\(String(format: "%.1f", anchor.y))"
                 )
+                return anchor
             }
+            // Fallbacks when the absolute-line geometry is unavailable (the peer
+            // has no scrollbar snapshot yet -- common on a freshly split pane or
+            // an asymmetric arrangement). Prefer the top-origin row: under the
+            // locked identical grid it maps 1:1 with zero row-count offset
+            // (independent of each side's visible fitted rows); the
+            // distance-from-bottom form is kept only for older peers that did
+            // not send `row`. Either renders a best-effort visible position
+            // rather than hiding the cursor entirely, which is what made
+            // collaborators vanish in split panes.
             if let row {
                 return terminalCollaboratorPointerAnchor(
                     row: CGFloat(row),
                     column: CGFloat(column),
-                    metrics: metrics
+                    metrics: metrics,
+                    topPadding: padding.top,
+                    leftPadding: padding.left
+                )
+            }
+            if let viewportRowFromBottom {
+                return terminalCollaboratorPointerAnchor(
+                    viewportRowFromBottom: CGFloat(viewportRowFromBottom),
+                    column: CGFloat(column),
+                    metrics: metrics,
+                    topPadding: padding.top,
+                    leftPadding: padding.left
                 )
             }
             return nil
@@ -4020,28 +4165,51 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         return NSPoint(x: x * bounds.width, y: y * bounds.height)
     }
 
+    private func terminalCollaboratorGridPadding() -> (top: CGFloat, left: CGFloat) {
+        let scale = max(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1, 1)
+        let padding = TerminalCollaboratorOverlayGeometry.defaultWindowPaddingPoints(
+            backingScaleFactor: Double(scale)
+        )
+        return (CGFloat(padding.top), CGFloat(padding.left))
+    }
+
     private func terminalCollaboratorPointerAnchor(
         row: CGFloat,
         column: CGFloat,
-        metrics: KeyboardCopyModeGridMetrics
+        metrics: KeyboardCopyModeGridMetrics,
+        topPadding: CGFloat? = nil,
+        leftPadding: CGFloat? = nil
     ) -> NSPoint {
+        let defaultPadding = terminalCollaboratorGridPadding()
+        let top = topPadding ?? defaultPadding.top
+        let left = leftPadding ?? defaultPadding.left
         let clampedColumn = min(max(column, 0), CGFloat(metrics.columns))
         let clampedRow = min(max(row, 0), CGFloat(metrics.rows))
-        return NSPoint(
-            x: metrics.xInset + (clampedColumn * metrics.cellWidth),
-            y: bounds.height - metrics.yInset - (clampedRow * metrics.cellHeight)
+        let anchor = TerminalCollaboratorOverlayGeometry.anchorPoint(
+            row: Double(clampedRow),
+            column: Double(clampedColumn),
+            cellWidth: Double(metrics.cellWidth),
+            cellHeight: Double(metrics.cellHeight),
+            viewHeight: Double(bounds.height),
+            topPadding: Double(top),
+            leftPadding: Double(left)
         )
+        return NSPoint(x: anchor.x, y: anchor.y)
     }
 
     private func terminalCollaboratorPointerAnchor(
         viewportRowFromBottom: CGFloat,
         column: CGFloat,
-        metrics: KeyboardCopyModeGridMetrics
+        metrics: KeyboardCopyModeGridMetrics,
+        topPadding: CGFloat? = nil,
+        leftPadding: CGFloat? = nil
     ) -> NSPoint {
         terminalCollaboratorPointerAnchor(
             row: CGFloat(metrics.rows) - viewportRowFromBottom,
             column: column,
-            metrics: metrics
+            metrics: metrics,
+            topPadding: topPadding,
+            leftPadding: leftPadding
         )
     }
 
@@ -4065,8 +4233,18 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         return pointerRect.union(labelRect).insetBy(dx: -labelGap, dy: -labelGap)
     }
 
+    private var lastCollaboratorPointerSyncBounds: CGSize = .zero
+
     private func syncTerminalCollaboratorPointerOverlays() {
+        // Pointer anchors are view-local; only recompute frames when the host
+        // bounds change (e.g. resize). Skipping the per-layout pass avoids
+        // extra work on every keystroke-driven relayout.
+        guard bounds.size != lastCollaboratorPointerSyncBounds else { return }
+        lastCollaboratorPointerSyncBounds = bounds.size
         for view in terminalCollaboratorPointerViews.values where !view.isHidden {
+            // A resize repositions the overlay synchronously; drop any
+            // in-flight glide so it doesn't animate toward a stale position.
+            view.layer?.removeAnimation(forKey: "collaboratorPointerGlide")
             let anchor = convert(view.anchorPoint, from: view)
             view.frame = terminalCollaboratorPointerFrame(for: anchor, labelWidth: view.preferredLabelWidth)
             view.anchorPoint = convert(anchor, to: view)
@@ -4865,19 +5043,27 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             viewHeight: Double(bounds.height),
             cellHeight: Double(resolvedCellHeight)
         )
-        let terminalWidth = CGFloat(columns) * resolvedCellWidth
-        let terminalHeight = CGFloat(rows) * resolvedCellHeight
-        // A viewport-capped surface (collaboration mirror lock or mobile pairing)
-        // letterboxes the grid at the TOP-LEFT with the blank margin and edge
-        // border toward the bottom-right (see `setMobileViewportBorder`
-        // drawRight/drawBottom). Overlays must anchor to that top-left origin;
-        // the centered inset used for a normal full-pane grid would push every
-        // overlay down/right by half the letterbox margin (the "collaborator
-        // cursor one line below" symptom). Non-capped grids fill the pane, so the
-        // centered inset is ~0 and unchanged.
-        let isLetterboxed = terminalSurface?.isViewportCellCapped ?? false
-        let xInset = isLetterboxed ? 0 : max(0, (bounds.width - terminalWidth) / 2)
-        let yInset = isLetterboxed ? 0 : max(0, (bounds.height - terminalHeight) / 2)
+        // Ghostty renders the grid at the TOP-LEFT of the surface and pushes any
+        // leftover space to the bottom-right: the default `window-padding-balance
+        // = false` applies only the small fixed `window-padding-{x,y}` at the top
+        // and never redistributes the sub-cell (and, for a capped/letterboxed
+        // surface, multi-cell) remainder (see ghostty `renderer/size.zig`). So the
+        // overlay origin must be top-left for BOTH a capped mirror/mobile surface
+        // AND a normal full-pane grid.
+        //
+        // The previous code centered the non-capped grid (`(bounds - grid) / 2`),
+        // assuming the remainder was ~0. That assumption held only when the pane
+        // was a byte-exact multiple of the cell height (e.g. two windows on one
+        // Mac), so the bug was invisible in same-machine testing. Across two
+        // machines the pane pixel heights differ by the sub-cell remainder, so the
+        // centered inset (`remainder / 2`) diverged from Ghostty's top-left origin
+        // and, because the host encodes the pointer with its inset while the
+        // capped viewer decodes with a top-left (0) inset, the two models no longer
+        // agreed and the collaborator cursor drifted vertically by a fixed amount.
+        // Anchoring top-left unconditionally makes capture and render use one
+        // origin model that matches Ghostty, independent of pane height.
+        let xInset: CGFloat = 0
+        let yInset: CGFloat = 0
         return KeyboardCopyModeGridMetrics(
             rows: rows,
             columns: columns,
@@ -7852,6 +8038,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             contentRow: normalized.contentRow,
             contentRowFromBottom: normalized.contentRowFromBottom,
             viewportRowFromBottom: normalized.viewportRowFromBottom,
+            scrolledToBottom: normalized.scrolledToBottom,
             visible: visible,
             coordinateSpace: normalized.coordinateSpace
         )
@@ -7868,14 +8055,16 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         contentRow: Double?,
         contentRowFromBottom: Double?,
         viewportRowFromBottom: Double?,
+        scrolledToBottom: Bool,
         coordinateSpace: String
     ) {
+        let scrolledToBottom = isViewingLiveScrollbackBottom
         guard visible, let point else {
-            return (0, 0, nil, nil, nil, nil, nil, "terminalContentBottom")
+            return (0, 0, nil, nil, nil, nil, nil, scrolledToBottom, "terminalContentBottom")
         }
         guard let surface,
               let metrics = keyboardCopyModeGridMetrics(surface: surface) else {
-            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, nil, nil, "view") }
+            guard bounds.width > 0, bounds.height > 0 else { return (0, 0, nil, nil, nil, nil, nil, scrolledToBottom, "view") }
             return (
                 Double(min(max(point.x / bounds.width, 0), 1)),
                 Double(min(max(point.y / bounds.height, 0), 1)),
@@ -7884,28 +8073,51 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 nil,
                 nil,
                 nil,
+                scrolledToBottom,
                 "view"
             )
         }
 
         let gridWidth = CGFloat(metrics.columns) * metrics.cellWidth
         let gridHeight = CGFloat(metrics.rows) * metrics.cellHeight
-        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, nil, nil, "terminalContentBottom") }
+        guard gridWidth > 0, gridHeight > 0 else { return (0, 0, nil, nil, nil, nil, nil, scrolledToBottom, "terminalContentBottom") }
+        let padding = terminalCollaboratorGridPadding()
         let topOriginY = bounds.height - point.y
-        let column = min(max((point.x - metrics.xInset) / metrics.cellWidth, 0), CGFloat(metrics.columns))
-        let row = min(max((topOriginY - metrics.yInset) / metrics.cellHeight, 0), CGFloat(metrics.rows))
+        let cell = TerminalCollaboratorOverlayGeometry.gridCell(
+            x: Double(point.x),
+            y: Double(point.y),
+            cellWidth: Double(metrics.cellWidth),
+            cellHeight: Double(metrics.cellHeight),
+            viewHeight: Double(bounds.height),
+            topPadding: Double(padding.top),
+            leftPadding: Double(padding.left)
+        )
+        let column = min(max(CGFloat(cell.column), 0), CGFloat(metrics.columns))
+        let row = min(max(CGFloat(cell.row), 0), CGFloat(metrics.rows))
         let contentRow = row + CGFloat(scrollbar?.offset ?? 0)
         let bottomRow = CGFloat(max(scrollbar?.total ?? 0, 1)) - 1
         let contentRowFromBottom = max(0, bottomRow - contentRow)
         let viewportRowFromBottom = max(0, CGFloat(metrics.rows) - row)
+        Self.collaboratorCursorLog(
+            "send surface=\(terminalSurface?.id.uuidString.prefix(8) ?? "?") " +
+            "bounds=\(String(format: "%.1f", bounds.width))x\(String(format: "%.1f", bounds.height)) " +
+            "capped=\(terminalSurface?.isViewportCellCapped == true ? 1 : 0) " +
+            "rows=\(metrics.rows) cols=\(metrics.columns) " +
+            "cell=\(String(format: "%.2f", metrics.cellWidth))x\(String(format: "%.2f", metrics.cellHeight)) " +
+            "pad=\(String(format: "%.2f", padding.top)),\(String(format: "%.2f", padding.left)) " +
+            "scroll(total=\(scrollbar.map { String($0.total) } ?? "nil"),offset=\(scrollbar.map { String($0.offset) } ?? "nil")) " +
+            "row=\(String(format: "%.3f", row)) col=\(String(format: "%.3f", column)) " +
+            "contentRowFromBottom=\(String(format: "%.3f", contentRowFromBottom))"
+        )
         return (
-            Double(min(max((point.x - metrics.xInset) / gridWidth, 0), 1)),
-            Double(min(max((topOriginY - metrics.yInset) / gridHeight, 0), 1)),
+            Double(min(max((point.x - padding.left) / gridWidth, 0), 1)),
+            Double(min(max((topOriginY - padding.top) / gridHeight, 0), 1)),
             Double(row),
             Double(column),
             Double(contentRow),
             Double(contentRowFromBottom),
             Double(viewportRowFromBottom),
+            scrolledToBottom,
             "terminalContentBottom"
         )
     }
@@ -9002,6 +9214,7 @@ final class GhosttySurfaceScrollView: NSView {
         contentRow: Double?,
         contentRowFromBottom: Double?,
         viewportRowFromBottom: Double?,
+        scrolledToBottom: Bool?,
         visible: Bool,
         coordinateSpace: String?
     ) {
@@ -9016,6 +9229,7 @@ final class GhosttySurfaceScrollView: NSView {
             contentRow: contentRow,
             contentRowFromBottom: contentRowFromBottom,
             viewportRowFromBottom: viewportRowFromBottom,
+            scrolledToBottom: scrolledToBottom,
             visible: visible,
             coordinateSpace: coordinateSpace
         )

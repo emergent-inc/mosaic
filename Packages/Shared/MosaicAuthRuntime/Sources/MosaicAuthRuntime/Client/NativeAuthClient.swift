@@ -19,6 +19,8 @@ public actor NativeAuthClient: AuthClient {
         struct Team: Decodable {
             let id: String
             let displayName: String?
+            let workspaceType: String?
+            let planTier: String?
         }
 
         let user: User
@@ -80,7 +82,19 @@ public actor NativeAuthClient: AuthClient {
 
     public func listTeams() async throws -> [MosaicAuthTeam] {
         guard let response = try await me(allowRefresh: true) else { return [] }
-        return response.teams.map { MosaicAuthTeam(id: $0.id, displayName: $0.displayName ?? $0.id) }
+        return response.teams.map {
+            MosaicAuthTeam(
+                id: $0.id,
+                displayName: $0.displayName ?? $0.id,
+                workspaceType: $0.workspaceType,
+                planTier: $0.planTier
+            )
+        }
+    }
+
+    public func serverSelectedTeamID() async throws -> String? {
+        guard let response = try await me(allowRefresh: true) else { return nil }
+        return response.selectedTeamId
     }
 
     public func sendMagicLinkEmail(email: String, callbackURL: String) async throws -> String {

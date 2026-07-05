@@ -2,13 +2,12 @@
 ///
 /// Before a session exists the pill shows the "Start session" call to action.
 /// Once the workspace has a session, the pill collapses to a people icon plus
-/// the number of *other* people in the session (the local user is always a
-/// participant, so a freshly created session shows `0`).
+/// the total number of people in the session.
 public struct CollaborationTerminalSessionPillModel: Equatable, Sendable {
     /// Whether the workspace has an active session (created or joined).
     public let hasSession: Bool
-    /// How many people besides the local user are in the session.
-    public let otherParticipantCount: Int
+    /// Total participants in the session, including the local user.
+    public let totalParticipantCount: Int
     /// Pending directory-share invites in the local user's inbox. Surfaced as a
     /// badge on the pill regardless of whether a session exists, so an incoming
     /// invite is visible without opening the popover.
@@ -27,7 +26,7 @@ public struct CollaborationTerminalSessionPillModel: Equatable, Sendable {
         incomingInviteCount: Int = 0
     ) {
         self.hasSession = workspaceSessionCode != nil
-        self.otherParticipantCount = hasSession ? max(participantCount - 1, 0) : 0
+        self.totalParticipantCount = hasSession ? max(participantCount, 0) : 0
         self.incomingInviteCount = max(incomingInviteCount, 0)
     }
 

@@ -29,6 +29,15 @@ public struct AccountSection: View {
             SettingsSectionHeader(String(localized: "settings.section.account", defaultValue: "Account"), section: .account)
             SettingsCard {
                 AccountIdentityCard(flow: accountFlow)
+                // Only surface the org switcher when the user actually belongs
+                // to more than one org (mirrors the iOS shell). A solo user
+                // with a single personal/team org has nothing to switch to.
+                if let accountFlow, accountFlow.availableTeams.count > 1 {
+                    SettingsCardDivider()
+                    AccountTeamPicker(flow: accountFlow)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                }
             }
             .settingsSearchAnchors(["setting:account:account"])
         }
