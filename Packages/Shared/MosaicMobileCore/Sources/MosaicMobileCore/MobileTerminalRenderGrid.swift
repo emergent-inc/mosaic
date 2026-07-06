@@ -13,6 +13,16 @@ public enum MobileTerminalRenderGridError: Error, Equatable, Sendable {
 public struct MobileTerminalRenderGridFrame: Codable, Equatable, Sendable {
     public static let currentFormat = "mosaic.render-grid.v1"
 
+    /// Format tags accepted on decode. The GhosttyKit fork's
+    /// `ghostty_surface_render_grid_json` still emits the pre-rename
+    /// `cmux.render-grid.v1` tag; rejecting it made every host-side render-grid
+    /// capture return nil, which broke the collaboration seed (viewers saw a
+    /// black mirror pane until live output arrived, and never received the
+    /// pre-share screen/scrollback) and the mobile replay render grid. Legacy
+    /// tags are normalized to ``currentFormat`` so re-encoded frames carry one
+    /// canonical name downstream.
+    static let acceptedFormats: Set<String> = [currentFormat, "cmux.render-grid.v1"]
+
     public var format: String
     public var surfaceID: String
     public var stateSeq: UInt64
@@ -63,7 +73,7 @@ public struct MobileTerminalRenderGridFrame: Codable, Equatable, Sendable {
         scrollbackRows: Int = 0,
         scrollbackSpans: [RowSpan] = []
     ) throws {
-        guard format == Self.currentFormat else {
+        guard Self.acceptedFormats.contains(format) else {
             throw MobileTerminalRenderGridError.invalidFormat(format)
         }
         guard columns > 0, rows > 0 else {
@@ -121,7 +131,7 @@ public struct MobileTerminalRenderGridFrame: Codable, Equatable, Sendable {
                 )
             }
         }
-        self.format = format
+        self.format = Self.currentFormat
         self.surfaceID = surfaceID
         self.stateSeq = stateSeq
         self.columns = columns

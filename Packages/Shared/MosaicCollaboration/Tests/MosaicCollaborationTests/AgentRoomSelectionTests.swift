@@ -29,6 +29,21 @@ struct AgentRoomSelectionTests {
     }
 
     @Test
+    func wireWithBothEndsRoomedConvergesOnASingleRoomInsteadOfMintingNew() {
+        // Both wire ends already belong to a room: the wire must reuse one of
+        // them (source wins) so the two agents converge on a single shared room
+        // rather than spawning a third, which is the proliferation failure mode.
+        let selected = AgentRoomSelection.roomIDForWire(
+            sourceRoomID: "source-room",
+            targetRoomID: "target-room",
+            newRoomID: "fresh-room"
+        )
+
+        #expect(selected == "source-room")
+        #expect(selected != "fresh-room")
+    }
+
+    @Test
     func explicitSurfaceOperationDoesNotFallBackToHistoricalLatestRoom() {
         let selected = AgentRoomSelection.roomIDForSurfaceOperation(
             requestedRoomID: nil,

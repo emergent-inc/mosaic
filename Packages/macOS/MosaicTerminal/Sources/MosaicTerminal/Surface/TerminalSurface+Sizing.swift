@@ -1,6 +1,7 @@
 public import AppKit
 public import Foundation
 public import GhosttyKit
+internal import MosaicTerminalCore
 
 // MARK: - Surface sizing, scale, and mobile viewport caps
 
@@ -401,6 +402,14 @@ extension TerminalSurface {
         guard let pixelLimit = viewportCellPixelLimit(for: surface) else {
             return (width, height)
         }
+        // Viewport mode for collaboration mirrors: the surface renders the
+        // FULL host grid even when the pane is smaller (the pane clips it and
+        // pans; see lockedMirrorGridPointSize). A mirror that silently ran a
+        // smaller grid diverged from the host byte-for-byte (visible zsh `%`
+        // marks, mangled fullscreen TUIs, broken overlay mapping).
+        if manualIO, lockedMirrorGrid != nil {
+            return pixelLimit
+        }
         return (
             width: min(width, pixelLimit.width),
             height: min(height, pixelLimit.height)
@@ -479,6 +488,41 @@ extension TerminalSurface {
         enforceViewportCellCap(reason: "collaboration.clearMirrorGrid")
     }
 
+    /// The locked mirror grid's size in view points at the current cell
+    /// metrics (including Ghostty's non-grid padding). Layout uses this to
+    /// size the mirror's surface view to the FULL host grid — a pane smaller
+    /// than the grid clips it (viewport mode) instead of running a smaller,
+    /// divergent grid. Nil while no lock is active or the surface isn't live.
+    @MainActor
+    public func lockedMirrorGridPointSize() -> CGSize? {
+        guard let locked = lockedMirrorGrid,
+              let surface = liveSurfaceForGhosttyAccess(reason: "lockedMirrorGridPointSize") else {
+            return nil
+        }
+        let size = ghostty_surface_size(surface)
+        let cellWidth = max(1, Int(size.cell_width_px))
+        let cellHeight = max(1, Int(size.cell_height_px))
+        let currentColumns = max(1, Int(size.columns))
+        let currentRows = max(1, Int(size.rows))
+        let horizontalNonGridPixels = max(0, Int(size.width_px) - currentColumns * cellWidth)
+        let verticalNonGridPixels = max(0, Int(size.height_px) - currentRows * cellHeight)
+        let widthPx = safePixelDimension(
+            cellCount: locked.columns,
+            cellSize: cellWidth,
+            nonGridPixels: horizontalNonGridPixels
+        )
+        let heightPx = safePixelDimension(
+            cellCount: locked.rows,
+            cellSize: cellHeight,
+            nonGridPixels: verticalNonGridPixels
+        )
+        let scale = max(Double(lastXScale), 1)
+        return CGSize(
+            width: Double(widthPx) / scale,
+            height: Double(heightPx) / scale
+        )
+    }
+
     /// Immediately re-applies the current effective viewport cell cap (mobile
     /// pairing and/or collaboration mirror lock) to the live surface without
     /// waiting for a local pane resize. Restores the uncapped size when no cap
@@ -511,8 +555,17 @@ extension TerminalSurface {
         guard let pixelLimit = viewportCellPixelLimit(for: surface) else { return false }
         let baseWidth = lastUncappedPixelWidth > 0 ? lastUncappedPixelWidth : pixelLimit.width
         let baseHeight = lastUncappedPixelHeight > 0 ? lastUncappedPixelHeight : pixelLimit.height
-        let appliedWidth = min(pixelLimit.width, baseWidth)
-        let appliedHeight = min(pixelLimit.height, baseHeight)
+        let appliedWidth: UInt32
+        let appliedHeight: UInt32
+        if manualIO, lockedMirrorGrid != nil {
+            // Viewport mode: mirrors always render the full host grid; a
+            // smaller pane clips/pans instead of shrinking the grid.
+            appliedWidth = pixelLimit.width
+            appliedHeight = pixelLimit.height
+        } else {
+            appliedWidth = min(pixelLimit.width, baseWidth)
+            appliedHeight = min(pixelLimit.height, baseHeight)
+        }
         updateMobileViewportBorder(
             appliedWidth: appliedWidth,
             appliedHeight: appliedHeight,

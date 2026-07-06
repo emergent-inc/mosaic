@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class MainWindowVisibilityController {
     enum Reason: String {
+        case authCallback
         case createMainWindow
         case applicationDidBecomeActive
         case applicationWillBecomeActive

@@ -2,6 +2,10 @@
 public enum CollaborationTerminalShareAction: Equatable, Sendable {
     /// Show the create or join session chooser before sharing can start.
     case presentSessionChooser
+    /// Create a session silently and share the terminal without any chooser
+    /// dialog (team/enterprise directory-sharing plans: the session is an
+    /// implementation detail behind the teammate picker).
+    case createSessionAndShareDirectly
     /// Share the local terminal in the workspace's existing session.
     case shareInWorkspaceSession
     /// Stop hosting the local terminal.
@@ -15,14 +19,20 @@ public enum CollaborationTerminalShareAction: Equatable, Sendable {
     /// - Parameters:
     ///   - role: Whether the terminal is not shared, hosted by this user, or mirrored from a collaborator.
     ///   - workspaceHasSession: Whether the terminal's workspace already owns a session.
+    ///   - directorySharingEnabled: Whether the caller's org has directory ("no codes")
+    ///     sharing, which skips the create-or-join chooser entirely.
     /// - Returns: The action the peer button should perform.
     public static func primaryAction(
         role: CollaborationSurfaceSharingRole,
-        workspaceHasSession: Bool = false
+        workspaceHasSession: Bool = false,
+        directorySharingEnabled: Bool = false
     ) -> CollaborationTerminalShareAction {
         switch role {
         case .notShared:
-            return workspaceHasSession ? .shareInWorkspaceSession : .presentSessionChooser
+            if workspaceHasSession {
+                return .shareInWorkspaceSession
+            }
+            return directorySharingEnabled ? .createSessionAndShareDirectly : .presentSessionChooser
         case .hosted:
             return .stopSharingHostedTerminal
         case .mirrored:

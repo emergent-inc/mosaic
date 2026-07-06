@@ -176,6 +176,14 @@ private struct CollaborationTerminalRenderGridWire: Codable {
     }
 }
 
+/// A mirror-bound content frame held back until the mirror grid is locked to
+/// the host's dimensions (terminal byte replay is width-sensitive, so content
+/// must never be processed at the mirror's provisional width).
+private enum PendingMirroredTerminalFrame {
+    case renderGrid(MobileTerminalRenderGridFrame)
+    case output(sequence: UInt64, data: Data, caretPeerID: String?, connection: CollaborationRelayConnection)
+}
+
 /// Viewer -> host request to (re)send the full render-grid seed for a shared
 /// terminal. Sent when a mirror pane exists but no full seed has been applied
 /// (the one-shot seed can be dropped by the relay's size cap, raced past the
@@ -477,6 +485,11 @@ private final class CollaborationRelayConnection {
     /// strictly in arrival order, but decoupled from the socket read so the
     /// next `receive` can be armed before (potentially heavy) processing runs.
     var frameProcessingTask: Task<Void, Never>?
+    /// Number of frames enqueued into the ordered chain that have not finished
+    /// processing yet. When this is zero the chain is idle, so a latency-
+    /// critical `terminal.output` echo can be applied inline (skipping the
+    /// per-frame main-actor task hop) without reordering ahead of earlier work.
+    var pendingOrderedFrameCount = 0
     var peersByID: [String: CollaborationPeerWire] = [:]
     var connectionLabel = CollaborationStrings.connecting
     let joinAcknowledgement = CollaborationJoinAcknowledgementGate()
@@ -919,6 +932,9 @@ final class CollaborationRuntime {
     private var mirroredTerminalsByID: [String: WeakCollaborationTerminalPanel] = [:]
     private var mirroredTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalOwnerParticipantIDsByID: [String: String] = [:]
+    /// Owning peer id for each mirrored terminal, used to attribute the room
+    /// member created when a viewer wires the remote terminal they are viewing.
+    private var mirroredTerminalOwnerPeerIDsByID: [String: String] = [:]
     private var terminalOwnerAvatarRequestKeysByID: [String: String] = [:]
     private var mirroredTerminalRenderGridPatchSequencesByID: [String: UInt64] = [:]
     private var mirroredTerminalRenderGridSequencesByID: [String: UInt64] = [:]
@@ -933,6 +949,93 @@ final class CollaborationRuntime {
     private var mirroredRenderGridSeedRequestTasksByID: [String: Task<Void, Never>] = [:]
     private static let mirroredRenderGridSeedRequestDelay: Duration = .seconds(2)
     private static let mirroredRenderGridSeedRequestAttempts = 2
+    /// Terminal IDs whose mirror grid has been locked to the host's columns
+    /// x rows (i.e. `terminal.dimensions` has been applied at least once).
+    /// Seed and output replay is gated on this: terminal byte streams are
+    /// width-sensitive (zsh's partial-line `%` mark emits `$COLUMNS - 1`
+    /// spaces to force a wrap), so content processed at the mirror's pre-lock
+    /// width wraps differently than on the host and the two screens' rows
+    /// drift apart permanently.
+    private var mirroredTerminalGridLockedIDs: Set<String> = []
+    /// Seed/output frames buffered until the mirror grid lock arrives,
+    /// applied in arrival order when it does.
+    private var pendingMirroredFramesAwaitingLockByID: [String: [PendingMirroredTerminalFrame]] = [:]
+    /// Fallback timers that open the gate anyway for hosts that never send
+    /// `terminal.dimensions` (or send it late): a briefly-mislaid layout
+    /// beats an indefinitely black pane.
+    private var mirroredGridLockFlushTasksByID: [String: Task<Void, Never>] = [:]
+    private static let mirroredGridLockFlushDelay: Duration = .milliseconds(1500)
+    /// If the buffer grows past this many frames the gate opens immediately;
+    /// dropping output bytes is never acceptable (it corrupts the stream).
+    private static let pendingMirroredFramesAwaitingLockLimit = 256
+    /// The last host grid each mirror locked to, so a mid-session host grid
+    /// change (window resize, fullscreen TUI toggle) can be detected and the
+    /// mirror resynced with a fresh full seed. Content already laid out for
+    /// the old grid cannot be repaired by replaying bytes: mirrors suppress
+    /// reflow on resize, so only a RIS-led full seed repaints correctly.
+    private var mirroredTerminalLockedGridByID: [String: TerminalGridSize] = [:]
+    /// Debounced viewer->host full-seed re-requests after a grid change, so
+    /// a live host window drag (a stream of grid changes) asks once at the
+    /// end instead of per intermediate size. This is the safety net; the
+    /// host also proactively reseeds on its own grid change (with a shorter
+    /// debounce), and the request is skipped when that seed lands first.
+    private var mirroredReseedRequestTasksByID: [String: Task<Void, Never>] = [:]
+    private static let mirroredReseedRequestDebounce: Duration = .milliseconds(1500)
+    /// Debounced host-side full reseeds after the host's own grid changed.
+    private var hostedTerminalReseedTasksByID: [String: Task<Void, Never>] = [:]
+    private static let hostedTerminalReseedDebounce: Duration = .milliseconds(600)
+    /// Floor between consecutive host reseeds so grid flapping can never
+    /// stream large seed frames back-to-back (which floods the socket ahead
+    /// of latency-sensitive input echo and causes repaint churn).
+    private var hostedTerminalLastReseedAtByID: [String: TimeInterval] = [:]
+    private static let hostedTerminalReseedMinInterval: TimeInterval = 3.0
+    /// One-shot seed retransmit after share start; heals the initial seed
+    /// failing to land visibly on any viewer build.
+    private static let shareStartSeedRetransmitDelay: Duration = .seconds(1)
+    /// Mirrors whose content was rendered before any real grid lock arrived
+    /// (the gate's fallback opened). A late lock resyncs them with a reseed.
+    private var mirroredContentAppliedUnlockedIDs: Set<String> = []
+    /// Seed-lifecycle debug logging; enable with `MOSAIC_COLLAB_SEED_DEBUG=1`
+    /// to correlate host seed production with viewer application/presentation
+    /// when diagnosing a blank mirror.
+    private static let seedDebugEnabled =
+        ProcessInfo.processInfo.environment["MOSAIC_COLLAB_SEED_DEBUG"] == "1"
+
+    static func seedLog(_ message: @autoclosure () -> String) {
+        guard seedDebugEnabled else { return }
+        NSLog("[COLLABSEED] %@", message())
+    }
+
+    /// Echo-timing debug logging; enable with `MOSAIC_COLLAB_ECHO_TIMING=1`
+    /// to measure the shared-terminal echo path. On the host it records when a
+    /// PTY output chunk is handed to the socket; on the viewer it records the
+    /// apply path (inline fast-path vs ordered chain) and the inter-arrival
+    /// delta between consecutive applies. Even spacing means network-cadence
+    /// typing; tight clusters separated by gaps mean the "stall then burst"
+    /// regression is still queuing echoes somewhere.
+    private static let echoTimingEnabled =
+        ProcessInfo.processInfo.environment["MOSAIC_COLLAB_ECHO_TIMING"] == "1"
+
+    static func echoLog(_ message: @autoclosure () -> String) {
+        guard echoTimingEnabled else { return }
+        NSLog("[COLLABECHO] %@", message())
+        #if DEBUG
+        // Also mirror into the debug event log file: NSLog from app processes
+        // does not reliably land in `log show`, and the file gives ms-precision
+        // timestamps alongside the existing collab.terminal.input.* lines.
+        mosaicDebugLog("COLLABECHO \(message())")
+        #endif
+    }
+
+    /// Monotonic millisecond clock for echo timing. `systemUptime` is immune to
+    /// wall-clock adjustments, so inter-arrival deltas stay accurate.
+    static func echoTimestampMillis() -> String {
+        String(format: "%.1f", ProcessInfo.processInfo.systemUptime * 1000.0)
+    }
+
+    /// Last `terminal.output` apply time per terminal (viewer side), used only
+    /// to compute the inter-arrival delta in `echoLog`.
+    private var echoLastApplyAtByID: [String: TimeInterval] = [:]
     private var mirroredTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var hostedTerminalInputReportPrefixesByID: [String: Data] = [:]
     private var terminalStatesByID: [String: CollaborationTerminalHeaderState] = [:]
@@ -966,6 +1069,12 @@ final class CollaborationRuntime {
     private var agentRoomIDsBySurfaceID: [UUID: String] = [:]
     private var agentRoomMemberIDsBySurfaceID: [UUID: String] = [:]
     private var agentRoomSnapshotsByID: [String: ClaudeRoomSnapshot] = [:]
+    /// Session codes of the relay connections that carry a mirrored terminal
+    /// wired into each room. A wired remote endpoint must be reached over the
+    /// connection that hosts its mirror even before the host has joined (so its
+    /// member peer is not yet a room member on our side); recorded here so
+    /// `broadcastAgentRoomFrame` always fans room frames to the owning host.
+    private var agentRoomWiredOwnerConnectionCodesByRoomID: [String: Set<String>] = [:]
     /// Locally connected room surfaces with no Claude hook session record on
     /// disk (dead link: hooks never registered, so the agent neither publishes
     /// nor receives). Cached off the view path; the header pill only reads it.
@@ -1438,9 +1547,10 @@ final class CollaborationRuntime {
         if isSharing {
             switch CollaborationTerminalShareAction.primaryAction(
                 role: role,
-                workspaceHasSession: workspaceSessionCode != nil
+                workspaceHasSession: workspaceSessionCode != nil,
+                directorySharingEnabled: collaborationEntitlements.directorySharing
             ) {
-            case .presentSessionChooser, .shareInWorkspaceSession:
+            case .presentSessionChooser, .createSessionAndShareDirectly, .shareInWorkspaceSession:
                 guard ensureSignedInForCollaboration(continue: { [weak terminal] in
                     guard let terminal else { return }
                     self.setSharing(true, for: terminal, entrypoint: entrypoint)
@@ -1464,10 +1574,16 @@ final class CollaborationRuntime {
                 )
                 switch CollaborationTerminalShareAction.primaryAction(
                     role: role,
-                    workspaceHasSession: workspaceSessionCode != nil
+                    workspaceHasSession: workspaceSessionCode != nil,
+                    directorySharingEnabled: collaborationEntitlements.directorySharing
                 ) {
                 case .presentSessionChooser:
                     scheduleStartDialog(thenShare: terminal)
+                case .createSessionAndShareDirectly:
+                    // Team/enterprise: no create-or-join chooser. The session
+                    // is created silently and the teammate picker is the whole
+                    // sharing surface (see createSessionAndShare(terminal:)).
+                    Task { await createSessionAndShare(terminal: terminal) }
                 case .shareInWorkspaceSession:
                     guard let workspaceSessionCode else {
                         scheduleStartDialog(thenShare: terminal)
@@ -1496,11 +1612,12 @@ final class CollaborationRuntime {
         } else {
             switch CollaborationTerminalShareAction.primaryAction(
                 role: role,
-                workspaceHasSession: workspaceSessionCode != nil
+                workspaceHasSession: workspaceSessionCode != nil,
+                directorySharingEnabled: collaborationEntitlements.directorySharing
             ) {
             case .stopSharingHostedTerminal, .stopViewingRemoteTerminal:
                 leave(terminal: terminal)
-            case .presentSessionChooser, .shareInWorkspaceSession, .presentParticipantPicker:
+            case .presentSessionChooser, .createSessionAndShareDirectly, .shareInWorkspaceSession, .presentParticipantPicker:
                 break
             }
         }
@@ -1934,6 +2051,13 @@ final class CollaborationRuntime {
                     ),
                     via: connection
                 )
+                // Grid lock before content: seed replay is width-sensitive.
+                await sendHostedTerminalDimensionsNow(
+                    terminalID: terminalID,
+                    connection: connection,
+                    recipientParticipantIDs: recipients,
+                    force: true
+                )
                 try? await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
@@ -1942,12 +2066,37 @@ final class CollaborationRuntime {
                     recipientParticipantIDs: recipients,
                     via: connection
                 )
-                broadcastHostedTerminalDimensions(
-                    terminalID: terminalID,
-                    connection: connection,
-                    recipientParticipantIDs: recipients,
-                    force: true
+                // Granting drive consent activates any agent-room bridge a viewer
+                // wired earlier while the terminal was still read-only.
+                await completeHostAgentRoomJoinsForConsentedTerminal(
+                    surfaceID: terminal.id,
+                    terminalID: terminalID
                 )
+            }
+        }
+    }
+
+    /// Runs host join-completion for every room the given hosted surface was wired
+    /// into, after the host grants terminal-drive consent. Broadcasts once per room
+    /// that changed so the wiring viewer's agent begins exchanging context.
+    private func completeHostAgentRoomJoinsForConsentedTerminal(
+        surfaceID: UUID,
+        terminalID: String
+    ) async {
+        let surfaceIDString = surfaceID.uuidString
+        let roomsWithMember = agentRoomSnapshotsByID.values.filter { room in
+            room.members.contains { $0.surfaceID == surfaceIDString }
+        }
+        for room in roomsWithMember {
+            guard let member = room.members.first(where: { $0.surfaceID == surfaceIDString }) else {
+                continue
+            }
+            if await completeHostAgentRoomJoin(member: member, surfaceUUID: surfaceID, roomID: room.id) {
+                if let enriched = await agentRoomStore.room(id: room.id) {
+                    cacheAgentRoom(enriched)
+                    agentRoomHeaderRevision &+= 1
+                    try? await send(.agentRoomSnapshot(enriched))
+                }
             }
         }
     }
@@ -1974,7 +2123,16 @@ final class CollaborationRuntime {
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         pendingMirroredRenderGridFramesByID.removeValue(forKey: terminalID)
+        echoLastApplyAtByID.removeValue(forKey: terminalID)
         mirroredRenderGridSeedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredTerminalGridLockedIDs.remove(terminalID)
+        pendingMirroredFramesAwaitingLockByID.removeValue(forKey: terminalID)
+        mirroredGridLockFlushTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredTerminalLockedGridByID.removeValue(forKey: terminalID)
+        mirroredReseedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredContentAppliedUnlockedIDs.remove(terminalID)
+        hostedTerminalReseedTasksByID.removeValue(forKey: terminalID)?.cancel()
+        hostedTerminalLastReseedAtByID.removeValue(forKey: terminalID)
         mirroredTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         hostedTerminalInputReportPrefixesByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
@@ -2005,14 +2163,40 @@ final class CollaborationRuntime {
         guard let terminalID = hostedTerminalIDsBySurfaceID[surfaceID] else { return }
         let sequence = hostedTerminalOutputSequencesByID[terminalID] ?? 0
         hostedTerminalOutputSequencesByID[terminalID] = sequence &+ UInt64(data.count)
-        Task {
-            if let connection = connection(forTerminalID: terminalID) {
-                // The byte-faithful raw stream is the mirror's sole live painter;
-                // it reproduces scrollback, TUIs, and resizes exactly. We do NOT
-                // also send a live render-grid delta here: the two transports
-                // interleave and desync, which left stale rows on the peer. The
-                // render-grid path is used only for the cold-attach full seed.
-                try? await send(.terminalOutput(terminalID: terminalID, sequence: sequence, data: data), via: connection)
+        // The byte-faithful raw stream is the mirror's sole live painter; it
+        // reproduces scrollback, TUIs, and resizes exactly. We do NOT also send
+        // a live render-grid delta here: the two transports interleave and
+        // desync, which left stale rows on the peer. The render-grid path is
+        // used only for the cold-attach full seed.
+        //
+        // Echo is latency-critical: this is the byte a viewer sees after typing
+        // travels host<->relay<->viewer. Encode inline and hand the frame
+        // straight to URLSession's FIFO send queue, exactly like keystroke
+        // input and pointer frames. Routing through the `frameWriter` codec
+        // actor (plus the extra `Task {}` hop) queued the echo behind large
+        // in-flight frames (768KB render-grid seeds, output bursts), which the
+        // viewer felt as typing lag. FIFO ordering is preserved because
+        // `noteTerminalOutput` runs on the main actor and `task.send` enqueues
+        // in call order.
+        if let connection = connection(forTerminalID: terminalID),
+           let task = connection.webSocketTask {
+            let wire = CollaborationTerminalOutputWire(
+                type: "terminal.output",
+                terminalID: terminalID,
+                sequence: sequence,
+                dataBase64: data.base64EncodedString(),
+                caretPeerID: terminalOutputPeerID(for: terminalID),
+                recipientParticipantIDs: recipientParticipantIDsForSending(
+                    terminalID: terminalID,
+                    connection: connection
+                )
+            )
+            if let payload = try? encoder.encode(wire) {
+                task.send(.string(String(decoding: payload, as: UTF8.self))) { _ in }
+                Self.echoLog(
+                    "host-send terminal=\(terminalID.prefix(8)) bytes=\(data.count) " +
+                    "t=\(Self.echoTimestampMillis())"
+                )
             }
         }
         // A host resize produces redraw output; piggyback a column re-broadcast
@@ -2038,15 +2222,26 @@ final class CollaborationRuntime {
             direction: "mirror-to-host",
             terminalID: terminalID
         ) else { return }
-        Task {
-            if let connection = connection(forTerminalID: terminalID) {
-                try? await send(.terminalInput(
-                    terminalID: terminalID,
-                    inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
-                    data: filteredData
-                ), via: connection)
-            }
-        }
+        guard let connection = connection(forTerminalID: terminalID),
+              let task = connection.webSocketTask else { return }
+        let wire = CollaborationTerminalInputWire(
+            type: "terminal.input",
+            terminalID: terminalID,
+            inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
+            dataBase64: filteredData.base64EncodedString(),
+            fromPeerID: peerIdentity.peerID,
+            recipientParticipantIDs: recipientParticipantIDsForSending(
+                terminalID: terminalID,
+                connection: connection
+            )
+        )
+        // Keystrokes are latency-critical: encode inline (tiny payload) and
+        // hand the frame straight to URLSession's FIFO send queue, exactly
+        // like pointer frames. Routing through the `frameWriter` codec actor
+        // queued keystrokes behind large frames (768KB render-grid seeds,
+        // output bursts), which read as typing lag on the shared terminal.
+        guard let payload = try? encoder.encode(wire) else { return }
+        task.send(.string(String(decoding: payload, as: UTF8.self))) { _ in }
     }
 
     func noteTerminalPointer(
@@ -2219,10 +2414,41 @@ final class CollaborationRuntime {
         mirroredTerminalIDsBySurfaceID = mirroredTerminalIDsBySurfaceID.filter { $0.value != terminalID }
         terminalSessionRouter.remove(terminalID: terminalID)
         terminalOwnerParticipantIDsByID.removeValue(forKey: terminalID)
+        mirroredTerminalOwnerPeerIDsByID.removeValue(forKey: terminalID)
         terminalOwnerAvatarRequestKeysByID.removeValue(forKey: terminalID)
         for surfaceID in hostedSurfaceIDs + mirroredSurfaceIDs {
             terminalSelectionLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
             terminalPointerLastSentAtBySurfaceID.removeValue(forKey: surfaceID)
+        }
+        // A terminal leaving collaboration (mirror closed, host stopped sharing,
+        // session left) must also drop any agent-room member bridged from it, so
+        // the room no longer routes context to a surface that is gone.
+        teardownBridgedAgentRoomMembership(forTerminalID: terminalID)
+    }
+
+    /// Removes the agent-room member that was bridged from a collaboration
+    /// terminal (the host surface embedded in the terminal id) and broadcasts the
+    /// updated room. Safe no-op when the terminal was never wired into a room.
+    private func teardownBridgedAgentRoomMembership(forTerminalID terminalID: String) {
+        guard let parsed = SharedTerminalDescriptor.parse(terminalID: terminalID) else { return }
+        let memberSurfaceID = parsed.surfaceID.uuidString
+        let affectedRoomIDs = agentRoomSnapshotsByID.values
+            .filter { room in room.members.contains { $0.surfaceID == memberSurfaceID } }
+            .map(\.id)
+        guard !affectedRoomIDs.isEmpty else { return }
+        Task { @MainActor in
+            for roomID in affectedRoomIDs {
+                let memberID = agentRoomMemberID(surfaceID: memberSurfaceID, inRoomID: roomID)
+                guard let room = await agentRoomStore.disconnect(
+                    roomID: roomID,
+                    memberID: memberID,
+                    surfaceID: memberSurfaceID
+                ) else { continue }
+                cacheAgentRoom(room)
+                reconcileAgentRoomMembership(with: room)
+                agentRoomHeaderRevision &+= 1
+                try? await send(.agentRoomSnapshot(room))
+            }
         }
     }
 
@@ -2302,18 +2528,34 @@ final class CollaborationRuntime {
         // one surface's header subscribed to a stale read, so only one pill
         // appears. Mirrors the workspaceParticipantSnapshotRevision pattern.
         _ = agentRoomHeaderRevision
-        if let roomID = agentRoomIDsBySurfaceID[panel.id] {
-            // Degraded when ANY local member of this room has a dead hook link:
-            // a silently unplugged peer breaks context sync for everyone, so
-            // every pane in the room should surface it.
-            let isDegraded = agentRoomDegradedSurfaceIDs.contains { surfaceID in
-                agentRoomIDsBySurfaceID[surfaceID] == roomID
+        if let roomID = resolvedAgentRoomID(forPanel: panel) {
+            let isDegraded: Bool
+            if agentRoomIDsBySurfaceID[panel.id] != nil {
+                // Degraded when ANY local member of this room has a dead hook link:
+                // a silently unplugged peer breaks context sync for everyone, so
+                // every pane in the room should surface it.
+                isDegraded = agentRoomDegradedSurfaceIDs.contains { surfaceID in
+                    agentRoomIDsBySurfaceID[surfaceID] == roomID
+                }
+            } else if let member = mirrorHostRoomMember(forPanel: panel, roomID: roomID) {
+                // A mirrored pane is degraded until the host completes the join
+                // (attaches its live Claude session), which only happens once the
+                // host has granted the terminal-drive bridge consent.
+                isDegraded = member.agentSessionID == nil
+            } else {
+                isDegraded = false
             }
-            let activeRoomIDs = Set(agentRoomIDsBySurfaceID.values)
-            let orderedActiveRoomIDs = activeAgentRoomDisplayOrder(activeRoomIDs: activeRoomIDs)
+            // Display numbers follow the persistent first-seen wiring order and
+            // must stay stable when another room empties out. Filtering to only
+            // currently-populated rooms here renumbers survivors: emptying the
+            // room that happens to sit lower in the order would silently relabel
+            // (and recolor) a still-populated room — e.g. wiring the last pane
+            // out of "Room 1" made the remaining room jump from "Room 2" to
+            // "Room 1". Gaps in numbering are intentional and preferred over
+            // relabeling an existing room.
             let displayNumber = AgentRoomDisplayPalette.displayNumber(
                 for: roomID,
-                orderedRoomIDs: orderedActiveRoomIDs
+                orderedRoomIDs: agentRoomDisplayOrder
             )
             return AgentRoomHeaderState(
                 isConnected: true,
@@ -2324,6 +2566,28 @@ final class CollaborationRuntime {
             )
         }
         return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectAgentRoom)
+    }
+
+    /// The room a pane's header pill should reflect. Local panes read the direct
+    /// membership map; a mirrored pane resolves through the host surface embedded
+    /// in its collaboration terminal id, since the room member is keyed on the
+    /// host surface (not the local mirror pane UUID).
+    private func resolvedAgentRoomID(forPanel panel: TerminalPanel) -> String? {
+        if let roomID = agentRoomIDsBySurfaceID[panel.id] { return roomID }
+        if let terminalID = mirroredTerminalIDsBySurfaceID[panel.id],
+           let parsed = SharedTerminalDescriptor.parse(terminalID: terminalID) {
+            return roomID(forMemberSurfaceID: parsed.surfaceID.uuidString)
+        }
+        return nil
+    }
+
+    private func mirrorHostRoomMember(forPanel panel: TerminalPanel, roomID: String) -> ClaudeRoomMember? {
+        guard let terminalID = mirroredTerminalIDsBySurfaceID[panel.id],
+              let parsed = SharedTerminalDescriptor.parse(terminalID: terminalID) else {
+            return nil
+        }
+        let memberSurfaceID = parsed.surfaceID.uuidString
+        return agentRoomSnapshotsByID[roomID]?.members.first { $0.surfaceID == memberSurfaceID }
     }
 
     func beginAgentRoomWireDrag(
@@ -2370,6 +2634,27 @@ final class CollaborationRuntime {
 
     func connectAgentRoomFromHeader(panel: TerminalPanel) {
         Task { @MainActor in
+            // A mirrored (remote) pane registers the host's real surface into the
+            // room, not its local mirror pane UUID, so it must go through the
+            // endpoint path rather than the local surface-id automation helpers.
+            if mirroredTerminalIDsBySurfaceID[panel.id] != nil {
+                let endpoint = agentRoomWireEndpoint(localSurfaceID: panel.id)
+                if let roomID = endpoint.existingRoomID {
+                    await disconnectAgentRoomEndpoint(endpoint, roomID: roomID)
+                } else if endpoint.isStaleMirror {
+                    lastErrorMessage = Self.agentRoomStaleMirrorWireError
+                } else {
+                    let roomID = AgentRoomSelection.roomIDForSurfaceConnection(
+                        requestedRoomID: nil,
+                        surfaceWasExplicit: true,
+                        mappedSurfaceRoomID: nil,
+                        latestRoomID: latestAgentRoomID,
+                        newRoomID: UUID().uuidString
+                    )
+                    _ = await connectAgentRoomEndpoint(endpoint, roomID: roomID)
+                }
+                return
+            }
             if agentRoomIDsBySurfaceID[panel.id] != nil {
                 _ = await disconnectAgentRoomSurfaceForAutomation(
                     roomID: nil,
@@ -2395,27 +2680,205 @@ final class CollaborationRuntime {
             defer { endAgentRoomWireDrag() }
             let sourceUUID = UUID(uuidString: sourceSurfaceID)
             let targetUUID = targetSurfaceID
+            // Resolve each wire end to a member endpoint. A mirrored pane resolves
+            // to the host's real surface + owner peer (see `agentRoomWireEndpoint`),
+            // so wiring the terminal you are viewing bridges the remote host agent
+            // into the room rather than the agent-less local mirror pane.
+            let sourceEndpoint = sourceUUID.map { agentRoomWireEndpoint(localSurfaceID: $0) }
+            let targetEndpoint = agentRoomWireEndpoint(localSurfaceID: targetUUID)
+            // Refuse to wire a stale mirror: it would register a ghost host
+            // member that never joins and whose peer is unreachable, forking a
+            // one-machine room instead of a shared one.
+            if targetEndpoint.isStaleMirror || (sourceEndpoint?.isStaleMirror ?? false) {
+                lastErrorMessage = Self.agentRoomStaleMirrorWireError
+                return
+            }
             let roomID = AgentRoomSelection.roomIDForWire(
-                sourceRoomID: sourceUUID.flatMap { agentRoomIDsBySurfaceID[$0] },
-                targetRoomID: agentRoomIDsBySurfaceID[targetUUID],
+                sourceRoomID: sourceEndpoint?.existingRoomID,
+                targetRoomID: targetEndpoint.existingRoomID,
                 newRoomID: UUID().uuidString
             )
 
-            if let sourceUUID, sourceUUID != targetUUID {
-                _ = await connectAgentRoomSurfaceForAutomation(
-                    roomID: roomID,
-                    surfaceID: sourceUUID.uuidString,
-                    agentSessionID: nil,
-                    displayName: terminalPanel(surfaceID: sourceUUID)?.displayTitle
-                )
+            if let sourceEndpoint, sourceEndpoint.localSurfaceID != targetUUID {
+                _ = await connectAgentRoomEndpoint(sourceEndpoint, roomID: roomID)
             }
 
-            _ = await connectAgentRoomSurfaceForAutomation(
-                roomID: roomID,
-                surfaceID: targetUUID.uuidString,
-                agentSessionID: nil,
-                displayName: terminalPanel(surfaceID: targetUUID)?.displayTitle
+            _ = await connectAgentRoomEndpoint(targetEndpoint, roomID: roomID)
+        }
+    }
+
+    /// One end of an agent-room wire, resolved to the member identity that should
+    /// be registered in the room.
+    ///
+    /// For a normal local terminal, the member surface id is the pane's own UUID.
+    /// For a mirrored (remote) pane, it is the host's real surface UUID extracted
+    /// from the mirror's collaboration terminal id, with `peerID` set to the
+    /// owning peer; the host completes the join for that surface on its side.
+    private struct AgentRoomWireEndpoint {
+        let localSurfaceID: UUID
+        let memberSurfaceID: String
+        let peerID: String
+        let isRemote: Bool
+        let displayName: String?
+        let existingRoomID: String?
+        /// A mirrored endpoint whose owning share is no longer live (its owner
+        /// peer is not connected on the mirror's session). Wiring it would
+        /// register a ghost member the host can never join, so callers refuse.
+        let isStaleMirror: Bool
+        /// The relay session that carries the mirror, so room frames can be
+        /// routed to the host even before it has joined the room.
+        let owningConnectionSessionCode: String?
+    }
+
+    private func agentRoomWireEndpoint(localSurfaceID: UUID) -> AgentRoomWireEndpoint {
+        if let terminalID = mirroredTerminalIDsBySurfaceID[localSurfaceID],
+           let parsed = SharedTerminalDescriptor.parse(terminalID: terminalID) {
+            let memberSurfaceID = parsed.surfaceID.uuidString
+            let owningConnection = connection(forTerminalID: terminalID)
+            let ownerPeerID = mirroredTerminalOwnerPeerIDsByID[terminalID]
+            // Live only when the owning peer is currently connected on the
+            // mirror's session. A mirror pane left over from a previous session
+            // (surface + peer ids regenerate on relaunch) resolves to a ghost.
+            let isLive = ownerPeerID.map { owningConnection?.peersByID[$0] != nil } ?? false
+            return AgentRoomWireEndpoint(
+                localSurfaceID: localSurfaceID,
+                memberSurfaceID: memberSurfaceID,
+                peerID: ownerPeerID ?? peerIdentity.peerID,
+                isRemote: true,
+                displayName: mirroredTerminalsByID[terminalID]?.panel?.displayTitle,
+                existingRoomID: roomID(forMemberSurfaceID: memberSurfaceID),
+                isStaleMirror: !isLive,
+                owningConnectionSessionCode: owningConnection?.sessionCode
             )
+        }
+        return AgentRoomWireEndpoint(
+            localSurfaceID: localSurfaceID,
+            memberSurfaceID: localSurfaceID.uuidString,
+            peerID: peerIdentity.peerID,
+            isRemote: false,
+            displayName: terminalPanel(surfaceID: localSurfaceID)?.displayTitle,
+            existingRoomID: agentRoomIDsBySurfaceID[localSurfaceID],
+            isStaleMirror: false,
+            owningConnectionSessionCode: nil
+        )
+    }
+
+    /// User-facing error shown when a wire targets a mirrored terminal whose
+    /// share is no longer live (e.g. a stale pane after the host relaunched).
+    private static var agentRoomStaleMirrorWireError: String {
+        String(
+            localized: "collaboration.agentRoom.staleMirrorWire",
+            defaultValue: "This shared terminal is no longer live. Re-open it, then wire the agents again."
+        )
+    }
+
+    /// The room a member surface currently belongs to, looked up across cached
+    /// room snapshots. Used for remote (mirrored) surfaces, whose host surface id
+    /// is never present in the local `agentRoomIDsBySurfaceID` map.
+    private func roomID(forMemberSurfaceID memberSurfaceID: String) -> String? {
+        agentRoomSnapshotsByID.values.first { room in
+            room.members.contains { $0.surfaceID == memberSurfaceID }
+        }?.id
+    }
+
+    private func agentRoomMemberID(surfaceID memberSurfaceID: String, inRoomID roomID: String) -> String? {
+        agentRoomSnapshotsByID[roomID]?.members.first { $0.surfaceID == memberSurfaceID }?.id
+    }
+
+    /// Connects one wire endpoint (local or remote) into a room, broadcasting the
+    /// updated snapshot so other peers converge. A local endpoint attaches its own
+    /// Claude hook session and backfills its transcript; a remote endpoint only
+    /// registers the host surface member, and the host attaches its live session
+    /// on its side via `applyRemoteAgentRoomMembership`.
+    @discardableResult
+    private func connectAgentRoomEndpoint(
+        _ endpoint: AgentRoomWireEndpoint,
+        roomID: String
+    ) async -> ClaudeRoomSnapshot? {
+        if await agentRoomStore.room(id: roomID) == nil {
+            let created = await agentRoomStore.createRoom(id: roomID)
+            cacheAgentRoom(created)
+            registerAgentRoomDisplayOrder(roomID: roomID)
+        }
+
+        // Remember the connection that carries the mirror so room frames reach
+        // the host even before it has joined (its peer is not yet a member here).
+        if endpoint.isRemote, let owningCode = endpoint.owningConnectionSessionCode {
+            agentRoomWiredOwnerConnectionCodesByRoomID[roomID, default: []].insert(owningCode)
+        }
+
+        let memberSurfaceID = endpoint.memberSurfaceID
+        let hookSession = endpoint.isRemote ? nil : Self.claudeHookSessionRef(surfaceID: memberSurfaceID)
+        let member = ClaudeRoomMember(
+            surfaceID: memberSurfaceID,
+            agentSessionID: hookSession?.sessionID,
+            peerID: endpoint.peerID,
+            displayName: endpoint.displayName
+        )
+
+        if let previousRoomID = endpoint.existingRoomID, previousRoomID != roomID {
+            if let previousRoom = await agentRoomStore.disconnect(
+                roomID: previousRoomID,
+                memberID: agentRoomMemberID(surfaceID: memberSurfaceID, inRoomID: previousRoomID),
+                surfaceID: memberSurfaceID
+            ) {
+                cacheAgentRoom(previousRoom)
+                reconcileAgentRoomMembership(with: previousRoom)
+                try? await send(.agentRoomSnapshot(previousRoom))
+            }
+        }
+
+        if !endpoint.isRemote {
+            agentRoomIDsBySurfaceID[endpoint.localSurfaceID] = roomID
+            agentRoomMemberIDsBySurfaceID[endpoint.localSurfaceID] = member.id
+        }
+        registerAgentRoomDisplayOrder(roomID: roomID)
+        _ = await agentRoomStore.setDeliveryPolicy(roomID: roomID, policy: .semiLive)
+        let room = await agentRoomStore.connect(member: member, to: roomID)
+        latestAgentRoomID = roomID
+        cacheAgentRoom(room)
+        reconcileAgentRoomMembership(with: room)
+
+        let broadcastRoom: ClaudeRoomSnapshot
+        if endpoint.isRemote {
+            broadcastRoom = room
+        } else {
+            await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
+            broadcastRoom = await backfillAgentRoomLedgerFromTranscripts(
+                roomID: roomID,
+                joiningSurfaceID: memberSurfaceID,
+                room: room
+            )
+            cacheAgentRoom(broadcastRoom)
+        }
+        agentRoomHeaderRevision &+= 1
+        try? await send(.agentRoomSnapshot(broadcastRoom))
+        return broadcastRoom
+    }
+
+    private func disconnectAgentRoomEndpoint(
+        _ endpoint: AgentRoomWireEndpoint,
+        roomID: String
+    ) async {
+        let room = await agentRoomStore.disconnect(
+            roomID: roomID,
+            memberID: agentRoomMemberID(surfaceID: endpoint.memberSurfaceID, inRoomID: roomID),
+            surfaceID: endpoint.memberSurfaceID
+        )
+        if !endpoint.isRemote {
+            agentRoomIDsBySurfaceID.removeValue(forKey: endpoint.localSurfaceID)
+            agentRoomMemberIDsBySurfaceID.removeValue(forKey: endpoint.localSurfaceID)
+        } else if let owningCode = endpoint.owningConnectionSessionCode {
+            agentRoomWiredOwnerConnectionCodesByRoomID[roomID]?.remove(owningCode)
+            if agentRoomWiredOwnerConnectionCodesByRoomID[roomID]?.isEmpty == true {
+                agentRoomWiredOwnerConnectionCodesByRoomID.removeValue(forKey: roomID)
+            }
+        }
+        agentRoomHeaderRevision &+= 1
+        if let room {
+            cacheAgentRoom(room)
+            reconcileAgentRoomMembership(with: room)
+            try? await send(.agentRoomSnapshot(room))
         }
     }
 
@@ -2633,6 +3096,25 @@ final class CollaborationRuntime {
             dict["hook_linked"] = hook != nil
             dict["hook_session_id"] = hook?.sessionID ?? NSNull()
             dict["hook_transcript_path"] = hook?.transcriptPath ?? NSNull()
+            // Bridge-consent visibility: for a member whose surface is hosted on
+            // THIS machine, expose whether the host has granted the terminal-drive
+            // consent that gates the agent-room bridge. This is the one gate not
+            // otherwise observable, and a common reason a remote wire stays inert.
+            if let surfaceUUID = UUID(uuidString: member.surfaceID),
+               let terminalID = hostedTerminalIDsBySurfaceID[surfaceUUID] {
+                dict["is_local_host"] = true
+                if let connection = connection(forTerminalID: terminalID) {
+                    dict["bridge_consent_granted"] = hostHasGrantedAgentRoomBridge(
+                        terminalID: terminalID,
+                        connection: connection
+                    )
+                } else {
+                    dict["bridge_consent_granted"] = NSNull()
+                }
+            } else {
+                dict["is_local_host"] = false
+                dict["bridge_consent_granted"] = NSNull()
+            }
             return dict
         }
         return payload
@@ -2684,6 +3166,26 @@ final class CollaborationRuntime {
         displayName: String?
     ) async -> [String: Any] {
         let resolvedSurfaceID = resolveAgentRoomSurfaceID(requestedSurfaceID)
+        // A mirrored (remote) surface bridges the host's real surface into the
+        // room, so route it through the shared endpoint path used by the wire drag
+        // and header button rather than registering the agent-less mirror pane.
+        if let resolvedSurfaceID, mirroredTerminalIDsBySurfaceID[resolvedSurfaceID] != nil {
+            let endpoint = agentRoomWireEndpoint(localSurfaceID: resolvedSurfaceID)
+            if endpoint.isStaleMirror {
+                return ["connected": false, "error": Self.agentRoomStaleMirrorWireError]
+            }
+            let roomID = AgentRoomSelection.roomIDForSurfaceConnection(
+                requestedRoomID: requestedRoomID,
+                surfaceWasExplicit: requestedSurfaceID != nil,
+                mappedSurfaceRoomID: endpoint.existingRoomID,
+                latestRoomID: latestAgentRoomID,
+                newRoomID: UUID().uuidString
+            )
+            if let room = await connectAgentRoomEndpoint(endpoint, roomID: roomID) {
+                return agentRoomPayload(room)
+            }
+            return ["connected": false, "error": "Could not bridge the remote terminal into a room."]
+        }
         let roomID = AgentRoomSelection.roomIDForSurfaceConnection(
             requestedRoomID: requestedRoomID,
             surfaceWasExplicit: requestedSurfaceID != nil,
@@ -2871,6 +3373,7 @@ final class CollaborationRuntime {
                 }
             }
             agentRoomSnapshotsByID.removeValue(forKey: requestedRoomID)
+            agentRoomWiredOwnerConnectionCodesByRoomID.removeValue(forKey: requestedRoomID)
             if latestAgentRoomID == requestedRoomID {
                 latestAgentRoomID = nil
             }
@@ -2883,6 +3386,7 @@ final class CollaborationRuntime {
         agentRoomIDsBySurfaceID.removeAll()
         agentRoomMemberIDsBySurfaceID.removeAll()
         agentRoomSnapshotsByID.removeAll()
+        agentRoomWiredOwnerConnectionCodesByRoomID.removeAll()
         agentRoomDegradedSurfaceIDs.removeAll()
         latestAgentRoomID = nil
         agentRoomDisplayOrder = []
@@ -3507,8 +4011,20 @@ final class CollaborationRuntime {
         mirroredTerminalRenderGridPatchSequencesByID.removeAll()
         mirroredTerminalRenderGridSequencesByID.removeAll()
         pendingMirroredRenderGridFramesByID.removeAll()
+        echoLastApplyAtByID.removeAll()
         mirroredRenderGridSeedRequestTasksByID.values.forEach { $0.cancel() }
         mirroredRenderGridSeedRequestTasksByID.removeAll()
+        mirroredTerminalGridLockedIDs.removeAll()
+        pendingMirroredFramesAwaitingLockByID.removeAll()
+        mirroredGridLockFlushTasksByID.values.forEach { $0.cancel() }
+        mirroredGridLockFlushTasksByID.removeAll()
+        mirroredTerminalLockedGridByID.removeAll()
+        mirroredReseedRequestTasksByID.values.forEach { $0.cancel() }
+        mirroredReseedRequestTasksByID.removeAll()
+        mirroredContentAppliedUnlockedIDs.removeAll()
+        hostedTerminalReseedTasksByID.values.forEach { $0.cancel() }
+        hostedTerminalReseedTasksByID.removeAll()
+        hostedTerminalLastReseedAtByID.removeAll()
         mirroredTerminalInputReportPrefixesByID.removeAll()
         hostedTerminalInputReportPrefixesByID.removeAll()
         terminalOwnerParticipantIDsByID.removeAll()
@@ -3573,6 +4089,13 @@ final class CollaborationRuntime {
     }
 
     private func presentStartDialog(thenShare panel: any CollaborationEditablePanel) {
+        // Directory-sharing orgs never see the create-or-join chooser: the
+        // session is created silently and the teammate picker is the sharing
+        // surface (createSessionAndShare presents it post-create).
+        if collaborationEntitlements.directorySharing {
+            Task { await createSessionAndShare(panel: panel) }
+            return
+        }
         let response = runCollaborationStartChooser()
         switch response {
         case .alertFirstButtonReturn:
@@ -3585,6 +4108,11 @@ final class CollaborationRuntime {
     }
 
     private func presentStartDialog(thenShare terminal: TerminalPanel) {
+        // Directory-sharing orgs skip the chooser; see the document variant.
+        if collaborationEntitlements.directorySharing {
+            Task { await createSessionAndShare(terminal: terminal) }
+            return
+        }
         let response = runCollaborationStartChooser()
         switch CollaborationTerminalStartDialogAction.action(
             buttonIndex: Self.alertButtonIndex(for: response)
@@ -3925,10 +4453,20 @@ final class CollaborationRuntime {
         await refreshPeerIdentityForCollaborationAdvertise()
         guard let orgID = resolvedCollaborationOrgID,
               let token = await collaborationAccessToken() else { return nil }
+        // Create the relay room from THIS machine first. Cloudflare places a
+        // session's Durable Object near whoever first creates it; when www
+        // created the room from its own region, every keystroke and echo of
+        // every session detoured through that far colo (~85ms each way,
+        // measured), which read as typing lag on shared terminals. www reuses
+        // the pre-created code and still does all auth/grant work; if the
+        // relay is unreachable (or www predates the `code` parameter), www
+        // falls back to creating the room itself exactly as before.
+        let precreatedCode = (try? await createSessionViaRelay())?.sessionCode
         let created = try await collaborationBackendClient.createSession(
             accessToken: token,
             orgId: orgID,
-            relayURL: relayURLString
+            relayURL: relayURLString,
+            precreatedCode: precreatedCode
         )
         applyBackendCreatedSession(created)
         return CollaborationCreateSessionResponse(
@@ -4599,7 +5137,12 @@ final class CollaborationRuntime {
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: ownerSnapshot)
         Task {
             do {
+                // Order matters: open (pane) -> dimensions (grid lock) -> seed
+                // (content). The seed replay is width-sensitive, so the viewer
+                // must lock its mirror grid to our columns before processing
+                // any screen content or its layout drifts from ours.
                 try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor), via: connection)
+                await sendHostedTerminalDimensionsNow(terminalID: terminalID, connection: connection, force: true)
                 try await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
@@ -4607,7 +5150,19 @@ final class CollaborationRuntime {
                     requireLiveScrollbackBottom: false,
                     via: connection
                 )
-                broadcastHostedTerminalDimensions(terminalID: terminalID, connection: connection, force: true)
+                // Retransmit the seed once shortly after share start. The
+                // initial seed can fail to land visibly on the viewer (pane
+                // still 0x0 when it applies, an older build dropping a frame
+                // that raced pane creation, or a nil snapshot on our side);
+                // by the retransmit the viewer pane exists and is laid out,
+                // and the stateSeq overlap-trim makes a duplicate harmless.
+                // This heals every viewer build, unlike viewer-side
+                // re-requests which need the new client.
+                scheduleHostedTerminalReseed(
+                    terminalID: terminalID,
+                    connection: connection,
+                    delay: Self.shareStartSeedRetransmitDelay
+                )
                 trackCollaboration(
                     .terminalShared,
                     shareKind: .terminal,
@@ -4719,8 +5274,19 @@ final class CollaborationRuntime {
         mirroredTerminalsByID[terminalID] = WeakCollaborationTerminalPanel(panel)
         mirroredTerminalIDsBySurfaceID[panel.id] = terminalID
         terminalOwnerParticipantIDsByID[terminalID] = participantID(for: ownerPeerID, in: connection)
+        if let ownerPeerID {
+            mirroredTerminalOwnerPeerIDsByID[terminalID] = ownerPeerID
+        }
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
+        // A fresh share must re-establish the grid lock before any content
+        // replays; the host sends open -> dimensions -> seed in that order.
+        mirroredTerminalGridLockedIDs.remove(terminalID)
+        pendingMirroredFramesAwaitingLockByID.removeValue(forKey: terminalID)
+        mirroredGridLockFlushTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredTerminalLockedGridByID.removeValue(forKey: terminalID)
+        mirroredReseedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredContentAppliedUnlockedIDs.remove(terminalID)
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
         let ownerSnapshot = ownerSnapshot(forPeerID: ownerPeerID, in: connection)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
@@ -4779,7 +5345,41 @@ final class CollaborationRuntime {
         caretPeerID: String?,
         connection: CollaborationRelayConnection
     ) {
+        guard mirroredTerminalsByID[terminalID]?.panel != nil else { return }
+        guard mirroredTerminalGridLockedIDs.contains(terminalID) else {
+            bufferMirroredFrameAwaitingLock(
+                .output(sequence: sequence, data: data, caretPeerID: caretPeerID, connection: connection),
+                terminalID: terminalID
+            )
+            return
+        }
+        applyRemoteTerminalOutput(
+            terminalID: terminalID,
+            sequence: sequence,
+            data: data,
+            caretPeerID: caretPeerID,
+            connection: connection
+        )
+    }
+
+    private func applyRemoteTerminalOutput(
+        terminalID: String,
+        sequence: UInt64,
+        data: Data,
+        caretPeerID: String?,
+        connection: CollaborationRelayConnection
+    ) {
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        if Self.echoTimingEnabled {
+            let now = ProcessInfo.processInfo.systemUptime
+            let last = echoLastApplyAtByID[terminalID]
+            echoLastApplyAtByID[terminalID] = now
+            let deltaMillis = last.map { String(format: "%.1f", (now - $0) * 1000.0) } ?? "-"
+            Self.echoLog(
+                "viewer-apply terminal=\(terminalID.prefix(8)) bytes=\(data.count) " +
+                "dt=\(deltaMillis) t=\(Self.echoTimestampMillis())"
+            )
+        }
         let endSequence = sequence &+ UInt64(data.count)
         if let renderGridSequence = mirroredTerminalRenderGridSequencesByID[terminalID] {
             guard endSequence > renderGridSequence else { return }
@@ -4793,6 +5393,8 @@ final class CollaborationRuntime {
         } else {
             panel.surface.processRemoteOutput(data)
         }
+        // Keep the host cursor visible in a clipped mirror viewport.
+        panel.surface.hostedView.syncMirrorViewportFollow()
         if let peer = peerVisibleToThisClient(caretPeerID, in: connection) {
             panel.surface.hostedView.showTerminalCollaboratorCaret(
                 peerID: peer.peerID,
@@ -4803,7 +5405,7 @@ final class CollaborationRuntime {
     }
 
     private func handleRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
-        guard let panel = mirroredTerminalsByID[terminalID]?.panel else {
+        guard mirroredTerminalsByID[terminalID]?.panel != nil else {
             // The one-shot seed can race ahead of `terminal.open` registering
             // the mirror pane. Dropping it here left the pane black until
             // unrelated host output arrived; buffer it and drain on open.
@@ -4813,11 +5415,57 @@ final class CollaborationRuntime {
                 pending.removeFirst(pending.count - Self.pendingMirroredRenderGridFrameLimit)
             }
             pendingMirroredRenderGridFramesByID[terminalID] = pending
+            Self.seedLog("seed-recv buffered-preopen terminal=\(terminalID.prefix(8)) full=\(frame.full)")
             return
         }
+        guard mirroredTerminalGridLockedIDs.contains(terminalID) else {
+            // A full seed carries the host's grid, so it can establish the
+            // lock by itself -- no dependency on a separate
+            // `terminal.dimensions` frame winning the race (or existing at
+            // all on older hosts). Drain any earlier buffered frames first so
+            // arrival order is preserved, then apply this seed.
+            if frame.full, frame.columns > 0, frame.rows > 0 {
+                Self.seedLog("seed-recv locks-grid terminal=\(terminalID.prefix(8)) grid=\(frame.columns)x\(frame.rows)")
+                lockMirroredTerminalGrid(terminalID: terminalID, columns: frame.columns, rows: frame.rows)
+                applyRemoteTerminalRenderGrid(terminalID: terminalID, frame: frame)
+            } else {
+                Self.seedLog("seed-recv buffered-lock terminal=\(terminalID.prefix(8)) full=\(frame.full)")
+                bufferMirroredFrameAwaitingLock(.renderGrid(frame), terminalID: terminalID)
+            }
+            return
+        }
+        applyRemoteTerminalRenderGrid(terminalID: terminalID, frame: frame)
+    }
+
+    /// Records and applies the mirror grid lock, then opens the content gate
+    /// (draining buffered frames in arrival order).
+    private func lockMirroredTerminalGrid(terminalID: String, columns: Int, rows: Int) {
+        guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        mirroredTerminalLockedGridByID[terminalID] = TerminalGridSize(columns: columns, rows: rows)
+        panel.surface.applyLockedMirrorGrid(columns: columns, rows: rows)
+        // Re-run pane layout now that the lock exists: viewport mode sizes
+        // the surface view to the full host grid (larger than a small pane).
+        _ = panel.surface.hostedView.reconcileGeometryNow()
+        openMirroredGridLockGate(terminalID: terminalID, hasActualLock: true)
+    }
+
+    private func applyRemoteTerminalRenderGrid(terminalID: String, frame: MobileTerminalRenderGridFrame) {
+        guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
         if let patchSequence = mirroredTerminalRenderGridPatchSequencesByID[terminalID],
            frame.stateSeq < patchSequence {
             return
+        }
+        if frame.full, frame.columns > 0, frame.rows > 0 {
+            // A full seed is authoritative for the host grid: re-lock if it
+            // differs from what we recorded (covers reseeds after a host
+            // resize racing the dims frame), and clear the unlocked-content
+            // marker -- this repaint IS the resync.
+            let seedGrid = TerminalGridSize(columns: frame.columns, rows: frame.rows)
+            if mirroredTerminalLockedGridByID[terminalID] != seedGrid {
+                mirroredTerminalLockedGridByID[terminalID] = seedGrid
+                panel.surface.applyLockedMirrorGrid(columns: seedGrid.columns, rows: seedGrid.rows)
+            }
+            mirroredContentAppliedUnlockedIDs.remove(terminalID)
         }
         var mirrorFrame = frame
         mirrorFrame.modes.removeAll(where: Self.isMirrorInputReportingMode)
@@ -4838,13 +5486,25 @@ final class CollaborationRuntime {
             // (mirrors the forced present in `handleRemoteTerminalInput`). No-ops
             // safely when the surface is not yet live/in a window.
             panel.surface.forceRefresh(reason: "collaboration.renderGridSeed")
+            Self.seedLog(
+                "seed-applied terminal=\(terminalID.prefix(8)) grid=\(frame.columns)x\(frame.rows) " +
+                "stateSeq=\(frame.stateSeq) rowsInFrame=\(frame.rowSpans.count) scrollback=\(frame.scrollbackRows)"
+            )
         }
+        // Keep the host cursor visible in a clipped mirror viewport.
+        panel.surface.hostedView.syncMirrorViewportFollow()
     }
 
     private static func isMirrorInputReportingMode(_ mode: MobileTerminalRenderGridFrame.ModeSetting) -> Bool {
         guard !mode.ansi else { return false }
         switch mode.code {
-        case 9, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1015, 1016, 2004, 2027:
+        // 2026 (synchronized output) must never replay onto a mirror: a
+        // replayed `?2026h` with no closing `l` would make the mirror's
+        // renderer hold every subsequent paint, which reads as frozen/bursty
+        // typing. Ghostty's render-grid export currently excludes 2026 at the
+        // source (`renderGridModeIsExcluded`), so this is defense-in-depth
+        // against hosts whose export does not.
+        case 9, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1015, 1016, 2004, 2026, 2027:
             return true
         default:
             return false
@@ -4880,6 +5540,10 @@ final class CollaborationRuntime {
             )
         }
         let text = String(decoding: filteredData, as: UTF8.self)
+        Self.echoLog(
+            "host-input terminal=\(terminalID.prefix(8)) bytes=\(filteredData.count) " +
+            "t=\(Self.echoTimestampMillis())"
+        )
         switch panel.sendInputResult(text) {
         case .sent:
             panel.surface.forceRefresh(reason: "collaboration.terminalInput")
@@ -5214,23 +5878,96 @@ final class CollaborationRuntime {
         recipientParticipantIDs: [String]? = nil,
         force: Bool = false
     ) {
+        Task {
+            await sendHostedTerminalDimensionsNow(
+                terminalID: terminalID,
+                connection: connection,
+                recipientParticipantIDs: recipientParticipantIDs,
+                force: force
+            )
+        }
+    }
+
+    /// Awaitable variant of ``broadcastHostedTerminalDimensions``: the frame is
+    /// on the wire when this returns. Seed paths use this to guarantee the
+    /// grid lock reaches the viewer BEFORE any screen content. Byte replay is
+    /// width-sensitive (e.g. zsh's partial-line `%` mark emits `$COLUMNS - 1`
+    /// spaces), so content replayed on an unlocked mirror at a different width
+    /// wraps differently and the two screens' rows drift apart permanently.
+    private func sendHostedTerminalDimensionsNow(
+        terminalID: String,
+        connection: CollaborationRelayConnection,
+        recipientParticipantIDs: [String]? = nil,
+        force: Bool = false
+    ) async {
         guard let panel = hostedTerminalsByID[terminalID]?.panel,
               let cells = panel.surface.gridCells(), cells.columns > 0, cells.rows > 0 else { return }
         let grid = TerminalGridSize(columns: cells.columns, rows: cells.rows)
-        if !force, hostedTerminalBroadcastGridByID[terminalID] == grid { return }
+        let previousGrid = hostedTerminalBroadcastGridByID[terminalID]
+        if !force, previousGrid == grid { return }
         hostedTerminalBroadcastGridByID[terminalID] = grid
         let recipients = recipientParticipantIDs ?? recipientParticipantIDsForSending(
             terminalID: terminalID,
             connection: connection
         )
-        Task {
-            try? await send(CollaborationTerminalDimensionsWire(
-                type: "terminal.dimensions",
+        try? await send(CollaborationTerminalDimensionsWire(
+            type: "terminal.dimensions",
+            terminalID: terminalID,
+            columns: grid.columns,
+            rows: grid.rows,
+            recipientParticipantIDs: recipients
+        ), via: connection)
+        // An organic grid change (host window resize, fullscreen TUI toggle)
+        // invalidates content already rendered on every mirror: it was laid
+        // out for the old width and mirrors suppress reflow. Proactively
+        // follow up with a fresh full seed so viewers repaint cleanly without
+        // waiting for their own request round-trip. Forced sends are the
+        // seed paths themselves (share start, late joiner, seed request),
+        // which already send a seed; the first-ever broadcast has no viewers
+        // with stale content.
+        if !force, let previousGrid, previousGrid != grid {
+            scheduleHostedTerminalReseed(terminalID: terminalID, connection: connection)
+        }
+    }
+
+    /// Debounced host-side full reseed after the host's own grid changed (or
+    /// a share-start retransmit), so a live window drag reseeds once at the
+    /// final size instead of per intermediate grid step. A minimum interval
+    /// between reseeds keeps grid flapping from streaming large seed frames
+    /// back-to-back.
+    private func scheduleHostedTerminalReseed(
+        terminalID: String,
+        connection: CollaborationRelayConnection,
+        delay: Duration = CollaborationRuntime.hostedTerminalReseedDebounce
+    ) {
+        hostedTerminalReseedTasksByID[terminalID]?.cancel()
+        hostedTerminalReseedTasksByID[terminalID] = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            let lastReseedAt = self.hostedTerminalLastReseedAtByID[terminalID] ?? 0
+            let remaining = Self.hostedTerminalReseedMinInterval - (now - lastReseedAt)
+            if remaining > 0 {
+                try? await Task.sleep(for: .seconds(remaining))
+                if Task.isCancelled { return }
+            }
+            self.hostedTerminalReseedTasksByID.removeValue(forKey: terminalID)
+            guard self.hostedTerminalsByID[terminalID]?.panel != nil else { return }
+            self.hostedTerminalLastReseedAtByID[terminalID] = ProcessInfo.processInfo.systemUptime
+            // Grid lock first (it may have changed again during the
+            // debounce), then the width-sensitive content.
+            await self.sendHostedTerminalDimensionsNow(
                 terminalID: terminalID,
-                columns: grid.columns,
-                rows: grid.rows,
-                recipientParticipantIDs: recipients
-            ), via: connection)
+                connection: connection,
+                force: true
+            )
+            try? await self.sendTerminalRenderGridSnapshotIfPossible(
+                terminalID: terminalID,
+                scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                full: true,
+                requireLiveScrollbackBottom: false,
+                via: connection
+            )
         }
     }
 
@@ -5238,7 +5975,109 @@ final class CollaborationRuntime {
         guard columns > 0, rows > 0 else { return }
         // Only mirrors lock their grid to the host; the host is authoritative.
         guard let panel = mirroredTerminalsByID[terminalID]?.panel else { return }
+        let grid = TerminalGridSize(columns: columns, rows: rows)
+        let previousGrid = mirroredTerminalLockedGridByID[terminalID]
+        mirroredTerminalLockedGridByID[terminalID] = grid
         panel.surface.applyLockedMirrorGrid(columns: columns, rows: rows)
+        // Re-run pane layout now that the lock (possibly a new grid) exists:
+        // viewport mode sizes the surface view to the full host grid.
+        _ = panel.surface.hostedView.reconcileGeometryNow()
+        let contentAppliedUnlocked = mirroredContentAppliedUnlockedIDs.remove(terminalID) != nil
+        openMirroredGridLockGate(terminalID: terminalID, hasActualLock: true)
+        // A mid-session host grid change invalidates everything already on
+        // the mirror: content was laid out for the old width, and mirrors
+        // suppress reflow on resize, so replayed bytes cannot repair it.
+        // Same when this is the FIRST lock but content already rendered at an
+        // unverified width (the gate's fallback opened before any lock).
+        // Ask the host for a fresh full seed (RIS + repaint). Debounced so a
+        // live window drag asks once; skipped if the host's own proactive
+        // reseed (the primary mechanism) lands during the debounce.
+        let contentApplied = mirroredTerminalRenderGridSequencesByID[terminalID] != nil
+            || mirroredTerminalRenderGridPatchSequencesByID[terminalID] != nil
+        let gridChangedUnderContent = previousGrid != nil && previousGrid != grid && contentApplied
+        if gridChangedUnderContent || contentAppliedUnlocked {
+            scheduleMirroredReseedRequest(terminalID: terminalID)
+        }
+    }
+
+    /// Debounced viewer->host full-seed re-request after the locked grid
+    /// changed under already-rendered content. Safety net for hosts that do
+    /// not proactively reseed on their own grid change.
+    private func scheduleMirroredReseedRequest(terminalID: String) {
+        mirroredReseedRequestTasksByID[terminalID]?.cancel()
+        let fullSeedSequenceAtSchedule = mirroredTerminalRenderGridSequencesByID[terminalID]
+        mirroredReseedRequestTasksByID[terminalID] = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.mirroredReseedRequestDebounce)
+            guard !Task.isCancelled, let self else { return }
+            self.mirroredReseedRequestTasksByID.removeValue(forKey: terminalID)
+            guard self.mirroredTerminalsByID[terminalID]?.panel != nil else { return }
+            // A fresh full seed already arrived (the host reseeds
+            // proactively); no need to request another.
+            guard self.mirroredTerminalRenderGridSequencesByID[terminalID] == fullSeedSequenceAtSchedule else {
+                return
+            }
+            guard let connection = self.connection(forTerminalID: terminalID) else { return }
+            let recipients = self.terminalOwnerParticipantIDsByID[terminalID].map { [$0] }
+            try? await self.send(CollaborationTerminalRenderGridRequestWire(
+                type: "terminal.render_grid.request",
+                terminalID: terminalID,
+                fromPeerID: self.peerIdentity.peerID,
+                recipientParticipantIDs: recipients
+            ), via: connection)
+        }
+    }
+
+    /// Marks the mirror grid as locked and replays, in arrival order, any
+    /// seed/output frames that were held back waiting for the lock.
+    ///
+    /// - Parameter hasActualLock: `true` when a real grid lock (dims frame or
+    ///   a full seed's own grid) triggered the open; `false` for the fallback
+    ///   timer / overflow, which record the terminal as having rendered
+    ///   content at an unverified width so a late-arriving lock can resync.
+    private func openMirroredGridLockGate(terminalID: String, hasActualLock: Bool) {
+        mirroredGridLockFlushTasksByID.removeValue(forKey: terminalID)?.cancel()
+        let isNewlyLocked = mirroredTerminalGridLockedIDs.insert(terminalID).inserted
+        if !hasActualLock, isNewlyLocked {
+            mirroredContentAppliedUnlockedIDs.insert(terminalID)
+        }
+        guard isNewlyLocked || pendingMirroredFramesAwaitingLockByID[terminalID] != nil else { return }
+        guard let pending = pendingMirroredFramesAwaitingLockByID.removeValue(forKey: terminalID) else { return }
+        for frame in pending {
+            switch frame {
+            case .renderGrid(let gridFrame):
+                applyRemoteTerminalRenderGrid(terminalID: terminalID, frame: gridFrame)
+            case .output(let sequence, let data, let caretPeerID, let connection):
+                applyRemoteTerminalOutput(
+                    terminalID: terminalID,
+                    sequence: sequence,
+                    data: data,
+                    caretPeerID: caretPeerID,
+                    connection: connection
+                )
+            }
+        }
+    }
+
+    private func bufferMirroredFrameAwaitingLock(
+        _ frame: PendingMirroredTerminalFrame,
+        terminalID: String
+    ) {
+        var pending = pendingMirroredFramesAwaitingLockByID[terminalID] ?? []
+        pending.append(frame)
+        pendingMirroredFramesAwaitingLockByID[terminalID] = pending
+        // Output bytes must never be dropped (that corrupts the VT stream),
+        // so an overflowing buffer opens the gate instead of trimming.
+        if pending.count >= Self.pendingMirroredFramesAwaitingLockLimit {
+            openMirroredGridLockGate(terminalID: terminalID, hasActualLock: false)
+            return
+        }
+        guard mirroredGridLockFlushTasksByID[terminalID] == nil else { return }
+        mirroredGridLockFlushTasksByID[terminalID] = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.mirroredGridLockFlushDelay)
+            guard !Task.isCancelled, let self else { return }
+            self.mirroredGridLockFlushTasksByID.removeValue(forKey: terminalID)
+            self.openMirroredGridLockGate(terminalID: terminalID, hasActualLock: false)
+        }
     }
 
     private func handleRemoteTerminalClose(terminalID: String) {
@@ -5253,7 +6092,16 @@ final class CollaborationRuntime {
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridSequencesByID.removeValue(forKey: terminalID)
         pendingMirroredRenderGridFramesByID.removeValue(forKey: terminalID)
+        echoLastApplyAtByID.removeValue(forKey: terminalID)
         mirroredRenderGridSeedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredTerminalGridLockedIDs.remove(terminalID)
+        pendingMirroredFramesAwaitingLockByID.removeValue(forKey: terminalID)
+        mirroredGridLockFlushTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredTerminalLockedGridByID.removeValue(forKey: terminalID)
+        mirroredReseedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
+        mirroredContentAppliedUnlockedIDs.remove(terminalID)
+        hostedTerminalReseedTasksByID.removeValue(forKey: terminalID)?.cancel()
+        hostedTerminalLastReseedAtByID.removeValue(forKey: terminalID)
         terminalStatesByID.removeValue(forKey: terminalID)
         terminalSessionRouter.remove(terminalID: terminalID)
     }
@@ -5345,6 +6193,15 @@ final class CollaborationRuntime {
             if applyTerminalPointerFastPath(data, connection: connection) {
                 return
             }
+            // Fast path: latency-critical terminal echo. When the ordered chain
+            // is idle (nothing earlier is pending) and the mirror grid is
+            // already locked, apply `terminal.output` inline instead of paying a
+            // per-keystroke main-actor task hop. Ordering is preserved because
+            // any in-flight chain work forces this and later frames back onto
+            // the chain (the `pendingOrderedFrameCount == 0` gate).
+            if applyTerminalOutputFastPath(data, connection: connection) {
+                return
+            }
             enqueueOrderedFrameProcessing(data, connection: connection)
         }
     }
@@ -5373,6 +6230,49 @@ final class CollaborationRuntime {
     private static let terminalPointerTypeToken = Data("\"terminal.pointer\"".utf8)
     private static let terminalPointerFastPathMaxBytes = 2048
 
+    /// Applies a `terminal.output` frame synchronously if `data` is one and it
+    /// is safe to do so without reordering. Returns `false` (without side
+    /// effects) otherwise, so the caller falls back to the ordered chain.
+    ///
+    /// Safe-to-inline requires: the ordered chain is idle
+    /// (`pendingOrderedFrameCount == 0`, so no earlier open/seed/output is
+    /// pending) and the mirror grid is already locked (live steady-state
+    /// output; unlocked frames need the chain's buffer-until-lock handling).
+    /// A byte-token prescan avoids a full JSON parse on frames that are not
+    /// output; the size cap keeps the scan off large bursts, which are not
+    /// keystroke-latency-sensitive and can take the ordered path.
+    private func applyTerminalOutputFastPath(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        guard connection.pendingOrderedFrameCount == 0,
+              data.count <= Self.terminalOutputFastPathMaxBytes,
+              data.range(of: Self.terminalOutputTypeToken) != nil,
+              let output = try? decoder.decode(CollaborationTerminalOutputWire.self, from: data),
+              output.type == "terminal.output",
+              mirroredTerminalGridLockedIDs.contains(output.terminalID),
+              let bytes = Data(base64Encoded: output.dataBase64) else {
+            return false
+        }
+        // Field is named `via=` (not `path=`): the debug event log redacts
+        // values keyed `path` as potential file paths, which hid this marker.
+        Self.echoLog(
+            "viewer-recv via=fast terminal=\(output.terminalID.prefix(8)) bytes=\(bytes.count) " +
+            "t=\(Self.echoTimestampMillis())"
+        )
+        handleRemoteTerminalOutput(
+            terminalID: output.terminalID,
+            sequence: output.sequence,
+            data: bytes,
+            caretPeerID: output.caretPeerID,
+            connection: connection
+        )
+        return true
+    }
+
+    private static let terminalOutputTypeToken = Data("\"terminal.output\"".utf8)
+    private static let terminalOutputFastPathMaxBytes = 16384
+
     /// Appends a frame to the connection's strictly-ordered processing chain.
     /// Ordering matters for everything except pointers (e.g. terminal.open
     /// must register the mirror pane before terminal.render_grid seeds it),
@@ -5382,8 +6282,10 @@ final class CollaborationRuntime {
         connection: CollaborationRelayConnection
     ) {
         let previous = connection.frameProcessingTask
+        connection.pendingOrderedFrameCount += 1
         connection.frameProcessingTask = Task { @MainActor [weak self] in
             await previous?.value
+            defer { connection.pendingOrderedFrameCount -= 1 }
             guard let self, !Task.isCancelled else { return }
             do {
                 try await self.handleFrameData(data, connection: connection)
@@ -5408,6 +6310,7 @@ final class CollaborationRuntime {
             connection.joinAcknowledgement.succeed()
             refreshPeerSummaries(for: connection)
             trackCollaborationLayoutSnapshot(reason: "participant_joined", sessionCode: connection.sessionCode)
+            await pruneStaleAgentRooms()
         case "peer.joined":
             let peer = try decoder.decode(CollaborationPeerJoinedWire.self, from: data).peer
             if peer.peerID != peerIdentity.peerID {
@@ -5424,6 +6327,7 @@ final class CollaborationRuntime {
                 )
                 trackCollaborationLayoutSnapshot(reason: "participant_joined", sessionCode: connection.sessionCode)
                 sendHostedTerminalSeedsForNewPeer(peer, via: connection)
+                await pruneStaleAgentRooms()
             }
         case "peer.update":
             let peer = try decoder.decode(CollaborationPeerUpdateWire.self, from: data).peer
@@ -5487,6 +6391,10 @@ final class CollaborationRuntime {
         case "terminal.output":
             let output = try decoder.decode(CollaborationTerminalOutputWire.self, from: data)
             if let bytes = Data(base64Encoded: output.dataBase64) {
+                Self.echoLog(
+                    "viewer-recv via=chain terminal=\(output.terminalID.prefix(8)) bytes=\(bytes.count) " +
+                    "pending=\(connection.pendingOrderedFrameCount) t=\(Self.echoTimestampMillis())"
+                )
                 handleRemoteTerminalOutput(
                     terminalID: output.terminalID,
                     sequence: output.sequence,
@@ -5533,11 +6441,13 @@ final class CollaborationRuntime {
             let room = await agentRoomStore.apply(event: wire.event)
             cacheAgentRoom(room)
             latestAgentRoomID = wire.event.roomID
+            await applyRemoteAgentRoomMembership(room: room, connection: connection)
         case "agent.room.snapshot":
             let wire = try decoder.decode(CollaborationAgentRoomSnapshotWire.self, from: data)
             await agentRoomStore.apply(snapshot: wire.room)
             cacheAgentRoom(wire.room)
             latestAgentRoomID = wire.room.id
+            await applyRemoteAgentRoomMembership(room: wire.room, connection: connection)
         case "agent.room.snapshot.request":
             let wire = try decoder.decode(CollaborationAgentRoomSnapshotRequestWire.self, from: data)
             if let room = await agentRoomStore.room(id: wire.roomID) {
@@ -5567,9 +6477,14 @@ final class CollaborationRuntime {
     ) async throws {
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
         guard !requireLiveScrollbackBottom || Self.shouldSendTerminalRenderGridSnapshot(for: panel) else { return }
-        let stateSeq = hostedTerminalOutputSequencesByID[terminalID]
-            ?? MobileTerminalByteTee.shared.currentSequence(surfaceID: panel.id)
-            ?? 0
+        // stateSeq MUST live in the collaboration output-stream domain, which
+        // numbers bytes from 0 at share start. The byte tee's counter (all PTY
+        // bytes since surface creation, when mobile pairing is active) is a
+        // DIFFERENT domain: stamping a seed with it made the viewer's overlap
+        // trim (`endSequence > renderGridSequence`) silently swallow the first
+        // post-share output -- on a fresh terminal, exactly the prompt drawn
+        // moments after the snapshot.
+        let stateSeq = hostedTerminalOutputSequencesByID[terminalID] ?? 0
         let recipients = recipientParticipantIDs ?? recipientParticipantIDsForSending(
             terminalID: terminalID,
             connection: connection
@@ -5593,7 +6508,14 @@ final class CollaborationRuntime {
                 recipientParticipantIDs: recipients
             ))
         }
-        guard let payload else { return }
+        guard let payload else {
+            Self.seedLog("seed-skip terminal=\(terminalID.prefix(8)) reason=nil-snapshot stateSeq=\(stateSeq)")
+            return
+        }
+        Self.seedLog(
+            "seed-send terminal=\(terminalID.prefix(8)) bytes=\(payload.count) full=\(full) " +
+            "stateSeq=\(stateSeq) recipients=\(recipients?.count.description ?? "all")"
+        )
         try await send(encodedFrame: payload, via: connection)
     }
 
@@ -5610,6 +6532,15 @@ final class CollaborationRuntime {
             .contains(requesterParticipantID) else { return }
         let recipients = [requesterParticipantID]
         Task {
+            // Re-lock the mirror grid FIRST: a viewer asking for a reseed may
+            // also have missed the initial dimensions frame, and the seed
+            // replay is width-sensitive, so the lock must land before content.
+            await sendHostedTerminalDimensionsNow(
+                terminalID: terminalID,
+                connection: connection,
+                recipientParticipantIDs: recipients,
+                force: true
+            )
             try? await sendTerminalRenderGridSnapshotIfPossible(
                 terminalID: terminalID,
                 scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
@@ -5617,14 +6548,6 @@ final class CollaborationRuntime {
                 requireLiveScrollbackBottom: false,
                 recipientParticipantIDs: recipients,
                 via: connection
-            )
-            // Re-lock the mirror grid too: a viewer asking for a reseed may
-            // also have missed the initial dimensions frame.
-            broadcastHostedTerminalDimensions(
-                terminalID: terminalID,
-                connection: connection,
-                recipientParticipantIDs: recipients,
-                force: true
             )
         }
     }
@@ -5672,6 +6595,17 @@ final class CollaborationRuntime {
                     fromPeerID: peerIdentity.peerID,
                     recipientParticipantIDs: recipients
                 ), via: connection)
+                // Late joiners must receive the host grid BEFORE the seed so
+                // their mirror locks to the same columns/rows (and scales its
+                // font to fit) before any width-sensitive content replays. The
+                // periodic per-output broadcast is de-duped against the last
+                // sent grid, so force a targeted send to this new recipient.
+                await sendHostedTerminalDimensionsNow(
+                    terminalID: terminalID,
+                    connection: connection,
+                    recipientParticipantIDs: recipients,
+                    force: true
+                )
                 try? await sendTerminalRenderGridSnapshotIfPossible(
                     terminalID: terminalID,
                     scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
@@ -5679,16 +6613,6 @@ final class CollaborationRuntime {
                     requireLiveScrollbackBottom: false,
                     recipientParticipantIDs: recipients,
                     via: connection
-                )
-                // Late joiners must receive the host grid so their mirror locks
-                // to the same columns/rows (and scales its font to fit). The
-                // periodic per-output broadcast is de-duped against the last
-                // sent grid, so force a targeted send to this new recipient.
-                broadcastHostedTerminalDimensions(
-                    terminalID: terminalID,
-                    connection: connection,
-                    recipientParticipantIDs: recipients,
-                    force: true
                 )
             }
         }
@@ -5699,8 +6623,42 @@ final class CollaborationRuntime {
     }
 
     private func send(_ frame: CollaborationRelayFrame) async throws {
-        guard let connection = activeConnection else { throw CollaborationRuntimeError.notConnected }
-        try await send(frame, via: connection)
+        // Agent-room membership/ledger frames are not tied to one session. A wired
+        // room can bridge a mirrored terminal whose owning peer is reachable only
+        // over the connection that carries the mirror, which may be a different
+        // relay session than `activeConnection`. Fan these out to every connection
+        // that hosts a wired peer (plus the active session) so a cross-peer wire
+        // actually reaches the host. Non-room frames keep the single active path.
+        switch frame {
+        case .agentRoomSnapshot, .agentRoomEvent:
+            try await broadcastAgentRoomFrame(frame)
+        default:
+            guard let connection = activeConnection else { throw CollaborationRuntimeError.notConnected }
+            try await send(frame, via: connection)
+        }
+    }
+
+    private func broadcastAgentRoomFrame(_ frame: CollaborationRelayFrame) async throws {
+        let room: ClaudeRoomSnapshot?
+        switch frame {
+        case .agentRoomSnapshot(let snapshot): room = snapshot
+        case .agentRoomEvent(let event): room = agentRoomSnapshotsByID[event.roomID]
+        default: room = nil
+        }
+        let memberPeerIDs = Set(room?.members.map(\.peerID) ?? [])
+        let owningConnectionCodes = room.map { agentRoomWiredOwnerConnectionCodesByRoomID[$0.id] ?? [] } ?? []
+        var didSend = false
+        for (code, connection) in connectionsBySessionCode {
+            let reachesWiredPeer = !memberPeerIDs.isEmpty
+                && connection.peersByID.keys.contains { memberPeerIDs.contains($0) }
+            // Always include the connection that carries a wired mirror, so the
+            // host receives snapshots/events before it has joined the room.
+            let carriesWiredMirror = owningConnectionCodes.contains(code)
+            guard reachesWiredPeer || carriesWiredMirror || code == sessionCode else { continue }
+            try? await send(frame, via: connection)
+            didSend = true
+        }
+        guard didSend else { throw CollaborationRuntimeError.notConnected }
     }
 
     private func send(_ frame: CollaborationRelayFrame, via connection: CollaborationRelayConnection) async throws {
@@ -5996,27 +6954,188 @@ final class CollaborationRuntime {
         agentRoomDisplayOrder = order
     }
 
-    private func activeAgentRoomDisplayOrder(activeRoomIDs: Set<String>) -> [String] {
-        agentRoomDisplayOrder.filter { activeRoomIDs.contains($0) }
-    }
-
     /// Mirrors authoritative room membership into the per-surface maps that
     /// drive the header "Claude room" pill, so every locally connected surface
     /// shows the tag no matter which entrypoint (click, wire drag, header
     /// drop, CLI) mutated the room. Uses the shared pure reducer so the
     /// invariant is unit-tested in one place.
     private func reconcileAgentRoomMembership(with room: ClaudeRoomSnapshot) {
+        // The reducer maps every member with a UUID surface id to local
+        // membership. Since rooms now sync across peers, a snapshot can contain
+        // members owned by remote peers (e.g. the viewer's own terminal seen from
+        // the host, or a host surface seen from the viewer). Filter to members
+        // this app instance may legitimately map before reducing, so a remote
+        // member never pollutes `agentRoomIDsBySurfaceID` (which would show a
+        // phantom pill and mark the whole room degraded via the hook check).
+        let localRoom = locallyMappableRoom(from: room)
         let reconciled = AgentRoomMembershipReducer.reconciled(
             AgentRoomMembershipState(
                 roomIDsBySurfaceID: agentRoomIDsBySurfaceID,
                 memberIDsBySurfaceID: agentRoomMemberIDsBySurfaceID
             ),
-            with: room
+            with: localRoom
         )
         agentRoomIDsBySurfaceID = reconciled.roomIDsBySurfaceID
         agentRoomMemberIDsBySurfaceID = reconciled.memberIDsBySurfaceID
+        // Reserve a stable display slot for any room that now has a local
+        // member (e.g. rooms rehydrated from disk on relaunch, which reconcile
+        // without going through the connect path). Without this the room falls
+        // to the end-of-list fallback number and can shift as others populate.
+        if reconciled.roomIDsBySurfaceID.values.contains(room.id) {
+            registerAgentRoomDisplayOrder(roomID: room.id)
+        }
         agentRoomHeaderRevision &+= 1
-        refreshAgentRoomHookHealth(room: room)
+        refreshAgentRoomHookHealth(room: localRoom)
+    }
+
+    /// Handles an incoming room snapshot/event from a peer: completes the join for
+    /// any of this app's own hosted surfaces that a remote peer wired into the
+    /// room (gated on the host having granted terminal-drive consent), then
+    /// reconciles local membership so already-mapped surfaces refresh.
+    private func applyRemoteAgentRoomMembership(
+        room: ClaudeRoomSnapshot,
+        connection: CollaborationRelayConnection
+    ) async {
+        var didComplete = false
+        for member in room.members {
+            // Match on the authoritative hosted-terminal mapping: the mirror's
+            // terminalID encodes this host's real surface id, so a live share
+            // resolves here even if the weak pane reference is momentarily nil.
+            guard let surfaceUUID = UUID(uuidString: member.surfaceID),
+                  let terminalID = hostedTerminalIDsBySurfaceID[surfaceUUID] else { continue }
+            guard hostHasGrantedAgentRoomBridge(terminalID: terminalID, connection: connection) else {
+                continue
+            }
+            if await completeHostAgentRoomJoin(member: member, surfaceUUID: surfaceUUID, roomID: room.id) {
+                didComplete = true
+            }
+        }
+        if didComplete, let enriched = await agentRoomStore.room(id: room.id) {
+            cacheAgentRoom(enriched)
+            agentRoomHeaderRevision &+= 1
+            try? await send(.agentRoomSnapshot(enriched))
+        }
+        reconcileAgentRoomMembership(with: room)
+    }
+
+    /// Whether the host has authorized bridging its hosted terminal's Claude agent
+    /// into a shared room. Reuses the existing terminal-drive consent: a host that
+    /// has granted at least one collaborator input control for the terminal has
+    /// opted into letting the room reach that agent. A read-only share stays inert.
+    private func hostHasGrantedAgentRoomBridge(
+        terminalID: String,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        !selectedRecipientParticipantIDs(for: terminalID, connection: connection).isEmpty
+    }
+
+    /// Maps a locally-hosted surface that a remote peer wired in into the room,
+    /// attaches the host's live Claude session id, and backfills its transcript so
+    /// the host agent's own hooks (`agent.room.consume`) begin delivering room
+    /// context. Returns `true` when it changed state (so the caller rebroadcasts
+    /// exactly once and steady-state receipts do not loop).
+    @discardableResult
+    private func completeHostAgentRoomJoin(
+        member: ClaudeRoomMember,
+        surfaceUUID: UUID,
+        roomID: String
+    ) async -> Bool {
+        let surfaceID = surfaceUUID.uuidString
+        let wasMapped = agentRoomIDsBySurfaceID[surfaceUUID] == roomID
+        let hook = Self.claudeHookSessionRef(surfaceID: surfaceID)
+        let needsSession = member.agentSessionID == nil && hook != nil
+        guard !wasMapped || needsSession else { return false }
+
+        agentRoomIDsBySurfaceID[surfaceUUID] = roomID
+        agentRoomMemberIDsBySurfaceID[surfaceUUID] = member.id
+        registerAgentRoomDisplayOrder(roomID: roomID)
+        _ = await agentRoomStore.setDeliveryPolicy(roomID: roomID, policy: .semiLive)
+        if needsSession, let hook {
+            var updated = member
+            updated.agentSessionID = hook.sessionID
+            _ = await agentRoomStore.connect(member: updated, to: roomID)
+        }
+        let room = await agentRoomStore.room(id: roomID) ?? ClaudeRoomSnapshot(id: roomID)
+        await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
+        let backfilled = await backfillAgentRoomLedgerFromTranscripts(
+            roomID: roomID,
+            joiningSurfaceID: surfaceID,
+            room: room
+        )
+        cacheAgentRoom(backfilled)
+        refreshAgentRoomHookHealth(room: backfilled)
+        agentRoomHeaderRevision &+= 1
+        return true
+    }
+
+    /// Whether a room member's peer is a currently-connected remote peer on any
+    /// live relay connection. Our own peer is deliberately excluded so a room we
+    /// no longer map locally can still be pruned.
+    private func isAgentRoomMemberPeerConnected(_ peerID: String) -> Bool {
+        guard peerID != peerIdentity.peerID else { return false }
+        return connectionsBySessionCode.values.contains { $0.peersByID[peerID] != nil }
+    }
+
+    /// Whether a cached room is still relevant to this machine. Relevant rooms
+    /// are kept; everything else is proliferation debris (orphaned ledgers from
+    /// past sessions, foreign rooms whose peers all left) safe to GC locally.
+    private func agentRoomIsLocallyRelevant(_ room: ClaudeRoomSnapshot) -> Bool {
+        if room.id == latestAgentRoomID { return true }
+        for member in room.members {
+            guard let surfaceUUID = UUID(uuidString: member.surfaceID) else {
+                if isAgentRoomMemberPeerConnected(member.peerID) { return true }
+                continue
+            }
+            if agentRoomIDsBySurfaceID[surfaceUUID] != nil { return true }
+            if hostedTerminalIDsBySurfaceID[surfaceUUID] != nil { return true }
+            if terminalPanel(surfaceID: surfaceUUID) != nil { return true }
+            if isAgentRoomMemberPeerConnected(member.peerID) { return true }
+        }
+        return false
+    }
+
+    /// Drops rooms that are no longer relevant to this machine to stop the room
+    /// list from accumulating dead entries across sessions and relaunches (which
+    /// otherwise buries the live wired room and can fork a new one each wire).
+    private func pruneStaleAgentRooms() async {
+        for room in Array(agentRoomSnapshotsByID.values) where !agentRoomIsLocallyRelevant(room) {
+            _ = await agentRoomStore.removeRoom(id: room.id)
+            agentRoomSnapshotsByID.removeValue(forKey: room.id)
+            agentRoomWiredOwnerConnectionCodesByRoomID.removeValue(forKey: room.id)
+            removeAgentRoomDisplayOrder(roomID: room.id)
+            for member in room.members {
+                if let surfaceUUID = UUID(uuidString: member.surfaceID) {
+                    agentRoomIDsBySurfaceID.removeValue(forKey: surfaceUUID)
+                    agentRoomMemberIDsBySurfaceID.removeValue(forKey: surfaceUUID)
+                    agentRoomDegradedSurfaceIDs.remove(surfaceUUID)
+                }
+            }
+        }
+        agentRoomHeaderRevision &+= 1
+    }
+
+    /// Returns `room` filtered to the members this app instance may map into its
+    /// local per-surface membership. Surface ids are globally unique, so a member
+    /// is local only when its surface is a real terminal panel here. A locally
+    /// *hosted* surface that a remote peer wired in is deliberately excluded from
+    /// the blanket reconcile: it is mapped explicitly (and consent-gated) by
+    /// `completeHostAgentRoomJoin`, never pre-mapped from an incoming snapshot.
+    private func locallyMappableRoom(from room: ClaudeRoomSnapshot) -> ClaudeRoomSnapshot {
+        var localRoom = room
+        localRoom.members = room.members.filter { isLocallyMappableAgentRoomMember($0) }
+        return localRoom
+    }
+
+    private func isLocallyMappableAgentRoomMember(_ member: ClaudeRoomMember) -> Bool {
+        guard let surfaceUUID = UUID(uuidString: member.surfaceID),
+              terminalPanel(surfaceID: surfaceUUID) != nil else { return false }
+        // Already mapped locally: keep it so the reducer's idempotent refresh and
+        // its "left the room" removal continue to work.
+        if agentRoomIDsBySurfaceID[surfaceUUID] != nil { return true }
+        // Not yet mapped and locally hosted: only the consent-gated host join path
+        // may map it, so the blanket reconcile must not.
+        if hostedTerminalIDsBySurfaceID[surfaceUUID] != nil { return false }
+        return true
     }
 
     private func cacheAgentRooms(_ rooms: [ClaudeRoomSnapshot]) {
@@ -6160,6 +7279,12 @@ enum CollaborationStrings {
         String(localized: "collaboration.action.startSession", defaultValue: "Start session")
     }
 
+    /// Session-pill call to action for directory-sharing (team/enterprise)
+    /// orgs, where sessions are an implementation detail behind sharing.
+    static var sharePill: String {
+        String(localized: "collaboration.action.sharePill", defaultValue: "Share")
+    }
+
     static var shareWithTeammate: String {
         String(localized: "collaboration.action.shareWithTeammate", defaultValue: "Share with teammate")
     }
@@ -6258,10 +7383,6 @@ enum CollaborationStrings {
             ownerName,
             orgName
         )
-    }
-
-    static var endSession: String {
-        String(localized: "collaboration.action.endSession", defaultValue: "End session")
     }
 
     static var sessionPopoverTitle: String {
@@ -6369,6 +7490,10 @@ enum CollaborationStrings {
             format: String(localized: "collaboration.agentRoom.labelFormat", defaultValue: "Room %d"),
             number
         )
+    }
+
+    static var agentRoomDragHint: String {
+        String(localized: "collaboration.agentRoom.dragHint", defaultValue: "Drag")
     }
 
     static var stopSharingTerminal: String {

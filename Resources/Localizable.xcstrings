@@ -21599,7 +21599,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in with your Mosaic account to enable sync across devices."
+            "value": "Sign in with your Mosaic account to enable sharing with others."
           }
         }
       }
@@ -37585,6 +37585,17 @@
         }
       }
     },
+    "collaboration.action.sharePill": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        }
+      }
+    },
     "collaboration.action.endSession": {
       "extractionState": "manual",
       "localizations": {
@@ -38333,6 +38344,17 @@
         }
       }
     },
+    "collaboration.agentRoom.dragHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag"
+          }
+        }
+      }
+    },
     "cli.claudeHook.roomContext.header": {
       "extractionState": "manual",
       "localizations": {
@@ -38520,6 +38542,17 @@
         }
       }
     },
+    "collaboration.agentRoom.staleMirrorWire": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This shared terminal is no longer live. Re-open it, then wire the agents again."
+          }
+        }
+      }
+    },
     "cli.agentRoom.reset.unexpectedArgument": {
       "extractionState": "manual",
       "localizations": {
@@ -38538,6 +38571,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reset Claude room state"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.noSuchRoom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "  No room matches that --room-id."
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.verdict.joinIncomplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host join incomplete (session not attached)"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.verdict.live": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ok (live)"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.verdict.needsConsent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "grant input control to bridge this agent"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.verdict.noHooks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude not running with mosaic hooks on this surface"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.verdict.remoteInactive": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote/inactive (expected for a peer's own agent)"
           }
         }
       }
