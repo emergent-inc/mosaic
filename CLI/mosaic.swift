@@ -3682,7 +3682,7 @@ struct MosaicCLI {
                     throw CLIError(message: String(
                         format: String(
                             localized: "cli.agentRoom.reset.unexpectedArgument",
-                            defaultValue: "cmux agent-room reset: unexpected argument '%@'"
+                            defaultValue: "mosaic agent-room reset: unexpected argument '%@'"
                         ),
                         extra
                     ))
@@ -34496,7 +34496,7 @@ export default MosaicSessionRestore;
 
         let logo = """
         \(c1)  ::\(reset)
-        \(c2)    ::::\(reset)              \(c1)c\(c2)m\(c3)u\(c7)x\(reset)
+        \(c2)    ::::\(reset)              \(c1)m\(c2)o\(c3)s\(c4)a\(c5)i\(c6)c\(reset)
         \(c3)      ::::::\(reset)
         \(c4)        ::::::\(reset)        \(tagline)the open source terminal\(reset)
         \(c5)      ::::::\(reset)          \(tagline)built for coding agents\(reset)

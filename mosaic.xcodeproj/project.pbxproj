@@ -56,7 +56,6 @@
 		F4350A120000000000000001 /* AppBundleIconPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4350A130000000000000001 /* AppBundleIconPersistencePolicy.swift */; };
 		C4A570010000000000000001 /* AppDelegate+CanvasShortcutRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4A570010000000000000002 /* AppDelegate+CanvasShortcutRouting.swift */; };
 		C4160A030000000000000001 /* AppDelegate+ClosedItemHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4160A030000000000000002 /* AppDelegate+ClosedItemHistory.swift */; };
-		C3677004000000000000001 /* AppDelegate+MosaicSSHURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677004000000000000002 /* AppDelegate+MosaicSSHURL.swift */; };
 		C65930010000000000000003 /* AppDelegate+CrashSessionSnapshotRemoval.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65930010000000000000004 /* AppDelegate+CrashSessionSnapshotRemoval.swift */; };
 		DCDC3000000000000000E001 /* AppDelegate+DockShortcutRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDC3000000000000000E002 /* AppDelegate+DockShortcutRouting.swift */; };
 		DCDC1000000000000000C000 /* AppDelegate+DockSurfaceMove.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDC1000000000000000C001 /* AppDelegate+DockSurfaceMove.swift */; };
@@ -64,6 +63,7 @@
 		C4160A040000000000000001 /* AppDelegate+FocusHistoryContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4160A040000000000000002 /* AppDelegate+FocusHistoryContextMenu.swift */; };
 		DCDC1000000000000000C030 /* AppDelegate+GlobalDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDC1000000000000000C031 /* AppDelegate+GlobalDock.swift */; };
 		3865A0063865A0063865A006 /* AppDelegate+GlobalSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0063865B0063865B006 /* AppDelegate+GlobalSearch.swift */; };
+		C3677004000000000000001 /* AppDelegate+MosaicSSHURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677004000000000000002 /* AppDelegate+MosaicSSHURL.swift */; };
 		D7AB00000000000000000001 /* AppDelegate+MoveTabToNewWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB00000000000000000002 /* AppDelegate+MoveTabToNewWorkspace.swift */; };
 		4EDE10010000000000000001 /* AppDelegate+NotificationDeliverySeams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDE10010000000000000002 /* AppDelegate+NotificationDeliverySeams.swift */; };
 		2907B0012907B0012907B001 /* AppDelegate+NotificationNavSeams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2907B0022907B0022907B002 /* AppDelegate+NotificationNavSeams.swift */; };
@@ -249,167 +249,6 @@
 		B900001AA1B2C3D4E5F60719 /* CloseWorkspaceConfirmDialogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000019A1B2C3D4E5F60719 /* CloseWorkspaceConfirmDialogUITests.swift */; };
 		B900001BA1B2C3D4E5F60719 /* CloseWorkspacesConfirmDialogUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900001CA1B2C3D4E5F60719 /* CloseWorkspacesConfirmDialogUITests.swift */; };
 		C10D00010000000000000001 /* CloudVMActionLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10D00020000000000000002 /* CloudVMActionLauncher.swift */; };
-		B900000BA1B2C3D4E5F60719 /* mosaic in Copy CLI */ = {isa = PBXBuildFile; fileRef = B9000004A1B2C3D4E5F60719 /* mosaic */; };
-		C1ADE20002A1B2C3D4E5F719 /* mosaic-claude-wrapper in Copy CLI */ = {isa = PBXBuildFile; fileRef = C1ADE20001A1B2C3D4E5F719 /* mosaic-claude-wrapper */; };
-		C1ADE30002A1B2C3D4E5F719 /* mosaic-codex-wrapper in Copy CLI */ = {isa = PBXBuildFile; fileRef = C1ADE30001A1B2C3D4E5F719 /* mosaic-codex-wrapper */; };
-		A5001623 /* mosaic.sdef in Resources */ = {isa = PBXBuildFile; fileRef = A5001622 /* mosaic.sdef */; };
-		B9000002A1B2C3D4E5F60719 /* mosaic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000001A1B2C3D4E5F60719 /* mosaic.swift */; };
-		B9000034A1B2C3D4E5F60719 /* mosaic_open.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000030A1B2C3D4E5F60719 /* mosaic_open.swift */; };
-		A5001654 /* MosaicActionTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001655 /* MosaicActionTrust.swift */; };
-		AC4A6E7C4A700001AC4A0001 /* MosaicAgentChat in Frameworks */ = {isa = PBXBuildFile; productRef = AC4A6E7C4A700001AC4A0002 /* MosaicAgentChat */; };
-		A5B00003A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
-		A5B00004A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
-		A5B00005A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
-		E3309A07 /* mosaicApp+EqualizeSplitsMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3309A08 /* mosaicApp+EqualizeSplitsMenu.swift */; };
-		C4160A010000000000000001 /* mosaicApp+HistoryMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4160A010000000000000002 /* mosaicApp+HistoryMenu.swift */; };
-		A5001001 /* mosaicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001011 /* mosaicApp.swift */; };
-		C9A2B00000000000000000B3 /* MosaicAppKitSupportUI in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2B00000000000000000B2 /* MosaicAppKitSupportUI */; };
-		C9A2B00000000000000000C3 /* MosaicAppKitSupportUI in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2B00000000000000000C2 /* MosaicAppKitSupportUI */; };
-		5EDB6027B346C46521A93C74 /* MosaicAuthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 29813FE5A6CBC1019289A251 /* MosaicAuthCore */; };
-		53750003A0B1C2D3E4F50003 /* MosaicAuthRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 53750002A0B1C2D3E4F50002 /* MosaicAuthRuntime */; };
-		D7032A060000000000000001 /* MosaicBrowser in Frameworks */ = {isa = PBXBuildFile; productRef = D7032A060000000000000002 /* MosaicBrowser */; };
-		E3B7A30000000000000000C3 /* MosaicBrowser in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000C2 /* MosaicBrowser */; };
-		CA52A003CA52A003CA52A003 /* MosaicCanvas in Frameworks */ = {isa = PBXBuildFile; productRef = CA52A005CA52A005CA52A005 /* MosaicCanvas */; };
-		CA52A007CA52A007CA52A007 /* MosaicCanvas in Frameworks */ = {isa = PBXBuildFile; productRef = CA52A005CA52A005CA52A005 /* MosaicCanvas */; };
-		CA53A003CA53A003CA53A003 /* MosaicCanvasUI in Frameworks */ = {isa = PBXBuildFile; productRef = CA53A005CA53A005CA53A005 /* MosaicCanvasUI */; };
-		B9000063A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000062A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift */; };
-		6D9C51AB30A64B1ABC819146 /* MosaicCLI+AgentHookPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211170 /* MosaicCLI+AgentHookPayload.swift */; };
-		B9000068A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000069A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift */; };
-		0CB4E9797AD54D3BB9CF06F9 /* MosaicCLI+AutoNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */; };
-		6D9C51AB30A64B1ABC819142 /* MosaicCLI+AutoNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */; };
-		6D9C51AB30A64B1ABC81914A /* MosaicCLI+AutoNamingDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B121116A /* MosaicCLI+AutoNamingDispatch.swift */; };
-		6D9C51AB30A64B1ABC819143 /* MosaicCLI+AutoNamingGenericHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211167 /* MosaicCLI+AutoNamingGenericHooks.swift */; };
-		6D9C51AB30A64B1ABC819144 /* MosaicCLI+AutoNamingHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211168 /* MosaicCLI+AutoNamingHooks.swift */; };
-		6D9C51AB30A64B1ABC819145 /* MosaicCLI+AutoNamingSummarizers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211169 /* MosaicCLI+AutoNamingSummarizers.swift */; };
-		C0D3F1F00000000000000101 /* MosaicCLI+CodexFireAndForgetHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3F1F00000000000000102 /* MosaicCLI+CodexFireAndForgetHooks.swift */; };
-		B9000050A1B2C3D4E5F60719 /* MosaicCLI+Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000051A1B2C3D4E5F60719 /* MosaicCLI+Config.swift */; };
-		B9000035A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000031A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift */; };
-		B9000064A1B2C3D4E5F60719 /* MosaicCLI+Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000065A1B2C3D4E5F60719 /* MosaicCLI+Events.swift */; };
-		B9000046A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000047A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift */; };
-		B9000061A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000060A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift */; };
-		B9000052A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000053A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift */; };
-		B9000071A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000070A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift */; };
-		D7AB0000000000000000000D /* MosaicCLI+MoveTabToNewWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB0000000000000000000E /* MosaicCLI+MoveTabToNewWorkspace.swift */; };
-		B9000072A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000073A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift */; };
-		C05555010000000000000001 /* MosaicCLI+PiExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000002 /* MosaicCLI+PiExtension.swift */; };
-		C05555010000000000000003 /* MosaicCLI+PiExtensionSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000004 /* MosaicCLI+PiExtensionSource.swift */; };
-		C05555010000000000000005 /* MosaicCLI+PiExtensionSourcePart1.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000006 /* MosaicCLI+PiExtensionSourcePart1.swift */; };
-		C05555010000000000000007 /* MosaicCLI+PiExtensionSourcePart2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000008 /* MosaicCLI+PiExtensionSourcePart2.swift */; };
-		B9000054A1B2C3D4E5F60719 /* MosaicCLI+Process.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000055A1B2C3D4E5F60719 /* MosaicCLI+Process.swift */; };
-		REE0CA0000000000000000C2 /* MosaicCLI+Remotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = REE0CA0000000000000000C1 /* MosaicCLI+Remotes.swift */; };
-		C0DE64950000000000000001 /* MosaicCLI+SessionsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000002 /* MosaicCLI+SessionsList.swift */; };
-		C12984000000000000000002 /* MosaicCLI+SIGPIPEProbes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12984000000000000000001 /* MosaicCLI+SIGPIPEProbes.swift */; };
-		B9000041A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000040A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift */; };
-		B900002EA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900002CA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift */; };
-		B900002FA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900002DA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift */; };
-		B9000048A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000049A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift */; };
-		B9000044A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000045A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift */; };
-		B9000033A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000032A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift */; };
-		C0DE31390000000000000105 /* MosaicCLIErrorOutputRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000106 /* MosaicCLIErrorOutputRegressionTests.swift */; };
-		A72C9F4179B54DF38E99A021 /* MosaicCLIPathInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4FE96C3F394FC6A6D4B018 /* MosaicCLIPathInstaller.swift */; };
-		C12985000000000000000004 /* MosaicCLISentryTelemetryRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12985000000000000000003 /* MosaicCLISentryTelemetryRegressionTests.swift */; };
-		C0DE64950000000000000005 /* MosaicCLISessionsListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000006 /* MosaicCLISessionsListTests.swift */; };
-		C0DE64950000000000000003 /* MosaicCLITestAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000004 /* MosaicCLITestAssertions.swift */; };
-		C011AB010000000000000001 /* MosaicCollaboration in Frameworks */ = {isa = PBXBuildFile; productRef = C011AB010000000000000002 /* MosaicCollaboration */; };
-		C011AB010000000000000004 /* MosaicCollaboration in Frameworks */ = {isa = PBXBuildFile; productRef = C011AB010000000000000002 /* MosaicCollaboration */; };
-		5E55500000000000000000E3 /* MosaicCommandPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55500000000000000000E2 /* MosaicCommandPalette */; };
-		5E55500000000000000000E4 /* MosaicCommandPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55500000000000000000E2 /* MosaicCommandPalette */; };
-		A5001650 /* MosaicConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001651 /* MosaicConfig.swift */; };
-		C0DEF0A40000000000000001 /* MosaicConfigContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A40000000000000002 /* MosaicConfigContextMenuTests.swift */; };
-		A5001652 /* MosaicConfigExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001653 /* MosaicConfigExecutor.swift */; };
-		E30750000000000000000006 /* MosaicConfigNamedColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30750000000000000000005 /* MosaicConfigNamedColorTests.swift */; };
-		C5D0DEC0CF00000000000A1 /* MosaicConfigStore+ConfigStoreReloading.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D0DEC0CF00000000000B1 /* MosaicConfigStore+ConfigStoreReloading.swift */; };
-		C1A2B3C4D5E6F70800000001 /* MosaicConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F70800000002 /* MosaicConfigTests.swift */; };
-		C0DEF0A10000000000000001 /* MosaicConfigUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A10000000000000002 /* MosaicConfigUI.swift */; };
-		C750100000000000000000A3 /* MosaicControlSocket in Frameworks */ = {isa = PBXBuildFile; productRef = C750100000000000000000A2 /* MosaicControlSocket */; };
-		CC0DE00000000000000000A3 /* MosaicCore in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE00000000000000000A2 /* MosaicCore */; };
-		CC0DE00000000000000000A4 /* MosaicCore in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE00000000000000000A2 /* MosaicCore */; };
-		D1320AA0D1320AA0D1320AA2 /* MosaicDockTilePlugin.plugin in Copy Dock Tile Plugin */ = {isa = PBXBuildFile; fileRef = D1320AA0D1320AA0D1320AA5 /* MosaicDockTilePlugin.plugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		E7E000000000000000000005 /* MosaicEventBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000006 /* MosaicEventBus.swift */; };
-		E7E000000000000000000003 /* MosaicEventBusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000004 /* MosaicEventBusTests.swift */; };
-		E7E00000000000000000000D /* MosaicEventLogWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000E /* MosaicEventLogWriter.swift */; };
-		E7E000000000000000000007 /* MosaicEventPublishing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000008 /* MosaicEventPublishing.swift */; };
-		E7E000000000000000000001 /* MosaicEventStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000002 /* MosaicEventStream.swift */; };
-		C0DE45000000000000000001 /* MosaicExtensionKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE45000000000000000002 /* MosaicExtensionKit */; };
-		C0DE49000000000000000001 /* MosaicExtensionSidebarExamples in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE49000000000000000002 /* MosaicExtensionSidebarExamples */; };
-		C57B00050000000000000001 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C57B00050000000000000002 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift */; };
-		C9A2C00000000000000000C3 /* MosaicFeedback in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2C00000000000000000C2 /* MosaicFeedback */; };
-		5E2701040000000000000004 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 5E2701040000000000000002 /* MosaicFoundation */; };
-		CF00F00000000000000000A3 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = CF00F00000000000000000A2 /* MosaicFoundation */; };
-		CF00F00000000000000000A4 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = CF00F00000000000000000A2 /* MosaicFoundation */; };
-		C617000000000000000000A3 /* MosaicGit in Frameworks */ = {isa = PBXBuildFile; productRef = C617000000000000000000A2 /* MosaicGit */; };
-		C0DE34020000000000000001 /* MosaicHelpCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE34020000000000000003 /* MosaicHelpCommands.swift */; };
-		C0DE34020000000000000002 /* MosaicHelpResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE34020000000000000004 /* MosaicHelpResource.swift */; };
-		C0DE46010000000000000001 /* MosaicInstalledExtensionSidebarHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE46010000000000000002 /* MosaicInstalledExtensionSidebarHostView.swift */; };
-		E7E00000000000000000000B /* MosaicLifecycleEventPublishing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000C /* MosaicLifecycleEventPublishing.swift */; };
-		2F0C07000000000000000002 /* MosaicMainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F0C07000000000000000001 /* MosaicMainWindow.swift */; };
-		D36090010000000000000005 /* MosaicMainWindowConstrainFrameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36090010000000000000006 /* MosaicMainWindowConstrainFrameTests.swift */; };
-		D36090020000000000000005 /* MosaicMainWindowFullScreenCapabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36090020000000000000006 /* MosaicMainWindowFullScreenCapabilityTests.swift */; };
-		799F1BEF876006EEB8CD1035 /* MosaicMobileCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFB18E3B3099DFE2ECA3C263 /* MosaicMobileCore */; };
-		EFB18E3C0000000000000001 /* MosaicMobileCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFB18E3B3099DFE2ECA3C263 /* MosaicMobileCore */; };
-		A5001557 /* MosaicModalAlertAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001556 /* MosaicModalAlertAnalytics.swift */; };
-		CA1F0A01CA1F0A01CA1F0A01 /* MosaicModalAlertPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1F0A02CA1F0A02CA1F0A02 /* MosaicModalAlertPresentation.swift */; };
-		E3B7A30000000000000000D3 /* MosaicNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000D2 /* MosaicNotifications */; };
-		C0DE31390000000000000101 /* MosaicOpenCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000102 /* MosaicOpenCommandTests.swift */; };
-		C0DE31390000000000000111 /* MosaicOpenHTMLFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000112 /* MosaicOpenHTMLFocusTests.swift */; };
-		E3B7A30000000000000000F3 /* MosaicPanes in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000F2 /* MosaicPanes */; };
-		A5C0DE0000000000000000A3 /* MosaicProjectModel in Frameworks */ = {isa = PBXBuildFile; productRef = A5C0DE0000000000000000A2 /* MosaicProjectModel */; };
-		CC0DE10000000000000000A3 /* MosaicRemoteDaemon in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE10000000000000000A2 /* MosaicRemoteDaemon */; };
-		CC0DE30000000000000000A3 /* MosaicRemoteSession in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE30000000000000000A2 /* MosaicRemoteSession */; };
-		CC0DE20000000000000000A3 /* MosaicRemoteWorkspace in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE20000000000000000A2 /* MosaicRemoteWorkspace */; };
-		A9F200000000000000000005 /* MosaicRuntimeDebugCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000005 /* MosaicRuntimeDebugCapture.swift */; };
-		A9F200000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift */; };
-		A9F20000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F10000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift */; };
-		A9F200000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift */; };
-		CD0CFE5300000000CD0CFE53 /* MosaicSettings in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5200000000CD0CFE52 /* MosaicSettings */; };
-		CD0CFE5700000000CD0CFE57 /* MosaicSettings in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5200000000CD0CFE52 /* MosaicSettings */; };
-		D3610C010000000000000001 /* MosaicSettingsJSONPathSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3610C010000000000000002 /* MosaicSettingsJSONPathSupport.swift */; };
-		CD0CFE5600000000CD0CFE56 /* MosaicSettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5500000000CD0CFE55 /* MosaicSettingsUI */; };
-		E3B7A30000000000000000B3 /* MosaicSidebar in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000B2 /* MosaicSidebar */; };
-		DC5DC5DC0000000000000001 /* MosaicSidebarActionDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5DC5DC0000000000000002 /* MosaicSidebarActionDispatch.swift */; };
-		C0DE46030000000000000001 /* MosaicSidebarExtensionBrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE46030000000000000002 /* MosaicSidebarExtensionBrowserPanel.swift */; };
-		C5B6A10000000000000000A3 /* MosaicSidebarGit in Frameworks */ = {isa = PBXBuildFile; productRef = C5B6A10000000000000000A2 /* MosaicSidebarGit */; };
-		C5A1FED200000000000000E1 /* MosaicSidebarInterpreterClient in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E3 /* MosaicSidebarInterpreterClient */; };
-		C5A1FED200000000000000E2 /* MosaicSidebarInterpreterClient in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E3 /* MosaicSidebarInterpreterClient */; };
-		C0DE4A000000000000000001 /* MosaicSidebarProviderKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE4A000000000000000002 /* MosaicSidebarProviderKit */; };
-		C0DE4A000000000000000005 /* MosaicSidebarProviderKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE4A000000000000000004 /* MosaicSidebarProviderKit */; };
-		C5A1FED200000000000000E5 /* MosaicSidebarRemoteRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E6 /* MosaicSidebarRemoteRender */; };
-		E7E000000000000000000009 /* MosaicSocketEventMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000A /* MosaicSocketEventMapper.swift */; };
-		C3677002000000000000001 /* MosaicSSHURLRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677002000000000000002 /* MosaicSSHURLRequest.swift */; };
-		C3677001000000000000001 /* MosaicSSHURLRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677001000000000000002 /* MosaicSSHURLRequestTests.swift */; };
-		C10D00030000000000000003 /* MosaicSurfaceTabBarBuiltInAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10D00040000000000000004 /* MosaicSurfaceTabBarBuiltInAction.swift */; };
-		C5A1FED000000000000000C1 /* MosaicSwiftRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED000000000000000C3 /* MosaicSwiftRender */; };
-		C5A1FED000000000000000C2 /* MosaicSwiftRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED000000000000000C3 /* MosaicSwiftRender */; };
-		C5A1FED100000000000000D1 /* MosaicSwiftRenderUI in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED100000000000000D3 /* MosaicSwiftRenderUI */; };
-		C5A1FED100000000000000D2 /* MosaicSwiftRenderUI in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED100000000000000D3 /* MosaicSwiftRenderUI */; };
-		C750500000000000000000A3 /* MosaicTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = C750500000000000000000A2 /* MosaicTerminal */; };
-		C750200000000000000000A3 /* MosaicTerminalCore in Frameworks */ = {isa = PBXBuildFile; productRef = C750200000000000000000A2 /* MosaicTerminalCore */; };
-		CFF12E0000000000000000A3 /* MosaicTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = CFF12E0000000000000000A2 /* MosaicTestSupport */; };
-		C7A510000000000000000002 /* MosaicTopMemoryDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A510000000000000000001 /* MosaicTopMemoryDiagnostics.swift */; };
-		B35750000000000000000004 /* MosaicTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* MosaicTopProcessArguments.swift */; };
-		C7A50C000000000000000002 /* MosaicTopProcessCPUTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50C000000000000000001 /* MosaicTopProcessCPUTests.swift */; };
-		C7A50D000000000000000002 /* MosaicTopProcessCPUTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50D000000000000000001 /* MosaicTopProcessCPUTracker.swift */; };
-		C7A50E000000000000000002 /* MosaicTopProcessDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50E000000000000000001 /* MosaicTopProcessDetails.swift */; };
-		C7A511000000000000000002 /* MosaicTopProcessEnumeration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A511000000000000000001 /* MosaicTopProcessEnumeration.swift */; };
-		C7A512000000000000000002 /* MosaicTopProcessSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A512000000000000000001 /* MosaicTopProcessSnapshotCache.swift */; };
-		C7A501000000000000000002 /* MosaicTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* MosaicTopSnapshot.swift */; };
-		C7A508000000000000000002 /* MosaicTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* MosaicTopSnapshotScopeCache.swift */; };
-		C7A5090000000000000005A2 /* MosaicTopSnapshotScopeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A5090000000000000005A1 /* MosaicTopSnapshotScopeCacheTests.swift */; };
-		C7A509000000000000000002 /* MosaicTopSnapshotScopeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A509000000000000000001 /* MosaicTopSnapshotScopeTests.swift */; };
-		CDFEED0300000000CDFEED03 /* MosaicUpdater in Frameworks */ = {isa = PBXBuildFile; productRef = CDFEED0200000000CDFEED02 /* MosaicUpdater */; };
-		CDFEED0600000000CDFEED06 /* MosaicUpdaterUI in Frameworks */ = {isa = PBXBuildFile; productRef = CDFEED0500000000CDFEED05 /* MosaicUpdaterUI */; };
-		D7C0DE00000000000000A101 /* MosaicWebView+ContextMenuLinkCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0DE00000000000000A102 /* MosaicWebView+ContextMenuLinkCapture.swift */; };
-		D7AB00000000000000000009 /* MosaicWebView+MoveTabToNewWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB0000000000000000000A /* MosaicWebView+MoveTabToNewWorkspace.swift */; };
-		C6255D010000000000000001 /* MosaicWebView+ScriptedDownloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6255D010000000000000002 /* MosaicWebView+ScriptedDownloads.swift */; };
-		C67540030000000000000001 /* MosaicWebView+SubframeDownloadIntentScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C67540030000000000000002 /* MosaicWebView+SubframeDownloadIntentScript.swift */; };
-		A5001500 /* MosaicWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001510 /* MosaicWebView.swift */; };
-		D7C0DE00000000000000A103 /* MosaicWebViewContextMenuLinkCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0DE00000000000000A104 /* MosaicWebViewContextMenuLinkCaptureTests.swift */; };
-		D0B1000CA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B1000DA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift */; };
-		C0DE58990000000000000004 /* MosaicWebViewKeyDownReentryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE58990000000000000002 /* MosaicWebViewKeyDownReentryTests.swift */; };
-		7D5DA4DC51454ECDBF9AC978 /* MosaicWebViewMouseNavigationButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F90FAF3FD44F11BF547BE9 /* MosaicWebViewMouseNavigationButtonTests.swift */; };
-		5E55200000000000000000B3 /* MosaicWindowing in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55200000000000000000B2 /* MosaicWindowing */; };
-		E30750000000000000000004 /* MosaicWorkspaceDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30750000000000000000003 /* MosaicWorkspaceDefinition.swift */; };
-		E3B7A3000000000000000103 /* MosaicWorkspaces in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A3000000000000000102 /* MosaicWorkspaces */; };
 		A9F200000000000000000016 /* CodexAppServerQueuedInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000016 /* CodexAppServerQueuedInput.swift */; };
 		A9E02000000000000000000E /* CodexAppServerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E01000000000000000000E /* CodexAppServerSession.swift */; };
 		A9E040000000000000000002 /* CodexAppServerSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E040000000000000000001 /* CodexAppServerSessionTests.swift */; };
@@ -419,6 +258,7 @@
 		C011AB030000000000000001 /* CollaborationInviteCodeEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011AB030000000000000002 /* CollaborationInviteCodeEntryView.swift */; };
 		C011AB020000000000000001 /* CollaborationRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011AB020000000000000002 /* CollaborationRuntime.swift */; };
 		95279D8BDFD5535F8471A3D7 /* CollaborationSharingLabelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */; };
+		C0114B00000000000000A001 /* CollaborationTerminalInputRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0114B00000000000000A002 /* CollaborationTerminalInputRegressionTests.swift */; };
 		F69B0C415C2340A9B9807653 /* CollaborationTerminalRenderGridSeedLimiterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C41E2CBE9604DFBB6F1CDEB /* CollaborationTerminalRenderGridSeedLimiterTests.swift */; };
 		C4041001000000000000001B /* CommandClickFileOpenRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4041001000000000000001A /* CommandClickFileOpenRouter.swift */; };
 		C0DEC0DE000000000000F302 /* CommandPaletteEmojiTitleSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEC0DE000000000000F301 /* CommandPaletteEmojiTitleSearchTests.swift */; };
@@ -707,6 +547,167 @@
 		F6448F377504F33956E7E03B /* MobileWorkspaceListFidelityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86544CEFA1CA33CA9225FB6E /* MobileWorkspaceListFidelityTests.swift */; };
 		00C3AA443F6DA8D94E28CE17 /* MobileWorkspaceListObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F14137954A34DFFA05C88C /* MobileWorkspaceListObserver.swift */; };
 		13AB1A2E5DA6AD02DCAE971D /* MockBridgeInputCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3B5F249DECAB446CC71D32 /* MockBridgeInputCapture.swift */; };
+		B900000BA1B2C3D4E5F60719 /* mosaic in Copy CLI */ = {isa = PBXBuildFile; fileRef = B9000004A1B2C3D4E5F60719 /* mosaic */; };
+		C1ADE20002A1B2C3D4E5F719 /* mosaic-claude-wrapper in Copy CLI */ = {isa = PBXBuildFile; fileRef = C1ADE20001A1B2C3D4E5F719 /* mosaic-claude-wrapper */; };
+		C1ADE30002A1B2C3D4E5F719 /* mosaic-codex-wrapper in Copy CLI */ = {isa = PBXBuildFile; fileRef = C1ADE30001A1B2C3D4E5F719 /* mosaic-codex-wrapper */; };
+		A5001623 /* mosaic.sdef in Resources */ = {isa = PBXBuildFile; fileRef = A5001622 /* mosaic.sdef */; };
+		B9000002A1B2C3D4E5F60719 /* mosaic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000001A1B2C3D4E5F60719 /* mosaic.swift */; };
+		B9000034A1B2C3D4E5F60719 /* mosaic_open.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000030A1B2C3D4E5F60719 /* mosaic_open.swift */; };
+		A5001654 /* MosaicActionTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001655 /* MosaicActionTrust.swift */; };
+		AC4A6E7C4A700001AC4A0001 /* MosaicAgentChat in Frameworks */ = {isa = PBXBuildFile; productRef = AC4A6E7C4A700001AC4A0002 /* MosaicAgentChat */; };
+		A5B00003A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
+		A5B00004A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
+		A5B00005A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */ = {isa = PBXBuildFile; productRef = A5B00002A1B2C3D4E5F60718 /* MosaicAgentLaunch */; };
+		E3309A07 /* mosaicApp+EqualizeSplitsMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3309A08 /* mosaicApp+EqualizeSplitsMenu.swift */; };
+		C4160A010000000000000001 /* mosaicApp+HistoryMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4160A010000000000000002 /* mosaicApp+HistoryMenu.swift */; };
+		A5001001 /* mosaicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001011 /* mosaicApp.swift */; };
+		C9A2B00000000000000000B3 /* MosaicAppKitSupportUI in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2B00000000000000000B2 /* MosaicAppKitSupportUI */; };
+		C9A2B00000000000000000C3 /* MosaicAppKitSupportUI in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2B00000000000000000C2 /* MosaicAppKitSupportUI */; };
+		5EDB6027B346C46521A93C74 /* MosaicAuthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 29813FE5A6CBC1019289A251 /* MosaicAuthCore */; };
+		53750003A0B1C2D3E4F50003 /* MosaicAuthRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 53750002A0B1C2D3E4F50002 /* MosaicAuthRuntime */; };
+		D7032A060000000000000001 /* MosaicBrowser in Frameworks */ = {isa = PBXBuildFile; productRef = D7032A060000000000000002 /* MosaicBrowser */; };
+		E3B7A30000000000000000C3 /* MosaicBrowser in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000C2 /* MosaicBrowser */; };
+		CA52A003CA52A003CA52A003 /* MosaicCanvas in Frameworks */ = {isa = PBXBuildFile; productRef = CA52A005CA52A005CA52A005 /* MosaicCanvas */; };
+		CA52A007CA52A007CA52A007 /* MosaicCanvas in Frameworks */ = {isa = PBXBuildFile; productRef = CA52A005CA52A005CA52A005 /* MosaicCanvas */; };
+		CA53A003CA53A003CA53A003 /* MosaicCanvasUI in Frameworks */ = {isa = PBXBuildFile; productRef = CA53A005CA53A005CA53A005 /* MosaicCanvasUI */; };
+		B9000063A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000062A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift */; };
+		6D9C51AB30A64B1ABC819146 /* MosaicCLI+AgentHookPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211170 /* MosaicCLI+AgentHookPayload.swift */; };
+		B9000068A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000069A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift */; };
+		0CB4E9797AD54D3BB9CF06F9 /* MosaicCLI+AutoNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */; };
+		6D9C51AB30A64B1ABC819142 /* MosaicCLI+AutoNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */; };
+		6D9C51AB30A64B1ABC81914A /* MosaicCLI+AutoNamingDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B121116A /* MosaicCLI+AutoNamingDispatch.swift */; };
+		6D9C51AB30A64B1ABC819143 /* MosaicCLI+AutoNamingGenericHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211167 /* MosaicCLI+AutoNamingGenericHooks.swift */; };
+		6D9C51AB30A64B1ABC819144 /* MosaicCLI+AutoNamingHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211168 /* MosaicCLI+AutoNamingHooks.swift */; };
+		6D9C51AB30A64B1ABC819145 /* MosaicCLI+AutoNamingSummarizers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5257257034CA4729B1211169 /* MosaicCLI+AutoNamingSummarizers.swift */; };
+		C0D3F1F00000000000000101 /* MosaicCLI+CodexFireAndForgetHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3F1F00000000000000102 /* MosaicCLI+CodexFireAndForgetHooks.swift */; };
+		B9000050A1B2C3D4E5F60719 /* MosaicCLI+Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000051A1B2C3D4E5F60719 /* MosaicCLI+Config.swift */; };
+		B9000035A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000031A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift */; };
+		B9000064A1B2C3D4E5F60719 /* MosaicCLI+Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000065A1B2C3D4E5F60719 /* MosaicCLI+Events.swift */; };
+		B9000046A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000047A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift */; };
+		B9000061A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000060A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift */; };
+		B9000052A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000053A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift */; };
+		B9000071A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000070A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift */; };
+		D7AB0000000000000000000D /* MosaicCLI+MoveTabToNewWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB0000000000000000000E /* MosaicCLI+MoveTabToNewWorkspace.swift */; };
+		B9000072A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000073A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift */; };
+		C05555010000000000000001 /* MosaicCLI+PiExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000002 /* MosaicCLI+PiExtension.swift */; };
+		C05555010000000000000003 /* MosaicCLI+PiExtensionSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000004 /* MosaicCLI+PiExtensionSource.swift */; };
+		C05555010000000000000005 /* MosaicCLI+PiExtensionSourcePart1.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000006 /* MosaicCLI+PiExtensionSourcePart1.swift */; };
+		C05555010000000000000007 /* MosaicCLI+PiExtensionSourcePart2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C05555010000000000000008 /* MosaicCLI+PiExtensionSourcePart2.swift */; };
+		B9000054A1B2C3D4E5F60719 /* MosaicCLI+Process.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000055A1B2C3D4E5F60719 /* MosaicCLI+Process.swift */; };
+		REE0CA0000000000000000C2 /* MosaicCLI+Remotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = REE0CA0000000000000000C1 /* MosaicCLI+Remotes.swift */; };
+		C0DE64950000000000000001 /* MosaicCLI+SessionsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000002 /* MosaicCLI+SessionsList.swift */; };
+		C12984000000000000000002 /* MosaicCLI+SIGPIPEProbes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12984000000000000000001 /* MosaicCLI+SIGPIPEProbes.swift */; };
+		B9000041A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000040A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift */; };
+		B900002EA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900002CA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift */; };
+		B900002FA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900002DA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift */; };
+		B9000048A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000049A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift */; };
+		B9000044A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000045A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift */; };
+		B9000033A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000032A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift */; };
+		C0DE31390000000000000105 /* MosaicCLIErrorOutputRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000106 /* MosaicCLIErrorOutputRegressionTests.swift */; };
+		A72C9F4179B54DF38E99A021 /* MosaicCLIPathInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4FE96C3F394FC6A6D4B018 /* MosaicCLIPathInstaller.swift */; };
+		C12985000000000000000004 /* MosaicCLISentryTelemetryRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12985000000000000000003 /* MosaicCLISentryTelemetryRegressionTests.swift */; };
+		C0DE64950000000000000005 /* MosaicCLISessionsListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000006 /* MosaicCLISessionsListTests.swift */; };
+		C0DE64950000000000000003 /* MosaicCLITestAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE64950000000000000004 /* MosaicCLITestAssertions.swift */; };
+		C011AB010000000000000001 /* MosaicCollaboration in Frameworks */ = {isa = PBXBuildFile; productRef = C011AB010000000000000002 /* MosaicCollaboration */; };
+		C011AB010000000000000004 /* MosaicCollaboration in Frameworks */ = {isa = PBXBuildFile; productRef = C011AB010000000000000002 /* MosaicCollaboration */; };
+		5E55500000000000000000E3 /* MosaicCommandPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55500000000000000000E2 /* MosaicCommandPalette */; };
+		5E55500000000000000000E4 /* MosaicCommandPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55500000000000000000E2 /* MosaicCommandPalette */; };
+		A5001650 /* MosaicConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001651 /* MosaicConfig.swift */; };
+		C0DEF0A40000000000000001 /* MosaicConfigContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A40000000000000002 /* MosaicConfigContextMenuTests.swift */; };
+		A5001652 /* MosaicConfigExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001653 /* MosaicConfigExecutor.swift */; };
+		E30750000000000000000006 /* MosaicConfigNamedColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30750000000000000000005 /* MosaicConfigNamedColorTests.swift */; };
+		C5D0DEC0CF00000000000A1 /* MosaicConfigStore+ConfigStoreReloading.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D0DEC0CF00000000000B1 /* MosaicConfigStore+ConfigStoreReloading.swift */; };
+		C1A2B3C4D5E6F70800000001 /* MosaicConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F70800000002 /* MosaicConfigTests.swift */; };
+		C0DEF0A10000000000000001 /* MosaicConfigUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A10000000000000002 /* MosaicConfigUI.swift */; };
+		C750100000000000000000A3 /* MosaicControlSocket in Frameworks */ = {isa = PBXBuildFile; productRef = C750100000000000000000A2 /* MosaicControlSocket */; };
+		CC0DE00000000000000000A3 /* MosaicCore in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE00000000000000000A2 /* MosaicCore */; };
+		CC0DE00000000000000000A4 /* MosaicCore in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE00000000000000000A2 /* MosaicCore */; };
+		D1320AA0D1320AA0D1320AA2 /* MosaicDockTilePlugin.plugin in Copy Dock Tile Plugin */ = {isa = PBXBuildFile; fileRef = D1320AA0D1320AA0D1320AA5 /* MosaicDockTilePlugin.plugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E7E000000000000000000005 /* MosaicEventBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000006 /* MosaicEventBus.swift */; };
+		E7E000000000000000000003 /* MosaicEventBusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000004 /* MosaicEventBusTests.swift */; };
+		E7E00000000000000000000D /* MosaicEventLogWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000E /* MosaicEventLogWriter.swift */; };
+		E7E000000000000000000007 /* MosaicEventPublishing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000008 /* MosaicEventPublishing.swift */; };
+		E7E000000000000000000001 /* MosaicEventStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E000000000000000000002 /* MosaicEventStream.swift */; };
+		C0DE45000000000000000001 /* MosaicExtensionKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE45000000000000000002 /* MosaicExtensionKit */; };
+		C0DE49000000000000000001 /* MosaicExtensionSidebarExamples in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE49000000000000000002 /* MosaicExtensionSidebarExamples */; };
+		C57B00050000000000000001 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C57B00050000000000000002 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift */; };
+		C9A2C00000000000000000C3 /* MosaicFeedback in Frameworks */ = {isa = PBXBuildFile; productRef = C9A2C00000000000000000C2 /* MosaicFeedback */; };
+		5E2701040000000000000004 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 5E2701040000000000000002 /* MosaicFoundation */; };
+		CF00F00000000000000000A3 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = CF00F00000000000000000A2 /* MosaicFoundation */; };
+		CF00F00000000000000000A4 /* MosaicFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = CF00F00000000000000000A2 /* MosaicFoundation */; };
+		C617000000000000000000A3 /* MosaicGit in Frameworks */ = {isa = PBXBuildFile; productRef = C617000000000000000000A2 /* MosaicGit */; };
+		C0DE34020000000000000001 /* MosaicHelpCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE34020000000000000003 /* MosaicHelpCommands.swift */; };
+		C0DE34020000000000000002 /* MosaicHelpResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE34020000000000000004 /* MosaicHelpResource.swift */; };
+		C0DE46010000000000000001 /* MosaicInstalledExtensionSidebarHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE46010000000000000002 /* MosaicInstalledExtensionSidebarHostView.swift */; };
+		E7E00000000000000000000B /* MosaicLifecycleEventPublishing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000C /* MosaicLifecycleEventPublishing.swift */; };
+		2F0C07000000000000000002 /* MosaicMainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F0C07000000000000000001 /* MosaicMainWindow.swift */; };
+		D36090010000000000000005 /* MosaicMainWindowConstrainFrameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36090010000000000000006 /* MosaicMainWindowConstrainFrameTests.swift */; };
+		D36090020000000000000005 /* MosaicMainWindowFullScreenCapabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36090020000000000000006 /* MosaicMainWindowFullScreenCapabilityTests.swift */; };
+		799F1BEF876006EEB8CD1035 /* MosaicMobileCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFB18E3B3099DFE2ECA3C263 /* MosaicMobileCore */; };
+		EFB18E3C0000000000000001 /* MosaicMobileCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFB18E3B3099DFE2ECA3C263 /* MosaicMobileCore */; };
+		A5001557 /* MosaicModalAlertAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001556 /* MosaicModalAlertAnalytics.swift */; };
+		CA1F0A01CA1F0A01CA1F0A01 /* MosaicModalAlertPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1F0A02CA1F0A02CA1F0A02 /* MosaicModalAlertPresentation.swift */; };
+		E3B7A30000000000000000D3 /* MosaicNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000D2 /* MosaicNotifications */; };
+		C0DE31390000000000000101 /* MosaicOpenCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000102 /* MosaicOpenCommandTests.swift */; };
+		C0DE31390000000000000111 /* MosaicOpenHTMLFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE31390000000000000112 /* MosaicOpenHTMLFocusTests.swift */; };
+		E3B7A30000000000000000F3 /* MosaicPanes in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000F2 /* MosaicPanes */; };
+		A5C0DE0000000000000000A3 /* MosaicProjectModel in Frameworks */ = {isa = PBXBuildFile; productRef = A5C0DE0000000000000000A2 /* MosaicProjectModel */; };
+		CC0DE10000000000000000A3 /* MosaicRemoteDaemon in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE10000000000000000A2 /* MosaicRemoteDaemon */; };
+		CC0DE30000000000000000A3 /* MosaicRemoteSession in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE30000000000000000A2 /* MosaicRemoteSession */; };
+		CC0DE20000000000000000A3 /* MosaicRemoteWorkspace in Frameworks */ = {isa = PBXBuildFile; productRef = CC0DE20000000000000000A2 /* MosaicRemoteWorkspace */; };
+		A9F200000000000000000005 /* MosaicRuntimeDebugCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000005 /* MosaicRuntimeDebugCapture.swift */; };
+		A9F200000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift */; };
+		A9F20000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F10000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift */; };
+		A9F200000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift */; };
+		CD0CFE5300000000CD0CFE53 /* MosaicSettings in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5200000000CD0CFE52 /* MosaicSettings */; };
+		CD0CFE5700000000CD0CFE57 /* MosaicSettings in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5200000000CD0CFE52 /* MosaicSettings */; };
+		D3610C010000000000000001 /* MosaicSettingsJSONPathSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3610C010000000000000002 /* MosaicSettingsJSONPathSupport.swift */; };
+		CD0CFE5600000000CD0CFE56 /* MosaicSettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = CD0CFE5500000000CD0CFE55 /* MosaicSettingsUI */; };
+		E3B7A30000000000000000B3 /* MosaicSidebar in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A30000000000000000B2 /* MosaicSidebar */; };
+		DC5DC5DC0000000000000001 /* MosaicSidebarActionDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5DC5DC0000000000000002 /* MosaicSidebarActionDispatch.swift */; };
+		C0DE46030000000000000001 /* MosaicSidebarExtensionBrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE46030000000000000002 /* MosaicSidebarExtensionBrowserPanel.swift */; };
+		C5B6A10000000000000000A3 /* MosaicSidebarGit in Frameworks */ = {isa = PBXBuildFile; productRef = C5B6A10000000000000000A2 /* MosaicSidebarGit */; };
+		C5A1FED200000000000000E1 /* MosaicSidebarInterpreterClient in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E3 /* MosaicSidebarInterpreterClient */; };
+		C5A1FED200000000000000E2 /* MosaicSidebarInterpreterClient in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E3 /* MosaicSidebarInterpreterClient */; };
+		C0DE4A000000000000000001 /* MosaicSidebarProviderKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE4A000000000000000002 /* MosaicSidebarProviderKit */; };
+		C0DE4A000000000000000005 /* MosaicSidebarProviderKit in Frameworks */ = {isa = PBXBuildFile; productRef = C0DE4A000000000000000004 /* MosaicSidebarProviderKit */; };
+		C5A1FED200000000000000E5 /* MosaicSidebarRemoteRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED200000000000000E6 /* MosaicSidebarRemoteRender */; };
+		E7E000000000000000000009 /* MosaicSocketEventMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E00000000000000000000A /* MosaicSocketEventMapper.swift */; };
+		C3677002000000000000001 /* MosaicSSHURLRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677002000000000000002 /* MosaicSSHURLRequest.swift */; };
+		C3677001000000000000001 /* MosaicSSHURLRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677001000000000000002 /* MosaicSSHURLRequestTests.swift */; };
+		C10D00030000000000000003 /* MosaicSurfaceTabBarBuiltInAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10D00040000000000000004 /* MosaicSurfaceTabBarBuiltInAction.swift */; };
+		C5A1FED000000000000000C1 /* MosaicSwiftRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED000000000000000C3 /* MosaicSwiftRender */; };
+		C5A1FED000000000000000C2 /* MosaicSwiftRender in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED000000000000000C3 /* MosaicSwiftRender */; };
+		C5A1FED100000000000000D1 /* MosaicSwiftRenderUI in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED100000000000000D3 /* MosaicSwiftRenderUI */; };
+		C5A1FED100000000000000D2 /* MosaicSwiftRenderUI in Frameworks */ = {isa = PBXBuildFile; productRef = C5A1FED100000000000000D3 /* MosaicSwiftRenderUI */; };
+		C750500000000000000000A3 /* MosaicTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = C750500000000000000000A2 /* MosaicTerminal */; };
+		C750200000000000000000A3 /* MosaicTerminalCore in Frameworks */ = {isa = PBXBuildFile; productRef = C750200000000000000000A2 /* MosaicTerminalCore */; };
+		CFF12E0000000000000000A3 /* MosaicTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = CFF12E0000000000000000A2 /* MosaicTestSupport */; };
+		C7A510000000000000000002 /* MosaicTopMemoryDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A510000000000000000001 /* MosaicTopMemoryDiagnostics.swift */; };
+		B35750000000000000000004 /* MosaicTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* MosaicTopProcessArguments.swift */; };
+		C7A50C000000000000000002 /* MosaicTopProcessCPUTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50C000000000000000001 /* MosaicTopProcessCPUTests.swift */; };
+		C7A50D000000000000000002 /* MosaicTopProcessCPUTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50D000000000000000001 /* MosaicTopProcessCPUTracker.swift */; };
+		C7A50E000000000000000002 /* MosaicTopProcessDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A50E000000000000000001 /* MosaicTopProcessDetails.swift */; };
+		C7A511000000000000000002 /* MosaicTopProcessEnumeration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A511000000000000000001 /* MosaicTopProcessEnumeration.swift */; };
+		C7A512000000000000000002 /* MosaicTopProcessSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A512000000000000000001 /* MosaicTopProcessSnapshotCache.swift */; };
+		C7A501000000000000000002 /* MosaicTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* MosaicTopSnapshot.swift */; };
+		C7A508000000000000000002 /* MosaicTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* MosaicTopSnapshotScopeCache.swift */; };
+		C7A5090000000000000005A2 /* MosaicTopSnapshotScopeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A5090000000000000005A1 /* MosaicTopSnapshotScopeCacheTests.swift */; };
+		C7A509000000000000000002 /* MosaicTopSnapshotScopeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A509000000000000000001 /* MosaicTopSnapshotScopeTests.swift */; };
+		CDFEED0300000000CDFEED03 /* MosaicUpdater in Frameworks */ = {isa = PBXBuildFile; productRef = CDFEED0200000000CDFEED02 /* MosaicUpdater */; };
+		CDFEED0600000000CDFEED06 /* MosaicUpdaterUI in Frameworks */ = {isa = PBXBuildFile; productRef = CDFEED0500000000CDFEED05 /* MosaicUpdaterUI */; };
+		D7C0DE00000000000000A101 /* MosaicWebView+ContextMenuLinkCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0DE00000000000000A102 /* MosaicWebView+ContextMenuLinkCapture.swift */; };
+		D7AB00000000000000000009 /* MosaicWebView+MoveTabToNewWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB0000000000000000000A /* MosaicWebView+MoveTabToNewWorkspace.swift */; };
+		C6255D010000000000000001 /* MosaicWebView+ScriptedDownloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6255D010000000000000002 /* MosaicWebView+ScriptedDownloads.swift */; };
+		C67540030000000000000001 /* MosaicWebView+SubframeDownloadIntentScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C67540030000000000000002 /* MosaicWebView+SubframeDownloadIntentScript.swift */; };
+		A5001500 /* MosaicWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001510 /* MosaicWebView.swift */; };
+		D7C0DE00000000000000A103 /* MosaicWebViewContextMenuLinkCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0DE00000000000000A104 /* MosaicWebViewContextMenuLinkCaptureTests.swift */; };
+		D0B1000CA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B1000DA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift */; };
+		C0DE58990000000000000004 /* MosaicWebViewKeyDownReentryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE58990000000000000002 /* MosaicWebViewKeyDownReentryTests.swift */; };
+		7D5DA4DC51454ECDBF9AC978 /* MosaicWebViewMouseNavigationButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F90FAF3FD44F11BF547BE9 /* MosaicWebViewMouseNavigationButtonTests.swift */; };
+		5E55200000000000000000B3 /* MosaicWindowing in Frameworks */ = {isa = PBXBuildFile; productRef = 5E55200000000000000000B2 /* MosaicWindowing */; };
+		E30750000000000000000004 /* MosaicWorkspaceDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30750000000000000000003 /* MosaicWorkspaceDefinition.swift */; };
+		E3B7A3000000000000000103 /* MosaicWorkspaces in Frameworks */ = {isa = PBXBuildFile; productRef = E3B7A3000000000000000102 /* MosaicWorkspaces */; };
 		B9000015A1B2C3D4E5F60719 /* MultiWindowNotificationsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000016A1B2C3D4E5F60719 /* MultiWindowNotificationsUITests.swift */; };
 		A5001801 /* NativeInteractionAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001800 /* NativeInteractionAnalytics.swift */; };
 		596100000000000000000003 /* NativeNotificationDeliveryHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 596100000000000000000004 /* NativeNotificationDeliveryHooks.swift */; };
@@ -1298,10 +1299,10 @@
 			dstPath = bin;
 			dstSubfolderSpec = 7;
 			files = (
+				C1ADE10002A1B2C3D4E5F719 /* grok in Copy CLI */,
 				B900000BA1B2C3D4E5F60719 /* mosaic in Copy CLI */,
 				C1ADE20002A1B2C3D4E5F719 /* mosaic-claude-wrapper in Copy CLI */,
 				C1ADE30002A1B2C3D4E5F719 /* mosaic-codex-wrapper in Copy CLI */,
-				C1ADE10002A1B2C3D4E5F719 /* grok in Copy CLI */,
 					D1BEF00002A1B2C3D4E5F719 /* open in Copy CLI */,
 					C0DE70500000000000000002 /* start-mosaic-profiling in Copy CLI */,
 					C0DE70530000000000000002 /* submit-mosaic-profile in Copy CLI */,
@@ -1370,7 +1371,6 @@
 		F4350A130000000000000001 /* AppBundleIconPersistencePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppBundleIconPersistencePolicy.swift; sourceTree = "<group>"; };
 		C4A570010000000000000002 /* AppDelegate+CanvasShortcutRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+CanvasShortcutRouting.swift"; sourceTree = "<group>"; };
 		C4160A030000000000000002 /* AppDelegate+ClosedItemHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+ClosedItemHistory.swift"; sourceTree = "<group>"; };
-		C3677004000000000000002 /* AppDelegate+MosaicSSHURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+MosaicSSHURL.swift"; sourceTree = "<group>"; };
 		C65930010000000000000004 /* AppDelegate+CrashSessionSnapshotRemoval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+CrashSessionSnapshotRemoval.swift"; sourceTree = "<group>"; };
 		DCDC3000000000000000E002 /* AppDelegate+DockShortcutRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+DockShortcutRouting.swift"; sourceTree = "<group>"; };
 		DCDC1000000000000000C001 /* AppDelegate+DockSurfaceMove.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+DockSurfaceMove.swift"; sourceTree = "<group>"; };
@@ -1378,6 +1378,7 @@
 		C4160A040000000000000002 /* AppDelegate+FocusHistoryContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+FocusHistoryContextMenu.swift"; sourceTree = "<group>"; };
 		DCDC1000000000000000C031 /* AppDelegate+GlobalDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+GlobalDock.swift"; sourceTree = "<group>"; };
 		3865B0063865B0063865B006 /* AppDelegate+GlobalSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Search/AppDelegate+GlobalSearch.swift"; sourceTree = "<group>"; };
+		C3677004000000000000002 /* AppDelegate+MosaicSSHURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+MosaicSSHURL.swift"; sourceTree = "<group>"; };
 		D7AB00000000000000000002 /* AppDelegate+MoveTabToNewWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+MoveTabToNewWorkspace.swift"; sourceTree = "<group>"; };
 		4EDE10010000000000000002 /* AppDelegate+NotificationDeliverySeams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+NotificationDeliverySeams.swift"; sourceTree = "<group>"; };
 		2907B0022907B0022907B002 /* AppDelegate+NotificationNavSeams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+NotificationNavSeams.swift"; sourceTree = "<group>"; };
@@ -1563,113 +1564,6 @@
 		B9000019A1B2C3D4E5F60719 /* CloseWorkspaceConfirmDialogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseWorkspaceConfirmDialogUITests.swift; sourceTree = "<group>"; };
 		B900001CA1B2C3D4E5F60719 /* CloseWorkspacesConfirmDialogUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseWorkspacesConfirmDialogUITests.swift; sourceTree = "<group>"; };
 		C10D00020000000000000002 /* CloudVMActionLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudVMActionLauncher.swift; sourceTree = "<group>"; };
-		B9000004A1B2C3D4E5F60719 /* mosaic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = mosaic; sourceTree = BUILT_PRODUCTS_DIR; };
-		A5001018 /* mosaic-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "mosaic-Bridging-Header.h"; sourceTree = "<group>"; };
-		C1ADE20001A1B2C3D4E5F719 /* mosaic-claude-wrapper */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "Resources/bin/mosaic-claude-wrapper"; sourceTree = SOURCE_ROOT; };
-		C1ADE30001A1B2C3D4E5F719 /* mosaic-codex-wrapper */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "Resources/bin/mosaic-codex-wrapper"; sourceTree = SOURCE_ROOT; };
-		A5001622 /* mosaic.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.sdef; path = mosaic.sdef; sourceTree = "<group>"; };
-		B9000001A1B2C3D4E5F60719 /* mosaic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaic.swift; sourceTree = "<group>"; };
-		B9000030A1B2C3D4E5F60719 /* mosaic_open.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaic_open.swift; sourceTree = "<group>"; };
-		A5001655 /* MosaicActionTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicActionTrust.swift; sourceTree = "<group>"; };
-		E3309A08 /* mosaicApp+EqualizeSplitsMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "mosaicApp+EqualizeSplitsMenu.swift"; sourceTree = "<group>"; };
-		C4160A010000000000000002 /* mosaicApp+HistoryMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "mosaicApp+HistoryMenu.swift"; sourceTree = "<group>"; };
-		A5001011 /* mosaicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaicApp.swift; sourceTree = "<group>"; };
-		B9000062A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AgentHookDefinitions.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B1211170 /* MosaicCLI+AgentHookPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AgentHookPayload.swift"; sourceTree = "<group>"; };
-		B9000069A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AmpExtension.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNaming.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B121116A /* MosaicCLI+AutoNamingDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingDispatch.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B1211167 /* MosaicCLI+AutoNamingGenericHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingGenericHooks.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B1211168 /* MosaicCLI+AutoNamingHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingHooks.swift"; sourceTree = "<group>"; };
-		5257257034CA4729B1211169 /* MosaicCLI+AutoNamingSummarizers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingSummarizers.swift"; sourceTree = "<group>"; };
-		C0D3F1F00000000000000102 /* MosaicCLI+CodexFireAndForgetHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+CodexFireAndForgetHooks.swift"; sourceTree = "<group>"; };
-		B9000051A1B2C3D4E5F60719 /* MosaicCLI+Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Config.swift"; sourceTree = "<group>"; };
-		B9000031A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+DocsSettings.swift"; sourceTree = "<group>"; };
-		B9000065A1B2C3D4E5F60719 /* MosaicCLI+Events.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Events.swift"; sourceTree = "<group>"; };
-		B9000047A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+ExecutableResolution.swift"; sourceTree = "<group>"; };
-		B9000060A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+HermesAgentHooks.swift"; sourceTree = "<group>"; };
-		B9000053A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+InstallPreview.swift"; sourceTree = "<group>"; };
-		B9000070A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Memory.swift"; sourceTree = "<group>"; };
-		D7AB0000000000000000000E /* MosaicCLI+MoveTabToNewWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+MoveTabToNewWorkspace.swift"; sourceTree = "<group>"; };
-		B9000073A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+OmpExtension.swift"; sourceTree = "<group>"; };
-		C05555010000000000000002 /* MosaicCLI+PiExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtension.swift"; sourceTree = "<group>"; };
-		C05555010000000000000004 /* MosaicCLI+PiExtensionSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSource.swift"; sourceTree = "<group>"; };
-		C05555010000000000000006 /* MosaicCLI+PiExtensionSourcePart1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSourcePart1.swift"; sourceTree = "<group>"; };
-		C05555010000000000000008 /* MosaicCLI+PiExtensionSourcePart2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSourcePart2.swift"; sourceTree = "<group>"; };
-		B9000055A1B2C3D4E5F60719 /* MosaicCLI+Process.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Process.swift"; sourceTree = "<group>"; };
-		REE0CA0000000000000000C1 /* MosaicCLI+Remotes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Remotes.swift"; sourceTree = "<group>"; };
-		C0DE64950000000000000002 /* MosaicCLI+SessionsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SessionsList.swift"; sourceTree = "<group>"; };
-		C12984000000000000000001 /* MosaicCLI+SIGPIPEProbes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SIGPIPEProbes.swift"; sourceTree = "<group>"; };
-		B9000040A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SSHCommandSupport.swift"; sourceTree = "<group>"; };
-		B900002CA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Themes.swift"; sourceTree = "<group>"; };
-		B900002DA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+ThemeSupport.swift"; sourceTree = "<group>"; };
-		B9000049A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TmuxCompatHUDSupport.swift"; sourceTree = "<group>"; };
-		B9000045A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TmuxCompatSupport.swift"; sourceTree = "<group>"; };
-		B9000032A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TopRendering.swift"; sourceTree = "<group>"; };
-		C0DE31390000000000000106 /* MosaicCLIErrorOutputRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLIErrorOutputRegressionTests.swift; sourceTree = "<group>"; };
-		8A4FE96C3F394FC6A6D4B018 /* MosaicCLIPathInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicCLIPathInstaller.swift; sourceTree = "<group>"; };
-		C12985000000000000000003 /* MosaicCLISentryTelemetryRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLISentryTelemetryRegressionTests.swift; sourceTree = "<group>"; };
-		C0DE64950000000000000006 /* MosaicCLISessionsListTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLISessionsListTests.swift; sourceTree = "<group>"; };
-		C0DE64950000000000000004 /* MosaicCLITestAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLITestAssertions.swift; sourceTree = "<group>"; };
-		A5001651 /* MosaicConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfig.swift; sourceTree = "<group>"; };
-		C0DEF0A40000000000000002 /* MosaicConfigContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigContextMenuTests.swift; sourceTree = "<group>"; };
-		A5001653 /* MosaicConfigExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigExecutor.swift; sourceTree = "<group>"; };
-		E30750000000000000000005 /* MosaicConfigNamedColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigNamedColorTests.swift; sourceTree = "<group>"; };
-		C5D0DEC0CF00000000000B1 /* MosaicConfigStore+ConfigStoreReloading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicConfigStore+ConfigStoreReloading.swift"; sourceTree = "<group>"; };
-		C1A2B3C4D5E6F70800000002 /* MosaicConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigTests.swift; sourceTree = "<group>"; };
-		C0DEF0A10000000000000002 /* MosaicConfigUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigUI.swift; sourceTree = "<group>"; };
-		D1320AA0D1320AA0D1320AA5 /* MosaicDockTilePlugin.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MosaicDockTilePlugin.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
-		E7E000000000000000000006 /* MosaicEventBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventBus.swift; sourceTree = "<group>"; };
-		E7E000000000000000000004 /* MosaicEventBusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventBusTests.swift; sourceTree = "<group>"; };
-		E7E00000000000000000000E /* MosaicEventLogWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventLogWriter.swift; sourceTree = "<group>"; };
-		E7E000000000000000000008 /* MosaicEventPublishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventPublishing.swift; sourceTree = "<group>"; };
-		E7E000000000000000000002 /* MosaicEventStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventStream.swift; sourceTree = "<group>"; };
-		C57B00050000000000000002 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicExtensionSidebarSelection+CustomSidebarName.swift"; sourceTree = "<group>"; };
-		C0DE34020000000000000003 /* MosaicHelpCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicHelpCommands.swift; sourceTree = "<group>"; };
-		C0DE34020000000000000004 /* MosaicHelpResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicHelpResource.swift; sourceTree = "<group>"; };
-		C0DE46010000000000000002 /* MosaicInstalledExtensionSidebarHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicInstalledExtensionSidebarHostView.swift; sourceTree = "<group>"; };
-		E7E00000000000000000000C /* MosaicLifecycleEventPublishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicLifecycleEventPublishing.swift; sourceTree = "<group>"; };
-		2F0C07000000000000000001 /* MosaicMainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicMainWindow.swift; sourceTree = "<group>"; };
-		D36090010000000000000006 /* MosaicMainWindowConstrainFrameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicMainWindowConstrainFrameTests.swift; sourceTree = "<group>"; };
-		D36090020000000000000006 /* MosaicMainWindowFullScreenCapabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicMainWindowFullScreenCapabilityTests.swift; sourceTree = "<group>"; };
-		A5001556 /* MosaicModalAlertAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicModalAlertAnalytics.swift; sourceTree = "<group>"; };
-		CA1F0A02CA1F0A02CA1F0A02 /* MosaicModalAlertPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicModalAlertPresentation.swift; sourceTree = "<group>"; };
-		C0DE31390000000000000102 /* MosaicOpenCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicOpenCommandTests.swift; sourceTree = "<group>"; };
-		C0DE31390000000000000112 /* MosaicOpenHTMLFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicOpenHTMLFocusTests.swift; sourceTree = "<group>"; };
-		A9F100000000000000000005 /* MosaicRuntimeDebugCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCapture.swift; sourceTree = "<group>"; };
-		A9F100000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureConfiguration.swift; sourceTree = "<group>"; };
-		A9F10000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureSender.swift; sourceTree = "<group>"; };
-		A9F100000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureSequence.swift; sourceTree = "<group>"; };
-		D3610C010000000000000002 /* MosaicSettingsJSONPathSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSettingsJSONPathSupport.swift; sourceTree = "<group>"; };
-		DC5DC5DC0000000000000002 /* MosaicSidebarActionDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSidebarActionDispatch.swift; sourceTree = "<group>"; };
-		C0DE46030000000000000002 /* MosaicSidebarExtensionBrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSidebarExtensionBrowserPanel.swift; sourceTree = "<group>"; };
-		E7E00000000000000000000A /* MosaicSocketEventMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSocketEventMapper.swift; sourceTree = "<group>"; };
-		C3677002000000000000002 /* MosaicSSHURLRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSSHURLRequest.swift; sourceTree = "<group>"; };
-		C3677001000000000000002 /* MosaicSSHURLRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSSHURLRequestTests.swift; sourceTree = "<group>"; };
-		C10D00040000000000000004 /* MosaicSurfaceTabBarBuiltInAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSurfaceTabBarBuiltInAction.swift; sourceTree = "<group>"; };
-		F1000002A1B2C3D4E5F60718 /* mosaicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = mosaicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C7A510000000000000000001 /* MosaicTopMemoryDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopMemoryDiagnostics.swift; sourceTree = "<group>"; };
-		B35750000000000000000003 /* MosaicTopProcessArguments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessArguments.swift; sourceTree = "<group>"; };
-		C7A50C000000000000000001 /* MosaicTopProcessCPUTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessCPUTests.swift; sourceTree = "<group>"; };
-		C7A50D000000000000000001 /* MosaicTopProcessCPUTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessCPUTracker.swift; sourceTree = "<group>"; };
-		C7A50E000000000000000001 /* MosaicTopProcessDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessDetails.swift; sourceTree = "<group>"; };
-		C7A511000000000000000001 /* MosaicTopProcessEnumeration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessEnumeration.swift; sourceTree = "<group>"; };
-		C7A512000000000000000001 /* MosaicTopProcessSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessSnapshotCache.swift; sourceTree = "<group>"; };
-		C7A501000000000000000001 /* MosaicTopSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshot.swift; sourceTree = "<group>"; };
-		C7A508000000000000000001 /* MosaicTopSnapshotScopeCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeCache.swift; sourceTree = "<group>"; };
-		C7A5090000000000000005A1 /* MosaicTopSnapshotScopeCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeCacheTests.swift; sourceTree = "<group>"; };
-		C7A509000000000000000001 /* MosaicTopSnapshotScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeTests.swift; sourceTree = "<group>"; };
-		7E7E6EF344A568AC7FEE3715 /* mosaicUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = mosaicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D7C0DE00000000000000A102 /* MosaicWebView+ContextMenuLinkCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+ContextMenuLinkCapture.swift"; sourceTree = "<group>"; };
-		D7AB0000000000000000000A /* MosaicWebView+MoveTabToNewWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+MoveTabToNewWorkspace.swift"; sourceTree = "<group>"; };
-		C6255D010000000000000002 /* MosaicWebView+ScriptedDownloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+ScriptedDownloads.swift"; sourceTree = "<group>"; };
-		C67540030000000000000002 /* MosaicWebView+SubframeDownloadIntentScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+SubframeDownloadIntentScript.swift"; sourceTree = "<group>"; };
-		A5001510 /* MosaicWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/MosaicWebView.swift; sourceTree = "<group>"; };
-		D7C0DE00000000000000A104 /* MosaicWebViewContextMenuLinkCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewContextMenuLinkCaptureTests.swift; sourceTree = "<group>"; };
-		D0B1000DA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewDragRoutingTests.swift; sourceTree = "<group>"; };
-		C0DE58990000000000000002 /* MosaicWebViewKeyDownReentryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewKeyDownReentryTests.swift; sourceTree = "<group>"; };
-		43F90FAF3FD44F11BF547BE9 /* MosaicWebViewMouseNavigationButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewMouseNavigationButtonTests.swift; sourceTree = "<group>"; };
-		E30750000000000000000003 /* MosaicWorkspaceDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWorkspaceDefinition.swift; sourceTree = "<group>"; };
 		A9F100000000000000000016 /* CodexAppServerQueuedInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/CodexAppServerQueuedInput.swift; sourceTree = "<group>"; };
 		A9E01000000000000000000E /* CodexAppServerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/CodexAppServerSession.swift; sourceTree = "<group>"; };
 		A9E040000000000000000001 /* CodexAppServerSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServerSessionTests.swift; sourceTree = "<group>"; };
@@ -1678,6 +1572,7 @@
 		C011AB030000000000000002 /* CollaborationInviteCodeEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationInviteCodeEntryView.swift; sourceTree = "<group>"; };
 		C011AB020000000000000002 /* CollaborationRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationRuntime.swift; sourceTree = "<group>"; };
 		84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationSharingLabelTests.swift; sourceTree = "<group>"; };
+		C0114B00000000000000A002 /* CollaborationTerminalInputRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationTerminalInputRegressionTests.swift; sourceTree = "<group>"; };
 		8C41E2CBE9604DFBB6F1CDEB /* CollaborationTerminalRenderGridSeedLimiterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationTerminalRenderGridSeedLimiterTests.swift; sourceTree = "<group>"; };
 		C4041001000000000000001A /* CommandClickFileOpenRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandClickFileOpenRouter.swift; sourceTree = "<group>"; };
 		C0DEC0DE000000000000F301 /* CommandPaletteEmojiTitleSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteEmojiTitleSearchTests.swift; sourceTree = "<group>"; };
@@ -1964,7 +1859,114 @@
 		86544CEFA1CA33CA9225FB6E /* MobileWorkspaceListFidelityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileWorkspaceListFidelityTests.swift; sourceTree = "<group>"; };
 		C9F14137954A34DFFA05C88C /* MobileWorkspaceListObserver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileWorkspaceListObserver.swift; sourceTree = "<group>"; };
 		CD3B5F249DECAB446CC71D32 /* MockBridgeInputCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBridgeInputCapture.swift; sourceTree = "<group>"; };
+		B9000004A1B2C3D4E5F60719 /* mosaic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = mosaic; sourceTree = BUILT_PRODUCTS_DIR; };
+		A5001018 /* mosaic-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "mosaic-Bridging-Header.h"; sourceTree = "<group>"; };
+		C1ADE20001A1B2C3D4E5F719 /* mosaic-claude-wrapper */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "Resources/bin/mosaic-claude-wrapper"; sourceTree = SOURCE_ROOT; };
+		C1ADE30001A1B2C3D4E5F719 /* mosaic-codex-wrapper */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "Resources/bin/mosaic-codex-wrapper"; sourceTree = SOURCE_ROOT; };
 		A5001000 /* Mosaic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mosaic.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A5001622 /* mosaic.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.sdef; path = mosaic.sdef; sourceTree = "<group>"; };
+		B9000001A1B2C3D4E5F60719 /* mosaic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaic.swift; sourceTree = "<group>"; };
+		B9000030A1B2C3D4E5F60719 /* mosaic_open.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaic_open.swift; sourceTree = "<group>"; };
+		A5001655 /* MosaicActionTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicActionTrust.swift; sourceTree = "<group>"; };
+		E3309A08 /* mosaicApp+EqualizeSplitsMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "mosaicApp+EqualizeSplitsMenu.swift"; sourceTree = "<group>"; };
+		C4160A010000000000000002 /* mosaicApp+HistoryMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "mosaicApp+HistoryMenu.swift"; sourceTree = "<group>"; };
+		A5001011 /* mosaicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mosaicApp.swift; sourceTree = "<group>"; };
+		B9000062A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AgentHookDefinitions.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B1211170 /* MosaicCLI+AgentHookPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AgentHookPayload.swift"; sourceTree = "<group>"; };
+		B9000069A1B2C3D4E5F60719 /* MosaicCLI+AmpExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AmpExtension.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B1211166 /* MosaicCLI+AutoNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNaming.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B121116A /* MosaicCLI+AutoNamingDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingDispatch.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B1211167 /* MosaicCLI+AutoNamingGenericHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingGenericHooks.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B1211168 /* MosaicCLI+AutoNamingHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingHooks.swift"; sourceTree = "<group>"; };
+		5257257034CA4729B1211169 /* MosaicCLI+AutoNamingSummarizers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+AutoNamingSummarizers.swift"; sourceTree = "<group>"; };
+		C0D3F1F00000000000000102 /* MosaicCLI+CodexFireAndForgetHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+CodexFireAndForgetHooks.swift"; sourceTree = "<group>"; };
+		B9000051A1B2C3D4E5F60719 /* MosaicCLI+Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Config.swift"; sourceTree = "<group>"; };
+		B9000031A1B2C3D4E5F60719 /* MosaicCLI+DocsSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+DocsSettings.swift"; sourceTree = "<group>"; };
+		B9000065A1B2C3D4E5F60719 /* MosaicCLI+Events.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Events.swift"; sourceTree = "<group>"; };
+		B9000047A1B2C3D4E5F60719 /* MosaicCLI+ExecutableResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+ExecutableResolution.swift"; sourceTree = "<group>"; };
+		B9000060A1B2C3D4E5F60719 /* MosaicCLI+HermesAgentHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+HermesAgentHooks.swift"; sourceTree = "<group>"; };
+		B9000053A1B2C3D4E5F60719 /* MosaicCLI+InstallPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+InstallPreview.swift"; sourceTree = "<group>"; };
+		B9000070A1B2C3D4E5F60719 /* MosaicCLI+Memory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Memory.swift"; sourceTree = "<group>"; };
+		D7AB0000000000000000000E /* MosaicCLI+MoveTabToNewWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+MoveTabToNewWorkspace.swift"; sourceTree = "<group>"; };
+		B9000073A1B2C3D4E5F60719 /* MosaicCLI+OmpExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+OmpExtension.swift"; sourceTree = "<group>"; };
+		C05555010000000000000002 /* MosaicCLI+PiExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtension.swift"; sourceTree = "<group>"; };
+		C05555010000000000000004 /* MosaicCLI+PiExtensionSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSource.swift"; sourceTree = "<group>"; };
+		C05555010000000000000006 /* MosaicCLI+PiExtensionSourcePart1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSourcePart1.swift"; sourceTree = "<group>"; };
+		C05555010000000000000008 /* MosaicCLI+PiExtensionSourcePart2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+PiExtensionSourcePart2.swift"; sourceTree = "<group>"; };
+		B9000055A1B2C3D4E5F60719 /* MosaicCLI+Process.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Process.swift"; sourceTree = "<group>"; };
+		REE0CA0000000000000000C1 /* MosaicCLI+Remotes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Remotes.swift"; sourceTree = "<group>"; };
+		C0DE64950000000000000002 /* MosaicCLI+SessionsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SessionsList.swift"; sourceTree = "<group>"; };
+		C12984000000000000000001 /* MosaicCLI+SIGPIPEProbes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SIGPIPEProbes.swift"; sourceTree = "<group>"; };
+		B9000040A1B2C3D4E5F60719 /* MosaicCLI+SSHCommandSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+SSHCommandSupport.swift"; sourceTree = "<group>"; };
+		B900002CA1B2C3D4E5F60719 /* MosaicCLI+Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+Themes.swift"; sourceTree = "<group>"; };
+		B900002DA1B2C3D4E5F60719 /* MosaicCLI+ThemeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+ThemeSupport.swift"; sourceTree = "<group>"; };
+		B9000049A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TmuxCompatHUDSupport.swift"; sourceTree = "<group>"; };
+		B9000045A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TmuxCompatSupport.swift"; sourceTree = "<group>"; };
+		B9000032A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicCLI+TopRendering.swift"; sourceTree = "<group>"; };
+		C0DE31390000000000000106 /* MosaicCLIErrorOutputRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLIErrorOutputRegressionTests.swift; sourceTree = "<group>"; };
+		8A4FE96C3F394FC6A6D4B018 /* MosaicCLIPathInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicCLIPathInstaller.swift; sourceTree = "<group>"; };
+		C12985000000000000000003 /* MosaicCLISentryTelemetryRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLISentryTelemetryRegressionTests.swift; sourceTree = "<group>"; };
+		C0DE64950000000000000006 /* MosaicCLISessionsListTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLISessionsListTests.swift; sourceTree = "<group>"; };
+		C0DE64950000000000000004 /* MosaicCLITestAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicCLITestAssertions.swift; sourceTree = "<group>"; };
+		A5001651 /* MosaicConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfig.swift; sourceTree = "<group>"; };
+		C0DEF0A40000000000000002 /* MosaicConfigContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigContextMenuTests.swift; sourceTree = "<group>"; };
+		A5001653 /* MosaicConfigExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigExecutor.swift; sourceTree = "<group>"; };
+		E30750000000000000000005 /* MosaicConfigNamedColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigNamedColorTests.swift; sourceTree = "<group>"; };
+		C5D0DEC0CF00000000000B1 /* MosaicConfigStore+ConfigStoreReloading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicConfigStore+ConfigStoreReloading.swift"; sourceTree = "<group>"; };
+		C1A2B3C4D5E6F70800000002 /* MosaicConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigTests.swift; sourceTree = "<group>"; };
+		C0DEF0A10000000000000002 /* MosaicConfigUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicConfigUI.swift; sourceTree = "<group>"; };
+		D1320AA0D1320AA0D1320AA5 /* MosaicDockTilePlugin.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MosaicDockTilePlugin.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		E7E000000000000000000006 /* MosaicEventBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventBus.swift; sourceTree = "<group>"; };
+		E7E000000000000000000004 /* MosaicEventBusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventBusTests.swift; sourceTree = "<group>"; };
+		E7E00000000000000000000E /* MosaicEventLogWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventLogWriter.swift; sourceTree = "<group>"; };
+		E7E000000000000000000008 /* MosaicEventPublishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventPublishing.swift; sourceTree = "<group>"; };
+		E7E000000000000000000002 /* MosaicEventStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicEventStream.swift; sourceTree = "<group>"; };
+		C57B00050000000000000002 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MosaicExtensionSidebarSelection+CustomSidebarName.swift"; sourceTree = "<group>"; };
+		C0DE34020000000000000003 /* MosaicHelpCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicHelpCommands.swift; sourceTree = "<group>"; };
+		C0DE34020000000000000004 /* MosaicHelpResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicHelpResource.swift; sourceTree = "<group>"; };
+		C0DE46010000000000000002 /* MosaicInstalledExtensionSidebarHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicInstalledExtensionSidebarHostView.swift; sourceTree = "<group>"; };
+		E7E00000000000000000000C /* MosaicLifecycleEventPublishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicLifecycleEventPublishing.swift; sourceTree = "<group>"; };
+		2F0C07000000000000000001 /* MosaicMainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MosaicMainWindow.swift; sourceTree = "<group>"; };
+		D36090010000000000000006 /* MosaicMainWindowConstrainFrameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicMainWindowConstrainFrameTests.swift; sourceTree = "<group>"; };
+		D36090020000000000000006 /* MosaicMainWindowFullScreenCapabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicMainWindowFullScreenCapabilityTests.swift; sourceTree = "<group>"; };
+		A5001556 /* MosaicModalAlertAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicModalAlertAnalytics.swift; sourceTree = "<group>"; };
+		CA1F0A02CA1F0A02CA1F0A02 /* MosaicModalAlertPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicModalAlertPresentation.swift; sourceTree = "<group>"; };
+		C0DE31390000000000000102 /* MosaicOpenCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicOpenCommandTests.swift; sourceTree = "<group>"; };
+		C0DE31390000000000000112 /* MosaicOpenHTMLFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicOpenHTMLFocusTests.swift; sourceTree = "<group>"; };
+		A9F100000000000000000005 /* MosaicRuntimeDebugCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCapture.swift; sourceTree = "<group>"; };
+		A9F100000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureConfiguration.swift; sourceTree = "<group>"; };
+		A9F10000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureSender.swift; sourceTree = "<group>"; };
+		A9F100000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicRuntimeDebugCaptureSequence.swift; sourceTree = "<group>"; };
+		D3610C010000000000000002 /* MosaicSettingsJSONPathSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSettingsJSONPathSupport.swift; sourceTree = "<group>"; };
+		DC5DC5DC0000000000000002 /* MosaicSidebarActionDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSidebarActionDispatch.swift; sourceTree = "<group>"; };
+		C0DE46030000000000000002 /* MosaicSidebarExtensionBrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSidebarExtensionBrowserPanel.swift; sourceTree = "<group>"; };
+		E7E00000000000000000000A /* MosaicSocketEventMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSocketEventMapper.swift; sourceTree = "<group>"; };
+		C3677002000000000000002 /* MosaicSSHURLRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSSHURLRequest.swift; sourceTree = "<group>"; };
+		C3677001000000000000002 /* MosaicSSHURLRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSSHURLRequestTests.swift; sourceTree = "<group>"; };
+		C10D00040000000000000004 /* MosaicSurfaceTabBarBuiltInAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicSurfaceTabBarBuiltInAction.swift; sourceTree = "<group>"; };
+		F1000002A1B2C3D4E5F60718 /* mosaicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = mosaicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C7A510000000000000000001 /* MosaicTopMemoryDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopMemoryDiagnostics.swift; sourceTree = "<group>"; };
+		B35750000000000000000003 /* MosaicTopProcessArguments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessArguments.swift; sourceTree = "<group>"; };
+		C7A50C000000000000000001 /* MosaicTopProcessCPUTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessCPUTests.swift; sourceTree = "<group>"; };
+		C7A50D000000000000000001 /* MosaicTopProcessCPUTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessCPUTracker.swift; sourceTree = "<group>"; };
+		C7A50E000000000000000001 /* MosaicTopProcessDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessDetails.swift; sourceTree = "<group>"; };
+		C7A511000000000000000001 /* MosaicTopProcessEnumeration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessEnumeration.swift; sourceTree = "<group>"; };
+		C7A512000000000000000001 /* MosaicTopProcessSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopProcessSnapshotCache.swift; sourceTree = "<group>"; };
+		C7A501000000000000000001 /* MosaicTopSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshot.swift; sourceTree = "<group>"; };
+		C7A508000000000000000001 /* MosaicTopSnapshotScopeCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeCache.swift; sourceTree = "<group>"; };
+		C7A5090000000000000005A1 /* MosaicTopSnapshotScopeCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeCacheTests.swift; sourceTree = "<group>"; };
+		C7A509000000000000000001 /* MosaicTopSnapshotScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicTopSnapshotScopeTests.swift; sourceTree = "<group>"; };
+		7E7E6EF344A568AC7FEE3715 /* mosaicUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = mosaicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D7C0DE00000000000000A102 /* MosaicWebView+ContextMenuLinkCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+ContextMenuLinkCapture.swift"; sourceTree = "<group>"; };
+		D7AB0000000000000000000A /* MosaicWebView+MoveTabToNewWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+MoveTabToNewWorkspace.swift"; sourceTree = "<group>"; };
+		C6255D010000000000000002 /* MosaicWebView+ScriptedDownloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+ScriptedDownloads.swift"; sourceTree = "<group>"; };
+		C67540030000000000000002 /* MosaicWebView+SubframeDownloadIntentScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Panels/MosaicWebView+SubframeDownloadIntentScript.swift"; sourceTree = "<group>"; };
+		A5001510 /* MosaicWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/MosaicWebView.swift; sourceTree = "<group>"; };
+		D7C0DE00000000000000A104 /* MosaicWebViewContextMenuLinkCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewContextMenuLinkCaptureTests.swift; sourceTree = "<group>"; };
+		D0B1000DA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewDragRoutingTests.swift; sourceTree = "<group>"; };
+		C0DE58990000000000000002 /* MosaicWebViewKeyDownReentryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewKeyDownReentryTests.swift; sourceTree = "<group>"; };
+		43F90FAF3FD44F11BF547BE9 /* MosaicWebViewMouseNavigationButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWebViewMouseNavigationButtonTests.swift; sourceTree = "<group>"; };
+		E30750000000000000000003 /* MosaicWorkspaceDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MosaicWorkspaceDefinition.swift; sourceTree = "<group>"; };
 		B9000016A1B2C3D4E5F60719 /* MultiWindowNotificationsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiWindowNotificationsUITests.swift; sourceTree = "<group>"; };
 		A5001800 /* NativeInteractionAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeInteractionAnalytics.swift; sourceTree = "<group>"; };
 		596100000000000000000004 /* NativeNotificationDeliveryHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotificationDeliveryHooks.swift; sourceTree = "<group>"; };
@@ -2501,6 +2503,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A5001006 /* GhosttyKit.xcframework in Frameworks */,
+				A5001290 /* MarkdownUI in Frameworks */,
 				AC4A6E7C4A700001AC4A0001 /* MosaicAgentChat in Frameworks */,
 				A5B00003A1B2C3D4E5F60718 /* MosaicAgentLaunch in Frameworks */,
 				C9A2B00000000000000000B3 /* MosaicAppKitSupportUI in Frameworks */,
@@ -2541,8 +2545,6 @@
 				CDFEED0600000000CDFEED06 /* MosaicUpdaterUI in Frameworks */,
 				5E55200000000000000000B3 /* MosaicWindowing in Frameworks */,
 				E3B7A3000000000000000103 /* MosaicWorkspaces in Frameworks */,
-				A5001006 /* GhosttyKit.xcframework in Frameworks */,
-				A5001290 /* MarkdownUI in Frameworks */,
 				A5001270 /* PostHog in Frameworks */,
 				A5001250 /* Sentry in Frameworks */,
 				A5001230 /* Sparkle in Frameworks */,
@@ -3770,6 +3772,7 @@
 				C06552020000000000000002 /* TabManagerTitleUpdateTests.swift */,
 				42092CDB2109E250F7F2A76E /* TabManagerUnitTests.swift */,
 				84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */,
+				C0114B00000000000000A002 /* CollaborationTerminalInputRegressionTests.swift */,
 				8C41E2CBE9604DFBB6F1CDEB /* CollaborationTerminalRenderGridSeedLimiterTests.swift */,
 				5830CA11BAC0000000000001 /* SocketCallbackAwaiterMainThreadTests.swift */,
 				5C0011AA0000000000000002 /* GhosttyScrollPreciseBoostTests.swift */,
@@ -4154,12 +4157,12 @@
 				A9E020000000000000000006 /* agent-session-react in Resources */,
 				A9E020000000000000000007 /* agent-session-solid in Resources */,
 				A5001100 /* Assets.xcassets in Resources */,
-				A5001623 /* mosaic.sdef in Resources */,
 				A54A70000000000000000002 /* demo.mov in Resources */,
 				FEED0A00000000000000F007 /* feed-tui in Resources */,
 				DA7A10CA710E000000000004 /* InfoPlist.xcstrings in Resources */,
 				DA7A10CA710E000000000003 /* Localizable.xcstrings in Resources */,
 				A9D9000000000000000F0017 /* markdown-viewer in Resources */,
+				A5001623 /* mosaic.sdef in Resources */,
 				FEED0000000000000000F007 /* opencode-plugin.js in Resources */,
 				A5002000 /* THIRD_PARTY_LICENSES.md in Resources */,
 				84E00D47E4584162AE53BC8D /* xterm-ghostty in Resources */,
@@ -4337,7 +4340,6 @@
 				F4350A110000000000000001 /* AppBundleIconPersistencePolicy.swift in Sources */,
 				C4A570010000000000000001 /* AppDelegate+CanvasShortcutRouting.swift in Sources */,
 				C4160A030000000000000001 /* AppDelegate+ClosedItemHistory.swift in Sources */,
-				C3677004000000000000001 /* AppDelegate+MosaicSSHURL.swift in Sources */,
 				C65930010000000000000003 /* AppDelegate+CrashSessionSnapshotRemoval.swift in Sources */,
 				DCDC3000000000000000E001 /* AppDelegate+DockShortcutRouting.swift in Sources */,
 				DCDC1000000000000000C000 /* AppDelegate+DockSurfaceMove.swift in Sources */,
@@ -4345,6 +4347,7 @@
 				C4160A040000000000000001 /* AppDelegate+FocusHistoryContextMenu.swift in Sources */,
 				DCDC1000000000000000C030 /* AppDelegate+GlobalDock.swift in Sources */,
 				3865A0063865A0063865A006 /* AppDelegate+GlobalSearch.swift in Sources */,
+				C3677004000000000000001 /* AppDelegate+MosaicSSHURL.swift in Sources */,
 				D7AB00000000000000000001 /* AppDelegate+MoveTabToNewWorkspace.swift in Sources */,
 				4EDE10010000000000000001 /* AppDelegate+NotificationDeliverySeams.swift in Sources */,
 				2907B0012907B0012907B001 /* AppDelegate+NotificationNavSeams.swift in Sources */,
@@ -4453,51 +4456,6 @@
 				C46790000000000000000003 /* CLIForwardingLaunchRouter.swift in Sources */,
 				C10D51700000000000000002 /* ClosedItemHistory.swift in Sources */,
 				C10D00010000000000000001 /* CloudVMActionLauncher.swift in Sources */,
-				A5001654 /* MosaicActionTrust.swift in Sources */,
-				E3309A07 /* mosaicApp+EqualizeSplitsMenu.swift in Sources */,
-				C4160A010000000000000001 /* mosaicApp+HistoryMenu.swift in Sources */,
-				A5001001 /* mosaicApp.swift in Sources */,
-				A72C9F4179B54DF38E99A021 /* MosaicCLIPathInstaller.swift in Sources */,
-				A5001650 /* MosaicConfig.swift in Sources */,
-				A5001652 /* MosaicConfigExecutor.swift in Sources */,
-				C5D0DEC0CF00000000000A1 /* MosaicConfigStore+ConfigStoreReloading.swift in Sources */,
-				C0DEF0A10000000000000001 /* MosaicConfigUI.swift in Sources */,
-				E7E000000000000000000005 /* MosaicEventBus.swift in Sources */,
-				E7E00000000000000000000D /* MosaicEventLogWriter.swift in Sources */,
-				E7E000000000000000000007 /* MosaicEventPublishing.swift in Sources */,
-				E7E000000000000000000001 /* MosaicEventStream.swift in Sources */,
-				C57B00050000000000000001 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift in Sources */,
-				C0DE34020000000000000001 /* MosaicHelpCommands.swift in Sources */,
-				C0DE34020000000000000002 /* MosaicHelpResource.swift in Sources */,
-				C0DE46010000000000000001 /* MosaicInstalledExtensionSidebarHostView.swift in Sources */,
-				E7E00000000000000000000B /* MosaicLifecycleEventPublishing.swift in Sources */,
-				2F0C07000000000000000002 /* MosaicMainWindow.swift in Sources */,
-				A5001557 /* MosaicModalAlertAnalytics.swift in Sources */,
-				CA1F0A01CA1F0A01CA1F0A01 /* MosaicModalAlertPresentation.swift in Sources */,
-				A9F200000000000000000005 /* MosaicRuntimeDebugCapture.swift in Sources */,
-				A9F200000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift in Sources */,
-				A9F20000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift in Sources */,
-				A9F200000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift in Sources */,
-				D3610C010000000000000001 /* MosaicSettingsJSONPathSupport.swift in Sources */,
-				DC5DC5DC0000000000000001 /* MosaicSidebarActionDispatch.swift in Sources */,
-				C0DE46030000000000000001 /* MosaicSidebarExtensionBrowserPanel.swift in Sources */,
-				E7E000000000000000000009 /* MosaicSocketEventMapper.swift in Sources */,
-				C3677002000000000000001 /* MosaicSSHURLRequest.swift in Sources */,
-				C10D00030000000000000003 /* MosaicSurfaceTabBarBuiltInAction.swift in Sources */,
-				C7A510000000000000000002 /* MosaicTopMemoryDiagnostics.swift in Sources */,
-				B35750000000000000000004 /* MosaicTopProcessArguments.swift in Sources */,
-				C7A50D000000000000000002 /* MosaicTopProcessCPUTracker.swift in Sources */,
-				C7A50E000000000000000002 /* MosaicTopProcessDetails.swift in Sources */,
-				C7A511000000000000000002 /* MosaicTopProcessEnumeration.swift in Sources */,
-				C7A512000000000000000002 /* MosaicTopProcessSnapshotCache.swift in Sources */,
-				C7A501000000000000000002 /* MosaicTopSnapshot.swift in Sources */,
-				C7A508000000000000000002 /* MosaicTopSnapshotScopeCache.swift in Sources */,
-				D7C0DE00000000000000A101 /* MosaicWebView+ContextMenuLinkCapture.swift in Sources */,
-				D7AB00000000000000000009 /* MosaicWebView+MoveTabToNewWorkspace.swift in Sources */,
-				C6255D010000000000000001 /* MosaicWebView+ScriptedDownloads.swift in Sources */,
-				C67540030000000000000001 /* MosaicWebView+SubframeDownloadIntentScript.swift in Sources */,
-				A5001500 /* MosaicWebView.swift in Sources */,
-				E30750000000000000000004 /* MosaicWorkspaceDefinition.swift in Sources */,
 				A9F200000000000000000016 /* CodexAppServerQueuedInput.swift in Sources */,
 				A9E02000000000000000000E /* CodexAppServerSession.swift in Sources */,
 				C011AB040000000000000001 /* CollaborationBackendClient.swift in Sources */,
@@ -4697,6 +4655,51 @@
 				AB57F0C27BECE8EDFC6B2B97 /* MobileTerminalByteTee.swift in Sources */,
 				C9CFB398DF94D6DDEAF42D67 /* MobileTerminalRenderObserver.swift in Sources */,
 				00C3AA443F6DA8D94E28CE17 /* MobileWorkspaceListObserver.swift in Sources */,
+				A5001654 /* MosaicActionTrust.swift in Sources */,
+				E3309A07 /* mosaicApp+EqualizeSplitsMenu.swift in Sources */,
+				C4160A010000000000000001 /* mosaicApp+HistoryMenu.swift in Sources */,
+				A5001001 /* mosaicApp.swift in Sources */,
+				A72C9F4179B54DF38E99A021 /* MosaicCLIPathInstaller.swift in Sources */,
+				A5001650 /* MosaicConfig.swift in Sources */,
+				A5001652 /* MosaicConfigExecutor.swift in Sources */,
+				C5D0DEC0CF00000000000A1 /* MosaicConfigStore+ConfigStoreReloading.swift in Sources */,
+				C0DEF0A10000000000000001 /* MosaicConfigUI.swift in Sources */,
+				E7E000000000000000000005 /* MosaicEventBus.swift in Sources */,
+				E7E00000000000000000000D /* MosaicEventLogWriter.swift in Sources */,
+				E7E000000000000000000007 /* MosaicEventPublishing.swift in Sources */,
+				E7E000000000000000000001 /* MosaicEventStream.swift in Sources */,
+				C57B00050000000000000001 /* MosaicExtensionSidebarSelection+CustomSidebarName.swift in Sources */,
+				C0DE34020000000000000001 /* MosaicHelpCommands.swift in Sources */,
+				C0DE34020000000000000002 /* MosaicHelpResource.swift in Sources */,
+				C0DE46010000000000000001 /* MosaicInstalledExtensionSidebarHostView.swift in Sources */,
+				E7E00000000000000000000B /* MosaicLifecycleEventPublishing.swift in Sources */,
+				2F0C07000000000000000002 /* MosaicMainWindow.swift in Sources */,
+				A5001557 /* MosaicModalAlertAnalytics.swift in Sources */,
+				CA1F0A01CA1F0A01CA1F0A01 /* MosaicModalAlertPresentation.swift in Sources */,
+				A9F200000000000000000005 /* MosaicRuntimeDebugCapture.swift in Sources */,
+				A9F200000000000000000006 /* MosaicRuntimeDebugCaptureConfiguration.swift in Sources */,
+				A9F20000000000000000001A /* MosaicRuntimeDebugCaptureSender.swift in Sources */,
+				A9F200000000000000000007 /* MosaicRuntimeDebugCaptureSequence.swift in Sources */,
+				D3610C010000000000000001 /* MosaicSettingsJSONPathSupport.swift in Sources */,
+				DC5DC5DC0000000000000001 /* MosaicSidebarActionDispatch.swift in Sources */,
+				C0DE46030000000000000001 /* MosaicSidebarExtensionBrowserPanel.swift in Sources */,
+				E7E000000000000000000009 /* MosaicSocketEventMapper.swift in Sources */,
+				C3677002000000000000001 /* MosaicSSHURLRequest.swift in Sources */,
+				C10D00030000000000000003 /* MosaicSurfaceTabBarBuiltInAction.swift in Sources */,
+				C7A510000000000000000002 /* MosaicTopMemoryDiagnostics.swift in Sources */,
+				B35750000000000000000004 /* MosaicTopProcessArguments.swift in Sources */,
+				C7A50D000000000000000002 /* MosaicTopProcessCPUTracker.swift in Sources */,
+				C7A50E000000000000000002 /* MosaicTopProcessDetails.swift in Sources */,
+				C7A511000000000000000002 /* MosaicTopProcessEnumeration.swift in Sources */,
+				C7A512000000000000000002 /* MosaicTopProcessSnapshotCache.swift in Sources */,
+				C7A501000000000000000002 /* MosaicTopSnapshot.swift in Sources */,
+				C7A508000000000000000002 /* MosaicTopSnapshotScopeCache.swift in Sources */,
+				D7C0DE00000000000000A101 /* MosaicWebView+ContextMenuLinkCapture.swift in Sources */,
+				D7AB00000000000000000009 /* MosaicWebView+MoveTabToNewWorkspace.swift in Sources */,
+				C6255D010000000000000001 /* MosaicWebView+ScriptedDownloads.swift in Sources */,
+				C67540030000000000000001 /* MosaicWebView+SubframeDownloadIntentScript.swift in Sources */,
+				A5001500 /* MosaicWebView.swift in Sources */,
+				E30750000000000000000004 /* MosaicWorkspaceDefinition.swift in Sources */,
 				A5001801 /* NativeInteractionAnalytics.swift in Sources */,
 				596100000000000000000003 /* NativeNotificationDeliveryHooks.swift in Sources */,
 				C06552010000000000000003 /* NotificationBurstCoalescer.swift in Sources */,
@@ -5062,6 +5065,9 @@
 				D36A00030000000000000003 /* AgentHibernationLifecycleState.swift in Sources */,
 				B900004AA1B2C3D4E5F60719 /* CLISocketPathResolver.swift in Sources */,
 				C12985000000000000000002 /* CLISocketSentryTelemetry.swift in Sources */,
+				C0DECAFE0000000000000001 /* CodexTeamsApprovalBridge.swift in Sources */,
+					FEEDC1A50000000000000001 /* FeedEventClassifier.swift in Sources */,
+				C0DEF0B10000000000000003 /* JSONCParser.swift in Sources */,
 				B9000002A1B2C3D4E5F60719 /* mosaic.swift in Sources */,
 				B9000034A1B2C3D4E5F60719 /* mosaic_open.swift in Sources */,
 				B9000063A1B2C3D4E5F60719 /* MosaicCLI+AgentHookDefinitions.swift in Sources */,
@@ -5096,9 +5102,6 @@
 				B9000048A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatHUDSupport.swift in Sources */,
 				B9000044A1B2C3D4E5F60719 /* MosaicCLI+TmuxCompatSupport.swift in Sources */,
 				B9000033A1B2C3D4E5F60719 /* MosaicCLI+TopRendering.swift in Sources */,
-				C0DECAFE0000000000000001 /* CodexTeamsApprovalBridge.swift in Sources */,
-					FEEDC1A50000000000000001 /* FeedEventClassifier.swift in Sources */,
-				C0DEF0B10000000000000003 /* JSONCParser.swift in Sources */,
 				B9000028A1B2C3D4E5F60719 /* RemoteInteractiveShellBootstrapBuilder.swift in Sources */,
 				B9000027A1B2C3D4E5F60719 /* RemoteRelayZshBootstrap.swift in Sources */,
 				5E2701020000000000000003 /* SentryEventScrubber.swift in Sources */,
@@ -5237,30 +5240,10 @@
 				6379A0016379A0016379A001 /* CLISSHPTYResizeInputTests.swift in Sources */,
 				C12984000000000000000004 /* CLIStdioSIGPIPERegressionTests.swift in Sources */,
 				B05553B10000000000000001 /* CLITmuxCompatRemoteSplitTests.swift in Sources */,
-					0CB4E9797AD54D3BB9CF06F9 /* MosaicCLI+AutoNaming.swift in Sources */,
-					C0DE31390000000000000105 /* MosaicCLIErrorOutputRegressionTests.swift in Sources */,
-					C12985000000000000000004 /* MosaicCLISentryTelemetryRegressionTests.swift in Sources */,
-					C0DE64950000000000000005 /* MosaicCLISessionsListTests.swift in Sources */,
-					C0DE64950000000000000003 /* MosaicCLITestAssertions.swift in Sources */,
-				C0DEF0A40000000000000001 /* MosaicConfigContextMenuTests.swift in Sources */,
-				E30750000000000000000006 /* MosaicConfigNamedColorTests.swift in Sources */,
-				C1A2B3C4D5E6F70800000001 /* MosaicConfigTests.swift in Sources */,
-				E7E000000000000000000003 /* MosaicEventBusTests.swift in Sources */,
-				D36090010000000000000005 /* MosaicMainWindowConstrainFrameTests.swift in Sources */,
-				D36090020000000000000005 /* MosaicMainWindowFullScreenCapabilityTests.swift in Sources */,
-				C0DE31390000000000000101 /* MosaicOpenCommandTests.swift in Sources */,
-				C0DE31390000000000000111 /* MosaicOpenHTMLFocusTests.swift in Sources */,
-				C3677001000000000000001 /* MosaicSSHURLRequestTests.swift in Sources */,
-				C7A50C000000000000000002 /* MosaicTopProcessCPUTests.swift in Sources */,
-				C7A5090000000000000005A2 /* MosaicTopSnapshotScopeCacheTests.swift in Sources */,
-				C7A509000000000000000002 /* MosaicTopSnapshotScopeTests.swift in Sources */,
-				D7C0DE00000000000000A103 /* MosaicWebViewContextMenuLinkCaptureTests.swift in Sources */,
-				D0B1000CA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift in Sources */,
-				C0DE58990000000000000004 /* MosaicWebViewKeyDownReentryTests.swift in Sources */,
-				7D5DA4DC51454ECDBF9AC978 /* MosaicWebViewMouseNavigationButtonTests.swift in Sources */,
 				A9E040000000000000000002 /* CodexAppServerSessionTests.swift in Sources */,
 				C0DECAFE0000000000000003 /* CodexTeamsApprovalBridge.swift in Sources */,
 				95279D8BDFD5535F8471A3D7 /* CollaborationSharingLabelTests.swift in Sources */,
+				C0114B00000000000000A001 /* CollaborationTerminalInputRegressionTests.swift in Sources */,
 				F69B0C415C2340A9B9807653 /* CollaborationTerminalRenderGridSeedLimiterTests.swift in Sources */,
 				C0DEC0DE000000000000F302 /* CommandPaletteEmojiTitleSearchTests.swift in Sources */,
 				C0DEC0DE000000000000F202 /* CommandPaletteNucleoFFILibrarySupport.swift in Sources */,
@@ -5337,6 +5320,27 @@
 				9B08F916D7FF7626C6820727 /* MobilePairingConnectionTransitionTests.swift in Sources */,
 				F6448F377504F33956E7E03B /* MobileWorkspaceListFidelityTests.swift in Sources */,
 				13AB1A2E5DA6AD02DCAE971D /* MockBridgeInputCapture.swift in Sources */,
+					0CB4E9797AD54D3BB9CF06F9 /* MosaicCLI+AutoNaming.swift in Sources */,
+					C0DE31390000000000000105 /* MosaicCLIErrorOutputRegressionTests.swift in Sources */,
+					C12985000000000000000004 /* MosaicCLISentryTelemetryRegressionTests.swift in Sources */,
+					C0DE64950000000000000005 /* MosaicCLISessionsListTests.swift in Sources */,
+					C0DE64950000000000000003 /* MosaicCLITestAssertions.swift in Sources */,
+				C0DEF0A40000000000000001 /* MosaicConfigContextMenuTests.swift in Sources */,
+				E30750000000000000000006 /* MosaicConfigNamedColorTests.swift in Sources */,
+				C1A2B3C4D5E6F70800000001 /* MosaicConfigTests.swift in Sources */,
+				E7E000000000000000000003 /* MosaicEventBusTests.swift in Sources */,
+				D36090010000000000000005 /* MosaicMainWindowConstrainFrameTests.swift in Sources */,
+				D36090020000000000000005 /* MosaicMainWindowFullScreenCapabilityTests.swift in Sources */,
+				C0DE31390000000000000101 /* MosaicOpenCommandTests.swift in Sources */,
+				C0DE31390000000000000111 /* MosaicOpenHTMLFocusTests.swift in Sources */,
+				C3677001000000000000001 /* MosaicSSHURLRequestTests.swift in Sources */,
+				C7A50C000000000000000002 /* MosaicTopProcessCPUTests.swift in Sources */,
+				C7A5090000000000000005A2 /* MosaicTopSnapshotScopeCacheTests.swift in Sources */,
+				C7A509000000000000000002 /* MosaicTopSnapshotScopeTests.swift in Sources */,
+				D7C0DE00000000000000A103 /* MosaicWebViewContextMenuLinkCaptureTests.swift in Sources */,
+				D0B1000CA1B2C3D4E5F60001 /* MosaicWebViewDragRoutingTests.swift in Sources */,
+				C0DE58990000000000000004 /* MosaicWebViewKeyDownReentryTests.swift in Sources */,
+				7D5DA4DC51454ECDBF9AC978 /* MosaicWebViewMouseNavigationButtonTests.swift in Sources */,
 				596100000000000000000001 /* NativeNotificationFallbackCommandTests.swift in Sources */,
 				734F49D37E543DD01C2F4FEF /* NotificationAndMenuBarTests.swift in Sources */,
 				D7AB00000000000000B021 /* NotificationDismissSyncTests.swift in Sources */,

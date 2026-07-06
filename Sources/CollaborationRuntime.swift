@@ -851,6 +851,7 @@ final class CollaborationRuntime {
     private static let workspaceSessionStore = CollaborationWorkspaceSessionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
     )
+    private static let outgoingInviteStore = CollaborationOutgoingInviteStore()
     private static let terminalRecipientSelectionStore = CollaborationTerminalRecipientSelectionStore(
         inviteCodeStore: CollaborationRuntime.inviteCodeStore
     )
@@ -1743,7 +1744,9 @@ final class CollaborationRuntime {
     /// session (fetches a grant, then connects to the relay room).
     func presentIncomingSessionsInbox() {
         Task { @MainActor in
-            await refreshIncomingSharedSessions()
+            // Reconcile against the relay first so ended sessions are pruned and
+            // the picker only offers joinable sessions.
+            await reconcileIncomingSharedSessions()
             await presentIncomingSessionsInboxDialog()
         }
     }
@@ -1768,13 +1771,24 @@ final class CollaborationRuntime {
         alert.messageText = CollaborationStrings.incomingSessionsTitle
         alert.informativeText = CollaborationStrings.incomingSessionsPrompt
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-        for invite in invites {
-            let owner = invite.ownerName ?? invite.ownerUserId
-            let org = invite.orgName ?? ""
-            popup.addItem(
-                withTitle: CollaborationStrings.incomingSessionSubtitle(ownerName: owner, orgName: org)
+        // Build rows through the shared helper so invites that share an
+        // owner+org title stay visible (NSPopUpButton.addItem(withTitle:) drops
+        // duplicate-titled items). Menu items are appended directly for the same
+        // reason, with the session token stored as representedObject.
+        let inputs = invites.map { invite in
+            CollaborationInboxPickerInput(
+                session: invite.session,
+                baseTitle: CollaborationStrings.incomingSessionSubtitle(
+                    ownerName: invite.ownerName ?? invite.ownerUserId,
+                    orgName: invite.orgName ?? ""
+                ),
+                detail: Self.relativeInviteTime(from: invite.createdAt)
             )
-            popup.lastItem?.representedObject = invite.session
+        }
+        for row in CollaborationInboxPicker.rows(from: inputs) {
+            let item = NSMenuItem(title: row.title, action: nil, keyEquivalent: "")
+            item.representedObject = row.session
+            popup.menu?.addItem(item)
         }
         alert.accessoryView = popup
         applyCollaborationRegularAlertButtonTitleStyle(
@@ -1791,6 +1805,26 @@ final class CollaborationRuntime {
             NSSound.beep()
         }
     }
+
+    /// Formats an invite's ISO-8601 `createdAt` as a localized relative time
+    /// (for example "5 minutes ago"), used only to disambiguate picker rows that
+    /// share an owner+org title. Returns `nil` when the timestamp can't be parsed.
+    private static func relativeInviteTime(from createdAt: String) -> String? {
+        guard let date = iso8601InviteFormatter.date(from: createdAt)
+            ?? iso8601InviteFormatterWithFractionalSeconds.date(from: createdAt) else {
+            return nil
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private static let iso8601InviteFormatter = ISO8601DateFormatter()
+    private static let iso8601InviteFormatterWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 
     #if DEBUG
     /// Injects a sample incoming invite and opens the inbox so the recipient
@@ -4482,7 +4516,11 @@ final class CollaborationRuntime {
         collaborationEntitlements = created.entitlements
         prefetchDirectoryMembersIfNeeded()
         storeGrant(created.grant, forRoom: created.room)
-        sessionDescriptorsByRoom[normalizedRoomKey(created.room)] = created.session
+        let roomKey = normalizedRoomKey(created.room)
+        sessionDescriptorsByRoom[roomKey] = created.session
+        // Persist so an explicit session-end after an app relaunch can still
+        // withdraw the invites we sent (in-memory maps are lost on relaunch).
+        Self.outgoingInviteStore.recordDescriptor(created.session, forRoomKey: roomKey)
     }
 
     private func createSessionViaRelay() async throws -> CollaborationCreateSessionResponse {
@@ -4651,7 +4689,9 @@ final class CollaborationRuntime {
                 inviteeUserId: userID,
                 relayURL: relayURLString
             )
-            invitedTeammateUserIDsByRoom[normalizedRoomKey(connection.sessionCode), default: []].insert(userID)
+            let roomKey = normalizedRoomKey(connection.sessionCode)
+            invitedTeammateUserIDsByRoom[roomKey, default: []].insert(userID)
+            Self.outgoingInviteStore.addInvitee(userID, forRoomKey: roomKey, descriptor: descriptor)
             await notifyInboxRealtime(inviteeUserID: userID)
             return true
         } catch {
@@ -4667,8 +4707,14 @@ final class CollaborationRuntime {
     /// session live for other terminals/peers).
     private func withdrawTeammateInvites(forRoom room: String) {
         let key = normalizedRoomKey(room)
-        let descriptor = sessionDescriptorsByRoom[key] ?? sessionDescriptorsByRoom[room]
-        let invitedUserIDs = invitedTeammateUserIDsByRoom[key] ?? []
+        // Merge the durable record with in-memory state so an end after relaunch
+        // (when the in-memory maps are empty) can still withdraw the invites.
+        let persisted = Self.outgoingInviteStore.remove(forRoomKey: key)
+        let descriptor = sessionDescriptorsByRoom[key]
+            ?? sessionDescriptorsByRoom[room]
+            ?? persisted?.descriptor
+        var invitedUserIDs = invitedTeammateUserIDsByRoom[key] ?? []
+        if let persisted { invitedUserIDs.formUnion(persisted.inviteeUserIDs) }
         invitedTeammateUserIDsByRoom.removeValue(forKey: key)
         sessionDescriptorsByRoom.removeValue(forKey: key)
         sessionDescriptorsByRoom.removeValue(forKey: room)
@@ -4693,33 +4739,57 @@ final class CollaborationRuntime {
     /// Fetch the incoming shared-session inbox for this user.
     func refreshIncomingSharedSessions() async {
         guard let token = await collaborationAccessToken() else {
-            incomingSharedSessions = []
-            seenIncomingSessionIDs = []
-            incomingInviteAlert = nil
-            publishIncomingInviteCount()
-            publishIncomingInviteAlert()
+            clearIncomingSharedSessions()
             return
         }
         if let invites = try? await collaborationBackendClient.inbox(accessToken: token) {
-            let previouslySeen = seenIncomingSessionIDs
-            let currentIDs = Set(invites.map(\.session))
-            let previousCount = incomingSharedSessions.count
-            incomingSharedSessions = invites
-            seenIncomingSessionIDs = currentIDs
-            if invites.count != previousCount {
-                publishIncomingInviteCount()
-            }
-            // Auto-surface only genuinely new invites, so a routine refetch of an
-            // invite the user already saw does not re-pop the alert.
-            if let latestNew = invites.first(where: { !previouslySeen.contains($0.session) }) {
-                incomingInviteAlert = latestNew
-                incomingInviteAlertToken &+= 1
-                publishIncomingInviteAlert()
-            } else if let current = incomingInviteAlert, !currentIDs.contains(current.session) {
-                // The pending alert was accepted or withdrawn elsewhere; clear it.
-                incomingInviteAlert = nil
-                publishIncomingInviteAlert()
-            }
+            applyIncomingInvites(invites)
+        }
+    }
+
+    /// Reconcile the incoming inbox against the relay so ended sessions are
+    /// pruned server-side, then apply the surviving list. Used when the user
+    /// opens the picker so the badge and picker only show joinable sessions.
+    /// Falls back to a plain inbox refresh when reconcile is unavailable.
+    func reconcileIncomingSharedSessions() async {
+        guard let token = await collaborationAccessToken() else {
+            clearIncomingSharedSessions()
+            return
+        }
+        if let invites = try? await collaborationBackendClient.reconcileInbox(accessToken: token) {
+            applyIncomingInvites(invites)
+        } else {
+            await refreshIncomingSharedSessions()
+        }
+    }
+
+    private func clearIncomingSharedSessions() {
+        incomingSharedSessions = []
+        seenIncomingSessionIDs = []
+        incomingInviteAlert = nil
+        publishIncomingInviteCount()
+        publishIncomingInviteAlert()
+    }
+
+    private func applyIncomingInvites(_ invites: [CollaborationIncomingSession]) {
+        let previouslySeen = seenIncomingSessionIDs
+        let currentIDs = Set(invites.map(\.session))
+        let previousCount = incomingSharedSessions.count
+        incomingSharedSessions = invites
+        seenIncomingSessionIDs = currentIDs
+        if invites.count != previousCount {
+            publishIncomingInviteCount()
+        }
+        // Auto-surface only genuinely new invites, so a routine refetch of an
+        // invite the user already saw does not re-pop the alert.
+        if let latestNew = invites.first(where: { !previouslySeen.contains($0.session) }) {
+            incomingInviteAlert = latestNew
+            incomingInviteAlertToken &+= 1
+            publishIncomingInviteAlert()
+        } else if let current = incomingInviteAlert, !currentIDs.contains(current.session) {
+            // The pending alert was accepted or withdrawn elsewhere; clear it.
+            incomingInviteAlert = nil
+            publishIncomingInviteAlert()
         }
     }
 
@@ -4766,17 +4836,40 @@ final class CollaborationRuntime {
             }
             storeGrant(result.grant, forRoom: result.room)
             let connection = await connect(sessionID: result.room, code: result.code ?? result.room)
-            incomingSharedSessions.removeAll { $0.session == invite.session }
-            publishIncomingInviteCount()
-            if incomingInviteAlert?.session == invite.session {
-                incomingInviteAlert = nil
-                publishIncomingInviteAlert()
-            }
+            removeIncomingInvite(session: invite.session)
             return connection != nil
         } catch {
             lastErrorMessage = error.localizedDescription
+            // The session no longer exists (ended/withdrawn) or we were never
+            // invited: prune the stale invite locally so it stops surfacing in
+            // the badge and picker instead of failing on every attempt.
+            if Self.joinFailureMeansInviteGone(error) {
+                removeIncomingInvite(session: invite.session)
+            }
             return false
         }
+    }
+
+    /// Removes an invite from the local inbox and reconciles the badge + any
+    /// auto-surfaced alert. Used on both a successful join and when a join fails
+    /// because the underlying session is gone.
+    private func removeIncomingInvite(session: String) {
+        let previousCount = incomingSharedSessions.count
+        incomingSharedSessions.removeAll { $0.session == session }
+        if incomingSharedSessions.count != previousCount {
+            publishIncomingInviteCount()
+        }
+        if incomingInviteAlert?.session == session {
+            incomingInviteAlert = nil
+            publishIncomingInviteAlert()
+        }
+    }
+
+    /// Whether a join failure indicates the invite should be pruned locally: the
+    /// session ended, was withdrawn, or the descriptor is no longer valid.
+    private static func joinFailureMeansInviteGone(_ error: Error) -> Bool {
+        guard case let CollaborationBackendError.http(status, code) = error else { return false }
+        return CollaborationInboxJoinFailure.indicatesInviteGone(status: status, code: code)
     }
 
     func startIncomingSharedSessionsPolling() {
@@ -5539,18 +5632,39 @@ final class CollaborationRuntime {
                 colorHex: peer.color
             )
         }
-        let text = String(decoding: filteredData, as: UTF8.self)
         Self.echoLog(
             "host-input terminal=\(terminalID.prefix(8)) bytes=\(filteredData.count) " +
             "t=\(Self.echoTimestampMillis())"
         )
-        switch panel.sendInputResult(text) {
+        // Write the viewer's bytes straight to the PTY. The viewer's mirror
+        // surface is mode-synchronized to this host surface, so it already
+        // encoded keystrokes (including Kitty keyboard-protocol sequences like
+        // Cmd+Z and Option+Left) into exactly the bytes the running program
+        // expects. Re-parsing them through the socket-input grammar would split a
+        // leading `ESC` into an Escape keypress and leak the remainder as literal
+        // text, so collaboration input must pass through verbatim.
+        switch panel.sendCollaborationInputResult(filteredData) {
         case .sent:
             panel.surface.forceRefresh(reason: "collaboration.terminalInput")
         case .queued, .inputQueueFull, .surfaceUnavailable, .processExited:
             break
         }
     }
+
+    #if DEBUG
+    /// Test hook for ``filteredTerminalCollaborationInput(_:pendingPrefix:direction:terminalID:)``
+    /// that runs a single buffer through the filter with a throwaway pending
+    /// prefix.
+    static func debugFilteredCollaborationInputForTesting(_ data: Data) -> Data? {
+        var pending = Data()
+        return filteredTerminalCollaborationInput(
+            data,
+            pendingPrefix: &pending,
+            direction: "test",
+            terminalID: "test"
+        )
+    }
+    #endif
 
     private static func filteredTerminalCollaborationInput(
         _ data: Data,
@@ -5584,17 +5698,6 @@ final class CollaborationRuntime {
                 )
                 #endif
                 break
-            } else if let keyboardInput = terminalKeyboardInputReplacement(bytes, from: index) {
-                #if DEBUG
-                let sequence = Data(bytes[index..<(index + keyboardInput.length)])
-                mosaicDebugLog(
-                    "collab.terminal.input.normalize direction=\(direction) terminal=\(terminalID) " +
-                    "sequence=\(debugByteSummary(sequence)) replacement=\(debugByteSummary(keyboardInput.replacement))"
-                )
-                #endif
-                filtered.append(contentsOf: keyboardInput.replacement)
-                index += keyboardInput.length
-                continue
             } else if let reportLength = terminalGeneratedReportLength(bytes, from: index) {
                 #if DEBUG
                 let report = Data(bytes[index..<(index + reportLength)])
@@ -5643,64 +5746,6 @@ final class CollaborationRuntime {
             return nil
         }
         return bytes.count - start
-    }
-
-    private static func terminalKeyboardInputReplacement(
-        _ bytes: [UInt8],
-        from start: Int
-    ) -> (length: Int, replacement: Data)? {
-        guard start + 3 < bytes.count,
-              bytes[start] == 0x1B,
-              bytes[start + 1] == 0x5B else {
-            return nil
-        }
-
-        var index = start + 2
-        let parameterStart = index
-        while index < bytes.count, (0x30...0x3F).contains(bytes[index]) {
-            index += 1
-        }
-        guard index > parameterStart,
-              index < bytes.count,
-              bytes[index] == 0x75 else {
-            return nil
-        }
-
-        let parameterBytes = bytes[parameterStart..<index]
-        let parameterString = String(decoding: parameterBytes, as: UTF8.self)
-        let parts = parameterString.split(separator: ";")
-        guard parts.count >= 2,
-              let codepoint = Int(parts[0]),
-              let modifiers = Int(parts[1]),
-              Self.csiUModifiersContainControl(modifiers),
-              let controlByte = Self.controlByte(forCSIUCodepoint: codepoint) else {
-            return nil
-        }
-        return (index - start + 1, Data([controlByte]))
-    }
-
-    private static func csiUModifiersContainControl(_ modifiers: Int) -> Bool {
-        switch modifiers {
-        case 5, 6, 7, 8:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private static func controlByte(forCSIUCodepoint codepoint: Int) -> UInt8? {
-        switch codepoint {
-        case 64:
-            return 0
-        case 65...90:
-            return UInt8(codepoint - 64)
-        case 91...95:
-            return UInt8(codepoint - 64)
-        case 97...122:
-            return UInt8(codepoint - 96)
-        default:
-            return nil
-        }
     }
 
     private static func terminalGeneratedReportLength(_ bytes: [UInt8], from start: Int) -> Int? {

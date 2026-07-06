@@ -161,6 +161,43 @@ extension TerminalSurface {
         return .sent
     }
 
+    /// Writes collaboration-received input bytes straight to the PTY as
+    /// committed text, bypassing the socket-input grammar in
+    /// ``parsedSocketInputEvents(for:)``.
+    ///
+    /// A remote viewer's mirror surface is mode-synchronized to this host
+    /// surface (kitty-keyboard and cursor modes are mirrored via output), so it
+    /// already encodes keystrokes into exactly the bytes the running program
+    /// expects — including Kitty keyboard-protocol sequences like `ESC[122;9u`
+    /// (Cmd+Z) and modified navigation (Option+Left). Re-parsing those bytes
+    /// through the socket grammar mangles them (a leading `ESC` is consumed as an
+    /// Escape keypress and the remainder leaks as literal text), so collaboration
+    /// input must pass through verbatim instead. `ghostty_surface_text_input`
+    /// writes the bytes to the PTY unchanged apart from `\n`→`\r` normalization.
+    ///
+    /// - Returns: Whether the bytes were delivered or queued.
+    @MainActor
+    @discardableResult
+    public func sendCollaborationInputResult(_ data: Data) -> InputSendResult {
+        guard !data.isEmpty else { return .sent }
+        guard surface != nil else {
+            guard allowsRuntimeSurfaceCreation() else { return .surfaceUnavailable }
+            let queued = enqueuePendingSocketInputs([.inputText(data)])
+            if queued {
+                hibernationRecorder.recordTerminalInput(workspaceId: tabId, panelId: id)
+                requestInputDemandSurfaceStartIfNeeded()
+            }
+            return queued ? .queued : .inputQueueFull
+        }
+        guard let liveSurface = liveSurfaceForSocketWrite(reason: "collaboration.sendInput") else {
+            return .surfaceUnavailable
+        }
+        guard !ghostty_surface_process_exited(liveSurface) else { return .processExited }
+        hibernationRecorder.recordTerminalInput(workspaceId: tabId, panelId: id)
+        writeInputTextData(data, to: liveSurface)
+        return .sent
+    }
+
     @MainActor
     private func sendInput(_ text: String, to surface: ghostty_surface_t) {
         for event in Self.parsedSocketInputEvents(for: text) {
