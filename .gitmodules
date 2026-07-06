@@ -4,4 +4,4 @@
 	branch = main
 [submodule "homebrew-mosaic"]
 	path = homebrew-mosaic
-	url = https://github.com/manaflow-ai/homebrew-mosaic.git
+	url = https://github.com/manaflow-ai/homebrew-cmux.git
