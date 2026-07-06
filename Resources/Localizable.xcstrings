@@ -21549,6 +21549,17 @@
         }
       }
     },
+    "settings.account.signIn.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
     "settings.account.signIn.openInBrowser": {
       "extractionState": "manual",
       "localizations": {

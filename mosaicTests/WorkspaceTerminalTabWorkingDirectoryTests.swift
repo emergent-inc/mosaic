@@ -11,6 +11,21 @@ import Testing
 @Suite("Workspace terminal tab working directory")
 struct WorkspaceTerminalTabWorkingDirectoryTests {
     @MainActor
+    @Test("new workspace initial terminal falls back to home directory instead of nil (root)")
+    func newWorkspaceInitialTerminalUsesHomeDirectoryWhenNoWorkingDirectoryProvided() throws {
+        // A nil working directory makes Ghostty inherit the app process cwd,
+        // which is "/" for a Finder/Dock-launched GUI app. The initial terminal
+        // must instead spawn at the workspace's currentDirectory (home when no
+        // explicit cwd is provided) so new workspaces never open at the root.
+        let workspace = Workspace()
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let panel = try #require(workspace.focusedTerminalPanel)
+
+        #expect(workspace.currentDirectory == home)
+        #expect(panel.requestedWorkingDirectory == home)
+    }
+
+    @MainActor
     @Test("Cmd+T after session restore uses workspace cwd when focused agent has no terminal cwd")
     func cmdTAfterSessionRestoreUsesWorkspaceCurrentDirectoryForAgentPane() throws {
         let workspaceDirectory = "/tmp/mosaic-cmdt-restore-\(UUID().uuidString)"

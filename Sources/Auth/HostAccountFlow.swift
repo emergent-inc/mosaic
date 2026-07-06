@@ -47,12 +47,20 @@ final class HostAccountFlow: AccountFlow {
         coordinator.isLoading || coordinator.isRestoringSession || browserSignIn.isSigningIn
     }
 
+    var isSigningIn: Bool {
+        browserSignIn.isSigningIn
+    }
+
     var signInIsSlow: Bool {
         browserSignIn.signInIsSlow
     }
 
     func startSignIn() {
         browserSignIn.beginSignIn()
+    }
+
+    func cancelSignIn() {
+        browserSignIn.cancelSignIn()
     }
 
     func openSignInInDefaultBrowser() {
