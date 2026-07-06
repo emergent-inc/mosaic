@@ -3609,15 +3609,31 @@ struct MosaicCLI {
             let rest = Array(commandArgs.dropFirst())
             switch sub {
             case "status":
+                let (roomFilter, statusRemaining) = parseOption(rest, name: "--room-id")
+                if let extra = statusRemaining.first {
+                    throw CLIError(message: "mosaic agent-room status: unexpected argument '\(extra)'")
+                }
                 let response = try client.sendV2(method: "agent.room.status")
                 if jsonOutput {
                     print(jsonString(response))
                     break
                 }
-                let rooms = response["rooms"] as? [[String: Any]] ?? []
-                print("Claude rooms: \(rooms.count)")
+                let allRooms = response["rooms"] as? [[String: Any]] ?? []
+                print("Claude rooms: \(allRooms.count)")
                 if let latest = response["latest_room_id"] as? String {
                     print("  latest_room_id: \(latest)")
+                }
+                let rooms = roomFilter.map { filter in
+                    allRooms.filter { ($0["room_id"] as? String)?.caseInsensitiveCompare(filter) == .orderedSame }
+                } ?? allRooms
+                if roomFilter != nil, rooms.isEmpty {
+                    print(String(
+                        localized: "cli.agentRoom.status.noSuchRoom",
+                        defaultValue: "  No room matches that --room-id."
+                    ))
+                }
+                for room in rooms {
+                    printAgentRoomStatus(room)
                 }
 
             case "create", "new":
@@ -16341,6 +16357,83 @@ struct MosaicCLI {
             remaining.append(arg)
         }
         return (value, remaining)
+    }
+
+    /// Prints one Claude room with per-member link diagnostics so a wire that
+    /// never converges is legible without `--json`: each member shows local vs
+    /// remote, hook/session state, host bridge-consent, and a one-line verdict
+    /// naming the failing gate.
+    func printAgentRoomStatus(_ room: [String: Any]) {
+        let roomID = room["room_id"] as? String ?? "?"
+        let policy = room["delivery_policy"] as? String ?? "?"
+        let lastSequence = room["last_sequence"] as? Int ?? 0
+        let events = room["events"] as? [[String: Any]] ?? []
+        let members = room["members"] as? [[String: Any]] ?? []
+        print("  room \(roomID)  policy=\(policy)  events=\(events.count)  last_seq=\(lastSequence)  members=\(members.count)")
+        for member in members {
+            let surface = member["surfaceID"] as? String ?? "?"
+            let shortSurface = String(surface.prefix(8))
+            let isLocalHost = member["is_local_host"] as? Bool ?? false
+            let hookLinked = member["hook_linked"] as? Bool ?? false
+            let hasSession = member["agentSessionID"] as? String != nil
+            let consent = member["bridge_consent_granted"] as? Bool
+            let role = isLocalHost ? "local-host" : "remote"
+            let hookText = hookLinked ? "hook:linked" : "hook:MISSING"
+            let sessionText = hasSession ? "session:yes" : "session:no"
+            let consentText: String
+            if isLocalHost {
+                switch consent {
+                case .some(true): consentText = "consent:granted"
+                case .some(false): consentText = "consent:NOT-GRANTED"
+                case .none: consentText = "consent:unknown"
+                }
+            } else {
+                consentText = "consent:n/a"
+            }
+            let verdict = agentRoomMemberVerdict(
+                isLocalHost: isLocalHost,
+                hookLinked: hookLinked,
+                hasSession: hasSession,
+                consent: consent
+            )
+            print("    - \(shortSurface) \(role)  \(hookText)  \(sessionText)  \(consentText)  -> \(verdict)")
+        }
+    }
+
+    private func agentRoomMemberVerdict(
+        isLocalHost: Bool,
+        hookLinked: Bool,
+        hasSession: Bool,
+        consent: Bool?
+    ) -> String {
+        if isLocalHost, consent == false {
+            return String(
+                localized: "cli.agentRoom.status.verdict.needsConsent",
+                defaultValue: "grant input control to bridge this agent"
+            )
+        }
+        if isLocalHost, !hookLinked {
+            return String(
+                localized: "cli.agentRoom.status.verdict.noHooks",
+                defaultValue: "Claude not running with mosaic hooks on this surface"
+            )
+        }
+        if hookLinked, !hasSession {
+            return String(
+                localized: "cli.agentRoom.status.verdict.joinIncomplete",
+                defaultValue: "host join incomplete (session not attached)"
+            )
+        }
+        if hookLinked {
+            return String(
+                localized: "cli.agentRoom.status.verdict.live",
+                defaultValue: "ok (live)"
+            )
+        }
+        return String(
+            localized: "cli.agentRoom.status.verdict.remoteInactive",
+            defaultValue: "remote/inactive (expected for a peer's own agent)"
+        )
     }
 
     func parseRepeatedOption(_ args: [String], name: String) -> ([String], [String]) {

@@ -189,6 +189,33 @@ import Testing
     #expect(frame.plainRows() == ["界 "])
 }
 
+@Test func renderGridDecodesLegacyGhosttyForkFormatName() throws {
+    // The GhosttyKit fork's `ghostty_surface_render_grid_json` still emits the
+    // pre-rename format tag `cmux.render-grid.v1`. Rejecting it makes every
+    // host-side snapshot capture return nil, so a shared terminal's viewer
+    // gets no seed at all: a black mirror pane until live output arrives and
+    // no pre-share screen/scrollback ever
+    // (the collaboration "blank until someone types" bug).
+    let object: [String: Any] = [
+        "format": "cmux.render-grid.v1",
+        "surface_id": "terminal-a",
+        "state_seq": NSNumber(value: 44),
+        "columns": 8,
+        "rows": 4,
+        "styles": [["id": 0]],
+        "row_spans": [
+            ["row": 0, "column": 0, "style_id": 0, "text": "alpha"],
+        ],
+    ]
+
+    let frame = try MobileTerminalRenderGridFrame.decodeJSONObject(object)
+
+    // Normalized to the canonical tag so re-encoded wire frames (mobile
+    // events, collaboration seeds) carry one format name downstream.
+    #expect(frame.format == MobileTerminalRenderGridFrame.currentFormat)
+    #expect(frame.rowSpans == [.init(row: 0, column: 0, text: "alpha")])
+}
+
 @Test func renderGridDecodesReplayFramesFromPreviousShape() throws {
     let object: [String: Any] = [
         "format": MobileTerminalRenderGridFrame.currentFormat,

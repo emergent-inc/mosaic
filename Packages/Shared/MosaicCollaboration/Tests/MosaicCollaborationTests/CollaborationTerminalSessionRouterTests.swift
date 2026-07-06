@@ -119,6 +119,48 @@ struct CollaborationTerminalSessionRouterTests {
         ) == .presentSessionChooser)
     }
 
+    @Test
+    func directorySharingSkipsChooserAndSharesDirectly() {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: .notShared,
+            workspaceHasSession: false,
+            directorySharingEnabled: true
+        ) == .createSessionAndShareDirectly)
+    }
+
+    @Test
+    func directorySharingStillReusesExistingWorkspaceSession() {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: .notShared,
+            workspaceHasSession: true,
+            directorySharingEnabled: true
+        ) == .shareInWorkspaceSession)
+    }
+
+    @Test(arguments: [
+        (role: CollaborationSurfaceSharingRole.hosted, action: CollaborationTerminalShareAction.stopSharingHostedTerminal),
+        (role: CollaborationSurfaceSharingRole.mirrored, action: CollaborationTerminalShareAction.stopViewingRemoteTerminal),
+    ])
+    func directorySharingDoesNotChangeHostedOrMirroredActions(
+        role: CollaborationSurfaceSharingRole,
+        action: CollaborationTerminalShareAction
+    ) {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: role,
+            workspaceHasSession: false,
+            directorySharingEnabled: true
+        ) == action)
+    }
+
+    @Test
+    func hobbyWithoutDirectorySharingKeepsSessionChooser() {
+        #expect(CollaborationTerminalShareAction.primaryAction(
+            role: .notShared,
+            workspaceHasSession: false,
+            directorySharingEnabled: false
+        ) == .presentSessionChooser)
+    }
+
     @Test(arguments: [
         (role: CollaborationSurfaceSharingRole.notShared, action: nil),
         (role: CollaborationSurfaceSharingRole.hosted, action: CollaborationTerminalShareAction.presentParticipantPicker),

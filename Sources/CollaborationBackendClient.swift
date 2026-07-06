@@ -95,10 +95,16 @@ struct CollaborationBackendClient {
     func createSession(
         accessToken: String,
         orgId: String,
-        relayURL: String?
+        relayURL: String?,
+        precreatedCode: String? = nil
     ) async throws -> CollaborationCreatedSession {
         var body: [String: String] = ["orgId": orgId]
         if let relayURL { body["relayURL"] = relayURL }
+        // A relay room the app already created from the user's machine, so its
+        // Durable Object is placed near the user instead of near www. Older
+        // www deployments ignore the extra field and create the room
+        // themselves (the previous, higher-latency behavior).
+        if let precreatedCode { body["code"] = precreatedCode }
         return try await post("api/collab/sessions", accessToken: accessToken, body: body)
     }
 

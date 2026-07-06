@@ -4165,6 +4165,21 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         return NSPoint(x: x * bounds.width, y: y * bounds.height)
     }
 
+    /// The terminal cursor position in view-local AppKit coordinates
+    /// (bottom-left origin), or nil while the surface isn't live. Used by the
+    /// mirror viewport to keep the host cursor visible inside a clipped pane.
+    func mirrorCursorPoint() -> NSPoint? {
+        guard let surface else { return nil }
+        var imeX: Double = 0
+        var imeY: Double = 0
+        var imeWidth: Double = 0
+        var imeHeight: Double = 0
+        ghostty_surface_ime_point(surface, &imeX, &imeY, &imeWidth, &imeHeight)
+        guard imeX.isFinite, imeY.isFinite else { return nil }
+        // The IME point is top-origin; flip into AppKit coordinates.
+        return NSPoint(x: CGFloat(imeX), y: bounds.height - CGFloat(imeY))
+    }
+
     private func terminalCollaboratorGridPadding() -> (top: CGFloat, left: CGFloat) {
         let scale = max(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1, 1)
         let padding = TerminalCollaboratorOverlayGeometry.defaultWindowPaddingPoints(
@@ -8798,6 +8813,22 @@ private final class GhosttyScrollView: NSScrollView {
         if window?.firstResponder !== surfaceView {
             window?.makeFirstResponder(surfaceView)
         }
+        // Mirror viewport mode: when the locked host grid is wider than the
+        // clip, the horizontal component pans the viewport across the grid.
+        // The vertical component keeps going to ghostty scrollback below.
+        if let gridSize = surfaceView.terminalSurface?.lockedMirrorGridPointSize(),
+           gridSize.width > contentView.bounds.width + 0.5 {
+            let deltaX = event.scrollingDeltaX
+            if abs(deltaX) > 0.01, let documentView {
+                let maxX = max(0, documentView.frame.width - contentView.bounds.width)
+                let currentOrigin = contentView.bounds.origin
+                let targetX = min(max(currentOrigin.x - deltaX, 0), maxX)
+                if abs(targetX - currentOrigin.x) > 0.01 {
+                    contentView.scroll(to: NSPoint(x: targetX, y: currentOrigin.y))
+                    reflectScrolledClipView(contentView)
+                }
+            }
+        }
         surfaceView.scrollWheel(with: event)
     }
 }
@@ -9944,11 +9975,30 @@ final class GhosttySurfaceScrollView: NSView {
 #if DEBUG
         logLayoutDuringActiveDrag(targetSize: targetSize)
 #endif
-        let targetSurfaceFrame = CGRect(origin: surfaceView.frame.origin, size: targetSize)
+        // Mirror viewport mode: a collaboration mirror locked to the host's
+        // grid sizes its surface view to the FULL grid even when the pane is
+        // smaller. The clip chain crops it and a pan offset (auto-following
+        // the host cursor, manually pannable) chooses the visible region --
+        // the mirror never runs a smaller, divergent grid and the viewer's
+        // font never shrinks.
+        let mirrorGridSize = surfaceView.terminalSurface?.lockedMirrorGridPointSize()
+        let surfaceTargetSize: CGSize
+        if let mirrorGridSize {
+            surfaceTargetSize = CGSize(
+                width: max(targetSize.width, mirrorGridSize.width),
+                height: max(targetSize.height, mirrorGridSize.height)
+            )
+        } else {
+            surfaceTargetSize = targetSize
+        }
+        let targetSurfaceFrame = CGRect(origin: surfaceView.frame.origin, size: surfaceTargetSize)
         _ = setFrameIfNeeded(surfaceView, to: targetSurfaceFrame)
+        // The document is as wide as the surface so a mirror viewport can
+        // scroll horizontally across the full host grid; identical to the
+        // scroll width for ordinary panes.
         let targetDocumentFrame = CGRect(
             origin: documentView.frame.origin,
-            size: CGSize(width: scrollView.bounds.width, height: documentView.frame.height)
+            size: CGSize(width: surfaceTargetSize.width, height: documentView.frame.height)
         )
         _ = setFrameIfNeeded(documentView, to: targetDocumentFrame)
         _ = setFrameIfNeeded(mobileViewportBorderOverlayView, to: bounds)
@@ -9992,6 +10042,11 @@ final class GhosttySurfaceScrollView: NSView {
         updateFlashAppearance(style: lastFlashStyle)
         synchronizeScrollView()
         synchronizeSurfaceView()
+        // A pane resize changes the mirror viewport's visible band; re-follow
+        // the host cursor so it stays on screen.
+        if surfaceView.terminalSurface?.lockedMirrorGrid != nil {
+            syncMirrorViewportFollow()
+        }
         let didCoreSurfaceChange = synchronizeCoreSurface()
         return !sizeApproximatelyEqual(previousSurfaceSize, targetSize) || didCoreSurfaceChange
     }
@@ -12288,13 +12343,91 @@ final class GhosttySurfaceScrollView: NSView {
         // Intentionally no-op (no retry loops).
     }
 
+    /// Mirror viewport vertical pan: how far the visible band is raised from
+    /// the BOTTOM of the full-grid mirror surface (0 = bottom-aligned, where
+    /// the prompt lives). Driven by cursor auto-follow, applied by
+    /// `synchronizeSurfaceView`.
+    private var mirrorViewportPanY: CGFloat = 0
+
+    /// Keeps the host cursor visible inside a mirror viewport whose pane is
+    /// smaller than the locked host grid: vertically by adjusting the
+    /// surface pan, horizontally by scrolling the clip across the wide
+    /// document. Called after mirror content applies and on pane resize.
+    func syncMirrorViewportFollow() {
+        guard let gridSize = surfaceView.terminalSurface?.lockedMirrorGridPointSize() else {
+            if mirrorViewportPanY != 0 {
+                mirrorViewportPanY = 0
+                synchronizeSurfaceView()
+            }
+            return
+        }
+        let clipSize = scrollView.contentView.bounds.size
+        guard clipSize.width > 0, clipSize.height > 0 else { return }
+        let cellWidth = max(surfaceView.cellSize.width, 1)
+        let cellHeight = max(surfaceView.cellSize.height, 1)
+        let cursor = surfaceView.mirrorCursorPoint()
+
+        // Vertical: the visible band of the tall surface is [pan, pan+clipH]
+        // in surface coordinates (bottom origin). Nudge the pan only when the
+        // cursor leaves the band's comfort margin, so small cursor motion
+        // doesn't jitter the viewport.
+        let overflowY = max(0, gridSize.height - clipSize.height)
+        if overflowY > 0, let cursor {
+            let marginY = min(cellHeight * 2, clipSize.height / 4)
+            var pan = min(mirrorViewportPanY, overflowY)
+            let visibleBottom = pan
+            let visibleTop = pan + clipSize.height
+            if cursor.y - cellHeight < visibleBottom + marginY {
+                pan = max(0, cursor.y - cellHeight - marginY)
+            } else if cursor.y > visibleTop - marginY {
+                pan = min(overflowY, cursor.y + marginY - clipSize.height)
+            }
+            mirrorViewportPanY = min(max(pan, 0), overflowY)
+        } else if mirrorViewportPanY != 0 || overflowY == 0 {
+            mirrorViewportPanY = 0
+        }
+        synchronizeSurfaceView()
+
+        // Horizontal: genuine clip scrolling across the grid-wide document.
+        let overflowX = max(0, gridSize.width - clipSize.width)
+        if overflowX > 0, let cursor {
+            let marginX = min(cellWidth * 4, clipSize.width / 4)
+            let currentX = scrollView.contentView.bounds.origin.x
+            var targetX = currentX
+            if cursor.x < currentX + marginX {
+                targetX = max(0, cursor.x - marginX)
+            } else if cursor.x > currentX + clipSize.width - marginX {
+                targetX = min(overflowX, cursor.x + marginX - clipSize.width)
+            }
+            if abs(targetX - currentX) > 0.5 {
+                scrollView.contentView.scroll(to: NSPoint(
+                    x: targetX,
+                    y: scrollView.contentView.bounds.origin.y
+                ))
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            }
+        }
+    }
+
     private func synchronizeSurfaceView() {
         let visibleRect = scrollView.contentView.documentVisibleRect
-        guard !pointApproximatelyEqual(surfaceView.frame.origin, visibleRect.origin) else { return }
+        var targetOrigin = visibleRect.origin
+        if surfaceView.terminalSurface?.lockedMirrorGridPointSize() != nil {
+            // Mirror viewport mode: the surface is the full host grid and can
+            // be larger than the clip. Horizontally the surface stays at x=0
+            // so clip scrolling genuinely pans across the grid. Vertically
+            // the surface keeps tracking the clip (scrollback stays a ghostty
+            // concern), offset by the auto-follow pan: pan 0 shows the
+            // BOTTOM of the tall grid (where the prompt lives), larger pans
+            // reveal rows toward the top.
+            targetOrigin.x = 0
+            targetOrigin.y = visibleRect.origin.y - mirrorViewportPanY
+        }
+        guard !pointApproximatelyEqual(surfaceView.frame.origin, targetOrigin) else { return }
 #if DEBUG
-        logDragGeometryChange(event: "surfaceOrigin", old: surfaceView.frame.origin, new: visibleRect.origin)
+        logDragGeometryChange(event: "surfaceOrigin", old: surfaceView.frame.origin, new: targetOrigin)
 #endif
-        surfaceView.frame.origin = visibleRect.origin
+        surfaceView.frame.origin = targetOrigin
     }
 
     /// Match upstream Ghostty behavior: use content area width (excluding non-content
@@ -12369,7 +12502,10 @@ final class GhosttySurfaceScrollView: NSView {
             if cellHeight > 0, let scrollbar = surfaceView.scrollbar {
                 let offsetY =
                     CGFloat(scrollbar.total - scrollbar.offset - scrollbar.len) * cellHeight
-                let targetOrigin = CGPoint(x: 0, y: offsetY)
+                // Preserve the clip's horizontal position: a mirror viewport
+                // pans across a document wider than the clip, and scrollback
+                // sync must not snap it back to the left edge.
+                let targetOrigin = CGPoint(x: scrollView.contentView.bounds.origin.x, y: offsetY)
 
                 // Check if we're currently at the bottom (with threshold for float drift)
                 let currentOrigin = scrollView.contentView.bounds.origin
@@ -12497,7 +12633,10 @@ final class GhosttySurfaceScrollView: NSView {
         let cellHeight = surfaceView.cellSize.height
         if cellHeight > 0, let scrollbar = surfaceView.scrollbar {
             let documentGridHeight = CGFloat(scrollbar.total) * cellHeight
-            let padding = contentHeight - (CGFloat(scrollbar.len) * cellHeight)
+            // Clamped: a mirror viewport's ghostty viewport (len rows) can be
+            // TALLER than the clip, which would make this negative and shrink
+            // the scrollback document below its true height.
+            let padding = max(0, contentHeight - (CGFloat(scrollbar.len) * cellHeight))
             return documentGridHeight + padding
         }
         return contentHeight
