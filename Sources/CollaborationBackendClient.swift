@@ -133,6 +133,14 @@ struct CollaborationBackendClient {
         return body.invites
     }
 
+    /// Like ``inbox(accessToken:)`` but asks www to probe each invite's relay room
+    /// and prune sessions that have ended, so the returned list only contains
+    /// joinable sessions. Used when the user opens the incoming-sessions picker.
+    func reconcileInbox(accessToken: String) async throws -> [CollaborationIncomingSession] {
+        let body: InboxBody = try await post("api/collab/inbox/reconcile", accessToken: accessToken, body: [:])
+        return body.invites
+    }
+
     /// Revoke a directory invite previously sent to `inviteeUserId` for the given
     /// signed session descriptor. Used when a session ends so the teammate's
     /// inbox stops surfacing an invite for a session that no longer exists.

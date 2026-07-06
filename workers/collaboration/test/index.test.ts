@@ -388,6 +388,58 @@ test("join route reports session_not_found for unknown valid codes", async () =>
   expect(namespace.stubs.get("5ZNHGF9P")?.fetchRequests).toHaveLength(1);
 });
 
+test("liveness route reports an active session's room as active", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+  const env = {
+    COLLABORATION_SESSIONS: namespace,
+  } satisfies CollaborationWorkerEnv;
+
+  const response = await collaborationFetch(
+    new Request("http://relay.test/v1/collaboration/sessions/5ZNHGF9P/metadata", { method: "GET" }),
+    env
+  );
+  const body = await response.json() as { active: boolean };
+
+  expect(response.status).toBe(200);
+  expect(body.active).toBe(true);
+});
+
+test("liveness route reports a swept session's room as inactive", async () => {
+  const namespace = new FakeSessionNamespace();
+  const env = {
+    COLLABORATION_SESSIONS: namespace,
+  } satisfies CollaborationWorkerEnv;
+
+  const response = await collaborationFetch(
+    new Request("http://relay.test/v1/collaboration/sessions/5ZNHGF9P/metadata", { method: "GET" }),
+    env
+  );
+  const body = await response.json() as { active: boolean };
+
+  expect(response.status).toBe(200);
+  expect(body.active).toBe(false);
+});
+
+test("liveness route addresses org-locked rooms verbatim without normalization", async () => {
+  const namespace = new FakeSessionNamespace();
+  const room = "org-deadbeefdeadbeefdeadbeefdeadbeef";
+  namespace.get(room).createdSessionCode = room;
+  const env = {
+    COLLABORATION_SESSIONS: namespace,
+  } satisfies CollaborationWorkerEnv;
+
+  const response = await collaborationFetch(
+    new Request(`http://relay.test/v1/collaboration/sessions/${room}/metadata`, { method: "GET" }),
+    env
+  );
+  const body = await response.json() as { active: boolean };
+
+  expect(response.status).toBe(200);
+  expect(body.active).toBe(true);
+  expect(namespace.stubs.get(room)?.fetchRequests).toHaveLength(1);
+});
+
 test("admin session index requires a token and lists recorded codes", async () => {
   const namespace = new FakeSessionNamespace();
   const indexNamespace = new FakeSessionIndexNamespace();

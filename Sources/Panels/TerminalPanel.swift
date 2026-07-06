@@ -695,6 +695,16 @@ final class TerminalPanel: Panel, ObservableObject {
         return surface.sendInputResult(text)
     }
 
+    /// Writes collaboration-received input bytes straight to the PTY, bypassing
+    /// the socket-input grammar so Kitty keyboard-protocol sequences from a
+    /// remote viewer reach the running program verbatim. See
+    /// ``TerminalSurface/sendCollaborationInputResult(_:)``.
+    @discardableResult
+    func sendCollaborationInputResult(_ data: Data) -> TerminalSurface.InputSendResult {
+        resumeForExplicitInputIfNeeded()
+        return surface.sendCollaborationInputResult(data)
+    }
+
     @discardableResult
     func sendNamedKeyResult(_ keyName: String) -> TerminalSurface.NamedKeySendResult {
         resumeForExplicitInputIfNeeded()
