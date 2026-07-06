@@ -33,11 +33,25 @@ struct AccountIdentityCard: View {
                 if flow?.isWorkingOnAuth == true {
                     ProgressView().controlSize(.small)
                 }
-                Button(action: buttonAction) {
-                    Text(buttonTitle)
+                if isCancellableSignIn {
+                    // A browser sign-in attempt is in flight. The user may have
+                    // closed the browser tab without completing sign-in, which
+                    // never signals the app, so offer an explicit Cancel to
+                    // escape the spinner instead of leaving the button disabled
+                    // until the attempt times out.
+                    Button(role: .cancel) {
+                        flow?.cancelSignIn()
+                    } label: {
+                        Text(String(localized: "settings.account.signIn.cancel", defaultValue: "Cancel"))
+                    }
+                    .controlSize(.small)
+                } else {
+                    Button(action: buttonAction) {
+                        Text(buttonTitle)
+                    }
+                    .controlSize(.small)
+                    .disabled(flow?.isWorkingOnAuth == true)
                 }
-                .controlSize(.small)
-                .disabled(flow?.isWorkingOnAuth == true)
             }
             if showSlowSignInFallback {
                 slowSignInFallback
@@ -53,6 +67,12 @@ struct AccountIdentityCard: View {
     /// an indefinite spinner.
     private var showSlowSignInFallback: Bool {
         flow?.signInIsSlow == true && flow?.currentIdentity == nil
+    }
+
+    /// A browser sign-in attempt is in flight while the user is still signed
+    /// out, so the trailing button becomes a Cancel affordance.
+    private var isCancellableSignIn: Bool {
+        flow?.currentIdentity == nil && flow?.isSigningIn == true
     }
 
     private var slowSignInFallback: some View {

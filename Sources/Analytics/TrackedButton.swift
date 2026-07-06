@@ -32,11 +32,8 @@ struct TrackedButton<Label: View>: View {
 
 // MARK: - Accent (yellow) control styles
 
-/// A prominent button style that fills with the app's yellow accent color and
-/// draws its label in black. The system default for accent/default-action
-/// buttons uses white text, which is hard to read on the yellow accent — any
-/// button whose primary background is the yellow accent should use this so the
-/// text stays legible.
+/// A prominent button style that fills with the app's accent color and draws
+/// its label in white so the text stays legible on the accent fill.
 struct MosaicAccentButtonStyle: ButtonStyle {
     let labelFontWeight: Font.Weight
 
@@ -56,7 +53,7 @@ struct MosaicAccentButtonStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .font(.system(size: 12, weight: labelFontWeight))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
                 .background(
@@ -70,10 +67,10 @@ struct MosaicAccentButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == MosaicAccentButtonStyle {
-    /// Yellow-accent prominent button with black (not white) label text.
+    /// Accent-filled prominent button with white label text.
     static var mosaicAccent: MosaicAccentButtonStyle { MosaicAccentButtonStyle() }
 
-    /// Yellow-accent prominent button with a regular-weight label.
+    /// Accent-filled prominent button with a regular-weight label.
     static var mosaicAccentRegular: MosaicAccentButtonStyle {
         MosaicAccentButtonStyle(labelFontWeight: .regular)
     }
@@ -123,9 +120,8 @@ extension ButtonStyle where Self == MosaicSecondaryButtonStyle {
     }
 }
 
-/// A checkbox toggle style that fills the box with the yellow accent when on and
-/// draws the checkmark in black, so the glyph stays legible on the yellow
-/// primary background (the native `.checkbox` style uses a white checkmark).
+/// A checkbox toggle style that fills the box with the accent color when on and
+/// draws the checkmark in white so the glyph stays legible on the accent fill.
 struct MosaicAccentCheckboxToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -146,7 +142,7 @@ struct MosaicAccentCheckboxToggleStyle: ToggleStyle {
                     if configuration.isOn {
                         Image(systemName: "checkmark")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.black)
+                            .foregroundStyle(.white)
                     }
                 }
                 configuration.label
@@ -158,7 +154,7 @@ struct MosaicAccentCheckboxToggleStyle: ToggleStyle {
 }
 
 extension ToggleStyle where Self == MosaicAccentCheckboxToggleStyle {
-    /// Yellow-accent checkbox with a black (not white) checkmark.
+    /// Accent-filled checkbox with a white checkmark.
     static var mosaicAccentCheckbox: MosaicAccentCheckboxToggleStyle { MosaicAccentCheckboxToggleStyle() }
 }
 
