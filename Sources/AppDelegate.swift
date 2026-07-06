@@ -1222,7 +1222,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             for url in authCallbacks {
                 Task { @MainActor in
                     let signedIn = await browserSignIn.handleCallbackURL(url)
-                    if !signedIn {
+                    if signedIn {
+                        self.focusMainWindowAfterAuthReturn()
+                    } else {
                         AuthDebugLog().log("auth.callback did not complete sign-in")
                     }
                 }
@@ -9091,6 +9093,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return mainWindowVisibilityController.focus(
             window,
             reason: .socketActivate,
+            activation: .runningApplication([.activateAllWindows]),
+            respectActivationSuppression: false
+        )
+    }
+
+    /// Brings the main terminal window forward after a browser sign-in returns
+    /// to the app. Both browser-return routes (the "Return to mosaic" deep link
+    /// and the localhost loopback auto-redirect) call this so the main window is
+    /// raised above the Account settings window instead of leaving only the
+    /// Account pane in front.
+    @discardableResult
+    func focusMainWindowAfterAuthReturn() -> Bool {
+        let window = preferredMainWindowForVisibilityActivation() ?? {
+            let windowId = ensureInitialMainWindowIfNeeded(shouldActivate: false)
+            return windowForMainWindowId(windowId)
+        }()
+        guard let window else { return false }
+        return mainWindowVisibilityController.focus(
+            window,
+            reason: .authCallback,
             activation: .runningApplication([.activateAllWindows]),
             respectActivationSuppression: false
         )

@@ -406,7 +406,12 @@ struct TerminalPanelView: View {
 
     private func terminalSessionPillLabel(state: CollaborationTerminalHeaderState) -> String {
         guard let sessionCode = state.workspaceSessionCode else {
-            return CollaborationStrings.startSession
+            // Directory-sharing (team/enterprise) orgs share directly with a
+            // teammate; the session is created silently behind the picker, so
+            // "Start session" would name a step that no longer exists.
+            return CollaborationRuntime.shared.collaborationEntitlements.directorySharing
+                ? CollaborationStrings.sharePill
+                : CollaborationStrings.startSession
         }
         return CollaborationStrings.sessionPillLabel(code: sessionCode, peerSummary: state.peerSummary)
     }
@@ -534,8 +539,39 @@ struct TerminalPanelView: View {
                     CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
                 }
             }
-            .help(agentRoomState.label)
+            .overlay(alignment: .leading) {
+                agentRoomDragHintPopup(isConnected: agentRoomState.isConnected)
+            }
             .animation(.easeOut(duration: 0.12), value: isPaneHovered)
+    }
+
+    @ViewBuilder
+    private func agentRoomDragHintPopup(isConnected: Bool) -> some View {
+        if isAgentRoomButtonHovered, !isConnected {
+            Text(CollaborationStrings.agentRoomDragHint)
+                .mosaicFont(size: 11, weight: .regular)
+                .foregroundStyle(Color.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .strokeBorder(Color.gray.opacity(0.35), lineWidth: 1)
+                        )
+                )
+                .fixedSize()
+                // Float rightward past the port so the hint sits to its right
+                // without shifting header layout or clipping the ring. The overlay
+                // aligns to the button's leading edge, so a positive x-offset the
+                // width of the port (plus a gap) clears the ring entirely.
+                .offset(x: AgentRoomWireMetrics.hitTargetSize + 6)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+                .animation(.easeOut(duration: 0.1), value: isAgentRoomButtonHovered)
+                .zIndex(3)
+        }
     }
 
     private func agentRoomCircleColor(state: AgentRoomHeaderState) -> Color {
@@ -710,7 +746,7 @@ private struct TerminalCollaborationSessionPopoverContent: View {
                 // Ends only *your* participation: stops sharing every terminal you host in
                 // this session and disconnects you. Other people's shared terminals are
                 // untouched. The pill reverts to "Start session" once this clears the binding.
-                TrackedButton("session_end", CollaborationStrings.endSession) {
+                TrackedButton("session_end", CollaborationStrings.leaveSession) {
                     onLeave()
                 }
                 .buttonStyle(.mosaicSecondaryRegular)
@@ -993,7 +1029,7 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .crosshair)
+        addCursorRect(bounds, cursor: .openHand)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -1096,12 +1132,12 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
 
     private func pushClosedHandCursorIfNeeded() {
         guard !closedHandCursorPushed else { return }
-        NSCursor.crosshair.push()
+        NSCursor.closedHand.push()
         closedHandCursorPushed = true
     }
 
     private var activeCursor: NSCursor {
-        .crosshair
+        .openHand
     }
 
     private func popClosedHandCursorIfNeeded() {
@@ -1191,10 +1227,10 @@ private final class AgentRoomWireAnchorView: NSView {
 }
 
 private enum AgentRoomWireMetrics {
-    static let dotSize: CGFloat = 12
-    static let ringWidth: CGFloat = 2
+    static let dotSize: CGFloat = 14
+    static let ringWidth: CGFloat = 1.5
     /// Invisible padded footprint around the ring that acts as the grab target.
-    static let hitTargetSize: CGFloat = 20
+    static let hitTargetSize: CGFloat = 22
 
     /// The ring is centered inside the hit-target frame, so the wire's start
     /// and end points are simply the center of the anchor view's bounds.

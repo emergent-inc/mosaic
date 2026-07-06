@@ -20,6 +20,23 @@ struct AgentRoomDisplayPaletteTests {
     }
 
     @Test
+    func displayNumberStaysStableWhenAnotherRoomEmpties() {
+        // Persistent first-seen wiring order: room-1 was wired before room-2.
+        let persistentOrder = ["room-1", "room-2"]
+
+        // room-1 has since emptied (its last pane was wired elsewhere) and only
+        // room-2 remains populated. Numbering must follow the persistent order,
+        // so room-2 keeps display number 2 rather than being relabeled to 1.
+        #expect(AgentRoomDisplayPalette.displayNumber(for: "room-2", orderedRoomIDs: persistentOrder) == 2)
+
+        // Contrast with the previous behavior: computing the number over only
+        // currently-populated rooms renumbered survivors, which made a wire that
+        // merged every pane into one room read "Room 1" instead of "Room 2".
+        let populatedOnly = persistentOrder.filter { $0 == "room-2" }
+        #expect(AgentRoomDisplayPalette.displayNumber(for: "room-2", orderedRoomIDs: populatedOnly) == 1)
+    }
+
+    @Test
     func paletteIndexTracksDisplayNumber() {
         #expect(AgentRoomDisplayPalette.paletteIndex(forDisplayNumber: 1) == 0)
         #expect(AgentRoomDisplayPalette.paletteIndex(forDisplayNumber: 2) == 1)
