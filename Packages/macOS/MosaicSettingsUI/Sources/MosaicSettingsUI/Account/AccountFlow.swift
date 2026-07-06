@@ -28,6 +28,15 @@ public protocol AccountFlow: AnyObject {
     /// this is `true`.
     var isWorkingOnAuth: Bool { get }
 
+    /// Whether a browser sign-in attempt is currently in flight. Distinct
+    /// from ``isWorkingOnAuth`` (which also covers session restore and
+    /// sign-out): only a live sign-in attempt is cancellable, so the UI shows
+    /// a Cancel affordance when this is `true`. The user may have closed the
+    /// browser tab without completing sign-in, which sends no signal back to
+    /// the app, so an explicit cancel is the only way to escape the spinner
+    /// short of the attempt timeout.
+    var isSigningIn: Bool { get }
+
     /// Whether an in-flight sign-in has been waiting on the system sign-in
     /// window long enough to offer a fallback. On macOS that window is always
     /// Safari-backed and can hang without ever redirecting back, so the UI
@@ -39,6 +48,11 @@ public protocol AccountFlow: AnyObject {
     /// progress indicator while ``isWorkingOnAuth`` is `true` and
     /// re-reads ``currentIdentity`` when the flow resolves.
     func startSignIn()
+
+    /// Cancels an in-flight sign-in attempt, resetting the UI to the
+    /// signed-out idle state. A no-op when no attempt is in flight
+    /// (``isSigningIn`` is `false`).
+    func cancelSignIn()
 
     /// Opens the in-flight sign-in in the user's default browser as a fallback
     /// when the system sign-in window hangs (``signInIsSlow``). The browser

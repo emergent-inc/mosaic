@@ -9,7 +9,7 @@ enum MosaicChromePalette {
     static let selectedSurfaceHex = "#202020CC"
     static let selectedSidebarRowHex = "#1C1C1C"
     static let borderHex = "#303030"
-    static let accentHex = "#FF9F0A"
+    static let accentHex = "#206FFF"
 
     static let sidebarBackgroundColor = NSColor(hex: sidebarBackgroundHex) ?? .black
     static let workspaceBackgroundColor = NSColor(hex: workspaceBackgroundHex) ?? .black

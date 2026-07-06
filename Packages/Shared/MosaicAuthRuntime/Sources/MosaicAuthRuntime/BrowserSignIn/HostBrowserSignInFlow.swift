@@ -71,6 +71,21 @@ public final class HostBrowserSignInFlow {
         _ = startAttempt()
     }
 
+    /// Cancel an in-flight browser sign-in attempt on the user's request.
+    ///
+    /// The production flow opens hosted sign-in in the user's real browser and
+    /// waits on a localhost loopback listener. If the user closes the browser
+    /// tab without completing sign-in there is no signal back to the app, so
+    /// the attempt would otherwise sit spinning until the (multi-minute)
+    /// attempt timeout. This resets the flow to the signed-out idle state
+    /// immediately without touching the coordinator's session. A no-op when no
+    /// attempt is in flight.
+    public func cancelSignIn() {
+        guard isSigningIn else { return }
+        log.log("auth.browser.cancelSignIn activeAttempt=\(activeAttemptID.map(String.init) ?? "nil")")
+        cancelActiveAttempt()
+    }
+
     /// The hosted sign-in URL for manual fallback when the browser handoff does
     /// not return to the native app.
     public var manualSignInURL: URL {

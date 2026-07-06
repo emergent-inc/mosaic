@@ -34475,34 +34475,30 @@ export default MosaicSessionRestore;
 
         let isDark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
 
-        let c1 = trueColor(0, 212, 255)
-        let c2 = trueColor(24, 181, 250)
-        let c3 = trueColor(48, 150, 245)
-        let c4 = trueColor(72, 119, 241)
-        let c5 = trueColor(96, 88, 239)
-        let c6 = trueColor(110, 73, 238)
-        let c7 = trueColor(124, 58, 237)
-
-        let tagline: String
         let subdued: String
-
         if isDark {
-            tagline = trueColor(130, 130, 140)
             subdued = "\u{001B}[2m"
         } else {
-            tagline = trueColor(90, 90, 98)
             subdued = trueColor(100, 100, 108)
         }
 
-        let logo = """
-        \(c1)  ::\(reset)
-        \(c2)    ::::\(reset)              \(c1)m\(c2)o\(c3)s\(c4)a\(c5)i\(c6)c\(reset)
-        \(c3)      ::::::\(reset)
-        \(c4)        ::::::\(reset)        \(tagline)the open source terminal\(reset)
-        \(c5)      ::::::\(reset)          \(tagline)built for coding agents\(reset)
-        \(c6)    ::::\(reset)
-        \(c7)  ::\(reset)
-        """
+        let bannerLines = [
+            #"     ____                                                       "#,
+            #"   ,'  , `.                                                     "#,
+            #",-+-,.' _ |                                    ,--,             "#,
+            #",-+-. ;   , ||   ,---.                          ,--.'|          "#,
+            #",--.'|'   |  ;|  '   ,'\   .--.--.               |  |,          "#,
+            #"|   |  ,', |  ': /   /   | /  /    '    ,--.--.   `--'_       ,---."#,
+            #"|   | /  | |  ||.   ; ,. :|  :  /`./   /       \  ,' ,'|     /     \"#,
+            #"'   | :  | :  |,'   | |: :|  :  ;_    .--.  .-. | '  | |    /    / '"#,
+            #";   . |  ; |--' '   | .; : \  \    `.  \__\/: . . |  | :   .    ' /"#,
+            #"|   : |  | ,    |   :    |  `----.   \ ," .--.; | '  : |__ '   ; :__"#,
+            #"|   : '  |/      \   \  /  /  /`--'  //  /  ,.  | |  | '.'|'   | '.'|"#,
+            #";   | |`-'        `----'  '--'.     /;  :   .'   \;  :    ;|   :    :"#,
+            #"|   ;/                      `--'---' |  ,     .-./|  ,   /  \   \  /"#,
+            #"'---'                                 `--`---'     ---`-'    `----'"#,
+        ]
+        let logo = bannerLines.map { "  \($0)" }.joined(separator: "\n")
 
         let shortcuts = """
           \(bold)Shortcuts\(reset)
@@ -34526,9 +34522,7 @@ export default MosaicSessionRestore;
         print()
         print(shortcuts)
         print()
-        print("  \(bold)Docs\(reset)\(subdued)                https://mosaic.inc/docs\(reset)")
         print("  \(bold)Discord\(reset)\(subdued)             https://discord.gg/zmWHDeZffZ\(reset)")
-        print("  \(bold)GitHub\(reset)\(subdued)              https://github.com/emergent-inc/mosaic (please leave a star ⭐)\(reset)")
         print("  \(bold)Email\(reset)\(subdued)               contact@emergent.inc\(reset)")
         print()
         print("  \(subdued)Run \(reset)\(bold)mosaic --help\(reset)\(subdued) for all commands.\(reset)")

@@ -32,23 +32,23 @@ import Testing
     }
 
     @Test(arguments: ["Sign In", "Join Session", "Copy Code"])
-    func collaborationAccentAlertButtonsUseBlackTitleTint(title: String) throws {
+    func collaborationAccentAlertButtonsUseWhiteTitleTint(title: String) throws {
         let button = NSButton(title: title, target: nil, action: nil)
 
         applyCollaborationAccentAlertButtonTitleStyle(button)
 
-        #expect(button.contentTintColor == .black)
+        #expect(button.contentTintColor == .white)
 
         let foreground = try #require(
             button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
         )
-        #expect(foreground == .black)
+        #expect(foreground == .white)
 
         let cell = try #require(button.cell as? NSButtonCell)
         let cellForeground = try #require(
             cell.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
         )
-        #expect(cellForeground == .black)
+        #expect(cellForeground == .white)
     }
 
     @Test func joinAcknowledgementSucceedsWhenRelayJoinedFrameArrives() async {

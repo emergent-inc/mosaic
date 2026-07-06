@@ -3126,7 +3126,13 @@ final class Workspace: Identifiable, ObservableObject {
                 workspaceId: id,
                 context: GHOSTTY_SURFACE_CONTEXT_TAB,
                 configTemplate: resolvedConfigTemplate,
-                workingDirectory: hasWorkingDirectory ? trimmedWorkingDirectory : nil,
+                // Always pass a concrete directory (falling back to home via
+                // `initialDirectory`) so the spawned shell matches the
+                // workspace's `currentDirectory`. A nil working directory makes
+                // Ghostty inherit the app process cwd, which is "/" for a
+                // Finder/Dock-launched GUI app — the "new workspace opened in
+                // the root directory" bug.
+                workingDirectory: initialDirectory,
                 portOrdinal: portOrdinal,
                 initialCommand: initialTerminalCommand,
                 initialInput: initialTerminalInput,
