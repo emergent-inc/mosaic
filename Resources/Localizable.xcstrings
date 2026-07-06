@@ -38559,7 +38559,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "cmux agent-room reset: unexpected argument '%@'"
+            "value": "mosaic agent-room reset: unexpected argument '%@'"
           }
         }
       }
@@ -38647,7 +38647,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux agent-room <status|create|connect|disconnect|reset|post|digest>"
+            "value": "Usage: mosaic agent-room <status|create|connect|disconnect|reset|post|digest>"
           }
         }
       }

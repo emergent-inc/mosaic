@@ -95,6 +95,13 @@ export async function collaborationFetch(
     return notifyInbox(request, env);
   }
 
+  const metadataMatch = url.pathname.match(
+    /^\/v1\/collaboration\/sessions\/([^/]+)\/metadata$/,
+  );
+  if (metadataMatch && request.method === "GET") {
+    return sessionLiveness(decodeURIComponent(metadataMatch[1]), env);
+  }
+
   const match = url.pathname.match(
     /^\/v1\/collaboration\/sessions\/([^/]+)\/connect$/,
   );
@@ -108,6 +115,35 @@ export async function collaborationFetch(
   }
 
   return json({ error: "not_found" }, 404);
+}
+
+// Report whether a session's relay room still exists, so www can prune stale
+// directory invites that point at a room whose Durable Object has been idle-swept.
+// The room is addressed verbatim (as connect/create do via idFromName): code
+// rooms are already normalized uppercase, and org-locked rooms ("org-<hex>")
+// are not typeable codes and must not be run through normalizeSessionCode.
+async function sessionLiveness(
+  room: string,
+  env: CollaborationWorkerEnv,
+): Promise<Response> {
+  const trimmed = room.trim();
+  if (trimmed === "" || trimmed.length > 256) {
+    return json({ error: "invalid_session_code" }, 400);
+  }
+  const stub = env.COLLABORATION_SESSIONS.get(
+    env.COLLABORATION_SESSIONS.idFromName(trimmed),
+  );
+  try {
+    const response = await stub.fetch(
+      new Request("https://mosaic-collaboration-session.local/metadata", {
+        method: "GET",
+      }),
+    );
+    return json({ active: response.ok });
+  } catch {
+    // Treat a probe failure as "unknown"; callers fail open rather than prune.
+    return json({ error: "liveness_unavailable" }, 502);
+  }
 }
 
 // Best-effort user identity: the inbox channel only nudges clients to refetch
