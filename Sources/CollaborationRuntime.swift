@@ -1664,14 +1664,14 @@ final class CollaborationRuntime {
     /// Existing-session entry: share an already-live session with a teammate.
     /// Requires an active connection (the session pill and recipient popovers
     /// only surface this once a session exists).
-    func presentTeammateDirectorySharePicker() {
+    func presentTeammateDirectorySharePicker(onCancel: (@MainActor () async -> Void)? = nil) {
         guard activeConnection != nil else {
             lastErrorMessage = CollaborationStrings.shareWithTeammateNoSession
             NSSound.beep()
             return
         }
         Task { @MainActor in
-            await runTeammateDirectorySharePicker(pendingSession: nil)
+            await runTeammateDirectorySharePicker(pendingSession: nil, onCancel: onCancel)
         }
     }
 
@@ -1682,19 +1682,32 @@ final class CollaborationRuntime {
     /// sending the invite. This keeps the NSAlert off the relay-connect
     /// critical path. `pendingSession` resolves to whether the concurrent
     /// create + connect established a live connection.
-    func presentTeammateDirectorySharePicker(pendingSession: Task<Bool, Never>) {
+    func presentTeammateDirectorySharePicker(
+        pendingSession: Task<Bool, Never>,
+        onCancel: (@MainActor () async -> Void)? = nil
+    ) {
         Task { @MainActor in
-            await runTeammateDirectorySharePicker(pendingSession: pendingSession)
+            await runTeammateDirectorySharePicker(pendingSession: pendingSession, onCancel: onCancel)
         }
     }
 
     /// Shared picker core. When `pendingSession` is non-nil the session is
     /// being created concurrently, so the invite waits on it after selection;
     /// when nil the caller already guaranteed a live `activeConnection`.
+    ///
+    /// `onCancel` runs whenever the picker is dismissed without sending an
+    /// invite (Cancel, Escape, or an empty directory). Create-path callers use
+    /// it to tear down the session/share they kicked off concurrently, so that
+    /// declining the picker leaves nothing shared. Existing-session callers
+    /// pass nil: dismissing must not end a session that was already live.
     @MainActor
-    private func runTeammateDirectorySharePicker(pendingSession: Task<Bool, Never>?) async {
+    private func runTeammateDirectorySharePicker(
+        pendingSession: Task<Bool, Never>?,
+        onCancel: (@MainActor () async -> Void)? = nil
+    ) async {
         let members = await loadDirectoryMembers()
         guard !members.isEmpty else {
+            await onCancel?()
             CollaborationMessagePanel(
                 title: CollaborationStrings.shareWithTeammateTitle,
                 message: CollaborationStrings.directoryEmpty,
@@ -1718,7 +1731,10 @@ final class CollaborationRuntime {
             alert.addButton(withTitle: CollaborationStrings.cancelButton)
         )
         guard alert.runModal() == .alertFirstButtonReturn,
-              let userID = popup.selectedItem?.representedObject as? String else { return }
+              let userID = popup.selectedItem?.representedObject as? String else {
+            await onCancel?()
+            return
+        }
         // On the create path the session may still be connecting (though it has
         // usually finished during the picker's own modal run loop). Wait for it
         // before inviting; the progress panel only surfaces if the wait exceeds
@@ -4330,7 +4346,19 @@ final class CollaborationRuntime {
                 _ = await self.performCreateSessionConnectShare(terminal: terminal)
                 return self.activeConnection != nil
             }
-            presentTeammateDirectorySharePicker(pendingSession: sessionTask)
+            presentTeammateDirectorySharePicker(
+                pendingSession: sessionTask,
+                onCancel: { [weak self, weak terminal] in
+                    // Cancel means "don't share". The session create + terminal
+                    // share ran concurrently with the picker, so wait for that
+                    // work to settle, then tear the session back down. Otherwise
+                    // declining the picker would leave a live session with the
+                    // terminal still shared.
+                    _ = await sessionTask.value
+                    guard let self, let terminal else { return }
+                    self.leaveWorkspaceSession(for: terminal)
+                }
+            )
         } else {
             let response = await performCreateSessionConnectShare(terminal: terminal)
             if let response {
@@ -7703,13 +7731,13 @@ func applyCollaborationAccentAlertButtonTitleStyle(_ button: NSButton, font: NSF
     let title = NSAttributedString(
         string: button.title,
         attributes: [
-            .foregroundColor: NSColor.black,
+            .foregroundColor: NSColor.white,
             .paragraphStyle: paragraph,
             .font: resolvedFont,
         ]
     )
     button.font = resolvedFont
-    button.contentTintColor = .black
+    button.contentTintColor = .white
     button.attributedTitle = title
     button.attributedAlternateTitle = title
     if let cell = button.cell as? NSButtonCell {

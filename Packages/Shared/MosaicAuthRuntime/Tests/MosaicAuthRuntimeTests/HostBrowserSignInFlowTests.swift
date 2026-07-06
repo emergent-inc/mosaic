@@ -71,6 +71,60 @@ import Testing
         #expect(harness.coordinator.isAuthenticated == false)
     }
 
+    @Test func cancelSignInResetsInFlightAttempt() async {
+        // The production flow opens hosted sign-in in the user's real browser
+        // and waits on a localhost loopback listener. If the user closes the
+        // browser tab without completing sign-in, nothing signals the app, so
+        // the attempt would sit spinning until the multi-minute attempt
+        // timeout. A user-driven cancel must reset the flow immediately.
+        let harness = HostBrowserSignInFlowHarness()
+
+        harness.flow.beginSignIn()
+        await harness.waitForSession()
+        #expect(harness.flow.isSigningIn)
+
+        harness.flow.cancelSignIn()
+
+        #expect(harness.flow.isSigningIn == false)
+        #expect(harness.factory.sessions[0].cancelled)
+        #expect(harness.coordinator.isAuthenticated == false)
+        #expect(harness.flow.lastFailure == nil)
+    }
+
+    @Test func cancelSignInDropsLateCallbackForCancelledAttempt() async {
+        // After the user cancels, a callback that still trickles in for the
+        // cancelled attempt (e.g. they completed sign-in in the browser after
+        // clicking Cancel) must not resurrect the session — the explicit
+        // cancel wins.
+        let user = MosaicAuthUser(id: "u1", primaryEmail: "a@b.com", displayName: "A")
+        let harness = HostBrowserSignInFlowHarness(user: user)
+
+        harness.flow.beginSignIn()
+        await harness.waitForSession()
+        let session = harness.factory.sessions[0]
+        let state = harness.callbackState(session)
+
+        harness.flow.cancelSignIn()
+        #expect(harness.flow.isSigningIn == false)
+
+        let callbackResult = await harness.flow.handleCallbackURL(harness.callbackURL(state: state))
+
+        #expect(callbackResult == false)
+        #expect(harness.coordinator.isAuthenticated == false)
+        #expect(await harness.tokenStore.getStoredRefreshToken() == nil)
+        #expect(await harness.tokenStore.getStoredAccessToken() == nil)
+    }
+
+    @Test func cancelSignInWithNoAttemptIsNoOp() async {
+        let harness = HostBrowserSignInFlowHarness()
+
+        #expect(harness.flow.isSigningIn == false)
+        harness.flow.cancelSignIn()
+        #expect(harness.flow.isSigningIn == false)
+        #expect(harness.coordinator.isAuthenticated == false)
+        #expect(harness.factory.sessions.isEmpty)
+    }
+
     @Test func newAttemptCancelsPreviousPopup() async {
         let harness = HostBrowserSignInFlowHarness()
 
