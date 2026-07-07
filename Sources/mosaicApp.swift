@@ -2469,8 +2469,7 @@ private final class SidebarDebugWindowController: ReleasingWindowController {
 private struct AboutPanelView: View {
     @Environment(\.openURL) private var openURL
 
-    private let githubURL = URL(string: "https://github.com/emergent-inc/mosaic")
-    private let docsURL = URL(string: "https://mosaic.com/docs")
+    private let websiteURL = URL(string: "https://mosaic.inc")
 
     private var version: String? { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String }
     private var build: String? { Bundle.main.infoDictionary?["CFBundleVersion"] as? String }
@@ -2496,12 +2495,6 @@ private struct AboutPanelView: View {
                     Text(String(localized: "about.appName", defaultValue: "mosaic"))
                         .mosaicFont(.title)
                         .bold()
-                    Text(String(localized: "about.description", defaultValue: "A Ghostty-based terminal with vertical tabs\nand a notification panel for macOS."))
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .mosaicFont(.caption)
-                        .tint(.secondary)
-                        .opacity(0.8)
                 }
                 .textSelection(.enabled)
 
@@ -2521,18 +2514,10 @@ private struct AboutPanelView: View {
                 .frame(maxWidth: .infinity)
 
                 HStack(spacing: 8) {
-                    if let url = docsURL {
-                        Button(String(localized: "about.docs", defaultValue: "Docs")) {
+                    if let url = websiteURL {
+                        Button(String(localized: "about.website", defaultValue: "Website")) {
                             openURL(url)
                         }
-                    }
-                    if let url = githubURL {
-                        Button(String(localized: "about.github", defaultValue: "GitHub")) {
-                            openURL(url)
-                        }
-                    }
-                    Button(String(localized: "about.licenses", defaultValue: "Licenses")) {
-                        AcknowledgmentsWindowController.shared.show()
                     }
                 }
 

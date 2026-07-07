@@ -63,6 +63,9 @@ enum TutorialVideoStyle {
     static let cornerRadius: CGFloat = 16
     static let fallbackVideoSize = CGSize(width: 960, height: 620)
     static let popupPreferredScale: CGFloat = 0.62
+    /// Hard cap on the video area width so the popup stays a modest, non-distracting card
+    /// even for high-resolution source videos on large displays.
+    static let maxVideoWidth: CGFloat = 440
     /// Horizontal space consumed by the card padding around the video area.
     static let cardHorizontalChrome: CGFloat = 48
     /// Vertical space consumed by the card header, footer, and padding around the video area.
@@ -123,7 +126,7 @@ struct TutorialVideoView: View {
     let cornerRadius: CGFloat
     let onClose: () -> Void
 
-    @State private var isPlaying = false
+    @State private var isPlaying = true
     @State private var poster: NSImage?
 
     private let title = String(localized: "tutorial.video.title", defaultValue: "Welcome to Mosaic")
@@ -144,13 +147,15 @@ struct TutorialVideoView: View {
                 )
             footer
         }
+        .frame(width: videoAreaSize.width)
         .padding(24)
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius + 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius + 8, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
+        .fixedSize()
         .accessibilityIdentifier("TutorialVideoWindowContent")
         .onAppear {
             if poster == nil {
@@ -160,21 +165,20 @@ struct TutorialVideoView: View {
     }
 
     private var cardBackground: some View {
-        ZStack {
-            Rectangle().fill(.regularMaterial)
-            Rectangle().fill(Color(nsColor: .windowBackgroundColor).opacity(0.5))
-        }
+        Color(red: 0.11, green: 0.11, blue: 0.12)
     }
 
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color(nsColor: .labelColor))
+            VStack(alignment: .leading, spacing: 6) {
+                Image("MosaicLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 26)
+                    .accessibilityLabel(Text(title))
                 Text(subtitle)
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                    .foregroundStyle(Color.white.opacity(0.62))
             }
             Spacer(minLength: 12)
             closeButton
@@ -247,16 +251,16 @@ struct TutorialVideoView: View {
         HStack(spacing: 6) {
             Text(keys)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color(nsColor: .labelColor))
+                .foregroundStyle(Color.white.opacity(0.92))
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color(nsColor: .separatorColor).opacity(0.35))
+                        .fill(Color.white.opacity(0.1))
                 )
             Text(label)
                 .font(.system(size: 12))
-                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                .foregroundStyle(Color.white.opacity(0.55))
         }
     }
 
@@ -265,11 +269,11 @@ struct TutorialVideoView: View {
         return Button(action: onClose) {
             Image(systemName: "xmark")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                .foregroundStyle(Color.white.opacity(0.7))
                 .frame(width: 28, height: 28)
                 .background(
                     Circle()
-                        .fill(Color(nsColor: .separatorColor).opacity(0.35))
+                        .fill(Color.white.opacity(0.12))
                 )
                 .contentShape(Circle())
         }
@@ -307,7 +311,7 @@ private struct TutorialVideoPlayerView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> AVPlayerView {
         let view = DraggableAVPlayerView()
-        view.controlsStyle = .floating
+        view.controlsStyle = .inline
         view.showsFullScreenToggleButton = true
         view.videoGravity = .resizeAspect
         view.wantsLayer = true
@@ -340,6 +344,7 @@ private struct TutorialVideoPlayerView: NSViewRepresentable {
             player?.pause()
             currentURL = url
             let player = AVPlayer(url: url)
+            player.isMuted = true
             self.player = player
             view.player = player
             player.play()
