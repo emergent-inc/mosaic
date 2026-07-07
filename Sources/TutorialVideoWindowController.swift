@@ -63,6 +63,10 @@ enum TutorialVideoStyle {
     static let cornerRadius: CGFloat = 16
     static let fallbackVideoSize = CGSize(width: 960, height: 620)
     static let popupPreferredScale: CGFloat = 0.62
+    /// Horizontal space consumed by the card padding around the video area.
+    static let cardHorizontalChrome: CGFloat = 48
+    /// Vertical space consumed by the card header, footer, and padding around the video area.
+    static let cardVerticalChrome: CGFloat = 176
 }
 
 enum TutorialVideoResource {
@@ -98,46 +102,178 @@ enum TutorialVideoResource {
         }
         return size
     }
+
+    /// A still frame extracted a moment into the video, used as a non-playing poster.
+    static func posterImage(url: URL? = videoURL()) -> NSImage? {
+        guard let url else { return nil }
+        let asset = AVURLAsset(url: url)
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        let time = CMTime(seconds: 1, preferredTimescale: 600)
+        guard let cgImage = try? generator.copyCGImage(at: time, actualTime: nil) else {
+            return nil
+        }
+        return NSImage(cgImage: cgImage, size: .zero)
+    }
 }
 
 struct TutorialVideoView: View {
     let videoURL: URL?
+    let videoAreaSize: CGSize
     let cornerRadius: CGFloat
     let onClose: () -> Void
 
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            if let videoURL {
-                TutorialVideoPlayerView(url: videoURL, cornerRadius: cornerRadius)
-                    .accessibilityIdentifier("TutorialVideoPlayer")
-            } else {
-                TutorialVideoMissingResourceView()
-            }
+    @State private var isPlaying = false
+    @State private var poster: NSImage?
 
+    private let title = String(localized: "tutorial.video.title", defaultValue: "Welcome to Mosaic")
+    private let subtitle = String(
+        localized: "tutorial.video.subtitle",
+        defaultValue: "A quick tour of the essentials"
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            header
+            videoArea
+                .frame(width: videoAreaSize.width, height: videoAreaSize.height)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+            footer
+        }
+        .padding(24)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius + 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius + 8, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+        )
+        .accessibilityIdentifier("TutorialVideoWindowContent")
+        .onAppear {
+            if poster == nil {
+                poster = TutorialVideoResource.posterImage(url: videoURL)
+            }
+        }
+    }
+
+    private var cardBackground: some View {
+        ZStack {
+            Rectangle().fill(.regularMaterial)
+            Rectangle().fill(Color(nsColor: .windowBackgroundColor).opacity(0.5))
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .labelColor))
+                Text(subtitle)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+            }
+            Spacer(minLength: 12)
             closeButton
         }
+    }
+
+    @ViewBuilder
+    private var videoArea: some View {
+        if let videoURL {
+            ZStack {
+                Color.black
+                if isPlaying {
+                    TutorialVideoPlayerView(url: videoURL, cornerRadius: cornerRadius)
+                        .accessibilityIdentifier("TutorialVideoPlayer")
+                } else {
+                    posterView
+                }
+            }
+        } else {
+            TutorialVideoMissingResourceView()
+                .background(Color(nsColor: .windowBackgroundColor))
+        }
+    }
+
+    private var posterView: some View {
+        let label = String(localized: "tutorial.video.play", defaultValue: "Play tutorial video")
+        return ZStack {
+            if let poster {
+                Image(nsImage: poster)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            }
+            Button(action: { isPlaying = true }) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Color.black.opacity(0.82))
+                    .frame(width: 76, height: 76)
+                    .background(Circle().fill(Color.white.opacity(0.92)))
+                    .shadow(color: Color.black.opacity(0.28), radius: 14, x: 0, y: 6)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .safeHelp(label)
+            .accessibilityLabel(label)
+            .accessibilityIdentifier("TutorialVideoPlayButton")
+            .mosaicCursorOnHover(.pointingHand)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .accessibilityIdentifier("TutorialVideoWindowContent")
+    }
+
+    private var footer: some View {
+        HStack(spacing: 18) {
+            shortcutHint(
+                keys: "\u{2318}N",
+                label: String(localized: "tutorial.video.hint.newWorkspace", defaultValue: "New workspace")
+            )
+            shortcutHint(
+                keys: "\u{2318}T",
+                label: String(localized: "tutorial.video.hint.newTab", defaultValue: "New tab")
+            )
+            shortcutHint(
+                keys: "\u{2318}\u{21E7}P",
+                label: String(localized: "tutorial.video.hint.commandPalette", defaultValue: "Command palette")
+            )
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func shortcutHint(keys: String, label: String) -> some View {
+        HStack(spacing: 6) {
+            Text(keys)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color(nsColor: .labelColor))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color(nsColor: .separatorColor).opacity(0.35))
+                )
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+        }
     }
 
     private var closeButton: some View {
         let label = String(localized: "tutorial.video.close", defaultValue: "Close tutorial video")
         return Button(action: onClose) {
             Image(systemName: "xmark")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.86))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .frame(width: 28, height: 28)
                 .background(
                     Circle()
-                        .fill(Color.white.opacity(0.86))
+                        .fill(Color(nsColor: .separatorColor).opacity(0.35))
                 )
-                .shadow(color: Color.black.opacity(0.18), radius: 8, x: 0, y: 2)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .padding(10)
         .safeHelp(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier("TutorialVideoCloseButton")

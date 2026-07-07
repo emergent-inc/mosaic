@@ -35727,6 +35727,39 @@
         }
       }
     },
+    "tutorial.video.hint.commandPalette": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command palette"
+          }
+        }
+      }
+    },
+    "tutorial.video.hint.newTab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New tab"
+          }
+        }
+      }
+    },
+    "tutorial.video.hint.newWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New workspace"
+          }
+        }
+      }
+    },
     "tutorial.video.missing": {
       "extractionState": "manual",
       "localizations": {
@@ -35734,6 +35767,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "The tutorial video is missing from this app build."
+          }
+        }
+      }
+    },
+    "tutorial.video.play": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play tutorial video"
+          }
+        }
+      }
+    },
+    "tutorial.video.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quick tour of the essentials"
+          }
+        }
+      }
+    },
+    "tutorial.video.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Mosaic"
           }
         }
       }

@@ -43,6 +43,28 @@ public struct UpdatePill: View {
                 showPopover = false
             }
         }
+        .onChange(of: model.pendingAutoPresentVersion) { _, _ in
+            presentAutoDetectedUpdateIfNeeded()
+        }
+        .onAppear {
+            presentAutoDetectedUpdateIfNeeded()
+        }
+    }
+
+    /// Auto-opens the popover once when an update is discovered passively in the background, so the
+    /// user does not have to find the pill. Scoped to the detected-background case with cached
+    /// appcast details (so the popover shows version + "Install and Relaunch"), and consumes the
+    /// signal via ``UpdateStateModel/markAutoPresentShown()`` so it opens at most once per version.
+    /// The `show` is deferred one runloop tick so the popover's anchor view is attached to a window
+    /// before presentation (`present()` bails when the anchor has no window yet).
+    private func presentAutoDetectedUpdateIfNeeded() {
+        guard model.pendingAutoPresentVersion != nil,
+              model.showsDetectedBackgroundUpdate,
+              model.hasCachedDetectedUpdateDetails else { return }
+        model.markAutoPresentShown()
+        DispatchQueue.main.async {
+            showPopover = true
+        }
     }
 
     @ViewBuilder

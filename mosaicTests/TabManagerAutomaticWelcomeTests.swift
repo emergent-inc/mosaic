@@ -10,13 +10,13 @@ import Testing
 struct TabManagerAutomaticWelcomeTests {
     @Test
     @MainActor
-    func automaticWelcomeIsDisabledEvenWhenWorkspaceWouldOtherwiseQualify() {
+    func automaticWelcomeIsSentWhenWorkspaceQualifies() {
         #expect(TabManager.shouldSendAutomaticWelcome(
             autoWelcomeIfNeeded: true,
             select: true,
             startsWithTerminal: true,
             welcomeAlreadyShown: false
-        ) == false)
+        ) == true)
     }
 
     @Test(arguments: [
@@ -26,7 +26,7 @@ struct TabManagerAutomaticWelcomeTests {
         (autoWelcomeIfNeeded: true, select: true, startsWithTerminal: true, welcomeAlreadyShown: true),
     ])
     @MainActor
-    func automaticWelcomeStaysDisabledForNonQualifyingWorkspaceInputs(
+    func automaticWelcomeIsSuppressedForNonQualifyingWorkspaceInputs(
         autoWelcomeIfNeeded: Bool,
         select: Bool,
         startsWithTerminal: Bool,
