@@ -4230,6 +4230,11 @@ final class CollaborationRuntime {
         print("[PostHog] firing: collaboration_session_create_started")
         #endif
         PostHogAnalytics.shared.capture("collaboration_session_create_started")
+        // Show a "Preparing session…" loader while the session is minted and the
+        // relay connection is established. The panel only surfaces after a short
+        // grace period, so a fast create never flashes a spinner.
+        let progress = CollaborationProgressPanel(title: CollaborationStrings.sharePreparing)
+        progress.present()
         do {
             let response = try await createSession()
             #if DEBUG
@@ -4250,8 +4255,10 @@ final class CollaborationRuntime {
                 properties: ["session_code_present": true]
             )
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
+            progress.dismiss()
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
+            progress.dismiss()
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
             #if DEBUG
@@ -8473,9 +8480,12 @@ private final class CollaborationSessionCreatedPanel {
         let codeRow = NSStackView()
         codeRow.orientation = .horizontal
         codeRow.alignment = .centerY
+        codeRow.spacing = 0
         codeRow.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(codeRow)
-        codeRow.addArrangedSubview(NSView())
+        let leadingCodeSpacer = NSView()
+        leadingCodeSpacer.translatesAutoresizingMaskIntoConstraints = false
+        codeRow.addArrangedSubview(leadingCodeSpacer)
 
         let codeField = NSTextField(labelWithString: code)
         codeField.font = .monospacedSystemFont(ofSize: 24, weight: .semibold)
@@ -8487,8 +8497,15 @@ private final class CollaborationSessionCreatedPanel {
         codeField.layer?.cornerCurve = .continuous
         codeField.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.72).cgColor
         codeField.translatesAutoresizingMaskIntoConstraints = false
+        // Pin the code to its intrinsic width so the equal-width spacers on
+        // either side keep it centered instead of letting the stack stretch one
+        // spacer and push the code off-center.
+        codeField.setContentHuggingPriority(.required, for: .horizontal)
+        codeField.setContentCompressionResistancePriority(.required, for: .horizontal)
         codeRow.addArrangedSubview(codeField)
-        codeRow.addArrangedSubview(NSView())
+        let trailingCodeSpacer = NSView()
+        trailingCodeSpacer.translatesAutoresizingMaskIntoConstraints = false
+        codeRow.addArrangedSubview(trailingCodeSpacer)
         stack.setCustomSpacing(22, after: codeRow)
 
         let buttonRow = NSStackView()
@@ -8522,6 +8539,7 @@ private final class CollaborationSessionCreatedPanel {
             codeRow.widthAnchor.constraint(equalToConstant: 364),
             codeField.heightAnchor.constraint(equalToConstant: 46),
             codeField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            leadingCodeSpacer.widthAnchor.constraint(equalTo: trailingCodeSpacer.widthAnchor),
             buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
             doneButton.widthAnchor.constraint(equalToConstant: 144),
             copyButton.widthAnchor.constraint(equalToConstant: 144),
