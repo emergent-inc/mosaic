@@ -28,6 +28,12 @@ public final class UpdateStateModel {
     public private(set) var detectedUpdateVersion: String?
     /// The appcast item for the most recently detected background update, if any.
     public private(set) var detectedUpdateItem: SUAppcastItem?
+    /// The version whose update popover the UI should auto-present once, or `nil` when there is
+    /// nothing to auto-present. Set when a *new* update is discovered passively in the background
+    /// (see ``recordDetectedUpdate(_:)``) and consumed by the update pill via
+    /// ``markAutoPresentShown()``. This is the "open the popover so the user doesn't have to hunt
+    /// for the pill" signal.
+    public private(set) var pendingAutoPresentVersion: String?
     #if DEBUG
     /// A debug override for the pill's title text.
     public var debugOverrideText: String?
@@ -37,8 +43,21 @@ public final class UpdateStateModel {
     @ObservationIgnored
     private var changeObservers: [UUID: AsyncStream<Void>.Continuation] = [:]
 
+    /// Persists the last version whose popover was auto-presented so it is not re-surfaced.
+    @ObservationIgnored
+    private let defaults: UserDefaults
+
+    /// `UserDefaults` key storing the last version auto-presented via the update pill popover.
+    private static let lastAutoPromptedVersionKey = "MosaicUpdater.lastAutoPromptedVersion"
+
     /// Creates an empty model in the ``UpdateState/idle`` state.
-    public init() {}
+    ///
+    /// - Parameter defaults: Persists the last version whose popover was auto-presented, so the
+    ///   same version is not auto-opened again (respecting "Later" until the next version).
+    ///   Injectable for tests.
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     // MARK: - Change stream
 
@@ -106,12 +125,34 @@ public final class UpdateStateModel {
         let version = Self.normalizedDetectedUpdateVersion(from: item.displayVersionString)
         detectedUpdateItem = version == nil ? nil : item
         detectedUpdateVersion = version
+
+        // Request a one-time auto-open of the popover when a *new* update is discovered passively
+        // in the background (state idle). A version already auto-prompted (persisted across
+        // launches) is not re-surfaced, so "Later" is respected until the next version. Active
+        // check paths reach this via `applyDriverState(.updateAvailable)` while state is
+        // `.checking`, so the `isIdle` guard scopes auto-present to genuine background detection.
+        if let version,
+           state.isIdle,
+           version != defaults.string(forKey: Self.lastAutoPromptedVersionKey) {
+            pendingAutoPresentVersion = version
+        }
     }
 
     /// Clears any detected background update.
     public func clearDetectedUpdate() {
         detectedUpdateItem = nil
         detectedUpdateVersion = nil
+        pendingAutoPresentVersion = nil
+    }
+
+    /// Marks the pending auto-present version as shown: persists it (so its popover is not
+    /// auto-opened again) and clears ``pendingAutoPresentVersion``. Called by the update pill right
+    /// after it opens the popover for a background-detected update.
+    public func markAutoPresentShown() {
+        if let version = pendingAutoPresentVersion {
+            defaults.set(version, forKey: Self.lastAutoPromptedVersionKey)
+        }
+        pendingAutoPresentVersion = nil
     }
 
     #if DEBUG

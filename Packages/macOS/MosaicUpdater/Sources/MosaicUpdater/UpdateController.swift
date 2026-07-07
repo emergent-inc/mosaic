@@ -97,7 +97,7 @@ public final class UpdateController {
             defaults.set(false, forKey: UpdateSettings.automaticChecksKey)
         }
 
-        let model = UpdateStateModel()
+        let model = UpdateStateModel(defaults: defaults)
         let driver = UpdateDriver(model: model, log: log, clock: clock, isDevLikeBundle: isDevLikeBundle)
         self.driver = driver
         self.updater = SPUUpdater(
