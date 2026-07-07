@@ -3619,13 +3619,14 @@ struct ContentView: View {
     private var tutorialVideoOverlay: some View {
         GeometryReader { proxy in
             let videoSize = tutorialVideoNaturalSize ?? TutorialVideoStyle.fallbackVideoSize
-            let targetSize = Self.tutorialVideoPopupSize(
+            let videoAreaSize = Self.tutorialVideoPopupSize(
                 videoSize: videoSize,
                 availableSize: proxy.size
             )
 
             ZStack {
-                Color.black.opacity(0.42)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -3634,10 +3635,10 @@ struct ContentView: View {
 
                 TutorialVideoView(
                     videoURL: TutorialVideoResource.videoURL(),
+                    videoAreaSize: videoAreaSize,
                     cornerRadius: TutorialVideoStyle.cornerRadius,
                     onClose: dismissTutorialVideo
                 )
-                .frame(width: targetSize.width, height: targetSize.height)
                 .shadow(color: Color.black.opacity(0.34), radius: 24, x: 0, y: 14)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -8931,8 +8932,10 @@ struct ContentView: View {
         } else {
             sourceSize = fallback
         }
-        let availableWidth = max(1, availableSize.width)
-        let availableHeight = max(1, availableSize.height)
+        // Reserve room for the card header, footer, and padding so the video area keeps
+        // its aspect ratio while the surrounding card stays within the window.
+        let availableWidth = max(1, availableSize.width - TutorialVideoStyle.cardHorizontalChrome)
+        let availableHeight = max(1, availableSize.height - TutorialVideoStyle.cardVerticalChrome)
         let scale = min(
             TutorialVideoStyle.popupPreferredScale,
             availableWidth / sourceSize.width,

@@ -176,7 +176,7 @@ fileprivate func mosaicVsyncIOSurfaceTimelineCallback(
 
 @MainActor
 class TabManager: ObservableObject {
-    private static let automaticWelcomeEnabled = false
+    private static let automaticWelcomeEnabled = true
 
     static func shouldSendAutomaticWelcome(
         autoWelcomeIfNeeded: Bool,

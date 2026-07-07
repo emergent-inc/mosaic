@@ -1,9 +1,30 @@
 import Foundation
 import Testing
+@preconcurrency import Sparkle
 @testable import MosaicUpdater
 
 @MainActor
 @Suite struct UpdateStateModelTests {
+    /// A model backed by an isolated, empty `UserDefaults` suite so auto-present persistence tests
+    /// don't read or write the shared standard defaults.
+    private func makeModelWithIsolatedDefaults() -> (UpdateStateModel, UserDefaults) {
+        let defaults = UserDefaults(suiteName: "MosaicUpdaterTests.\(UUID().uuidString)")!
+        return (UpdateStateModel(defaults: defaults), defaults)
+    }
+
+    /// Builds a minimal appcast item whose `displayVersionString` is `version`.
+    private func appcastItem(version: String) -> SUAppcastItem {
+        SUAppcastItem(dictionary: [
+            "title": "mosaic \(version)",
+            "pubDate": "Wed, 25 Mar 2026 12:00:00 +0000",
+            "enclosure": [
+                "url": "https://example.com/mosaic.dmg",
+                "length": "1024",
+                "sparkle:version": version,
+                "sparkle:shortVersionString": version,
+            ],
+        ]) ?? SUAppcastItem.empty()
+    }
     @Test func setStateEmitsOnStateChangesStream() async {
         let model = UpdateStateModel()
         var iterator = model.stateChanges().makeAsyncIterator()
@@ -187,5 +208,74 @@ import Testing
             logPath: "/tmp/x.log"
         )
         #expect(details.contains("SUInstallationError"))
+    }
+
+    // MARK: - Auto-present detected background update (open the popover once per version)
+
+    @Test func backgroundDetectionOfNewVersionRequestsAutoPresent() {
+        let (model, _) = makeModelWithIsolatedDefaults()
+        // Idle + a freshly detected version → request auto-present.
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(model.pendingAutoPresentVersion == "1.2.3")
+        #expect(model.showsDetectedBackgroundUpdate)
+        #expect(model.hasCachedDetectedUpdateDetails)
+    }
+
+    @Test func alreadyPromptedVersionDoesNotRequestAutoPresentAgain() {
+        let (model, _) = makeModelWithIsolatedDefaults()
+
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(model.pendingAutoPresentVersion == "1.2.3")
+
+        // The UI shows the popover and marks it — persisting the version.
+        model.markAutoPresentShown()
+        #expect(model.pendingAutoPresentVersion == nil)
+
+        // Re-detecting the same version (e.g. a later background probe) must not re-open.
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(model.pendingAutoPresentVersion == nil)
+    }
+
+    @Test func newVersionAfterPromptRequestsAutoPresentAgain() {
+        let (model, _) = makeModelWithIsolatedDefaults()
+
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        model.markAutoPresentShown()
+        #expect(model.pendingAutoPresentVersion == nil)
+
+        // A genuinely newer version re-surfaces the popover.
+        model.recordDetectedUpdate(appcastItem(version: "1.2.4"))
+        #expect(model.pendingAutoPresentVersion == "1.2.4")
+    }
+
+    @Test func persistedPromptedVersionSurvivesNewModelInstance() {
+        let defaults = UserDefaults(suiteName: "MosaicUpdaterTests.\(UUID().uuidString)")!
+
+        let first = UpdateStateModel(defaults: defaults)
+        first.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        first.markAutoPresentShown()
+
+        // A relaunch (new model over the same defaults) must not re-prompt the same version.
+        let second = UpdateStateModel(defaults: defaults)
+        second.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(second.pendingAutoPresentVersion == nil)
+    }
+
+    @Test func activeCheckStateDoesNotRequestAutoPresent() {
+        let (model, _) = makeModelWithIsolatedDefaults()
+        // A user-initiated check is in flight (not idle); finding an update here must not trigger
+        // the passive auto-open path.
+        model.setState(.checking(.init(cancel: {})))
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(model.pendingAutoPresentVersion == nil)
+    }
+
+    @Test func clearDetectedUpdateClearsPendingAutoPresent() {
+        let (model, _) = makeModelWithIsolatedDefaults()
+        model.recordDetectedUpdate(appcastItem(version: "1.2.3"))
+        #expect(model.pendingAutoPresentVersion == "1.2.3")
+
+        model.clearDetectedUpdate()
+        #expect(model.pendingAutoPresentVersion == nil)
     }
 }
