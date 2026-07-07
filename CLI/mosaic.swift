@@ -34525,7 +34525,7 @@ export default MosaicSessionRestore;
         print("  \(bold)Discord\(reset)\(subdued)             https://discord.gg/zmWHDeZffZ\(reset)")
         print("  \(bold)Email\(reset)\(subdued)               contact@emergent.inc\(reset)")
         print()
-        print("  \(subdued)Click \(reset)\(bold)Replay Tutorial Video\(reset)\(subdued) in the sidebar to watch the tour.\(reset)")
+        print("  \(subdued)Click \(reset)\(bold)the question mark icon\(reset)\(subdued) in the sidebar to watch the tour.\(reset)")
         print("  \(subdued)Run \(reset)\(bold)mosaic --help\(reset)\(subdued) for all commands.\(reset)")
         print("  \(subdued)Run \(reset)\(bold)mosaic shortcuts\(reset)\(subdued) to edit shortcuts.\(reset)")
         print("  \(subdued)Run \(reset)\(bold)mosaic feedback\(reset)\(subdued) to report a bug.\(reset)")
