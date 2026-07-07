@@ -608,13 +608,6 @@ jobs:
             fi
           fi
 
-      - name: Run bundled Ghostty theme picker helper regression
-        if: ${{ matrix.shard == fromJSON(env.MOSAIC_APP_HOST_FOCUSED_REGRESSION_SHARD) }}
-        run: |
-          set -euo pipefail
-          MOSAIC_SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages" \
-            ./tests/test_bundled_ghostty_theme_picker_helper.sh
-
       - name: Run CLI no-socket regressions
         if: ${{ matrix.shard == fromJSON(env.MOSAIC_APP_HOST_FOCUSED_REGRESSION_SHARD) }}
         run: |

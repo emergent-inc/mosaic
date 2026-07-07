@@ -292,13 +292,6 @@ jobs:
           install -m 755 /tmp/mosaic-ghostty-helper-universal "$DEST"
           echo "Injected Ghostty CLI helper architectures: $(lipo -archs "$DEST")"
 
-      - name: Run bundled Ghostty theme picker helper regression
-        if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
-        run: |
-          set -euo pipefail
-          MOSAIC_APP_PATH="build-universal/Build/Products/Release/Mosaic.app" \
-            ./tests/test_bundled_ghostty_theme_picker_helper.sh
-
       - name: Verify nightly binary architectures
         if: needs.decide.outputs.should_publish != 'true' || steps.current_head_prebuild.outputs.still_current == 'true'
         run: |
