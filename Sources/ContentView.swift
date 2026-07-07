@@ -3625,8 +3625,7 @@ struct ContentView: View {
             )
 
             ZStack {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
+                Color.black.opacity(0.3)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -8938,6 +8937,7 @@ struct ContentView: View {
         let availableHeight = max(1, availableSize.height - TutorialVideoStyle.cardVerticalChrome)
         let scale = min(
             TutorialVideoStyle.popupPreferredScale,
+            TutorialVideoStyle.maxVideoWidth / sourceSize.width,
             availableWidth / sourceSize.width,
             availableHeight / sourceSize.height
         )
