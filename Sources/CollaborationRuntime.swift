@@ -1743,7 +1743,7 @@ final class CollaborationRuntime {
             let progress = CollaborationProgressPanel(title: CollaborationStrings.sharePreparing)
             progress.present()
             let ready = await pendingSession.value
-            progress.dismiss()
+            await progress.dismiss()
             guard ready else {
                 lastErrorMessage = CollaborationStrings.shareWithTeammateNoSession
                 NSSound.beep()
@@ -4231,10 +4231,16 @@ final class CollaborationRuntime {
         #endif
         PostHogAnalytics.shared.capture("collaboration_session_create_started")
         // Show a "Preparing session…" loader while the session is minted and the
-        // relay connection is established. The panel only surfaces after a short
-        // grace period, so a fast create never flashes a spinner.
-        let progress = CollaborationProgressPanel(title: CollaborationStrings.sharePreparing)
-        progress.present()
+        // relay connection is established. Present it standalone (not a sheet on
+        // the parent, which would be queued behind the Start-chooser sheet still
+        // dismissing) and immediately, with a short minimum on-screen time so a
+        // fast create still shows it briefly instead of flashing.
+        let progress = CollaborationProgressPanel(
+            title: CollaborationStrings.sharePreparing,
+            presentsAsSheet: false,
+            minimumVisibleDuration: 0.4
+        )
+        progress.present(afterDelay: 0)
         do {
             let response = try await createSession()
             #if DEBUG
@@ -4255,10 +4261,10 @@ final class CollaborationRuntime {
                 properties: ["session_code_present": true]
             )
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
-            progress.dismiss()
+            await progress.dismiss()
             presentCreatedSessionDialog(code: response.sessionCode)
         } catch {
-            progress.dismiss()
+            await progress.dismiss()
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
             #if DEBUG
@@ -4286,6 +4292,21 @@ final class CollaborationRuntime {
         print("[PostHog] firing: collaboration_session_create_started")
         #endif
         PostHogAnalytics.shared.capture("collaboration_session_create_started")
+        // Invite-code plans get the "Preparing session…" loader while create +
+        // connect run; directory plans go straight to the teammate picker, which
+        // has its own deferred spinner.
+        let progress: CollaborationProgressPanel?
+        if collaborationEntitlements.directorySharing {
+            progress = nil
+        } else {
+            let panel = CollaborationProgressPanel(
+                title: CollaborationStrings.sharePreparing,
+                presentsAsSheet: false,
+                minimumVisibleDuration: 0.4
+            )
+            panel.present(afterDelay: 0)
+            progress = panel
+        }
         do {
             let response = try await createSession()
             #if DEBUG
@@ -4308,6 +4329,7 @@ final class CollaborationRuntime {
             )
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
             share(panel: panel, entrypoint: .startDialogCreate)
+            await progress?.dismiss()
             // Documents connect before this point, so the session is already
             // live: route directory plans through the guarded teammate picker
             // and codes plans through the shareable-code dialog.
@@ -4317,6 +4339,7 @@ final class CollaborationRuntime {
                 presentCreatedSessionDialog(code: response.sessionCode)
             }
         } catch {
+            await progress?.dismiss()
             lastErrorMessage = error.localizedDescription
             connectionLabel = CollaborationStrings.connectionFailed
             #if DEBUG
@@ -4367,7 +4390,18 @@ final class CollaborationRuntime {
                 }
             )
         } else {
+            // Invite-code plans: show the "Preparing session…" loader while the
+            // session is minted, the relay connects, and the terminal share is
+            // set up. Standalone (not a sheet) so it isn't queued behind any
+            // dismissing chooser sheet on the parent window.
+            let progress = CollaborationProgressPanel(
+                title: CollaborationStrings.sharePreparing,
+                presentsAsSheet: false,
+                minimumVisibleDuration: 0.4
+            )
+            progress.present(afterDelay: 0)
             let response = await performCreateSessionConnectShare(terminal: terminal)
+            await progress.dismiss()
             if let response {
                 presentCreatedSessionDialog(code: response.sessionCode)
             }
@@ -7795,6 +7829,15 @@ private final class CollaborationDialogBackgroundView: NSView {
 /// `present()` defers actually showing the window by a short grace period and
 /// `dismiss()` cancels that pending show, so a fast-resolving await never
 /// flashes a dialog for a single frame.
+///
+/// By default it presents as a sheet on the key/main window. Pass
+/// `presentsAsSheet: false` to present as a standalone centered panel instead;
+/// this sidesteps AppKit's per-window sheet queue, which otherwise stalls a
+/// loader kicked off immediately after another sheet on the same window is
+/// dismissed. `minimumVisibleDuration` keeps the loader on screen for at least
+/// that long once shown, so a fast-resolving await still shows it briefly
+/// rather than flashing (the awaited `dismiss()` returns only once the minimum
+/// has elapsed and the window is gone).
 @MainActor
 private final class CollaborationProgressPanel {
     private let window: NSPanel
@@ -7802,8 +7845,17 @@ private final class CollaborationProgressPanel {
     private weak var parentWindow: NSWindow?
     private var pendingShow: DispatchWorkItem?
     private var isVisible = false
+    private var shownAt: Date?
+    private let presentsAsSheet: Bool
+    private let minimumVisibleDuration: TimeInterval
 
-    init(title: String) {
+    init(
+        title: String,
+        presentsAsSheet: Bool = true,
+        minimumVisibleDuration: TimeInterval = 0
+    ) {
+        self.presentsAsSheet = presentsAsSheet
+        self.minimumVisibleDuration = minimumVisibleDuration
         let size = NSSize(width: 320, height: 168)
         window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
@@ -7855,9 +7907,14 @@ private final class CollaborationProgressPanel {
         ])
     }
 
-    /// Schedule the sheet to appear after a short grace period. If ``dismiss()``
-    /// runs first, the window is never shown.
+    /// Schedule the window to appear after a short grace period. Pass
+    /// `afterDelay: 0` to show immediately. If ``dismiss()`` runs before the
+    /// window is shown, it is never shown.
     func present(afterDelay delay: TimeInterval = 0.15) {
+        guard delay > 0 else {
+            show()
+            return
+        }
         let work = DispatchWorkItem { [weak self] in self?.show() }
         pendingShow = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
@@ -7866,8 +7923,9 @@ private final class CollaborationProgressPanel {
     private func show() {
         guard !isVisible else { return }
         isVisible = true
+        shownAt = Date()
         spinner.startAnimation(nil)
-        if let parent = NSApp.keyWindow ?? NSApp.mainWindow {
+        if presentsAsSheet, let parent = NSApp.keyWindow ?? NSApp.mainWindow {
             parentWindow = parent
             parent.beginSheet(window)
         } else {
@@ -7876,14 +7934,29 @@ private final class CollaborationProgressPanel {
         }
     }
 
-    func dismiss() {
+    func dismiss() async {
         pendingShow?.cancel()
         pendingShow = nil
         guard isVisible else { return }
+        // Keep the loader on screen for at least `minimumVisibleDuration` so a
+        // fast-resolving await shows it briefly instead of flashing.
+        if minimumVisibleDuration > 0, let shownAt {
+            let remaining = minimumVisibleDuration - Date().timeIntervalSince(shownAt)
+            if remaining > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            }
+        }
+        close()
+    }
+
+    private func close() {
+        guard isVisible else { return }
         isVisible = false
+        shownAt = nil
         spinner.stopAnimation(nil)
         if let parentWindow {
             parentWindow.endSheet(window)
+            self.parentWindow = nil
         }
         window.orderOut(nil)
     }
@@ -8278,22 +8351,23 @@ private final class CollaborationJoinSessionPanel {
         stack.addArrangedSubview(messageField)
         stack.setCustomSpacing(32, after: messageField)
 
-        let codeRow = NSStackView()
-        codeRow.orientation = .horizontal
-        codeRow.alignment = .centerY
-        codeRow.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(codeRow)
-        codeRow.addArrangedSubview(NSView())
-        codeRow.addArrangedSubview(entryView)
-        codeRow.addArrangedSubview(NSView())
-        stack.setCustomSpacing(34, after: codeRow)
+        // The vertical stack uses .leading alignment, which pins every arranged
+        // row's leading edge; centering an arranged subview with spacer views
+        // or a centerX constraint fights that pin and Auto Layout resolves the
+        // conflict by inflating the window. Center inside a fixed-width plain
+        // container instead (see CollaborationSessionCreatedPanel).
+        entryView.translatesAutoresizingMaskIntoConstraints = false
+        let codeContainer = NSView()
+        codeContainer.translatesAutoresizingMaskIntoConstraints = false
+        codeContainer.addSubview(entryView)
+        stack.addArrangedSubview(codeContainer)
+        stack.setCustomSpacing(34, after: codeContainer)
 
         let buttonRow = NSStackView()
         buttonRow.orientation = .horizontal
         buttonRow.alignment = .centerY
         buttonRow.spacing = 16
         buttonRow.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(buttonRow)
 
         let cancelButton = makeButton(title: CollaborationStrings.cancel, keyEquivalent: "\u{1b}") { [weak self] in
             self?.finish(.alertSecondButtonReturn)
@@ -8305,6 +8379,11 @@ private final class CollaborationJoinSessionPanel {
         stylePrimaryButton(joinButton)
         buttonRow.addArrangedSubview(cancelButton)
         buttonRow.addArrangedSubview(joinButton)
+
+        let buttonContainer = NSView()
+        buttonContainer.translatesAutoresizingMaskIntoConstraints = false
+        buttonContainer.addSubview(buttonRow)
+        stack.addArrangedSubview(buttonContainer)
 
         entryView.onSubmit = { [weak self] in
             self?.submitIfComplete()
@@ -8323,8 +8402,14 @@ private final class CollaborationJoinSessionPanel {
             iconView.heightAnchor.constraint(equalToConstant: 64),
             titleField.widthAnchor.constraint(equalToConstant: Self.contentWidth),
             messageField.widthAnchor.constraint(equalToConstant: Self.contentWidth),
-            codeRow.widthAnchor.constraint(equalToConstant: Self.contentWidth),
-            buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
+            codeContainer.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            codeContainer.heightAnchor.constraint(equalToConstant: 56),
+            entryView.centerXAnchor.constraint(equalTo: codeContainer.centerXAnchor),
+            entryView.centerYAnchor.constraint(equalTo: codeContainer.centerYAnchor),
+            buttonContainer.widthAnchor.constraint(equalToConstant: Self.contentWidth),
+            buttonContainer.heightAnchor.constraint(equalToConstant: 36),
+            buttonRow.centerXAnchor.constraint(equalTo: buttonContainer.centerXAnchor),
+            buttonRow.centerYAnchor.constraint(equalTo: buttonContainer.centerYAnchor),
             cancelButton.widthAnchor.constraint(equalToConstant: 144),
             joinButton.widthAnchor.constraint(equalToConstant: 144),
             cancelButton.heightAnchor.constraint(equalToConstant: 36),
@@ -8477,16 +8562,6 @@ private final class CollaborationSessionCreatedPanel {
         stack.addArrangedSubview(messageField)
         stack.setCustomSpacing(14, after: messageField)
 
-        let codeRow = NSStackView()
-        codeRow.orientation = .horizontal
-        codeRow.alignment = .centerY
-        codeRow.spacing = 0
-        codeRow.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(codeRow)
-        let leadingCodeSpacer = NSView()
-        leadingCodeSpacer.translatesAutoresizingMaskIntoConstraints = false
-        codeRow.addArrangedSubview(leadingCodeSpacer)
-
         let codeField = NSTextField(labelWithString: code)
         codeField.font = .monospacedSystemFont(ofSize: 24, weight: .semibold)
         codeField.textColor = .labelColor
@@ -8497,23 +8572,26 @@ private final class CollaborationSessionCreatedPanel {
         codeField.layer?.cornerCurve = .continuous
         codeField.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.72).cgColor
         codeField.translatesAutoresizingMaskIntoConstraints = false
-        // Pin the code to its intrinsic width so the equal-width spacers on
-        // either side keep it centered instead of letting the stack stretch one
-        // spacer and push the code off-center.
+        // Pin the code to its intrinsic width so the pill hugs the glyphs.
         codeField.setContentHuggingPriority(.required, for: .horizontal)
         codeField.setContentCompressionResistancePriority(.required, for: .horizontal)
-        codeRow.addArrangedSubview(codeField)
-        let trailingCodeSpacer = NSView()
-        trailingCodeSpacer.translatesAutoresizingMaskIntoConstraints = false
-        codeRow.addArrangedSubview(trailingCodeSpacer)
-        stack.setCustomSpacing(22, after: codeRow)
+        // The vertical stack uses .leading alignment, which pins every arranged
+        // row's leading edge; centering an arranged subview directly (centerX
+        // constraint or spacer views) fights that pin and Auto Layout resolves
+        // the conflict by inflating the window. Center inside a fixed-width
+        // plain container instead: the container is the arranged row, and the
+        // code field floats centered within it with no competing edge pins.
+        let codeContainer = NSView()
+        codeContainer.translatesAutoresizingMaskIntoConstraints = false
+        codeContainer.addSubview(codeField)
+        stack.addArrangedSubview(codeContainer)
+        stack.setCustomSpacing(22, after: codeContainer)
 
         let buttonRow = NSStackView()
         buttonRow.orientation = .horizontal
         buttonRow.alignment = .centerY
         buttonRow.spacing = 16
         buttonRow.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(buttonRow)
 
         let doneButton = makeButton(title: CollaborationStrings.done, keyEquivalent: "\u{1b}") { [weak self] in
             self?.finish(.alertSecondButtonReturn)
@@ -8526,6 +8604,12 @@ private final class CollaborationSessionCreatedPanel {
         buttonRow.addArrangedSubview(doneButton)
         buttonRow.addArrangedSubview(copyButton)
 
+        // Same fixed-width-container centering as the code field (see above).
+        let buttonContainer = NSView()
+        buttonContainer.translatesAutoresizingMaskIntoConstraints = false
+        buttonContainer.addSubview(buttonRow)
+        stack.addArrangedSubview(buttonContainer)
+
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 28),
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 28),
@@ -8536,11 +8620,15 @@ private final class CollaborationSessionCreatedPanel {
             iconView.heightAnchor.constraint(equalToConstant: 64),
             titleField.widthAnchor.constraint(equalToConstant: 364),
             messageField.widthAnchor.constraint(equalToConstant: 364),
-            codeRow.widthAnchor.constraint(equalToConstant: 364),
+            codeContainer.widthAnchor.constraint(equalToConstant: 364),
+            codeContainer.heightAnchor.constraint(equalToConstant: 46),
             codeField.heightAnchor.constraint(equalToConstant: 46),
-            codeField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
-            leadingCodeSpacer.widthAnchor.constraint(equalTo: trailingCodeSpacer.widthAnchor),
-            buttonRow.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
+            codeField.centerXAnchor.constraint(equalTo: codeContainer.centerXAnchor),
+            codeField.centerYAnchor.constraint(equalTo: codeContainer.centerYAnchor),
+            buttonContainer.widthAnchor.constraint(equalToConstant: 364),
+            buttonContainer.heightAnchor.constraint(equalToConstant: 36),
+            buttonRow.centerXAnchor.constraint(equalTo: buttonContainer.centerXAnchor),
+            buttonRow.centerYAnchor.constraint(equalTo: buttonContainer.centerYAnchor),
             doneButton.widthAnchor.constraint(equalToConstant: 144),
             copyButton.widthAnchor.constraint(equalToConstant: 144),
             doneButton.heightAnchor.constraint(equalToConstant: 36),
