@@ -102,10 +102,10 @@ def helper_environment(scenario_config_path):
     env = os.environ.copy()
     env.update(
         {
-            "MOSAIC_THEME_PICKER_CONFIG": scenario_config_path,
-            "MOSAIC_THEME_PICKER_BUNDLE_ID": "com.mosaicterm.test",
-            "MOSAIC_THEME_PICKER_TARGET": "both",
-            "MOSAIC_THEME_PICKER_COLOR_SCHEME": "dark",
+            "CMUX_THEME_PICKER_CONFIG": scenario_config_path,
+            "CMUX_THEME_PICKER_BUNDLE_ID": "com.mosaicterm.test",
+            "CMUX_THEME_PICKER_TARGET": "both",
+            "CMUX_THEME_PICKER_COLOR_SCHEME": "dark",
             "GHOSTTY_RESOURCES_DIR": ghostty_resources_dir,
             "TERM": "xterm-256color",
             "XDG_CONFIG_HOME": isolated_config_home,
@@ -236,7 +236,7 @@ def run_picker(label, scenario_config_path, scripted_input, expected_theme=None)
         assert_theme_written(label, scenario_config_path, expected_theme)
 
 # The test's XDG_CONFIG_HOME starts empty and each scenario writes to a fresh
-# MOSAIC_THEME_PICKER_CONFIG path, so the picker opens on the first listed theme.
+# CMUX_THEME_PICKER_CONFIG path, so the picker opens on the first listed theme.
 first_theme = theme_names[0]
 second_theme = theme_names[1]
 
