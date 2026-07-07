@@ -60,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           GHOSTTY_SHA=$(git -C ghostty rev-parse HEAD)
-          BUILD_FLAVOR="crashsubdir-mosaic-crash-v1"
+          BUILD_FLAVOR="crashsubdir-cmux-crash-v1"
           TAG="xcframework-$GHOSTTY_SHA-$BUILD_FLAVOR"
           URL="https://github.com/manaflow-ai/ghostty/releases/download/$TAG/GhosttyKit.xcframework.tar.gz"
           echo "Downloading xcframework for ghostty $GHOSTTY_SHA"
