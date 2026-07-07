@@ -111,6 +111,17 @@
         }
       }
     },
+    "about.website": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Website"
+          }
+        }
+      }
+    },
     "accessibility.workspacePosition": {
       "extractionState": "manual",
       "localizations": {
