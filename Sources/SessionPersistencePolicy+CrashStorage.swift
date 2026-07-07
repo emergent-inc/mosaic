@@ -11,18 +11,40 @@ extension SessionPersistencePolicy {
             .appendingPathComponent("crash", isDirectory: true)
     }
 
+    /// State-directory subdirectory names scanned for Ghostty crash breadcrumbs.
+    ///
+    /// `mosaic` is the current name and the default write location. `cmux` is retained
+    /// because the pinned prebuilt `GhosttyKit.xcframework` is still built with
+    /// `-Dcrash-report-subdir=cmux/crash` (no `mosaic`-flavored artifact has been
+    /// published), so libghostty writes breadcrumbs to `<state>/cmux/crash` at runtime.
+    /// Scanning both keeps crash detection working until a `mosaic`-flavored artifact ships.
+    static let crashStateSubdirectoryNames = ["mosaic", "cmux"]
+
     static func mosaicCrashDirectoryURLs(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> [URL] {
-        var urls = [defaultMosaicCrashDirectoryURL(homeDirectory: homeDirectory)]
+        var stateBases: [URL] = [
+            homeDirectory
+                .appendingPathComponent(".local", isDirectory: true)
+                .appendingPathComponent("state", isDirectory: true)
+        ]
         if let xdgStateHome = environment["XDG_STATE_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines),
            !xdgStateHome.isEmpty {
-            urls.append(
+            stateBases.append(
                 URL(fileURLWithPath: (xdgStateHome as NSString).expandingTildeInPath, isDirectory: true)
-                    .appendingPathComponent("mosaic", isDirectory: true)
-                    .appendingPathComponent("crash", isDirectory: true)
             )
+        }
+
+        var urls: [URL] = []
+        for base in stateBases {
+            for subdirectory in crashStateSubdirectoryNames {
+                urls.append(
+                    base
+                        .appendingPathComponent(subdirectory, isDirectory: true)
+                        .appendingPathComponent("crash", isDirectory: true)
+                )
+            }
         }
 
         var seen: Set<String> = []
