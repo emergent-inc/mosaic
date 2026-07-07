@@ -52,17 +52,21 @@ extension MosaicCLI {
 
         let selection = currentThemeSelection(targetBundleIdentifier: targetBundleIdentifier)
         var environment = ProcessInfo.processInfo.environment
-        environment["MOSAIC_THEME_PICKER_CONFIG"] = try mosaicThemeOverrideConfigURL(
+        // The bundled Ghostty theme-picker helper (ghostty fork `src/cli/list_themes.zig`,
+        // including `origin/main`) reads `CMUX_THEME_PICKER_*` env vars. The cmux->mosaic
+        // rename never landed on the ghostty side and no `mosaic`-flavored artifact has been
+        // published, so these names must stay `CMUX_` to match the helper actually shipped.
+        environment["CMUX_THEME_PICKER_CONFIG"] = try mosaicThemeOverrideConfigURL(
             targetBundleIdentifier: targetBundleIdentifier
         ).path
-        environment["MOSAIC_THEME_PICKER_BUNDLE_ID"] = targetBundleIdentifier
-        environment["MOSAIC_THEME_PICKER_TARGET"] = defaultThemePickerTargetMode(current: selection).rawValue
-        environment["MOSAIC_THEME_PICKER_COLOR_SCHEME"] = defaultAppearancePrefersDarkThemes() ? "dark" : "light"
+        environment["CMUX_THEME_PICKER_BUNDLE_ID"] = targetBundleIdentifier
+        environment["CMUX_THEME_PICKER_TARGET"] = defaultThemePickerTargetMode(current: selection).rawValue
+        environment["CMUX_THEME_PICKER_COLOR_SCHEME"] = defaultAppearancePrefersDarkThemes() ? "dark" : "light"
         if let light = selection.light {
-            environment["MOSAIC_THEME_PICKER_INITIAL_LIGHT"] = light
+            environment["CMUX_THEME_PICKER_INITIAL_LIGHT"] = light
         }
         if let dark = selection.dark {
-            environment["MOSAIC_THEME_PICKER_INITIAL_DARK"] = dark
+            environment["CMUX_THEME_PICKER_INITIAL_DARK"] = dark
         }
         if let resourcesURL = bundledGhosttyResourcesURL() {
             environment["GHOSTTY_RESOURCES_DIR"] = resourcesURL.path
