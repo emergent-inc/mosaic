@@ -1241,13 +1241,18 @@ final class CollaborationRuntime {
     }
 
     /// Session-routing bookkeeping for a mirrored (guest-side) terminal open:
-    /// records which session owns the mirror pane in the workspace it landed in.
+    /// records which session owns the mirror pane, and binds the workspace the
+    /// mirror landed in to that session. The binding gives guests parity with
+    /// hosts (who bind on session create): sharing one of the guest's own
+    /// terminals from that workspace routes into the joined session instead of
+    /// prompting to create a new one.
     func recordMirroredTerminalSessionRouting(
         terminalID: String,
         sessionCode: String,
         workspaceID: UUID
     ) {
         terminalSessionRouter.record(terminalID: terminalID, sessionCode: sessionCode)
+        recordWorkspaceSession(sessionCode, workspaceID: workspaceID)
     }
 
     /// Test-only view of the in-memory workspace -> session binding that
