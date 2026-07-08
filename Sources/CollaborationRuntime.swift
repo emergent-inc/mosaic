@@ -1463,6 +1463,19 @@ final class CollaborationRuntime {
         return Array(selectedRecipientParticipantIDs(for: terminalID, connection: connection)).sorted()
     }
 
+    /// Recipients for presence frames (pointer/selection). Unlike
+    /// input/output routing, viewer presence fans out to the whole session
+    /// (nil = relay broadcast) so viewers can see each other's cursors;
+    /// peers not viewing the terminal drop the frame because they have no
+    /// matching panel.
+    private func presenceRecipientParticipantIDsForSending(
+        terminalID: String,
+        connection: CollaborationRelayConnection
+    ) -> [String]? {
+        guard hostedTerminalsByID[terminalID]?.panel != nil else { return nil }
+        return Array(selectedRecipientParticipantIDs(for: terminalID, connection: connection)).sorted()
+    }
+
     private func peerIsSelectedForHostedTerminal(
         terminalID: String,
         peerID: String?,
@@ -1727,7 +1740,16 @@ final class CollaborationRuntime {
         pendingSession: Task<Bool, Never>?,
         onCancel: (@MainActor () async -> Void)? = nil
     ) async {
-        let members = await loadDirectoryMembers()
+        // Always fetch a fresh directory snapshot when opening the picker so
+        // teammates added while the app was running appear without a reload.
+        // A short grace period keeps a fast fetch from flashing a spinner.
+        let loading = CollaborationProgressPanel(
+            title: CollaborationStrings.directoryLoading,
+            presentsAsSheet: false
+        )
+        loading.present()
+        let members = await loadDirectoryMembers(forceRefresh: true)
+        await loading.dismiss()
         guard !members.isEmpty else {
             await onCancel?()
             CollaborationMessagePanel(
@@ -2352,7 +2374,7 @@ final class CollaborationRuntime {
             type: "terminal.pointer",
             terminalID: terminalID,
             fromPeerID: peerIdentity.peerID,
-            recipientParticipantIDs: recipientParticipantIDsForSending(
+            recipientParticipantIDs: presenceRecipientParticipantIDsForSending(
                 terminalID: terminalID,
                 connection: connection
             ),
@@ -2439,7 +2461,7 @@ final class CollaborationRuntime {
                     type: "terminal.selection",
                     terminalID: terminalID,
                     fromPeerID: peerIdentity.peerID,
-                    recipientParticipantIDs: recipientParticipantIDsForSending(
+                    recipientParticipantIDs: presenceRecipientParticipantIDsForSending(
                         terminalID: terminalID,
                         connection: connection
                     ),
@@ -4712,15 +4734,30 @@ final class CollaborationRuntime {
     }
 
     /// The org members eligible to receive a directory share (team/enterprise).
-    func loadDirectoryMembers() async -> [CollaborationDirectoryMember] {
+    ///
+    /// Pass `forceRefresh: true` to bypass the cache and fetch a fresh snapshot
+    /// (used when opening the share picker so newly-added teammates appear
+    /// without an app reload). A failed refresh preserves and returns the last
+    /// cached snapshot, so the picker still works offline.
+    func loadDirectoryMembers(forceRefresh: Bool = false) async -> [CollaborationDirectoryMember] {
         guard let orgID = resolvedCollaborationOrgID else { return [] }
-        if let cached = directoryMemberCacheByOrgID[orgID] {
+        if !forceRefresh, let cached = directoryMemberCacheByOrgID[orgID] {
             if Date().timeIntervalSince(cached.fetchedAt) > Self.directoryMemberCacheTTL {
                 prefetchDirectoryMembers(orgID: orgID)
             }
             return cached.members
         }
         return await refreshDirectoryMembers(orgID: orgID)
+    }
+
+    /// Warm the directory cache when the app regains focus so the share picker
+    /// opens with an up-to-date teammate list. Bypasses the TTL so members added
+    /// while the app was backgrounded surface quickly; the refresh is
+    /// single-flighted via `directoryMemberRefreshTasksByOrgID`.
+    func refreshDirectoryMembersOnFocus() {
+        guard collaborationEntitlements.directorySharing,
+              let orgID = resolvedCollaborationOrgID else { return }
+        prefetchDirectoryMembers(orgID: orgID)
     }
 
     private func prefetchDirectoryMembersIfNeeded() {
@@ -4747,15 +4784,21 @@ final class CollaborationRuntime {
         let task = Task<[CollaborationDirectoryMember], Never> { @MainActor [weak self] in
             guard let self,
                   let token = await self.collaborationAccessToken() else { return [] }
-            let members = (try? await self.collaborationBackendClient.directory(
-                accessToken: token,
-                orgId: orgID
-            )) ?? []
-            self.directoryMemberCacheByOrgID[orgID] = DirectoryMemberCacheEntry(
-                members: members,
-                fetchedAt: Date()
-            )
-            return members
+            do {
+                let members = try await self.collaborationBackendClient.directory(
+                    accessToken: token,
+                    orgId: orgID
+                )
+                self.directoryMemberCacheByOrgID[orgID] = DirectoryMemberCacheEntry(
+                    members: members,
+                    fetchedAt: Date()
+                )
+                return members
+            } catch {
+                // Preserve any existing cache on failure so a transient network
+                // error doesn't wipe the picker; return the last snapshot we had.
+                return self.directoryMemberCacheByOrgID[orgID]?.members ?? []
+            }
         }
         directoryMemberRefreshTasksByOrgID[orgID] = task
         let members = await task.value
@@ -7455,6 +7498,13 @@ enum CollaborationStrings {
         String(
             localized: "collaboration.directory.preparing",
             defaultValue: "Preparing session…"
+        )
+    }
+
+    static var directoryLoading: String {
+        String(
+            localized: "collaboration.directory.loading",
+            defaultValue: "Loading teammates…"
         )
     }
 
