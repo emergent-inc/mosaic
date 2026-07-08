@@ -176,6 +176,31 @@ struct PostHogAnalyticsPropertiesTests {
     }
 
     @Test
+    func productAnalyticsAddsFailureReasonForConnectionFailedEvents() throws {
+        var captured: ProductAnalyticsEvent?
+        let analytics = ProductAnalytics { event in
+            captured = event
+        }
+
+        analytics.trackCollaboration(
+            .connectionFailed,
+            entrypoint: .system,
+            result: .failed,
+            properties: [
+                "operation": "join_acknowledgement",
+                "error_kind": "collaboration.join_failed",
+            ],
+            flush: true
+        )
+
+        let event = try #require(captured)
+        #expect(event.name.rawValue == "mac_collaboration_connection_failed")
+        #expect(event.properties["failure_reason"] as? String == "join_acknowledgement")
+        #expect(event.properties["operation"] as? String == "join_acknowledgement")
+        #expect(event.properties["error_kind"] as? String == "collaboration.join_failed")
+    }
+
+    @Test
     func productAnalyticsBuildsLinkingFunnelEvents() throws {
         var captured: ProductAnalyticsEvent?
         let analytics = ProductAnalytics { event in
