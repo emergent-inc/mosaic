@@ -1240,6 +1240,23 @@ final class CollaborationRuntime {
         trackCollaborationLayoutSnapshot(reason: "workspace_session_recorded", sessionCode: normalizedCode, workspaceID: workspaceID)
     }
 
+    /// Session-routing bookkeeping for a mirrored (guest-side) terminal open:
+    /// records which session owns the mirror pane in the workspace it landed in.
+    func recordMirroredTerminalSessionRouting(
+        terminalID: String,
+        sessionCode: String,
+        workspaceID: UUID
+    ) {
+        terminalSessionRouter.record(terminalID: terminalID, sessionCode: sessionCode)
+    }
+
+    /// Test-only view of the in-memory workspace -> session binding that
+    /// `terminalScopedSessionCode` consults when routing a sibling terminal's
+    /// share into an existing session.
+    func debugWorkspaceSessionCodeForTesting(workspaceID: UUID) -> String? {
+        sessionCodesByWorkspaceID[workspaceID]
+    }
+
     func participantSnapshots(forWorkspaceID workspaceID: UUID) -> [CollaborationWorkspaceParticipantSnapshot] {
         _ = workspaceParticipantSnapshotRevision
         guard let sessionCode = sessionCode(forWorkspaceID: workspaceID) else {
@@ -5449,7 +5466,11 @@ final class CollaborationRuntime {
         mirroredTerminalLockedGridByID.removeValue(forKey: terminalID)
         mirroredReseedRequestTasksByID.removeValue(forKey: terminalID)?.cancel()
         mirroredContentAppliedUnlockedIDs.remove(terminalID)
-        terminalSessionRouter.record(terminalID: terminalID, sessionCode: connection.sessionCode)
+        recordMirroredTerminalSessionRouting(
+            terminalID: terminalID,
+            sessionCode: connection.sessionCode,
+            workspaceID: panel.workspaceId
+        )
         let ownerSnapshot = ownerSnapshot(forPeerID: ownerPeerID, in: connection)
         terminalStatesByID[terminalID] = CollaborationTerminalHeaderState(
             isShared: true,
