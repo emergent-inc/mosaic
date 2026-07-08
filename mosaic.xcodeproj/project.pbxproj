@@ -255,6 +255,7 @@
 		C0DECAFE0000000000000001 /* CodexTeamsApprovalBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECAFE0000000000000002 /* CodexTeamsApprovalBridge.swift */; };
 		C0DECAFE0000000000000003 /* CodexTeamsApprovalBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DECAFE0000000000000002 /* CodexTeamsApprovalBridge.swift */; };
 		C011AB040000000000000001 /* CollaborationBackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011AB040000000000000002 /* CollaborationBackendClient.swift */; };
+		C0114B00000000000000B001 /* CollaborationGuestWorkspaceBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0114B00000000000000B002 /* CollaborationGuestWorkspaceBindingTests.swift */; };
 		C011AB030000000000000001 /* CollaborationInviteCodeEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011AB030000000000000002 /* CollaborationInviteCodeEntryView.swift */; };
 		C011AB020000000000000001 /* CollaborationRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011AB020000000000000002 /* CollaborationRuntime.swift */; };
 		95279D8BDFD5535F8471A3D7 /* CollaborationSharingLabelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */; };
@@ -1569,6 +1570,7 @@
 		A9E040000000000000000001 /* CodexAppServerSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServerSessionTests.swift; sourceTree = "<group>"; };
 		C0DECAFE0000000000000002 /* CodexTeamsApprovalBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexTeamsApprovalBridge.swift; sourceTree = "<group>"; };
 		C011AB040000000000000002 /* CollaborationBackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationBackendClient.swift; sourceTree = "<group>"; };
+		C0114B00000000000000B002 /* CollaborationGuestWorkspaceBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationGuestWorkspaceBindingTests.swift; sourceTree = "<group>"; };
 		C011AB030000000000000002 /* CollaborationInviteCodeEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationInviteCodeEntryView.swift; sourceTree = "<group>"; };
 		C011AB020000000000000002 /* CollaborationRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationRuntime.swift; sourceTree = "<group>"; };
 		84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationSharingLabelTests.swift; sourceTree = "<group>"; };
@@ -3771,6 +3773,7 @@
 				C06552030000000000000002 /* TabManagerTitleUpdateStalenessTests.swift */,
 				C06552020000000000000002 /* TabManagerTitleUpdateTests.swift */,
 				42092CDB2109E250F7F2A76E /* TabManagerUnitTests.swift */,
+				C0114B00000000000000B002 /* CollaborationGuestWorkspaceBindingTests.swift */,
 				84CF249A02ACB6186BFC442D /* CollaborationSharingLabelTests.swift */,
 				C0114B00000000000000A002 /* CollaborationTerminalInputRegressionTests.swift */,
 				8C41E2CBE9604DFBB6F1CDEB /* CollaborationTerminalRenderGridSeedLimiterTests.swift */,
@@ -5242,6 +5245,7 @@
 				B05553B10000000000000001 /* CLITmuxCompatRemoteSplitTests.swift in Sources */,
 				A9E040000000000000000002 /* CodexAppServerSessionTests.swift in Sources */,
 				C0DECAFE0000000000000003 /* CodexTeamsApprovalBridge.swift in Sources */,
+				C0114B00000000000000B001 /* CollaborationGuestWorkspaceBindingTests.swift in Sources */,
 				95279D8BDFD5535F8471A3D7 /* CollaborationSharingLabelTests.swift in Sources */,
 				C0114B00000000000000A001 /* CollaborationTerminalInputRegressionTests.swift in Sources */,
 				F69B0C415C2340A9B9807653 /* CollaborationTerminalRenderGridSeedLimiterTests.swift in Sources */,
