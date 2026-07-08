@@ -12,6 +12,15 @@ When we change the fork, update this document and the parent submodule SHA.
 
 ## Current fork changes
 
+Pending local head `f064c116f` (branch `purge-cmux-naming`, not yet pushed):
+renames remaining cmux identifiers in fork hooks to mosaic. Theme picker now
+reads `MOSAIC_THEME_PICKER_*` env vars (with legacy `CMUX_THEME_PICKER_*`
+fallback), writes `# mosaic themes start/end` blocks while still accepting
+legacy `# cmux themes …` markers on read, posts
+`com.mosaicterm.themes.reload-config`, and emits `mosaic.render-grid.v1` from
+`ghostty_surface_render_grid_json`. Fork comments were updated from cmux to
+mosaic; historical issue URLs such as `manaflow-ai/cmux#5128` are unchanged.
+
 Current mosaic pinned fork head: `05c3e2908`, which adds
 the Darwin-only `ghostty_surface_set_renderer_realized` C API (a
 `display_realized` renderer-thread mailbox message that drives
