@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Generate mosaic logo and app icon assets from a single source image."""
+"""Generate mosaic logo and app icon assets from a single source icon image.
+
+The source is a finished, full-bleed square app icon (opaque squircle with
+transparent rounded corners). Two framings are produced:
+
+* App-icon asset sets carry the macOS icon-grid margin that every committed
+  icon uses: on a 1024 canvas the artwork occupies 844px (82.42%), leaving a
+  ~8.79% transparent margin per side. See ``APP_ICON_PADDING_FRACTION``.
+* Brand / web / source assets stay full-bleed (no inset).
+"""
 
 import argparse
 import base64
@@ -13,6 +22,10 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = REPO / "design" / "mosaic-logo-source.png"
+
+# macOS icon-grid margin baked into every committed app-icon PNG: a 1024 canvas
+# carries a 90px transparent margin, leaving 844px (82.42%) of artwork.
+APP_ICON_PADDING_FRACTION = 90 / 1024  # 0.087890625
 
 MAC_SIZES = [
     ("16.png", 16),
@@ -38,9 +51,13 @@ def load_source(path: Path) -> Image.Image:
 
 
 def fit_square(image: Image.Image, size: int, padding_fraction: float = 0.0) -> Image.Image:
-    """Fit the full artwork on a transparent square canvas."""
+    """Fit the full artwork on a transparent square canvas.
+
+    ``padding_fraction`` is the transparent margin per side, expressed as a
+    fraction of ``size`` (e.g. ``0.0879`` leaves ~82.42% for the artwork).
+    """
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    target = int(size * (1.0 - padding_fraction * 2.0))
+    target = int(round(size * (1.0 - padding_fraction * 2.0)))
     target = max(1, target)
     fitted = ImageOps.contain(image, (target, target), Image.Resampling.LANCZOS)
     x = (size - fitted.width) // 2
@@ -87,31 +104,29 @@ def write_png(path: Path, image: Image.Image) -> None:
     image.save(path, "PNG")
 
 
-def write_mac_icon_set(icon_set: str, source: Image.Image, label: str | None = None) -> None:
+def write_mac_icon_set(icon_set: str, source: Image.Image) -> None:
     icon_dir = REPO / "Assets.xcassets" / f"{icon_set}.appiconset"
     for filename, size in MAC_SIZES:
-        image = fit_square(source, size)
-        if label is not None:
-            image = add_banner(image, label)
-        write_png(icon_dir / filename, image)
+        write_png(icon_dir / filename, fit_square(source, size, APP_ICON_PADDING_FRACTION))
 
 
 def write_release_dark_variants(source: Image.Image) -> None:
     icon_dir = REPO / "Assets.xcassets" / "AppIcon.appiconset"
     for filename, size in MAC_SIZES:
         base, ext = os.path.splitext(filename)
-        write_png(icon_dir / f"{base}_dark{ext}", fit_square(source, size))
+        write_png(icon_dir / f"{base}_dark{ext}", fit_square(source, size, APP_ICON_PADDING_FRACTION))
 
 
 def write_app_images(source: Image.Image) -> None:
-    light = fit_square(source, 1024)
-    write_png(REPO / "Assets.xcassets" / "AppIconLight.imageset" / "AppIconLight.png", light)
-    write_png(REPO / "Assets.xcassets" / "AppIconDark.imageset" / "AppIconDark.png", light)
+    inset = fit_square(source, 1024, APP_ICON_PADDING_FRACTION)
+    write_png(REPO / "Assets.xcassets" / "AppIconLight.imageset" / "AppIconLight.png", inset)
+    write_png(REPO / "Assets.xcassets" / "AppIconDark.imageset" / "AppIconDark.png", inset)
 
-    write_png(REPO / "ios" / "mosaic" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon.png", light)
-    write_png(REPO / "ios" / "mosaic" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIconDark.png", light)
-    write_png(REPO / "ios" / "mosaic" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIconTinted.png", light)
-    write_png(REPO / "ios" / "mosaic" / "Assets.xcassets" / "MosaicLogo.imageset" / "mosaic-logo.png", light)
+    ios_appicon = REPO / "ios" / "mosaic" / "Assets.xcassets" / "AppIcon.appiconset"
+    write_png(ios_appicon / "AppIcon.png", inset)
+    write_png(ios_appicon / "AppIconDark.png", inset)
+    write_png(ios_appicon / "AppIconTinted.png", inset)
+    write_png(REPO / "ios" / "mosaic" / "Assets.xcassets" / "MosaicLogo.imageset" / "mosaic-logo.png", inset)
 
 
 def update_ios_logo_contents() -> None:
@@ -185,7 +200,7 @@ def main() -> None:
         "--source",
         type=Path,
         default=DEFAULT_SOURCE,
-        help="Path to the source logo image.",
+        help="Path to the source logo image (finished full-bleed square icon).",
     )
     args = parser.parse_args()
 
@@ -198,8 +213,8 @@ def main() -> None:
     source = load_source(source_path)
     write_mac_icon_set("AppIcon", source)
     write_release_dark_variants(source)
-    write_mac_icon_set("AppIcon-Debug", source, label="DEV")
-    write_mac_icon_set("AppIcon-Nightly", source, label="NIGHTLY")
+    write_mac_icon_set("AppIcon-Debug", source)
+    write_mac_icon_set("AppIcon-Nightly", source)
     write_app_images(source)
     update_ios_logo_contents()
     write_web_assets(source)

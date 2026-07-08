@@ -124,6 +124,11 @@ else
     if (( SECONDS - LOCK_START > LOCK_TIMEOUT )); then
       echo "==> Lock stale (>${LOCK_TIMEOUT}s), removing and retrying..."
       rmdir "$LOCK_DIR" 2>/dev/null || rm -rf "$LOCK_DIR"
+      # Reset the timer and back off so a lock we cannot remove (or one another
+      # process keeps recreating) results in a slow retry instead of a tight
+      # infinite spin that floods the log and pegs the CPU.
+      LOCK_START=$SECONDS
+      sleep 1
       continue
     fi
     echo "==> Waiting for GhosttyKit cache lock for $GHOSTTY_KEY..."

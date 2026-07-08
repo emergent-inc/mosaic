@@ -190,12 +190,8 @@ import Testing
 }
 
 @Test func renderGridDecodesLegacyGhosttyForkFormatName() throws {
-    // The GhosttyKit fork's `ghostty_surface_render_grid_json` still emits the
-    // pre-rename format tag `cmux.render-grid.v1`. Rejecting it makes every
-    // host-side snapshot capture return nil, so a shared terminal's viewer
-    // gets no seed at all: a black mirror pane until live output arrives and
-    // no pre-share screen/scrollback ever
-    // (the collaboration "blank until someone types" bug).
+    // GhosttyKit now emits mosaic.render-grid.v1, but frames cached under the
+    // legacy pre-rename tag must still decode and normalize to currentFormat.
     let object: [String: Any] = [
         "format": "cmux.render-grid.v1",
         "surface_id": "terminal-a",

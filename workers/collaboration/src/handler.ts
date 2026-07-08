@@ -196,7 +196,7 @@ async function notifyInbox(
     env.COLLABORATION_INBOX.idFromName(inviteeUserId),
   );
   const response = await stub.fetch(
-    new Request("https://cmux-collaboration-inbox.local/notify", {
+    new Request("https://mosaic-collaboration-inbox.local/notify", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ reason }),
