@@ -10,8 +10,8 @@ import SwiftUI
 ///
 /// ```swift
 /// SettingsPickerRow(
-///     model: DefaultsValueModel(store: defaults, key: catalog.app.appearance),
-///     title: "Appearance",
+///     model: DefaultsValueModel(store: defaults, key: catalog.browser.theme),
+///     title: "Browser Theme",
 ///     label: { mode in
 ///         switch mode {
 ///         case .system: return "Follow System"

@@ -13,10 +13,10 @@ import Foundation
 ///
 /// ```swift
 /// public struct AppCatalogSection: SettingCatalogSection {
-///     public let appearance = DefaultsKey<AppearanceMode>(
-///         id: "app.appearance",
-///         defaultValue: .system,
-///         userDefaultsKey: "appearanceMode"
+///     public let appIcon = DefaultsKey<AppIconMode>(
+///         id: "app.appIcon",
+///         defaultValue: .automatic,
+///         userDefaultsKey: "appIconMode"
 ///     )
 ///     public init() {}
 /// }

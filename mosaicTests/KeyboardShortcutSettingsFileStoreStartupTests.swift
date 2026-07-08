@@ -29,7 +29,6 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
     override func tearDown() {
         KeyboardShortcutSettings.settingsFileStore = originalSettingsFileStore
         AppIconSettings.resetLiveEnvironmentProviderForTesting()
-        AppearanceSettings.resetLiveEnvironmentProviderForTesting()
         KeyboardShortcutSettings.resetAll()
         super.tearDown()
     }
@@ -99,7 +98,6 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
     func testSettingsFileStoreRestoresAbsentAppIconBackupDuringStartupWithoutTouchingAppKit() throws {
         let defaults = UserDefaults.standard
         let previousMode = defaults.object(forKey: AppIconSettings.modeKey)
-        let previousAppearance = defaults.object(forKey: AppearanceSettings.appearanceModeKey)
         let previousBackups = defaults.data(forKey: settingsFileBackupsDefaultsKey)
         let previousImportedDefaults = defaults.data(forKey: importedManagedDefaultsKey)
         defer {
@@ -107,12 +105,6 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
                 defaults.set(previousMode, forKey: AppIconSettings.modeKey)
             } else {
                 defaults.removeObject(forKey: AppIconSettings.modeKey)
-            }
-
-            if let previousAppearance {
-                defaults.set(previousAppearance, forKey: AppearanceSettings.appearanceModeKey)
-            } else {
-                defaults.removeObject(forKey: AppearanceSettings.appearanceModeKey)
             }
 
             if let previousBackups {
@@ -128,7 +120,6 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
         }
 
         defaults.removeObject(forKey: AppIconSettings.modeKey)
-        defaults.removeObject(forKey: AppearanceSettings.appearanceModeKey)
         defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
         defaults.removeObject(forKey: importedManagedDefaultsKey)
 
@@ -182,26 +173,16 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
 
         XCTAssertEqual(defaults.string(forKey: AppIconSettings.modeKey), AppIconMode.automatic.rawValue)
 
-        let managedAppearanceURL = directoryURL.appendingPathComponent("appearance.json", isDirectory: false)
-        try writeSettingsFile(
-            """
-            {
-              "app": {
-                "appearance": "system"
-              }
-            }
-            """,
-            to: managedAppearanceURL
-        )
+        let emptyManagedURL = directoryURL.appendingPathComponent("empty.json", isDirectory: false)
+        try writeSettingsFile("{}", to: emptyManagedURL)
 
         _ = KeyboardShortcutSettingsFileStore(
-            primaryPath: managedAppearanceURL.path,
+            primaryPath: emptyManagedURL.path,
             fallbackPath: nil,
             startWatching: false
         )
 
         XCTAssertNil(defaults.object(forKey: AppIconSettings.modeKey))
-        XCTAssertEqual(defaults.string(forKey: AppearanceSettings.appearanceModeKey), AppearanceMode.system.rawValue)
         XCTAssertEqual(startObservationCallCount, 0)
         XCTAssertEqual(stopObservationCallCount, 0)
         XCTAssertEqual(imageRequestCount, 0)
@@ -209,12 +190,23 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
         XCTAssertEqual(dockTileNotificationCount, 0)
     }
 
-    func testManagedAppearanceReplayUpdatesDefaultWithoutLiveAppearanceApplication() throws {
+    /// mosaic pins a fixed dark appearance; a leftover `app.appearance` key in
+    /// mosaic.json must be silently ignored (no managed default written and no
+    /// parse abort for the rest of the `app` section).
+    func testLegacyAppearanceKeyInConfigIsIgnored() throws {
         let defaults = UserDefaults.standard
-        let key = AppearanceSettings.appearanceModeKey
+        let legacyAppearanceModeKey = "appearanceMode"
 
-        try preservingDefaults(keys: [key, settingsFileBackupsDefaultsKey, importedManagedDefaultsKey]) {
-            defaults.removeObject(forKey: key)
+        try preservingDefaults(keys: [
+            legacyAppearanceModeKey,
+            AppCatalogSection().warnBeforeQuit.userDefaultsKey,
+            AppCatalogSection().confirmQuitMode.userDefaultsKey,
+            settingsFileBackupsDefaultsKey,
+            importedManagedDefaultsKey,
+        ]) {
+            defaults.removeObject(forKey: legacyAppearanceModeKey)
+            defaults.removeObject(forKey: AppCatalogSection().warnBeforeQuit.userDefaultsKey)
+            defaults.removeObject(forKey: AppCatalogSection().confirmQuitMode.userDefaultsKey)
             defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
             defaults.removeObject(forKey: importedManagedDefaultsKey)
 
@@ -226,137 +218,25 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
                 """
                 {
                   "app": {
-                    "appearance": "dark"
+                    "appearance": "light",
+                    "warnBeforeQuit": false
                   }
                 }
                 """,
                 to: settingsFileURL
             )
 
-            var appliedAppearanceNames: [NSAppearance.Name?] = []
-            var synchronizedAppearanceNames: [(appearance: NSAppearance.Name?, source: String)] = []
-            AppearanceSettings.setLiveEnvironmentProviderForTesting {
-                AppearanceSettings.LiveApplyEnvironment(
-                    setApplicationAppearance: { appearance in
-                        appliedAppearanceNames.append(appearance?.bestMatch(from: [.darkAqua, .aqua]))
-                    },
-                    synchronizeTerminalThemeWithAppearance: { appearance, source in
-                        synchronizedAppearanceNames.append((
-                            appearance: appearance?.bestMatch(from: [.darkAqua, .aqua]),
-                            source: source
-                        ))
-                    },
-                    systemAppearance: {
-                        NSAppearance(named: .aqua)
-                    }
-                )
-            }
-
-            let store = KeyboardShortcutSettingsFileStore(
+            _ = KeyboardShortcutSettingsFileStore(
                 primaryPath: settingsFileURL.path,
                 fallbackPath: nil,
                 additionalFallbackPaths: [],
                 startWatching: false
             )
 
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.dark.rawValue)
-            XCTAssertTrue(appliedAppearanceNames.isEmpty)
-            XCTAssertTrue(synchronizedAppearanceNames.isEmpty)
-
-            store.applyDeferredManagedDefaultSideEffects()
-
-            XCTAssertTrue(appliedAppearanceNames.isEmpty)
-            XCTAssertTrue(synchronizedAppearanceNames.isEmpty)
-
-            try withExtendedLifetime(store) {
-                try writeSettingsFile(
-                    """
-                    {
-                      "app": {
-                        "appearance": "light"
-                      }
-                    }
-                    """,
-                    to: settingsFileURL
-                )
-                store.reload()
-            }
-
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.light.rawValue)
-            XCTAssertTrue(appliedAppearanceNames.isEmpty)
-            XCTAssertTrue(synchronizedAppearanceNames.isEmpty)
-        }
-    }
-
-    func testSettingsFileStoreDoesNotReachTerminalReloadThroughManagedAppearanceReplay() throws {
-        let defaults = UserDefaults.standard
-        let key = AppearanceSettings.appearanceModeKey
-
-        try preservingDefaults(keys: [key, settingsFileBackupsDefaultsKey, importedManagedDefaultsKey]) {
-            defaults.removeObject(forKey: key)
-            defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
-            defaults.removeObject(forKey: importedManagedDefaultsKey)
-
-            let directoryURL = try makeTemporaryDirectory()
-            defer { try? FileManager.default.removeItem(at: directoryURL) }
-
-            let settingsFileURL = directoryURL.appendingPathComponent("mosaic.json", isDirectory: false)
-            try writeSettingsFile(
-                """
-                {
-                  "app": {
-                    "appearance": "dark"
-                  }
-                }
-                """,
-                to: settingsFileURL
-            )
-
-            var storeInitInProgress = true
-            var reachedTerminalReloadDuringInit = false
-            var terminalReloadSources: [String] = []
-            AppearanceSettings.setLiveEnvironmentProviderForTesting {
-                AppearanceSettings.LiveApplyEnvironment(
-                    setApplicationAppearance: { _ in },
-                    synchronizeTerminalThemeWithAppearance: { _, source in
-                        if storeInitInProgress {
-                            reachedTerminalReloadDuringInit = true
-                        }
-                        terminalReloadSources.append(source)
-                    },
-                    systemAppearance: {
-                        NSAppearance(named: .aqua)
-                    }
-                )
-            }
-
-            let store = KeyboardShortcutSettingsFileStore(
-                primaryPath: settingsFileURL.path,
-                fallbackPath: nil,
-                additionalFallbackPaths: [],
-                startWatching: false
-            )
-            storeInitInProgress = false
-
-            XCTAssertFalse(reachedTerminalReloadDuringInit)
-            XCTAssertTrue(terminalReloadSources.isEmpty)
-
-            try writeSettingsFile(
-                """
-                {
-                  "app": {
-                    "appearance": "light"
-                  }
-                }
-                """,
-                to: settingsFileURL
-            )
-            store.reload()
-
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.light.rawValue)
-            XCTAssertTrue(
-                terminalReloadSources.isEmpty,
-                "MosaicSettingsFileStore must not synchronously route managed appearance replay into Ghostty reloadConfiguration"
+            XCTAssertNil(defaults.object(forKey: legacyAppearanceModeKey))
+            XCTAssertEqual(
+                defaults.object(forKey: AppCatalogSection().warnBeforeQuit.userDefaultsKey) as? Bool,
+                false
             )
         }
     }
@@ -531,150 +411,6 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
                 XCTAssertTrue(defaults.bool(forKey: FilePreviewWordWrapSettings.key))
                 XCTAssertTrue(FilePreviewWordWrapSettings.isEnabled(defaults: defaults))
             }
-        }
-    }
-
-    func testManagedAppearanceUserDefaultSurvivesSettingsFileReapplyUntilFileChanges() throws {
-        let defaults = UserDefaults.standard
-        let key = AppearanceSettings.appearanceModeKey
-
-        try preservingDefaults(keys: [key, settingsFileBackupsDefaultsKey, importedManagedDefaultsKey]) {
-            defaults.removeObject(forKey: key)
-            defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
-            defaults.removeObject(forKey: importedManagedDefaultsKey)
-
-            let directoryURL = try makeTemporaryDirectory()
-            defer { try? FileManager.default.removeItem(at: directoryURL) }
-
-            let settingsFileURL = directoryURL.appendingPathComponent("mosaic.json", isDirectory: false)
-            try writeSettingsFile(
-                """
-                {
-                  "app": {
-                    "appearance": "system"
-                  }
-                }
-                """,
-                to: settingsFileURL
-            )
-
-            let notificationCenter = NotificationCenter()
-            let store = KeyboardShortcutSettingsFileStore(
-                primaryPath: settingsFileURL.path,
-                fallbackPath: nil,
-                additionalFallbackPaths: [],
-                notificationCenter: notificationCenter,
-                startWatching: true
-            )
-
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.system.rawValue)
-
-            defaults.set(AppearanceMode.light.rawValue, forKey: key)
-            try withExtendedLifetime(store) {
-                notificationCenter.post(name: UserDefaults.didChangeNotification, object: defaults)
-                XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.light.rawValue)
-
-                let relaunchedStore = KeyboardShortcutSettingsFileStore(
-                    primaryPath: settingsFileURL.path,
-                    fallbackPath: nil,
-                    additionalFallbackPaths: [],
-                    startWatching: false
-                )
-                XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.light.rawValue)
-
-                try writeSettingsFile(
-                    """
-                    {
-                      "app": {
-                        "appearance": "dark"
-                      }
-                    }
-                    """,
-                    to: settingsFileURL
-                )
-                relaunchedStore.reload()
-                XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.dark.rawValue)
-            }
-        }
-    }
-
-    @MainActor
-    func testSettingsFileStoreInitialAppearanceImportDoesNotApplyLiveAppearance() throws {
-        let defaults = UserDefaults.standard
-        let key = AppearanceSettings.appearanceModeKey
-
-        try preservingDefaults(keys: [key, settingsFileBackupsDefaultsKey, importedManagedDefaultsKey]) {
-            defaults.removeObject(forKey: key)
-            defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
-            defaults.removeObject(forKey: importedManagedDefaultsKey)
-
-            let directoryURL = try makeTemporaryDirectory()
-            defer { try? FileManager.default.removeItem(at: directoryURL) }
-
-            let settingsFileURL = directoryURL.appendingPathComponent("mosaic.json", isDirectory: false)
-            try writeSettingsFile(
-                """
-                {
-                  "app": {
-                    "appearance": "dark"
-                  }
-                }
-                """,
-                to: settingsFileURL
-            )
-
-            var appliedAppearanceName: NSAppearance.Name?
-            var synchronizedAppearanceName: NSAppearance.Name?
-            var synchronizedSources: [String] = []
-            AppearanceSettings.setLiveEnvironmentProviderForTesting {
-                AppearanceSettings.LiveApplyEnvironment(
-                    setApplicationAppearance: { appearance in
-                        appliedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-                    },
-                    synchronizeTerminalThemeWithAppearance: { appearance, source in
-                        synchronizedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-                        synchronizedSources.append(source)
-                    },
-                    systemAppearance: {
-                        NSAppearance(named: .aqua)
-                    }
-                )
-            }
-
-            let store = KeyboardShortcutSettingsFileStore(
-                primaryPath: settingsFileURL.path,
-                fallbackPath: nil,
-                additionalFallbackPaths: [],
-                startWatching: false
-            )
-
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.dark.rawValue)
-            XCTAssertNil(appliedAppearanceName)
-            XCTAssertNil(synchronizedAppearanceName)
-            XCTAssertTrue(synchronizedSources.isEmpty)
-
-            store.applyDeferredManagedDefaultSideEffects()
-
-            XCTAssertNil(appliedAppearanceName)
-            XCTAssertNil(synchronizedAppearanceName)
-            XCTAssertTrue(synchronizedSources.isEmpty)
-
-            try writeSettingsFile(
-                """
-                {
-                  "app": {
-                    "appearance": "light"
-                  }
-                }
-                """,
-                to: settingsFileURL
-            )
-            store.reload()
-
-            XCTAssertEqual(defaults.string(forKey: key), AppearanceMode.light.rawValue)
-            XCTAssertNil(appliedAppearanceName)
-            XCTAssertNil(synchronizedAppearanceName)
-            XCTAssertTrue(synchronizedSources.isEmpty)
         }
     }
 

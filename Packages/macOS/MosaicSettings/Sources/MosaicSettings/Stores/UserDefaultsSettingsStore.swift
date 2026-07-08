@@ -5,7 +5,7 @@ import Dispatch
 ///
 /// ```swift
 /// let store = UserDefaultsSettingsStore(defaults: .standard)
-/// await store.set(.dark, for: SettingCatalog().app.appearance)
+/// await store.set(.dark, for: SettingCatalog().browser.theme)
 /// ```
 public actor UserDefaultsSettingsStore {
     /// The `UserDefaults` suite this store reads and writes.

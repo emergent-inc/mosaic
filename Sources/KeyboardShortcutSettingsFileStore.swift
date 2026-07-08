@@ -60,7 +60,6 @@ final class MosaicSettingsFileStore {
     private let fileManager: FileManager
     private let notificationCenter: NotificationCenter
     private let passwordStore: SocketControlPasswordStore
-    private let appearanceEnvironment: AppearanceSettings.LiveApplyEnvironment
     private let stateLock = NSLock()
 
     private var watchers: [FileWatcher] = []
@@ -84,7 +83,6 @@ final class MosaicSettingsFileStore {
         additionalFallbackPaths: [String] = [MosaicSettingsFileStore.defaultApplicationSupportFallbackPath].compactMap { $0 },
         fileManager: FileManager = .default,
         notificationCenter: NotificationCenter = .default,
-        appearanceEnvironment: AppearanceSettings.LiveApplyEnvironment = .live,
         passwordStore: SocketControlPasswordStore = SocketControlPasswordStore(),
         startWatching: Bool = true
     ) {
@@ -93,18 +91,14 @@ final class MosaicSettingsFileStore {
             .filter { $0 != primaryPath }
         self.fileManager = fileManager
         self.notificationCenter = notificationCenter
-        self.appearanceEnvironment = appearanceEnvironment
         self.passwordStore = passwordStore
         importedManagedDefaults = Self.loadImportedManagedDefaults()
 
         bootstrapPrimaryTemplateIfNeeded()
-        // The app init path loads mosaic.json before applying language/appearance
-        // itself. Running live default side effects here can initialize UI/runtime
+        // The app init path loads mosaic.json before applying language itself.
+        // Running live default side effects here can initialize UI/runtime
         // singletons while this store singleton is still in its dispatch_once.
-        reload(
-            applyLiveDefaultSideEffects: false,
-            synchronizeManagedAppearanceTerminalTheme: false
-        )
+        reload(applyLiveDefaultSideEffects: false)
         guard startWatching else { return }
 
         watchers = ([primaryPath] + fallbackPaths).map { FileWatcher(path: $0) }
@@ -135,20 +129,14 @@ final class MosaicSettingsFileStore {
     }
 
     func reload() {
-        reload(
-            applyLiveDefaultSideEffects: true,
-            synchronizeManagedAppearanceTerminalTheme: true
-        )
+        reload(applyLiveDefaultSideEffects: true)
     }
 
     func applyDeferredManagedDefaultSideEffects() {
         applyManagedDefaultBatchSideEffects(drainDeferredManagedDefaultSideEffects())
     }
 
-    private func reload(
-        applyLiveDefaultSideEffects: Bool,
-        synchronizeManagedAppearanceTerminalTheme: Bool
-    ) {
+    private func reload(applyLiveDefaultSideEffects: Bool) {
         let previousState = synchronized {
             (
                 shortcuts: shortcutsByAction,
@@ -165,8 +153,7 @@ final class MosaicSettingsFileStore {
                 previous: previousState.importedManagedDefaults,
                 next: resolved.managedUserDefaults
             ),
-            applyLiveDefaultSideEffects: applyLiveDefaultSideEffects,
-            synchronizeManagedAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme
+            applyLiveDefaultSideEffects: applyLiveDefaultSideEffects
         )
         synchronized {
             shortcutsByAction = resolved.shortcuts
@@ -271,8 +258,7 @@ final class MosaicSettingsFileStore {
             importedManagedDefaults: managedState.importedManagedDefaults,
             changedManagedDefaultKeys: [],
             updateBackups: false,
-            applyLiveDefaultSideEffects: true,
-            synchronizeManagedAppearanceTerminalTheme: true
+            applyLiveDefaultSideEffects: true
         )
     }
 
@@ -405,15 +391,6 @@ final class MosaicSettingsFileStore {
                 return
             }
             snapshot.managedUserDefaults[AppCatalogSection().language.userDefaultsKey] = .string(language.rawValue)
-        }
-        if let raw = jsonString(section["appearance"]) {
-            let normalized = AppearanceSettings.mode(for: raw).rawValue
-            let accepted = Set(AppearanceMode.allCases.map(\.rawValue))
-            guard accepted.contains(raw) else {
-                logInvalid("app.appearance", sourcePath: sourcePath)
-                return
-            }
-            snapshot.managedUserDefaults[AppearanceSettings.appearanceModeKey] = .string(normalized)
         }
         if let raw = jsonString(section["appIcon"]) {
             guard let mode = AppIconMode(rawValue: raw) else {
@@ -1111,8 +1088,7 @@ final class MosaicSettingsFileStore {
         importedManagedDefaults: [String: ManagedSettingsValue],
         changedManagedDefaultKeys: Set<String>,
         updateBackups: Bool = true,
-        applyLiveDefaultSideEffects: Bool,
-        synchronizeManagedAppearanceTerminalTheme: Bool
+        applyLiveDefaultSideEffects: Bool
     ) {
         var backups = loadBackups()
         var sideEffects = ManagedDefaultBatchSideEffects()
@@ -1140,13 +1116,7 @@ final class MosaicSettingsFileStore {
 
         for identifier in currentManagedIdentifiers.subtracting(nextManagedIdentifiers) {
             guard let backup = backups[identifier] else { continue }
-            sideEffects.merge(
-                restoreBackup(
-                    backup,
-                    for: identifier,
-                    synchronizeManagedAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme
-                )
-            )
+            sideEffects.merge(restoreBackup(backup, for: identifier))
             backups.removeValue(forKey: identifier)
         }
 
@@ -1157,7 +1127,6 @@ final class MosaicSettingsFileStore {
                     for: defaultsKey,
                     importedDefault: importedManagedDefaults[defaultsKey],
                     forceApply: changedManagedDefaultKeys.contains(defaultsKey),
-                    synchronizeManagedAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme,
                     isDerivedFromLegacyWarnBeforeQuit: snapshot.legacyDerivedManagedUserDefaultKeys.contains(defaultsKey),
                     importedLegacyWarnBeforeQuitDefault: importedManagedDefaults[AppCatalogSection().warnBeforeQuit.userDefaultsKey]
                 )
@@ -1172,32 +1141,8 @@ final class MosaicSettingsFileStore {
             sideEffectsToApply.merge(sideEffects)
             applyManagedDefaultBatchSideEffects(sideEffectsToApply)
         } else {
-            deferManagedDefaultSideEffects(applyLaunchManagedDefaultSideEffects(sideEffects))
+            deferManagedDefaultSideEffects(sideEffects)
         }
-    }
-
-    private func applyLaunchManagedDefaultSideEffects(
-        _ sideEffects: ManagedDefaultBatchSideEffects
-    ) -> ManagedDefaultBatchSideEffects {
-        var deferredSideEffects = ManagedDefaultBatchSideEffects()
-        for change in sideEffects.changes {
-            if change.defaultsKey == AppearanceSettings.appearanceModeKey {
-                AppearanceSettings.applyStoredMode(
-                    rawValue: UserDefaults.standard.string(forKey: change.defaultsKey),
-                    source: change.source,
-                    duringLaunch: true,
-                    synchronizeTerminalTheme: false,
-                    environment: appearanceEnvironment
-                )
-            } else {
-                deferredSideEffects.append(
-                    defaultsKey: change.defaultsKey,
-                    source: change.source,
-                    synchronizeAppearanceTerminalTheme: change.synchronizeAppearanceTerminalTheme
-                )
-            }
-        }
-        return deferredSideEffects
     }
 
     private func deferManagedDefaultSideEffects(_ sideEffects: ManagedDefaultBatchSideEffects) {
@@ -1234,8 +1179,7 @@ final class MosaicSettingsFileStore {
 
     private func restoreBackup(
         _ backup: BackupValue,
-        for identifier: String,
-        synchronizeManagedAppearanceTerminalTheme: Bool
+        for identifier: String
     ) -> ManagedDefaultBatchSideEffects {
         switch identifier {
         case Self.socketPasswordBackupIdentifier:
@@ -1249,11 +1193,7 @@ final class MosaicSettingsFileStore {
             }
             return ManagedDefaultBatchSideEffects()
         default:
-            return restoreUserDefaultsBackup(
-                backup,
-                for: identifier,
-                synchronizeManagedAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme
-            )
+            return restoreUserDefaultsBackup(backup, for: identifier)
         }
     }
 
@@ -1298,8 +1238,7 @@ final class MosaicSettingsFileStore {
 
     private func restoreUserDefaultsBackup(
         _ backup: BackupValue,
-        for defaultsKey: String,
-        synchronizeManagedAppearanceTerminalTheme: Bool
+        for defaultsKey: String
     ) -> ManagedDefaultBatchSideEffects {
         let defaults = UserDefaults.standard
         if defaultsKey == WorkspaceTabColorSettings.paletteKey {
@@ -1356,8 +1295,7 @@ final class MosaicSettingsFileStore {
         if didMutateStoredValue {
             return managedDefaultSideEffects(
                 for: defaultsKey,
-                source: "mosaicConfig.restoreUserDefault",
-                synchronizeAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme
+                source: "mosaicConfig.restoreUserDefault"
             )
         }
         return ManagedDefaultBatchSideEffects()
@@ -1368,7 +1306,6 @@ final class MosaicSettingsFileStore {
         for defaultsKey: String,
         importedDefault: ManagedSettingsValue?,
         forceApply: Bool,
-        synchronizeManagedAppearanceTerminalTheme: Bool,
         isDerivedFromLegacyWarnBeforeQuit: Bool = false,
         importedLegacyWarnBeforeQuitDefault: ManagedSettingsValue? = nil
     ) -> ManagedDefaultBatchSideEffects {
@@ -1447,8 +1384,7 @@ final class MosaicSettingsFileStore {
         if didMutateStoredValue {
             return managedDefaultSideEffects(
                 for: defaultsKey,
-                source: "mosaicConfig.applyManagedDefault",
-                synchronizeAppearanceTerminalTheme: synchronizeManagedAppearanceTerminalTheme
+                source: "mosaicConfig.applyManagedDefault"
             )
         }
         return ManagedDefaultBatchSideEffects()
@@ -1545,15 +1481,10 @@ final class MosaicSettingsFileStore {
 
     private func managedDefaultSideEffects(
         for defaultsKey: String,
-        source: String,
-        synchronizeAppearanceTerminalTheme: Bool
+        source: String
     ) -> ManagedDefaultBatchSideEffects {
         var sideEffects = ManagedDefaultBatchSideEffects()
-        sideEffects.append(
-            defaultsKey: defaultsKey,
-            source: source,
-            synchronizeAppearanceTerminalTheme: synchronizeAppearanceTerminalTheme
-        )
+        sideEffects.append(defaultsKey: defaultsKey, source: source)
         return sideEffects
     }
 
@@ -1592,14 +1523,6 @@ final class MosaicSettingsFileStore {
                 if change.defaultsKey == AppCatalogSection().language.userDefaultsKey {
                     let rawValue = UserDefaults.standard.string(forKey: change.defaultsKey) ?? ""
                     LanguageSettingsStore(defaults: .standard).applyLanguageOverride(AppLanguage(rawValue: rawValue) ?? .system)
-                } else if change.defaultsKey == AppearanceSettings.appearanceModeKey {
-                    AppearanceSettings.applyStoredMode(
-                        rawValue: UserDefaults.standard.string(forKey: change.defaultsKey),
-                        source: change.source,
-                        duringLaunch: !change.synchronizeAppearanceTerminalTheme,
-                        synchronizeTerminalTheme: change.synchronizeAppearanceTerminalTheme,
-                        environment: self.appearanceEnvironment
-                    )
                 } else if change.defaultsKey == AppIconSettings.modeKey {
                     AppIconSettings.applyIcon(AppIconSettings.resolvedMode())
                 } else if change.defaultsKey == GlobalFontMagnification.percentKey {
@@ -1802,7 +1725,6 @@ private struct ResolvedSettingsSnapshot {
 private struct ManagedDefaultSideEffect {
     let defaultsKey: String
     let source: String
-    let synchronizeAppearanceTerminalTheme: Bool
 }
 
 private struct ManagedDefaultBatchSideEffects {
@@ -1814,27 +1736,13 @@ private struct ManagedDefaultBatchSideEffects {
 
     mutating func merge(_ other: ManagedDefaultBatchSideEffects) {
         for change in other.changes {
-            append(
-                defaultsKey: change.defaultsKey,
-                source: change.source,
-                synchronizeAppearanceTerminalTheme: change.synchronizeAppearanceTerminalTheme
-            )
+            append(defaultsKey: change.defaultsKey, source: change.source)
         }
     }
 
-    mutating func append(
-        defaultsKey: String,
-        source: String,
-        synchronizeAppearanceTerminalTheme: Bool
-    ) {
+    mutating func append(defaultsKey: String, source: String) {
         changes.removeAll { $0.defaultsKey == defaultsKey }
-        changes.append(
-            ManagedDefaultSideEffect(
-                defaultsKey: defaultsKey,
-                source: source,
-                synchronizeAppearanceTerminalTheme: synchronizeAppearanceTerminalTheme
-            )
-        )
+        changes.append(ManagedDefaultSideEffect(defaultsKey: defaultsKey, source: source))
     }
 }
 

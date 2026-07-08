@@ -974,17 +974,10 @@ public struct GhosttyConfig {
         }
     }
 
-    /// The current light/dark terminal color-scheme preference, resolved from
-    /// the given defaults and optional system appearance.
-    public static func currentColorSchemePreference(
-        appAppearance _: NSAppearance? = nil,
-        defaults: UserDefaults = .standard,
-        systemAppearance: TerminalSystemAppearance? = nil
-    ) -> ColorSchemePreference {
-        return TerminalColorSchemePreference.current(
-            defaults: defaults,
-            systemAppearance: systemAppearance
-        )
+    /// The terminal color-scheme preference mosaic renders with. Pinned to
+    /// dark so the UI renders identically regardless of the macOS appearance.
+    public static func currentColorSchemePreference() -> ColorSchemePreference {
+        TerminalColorSchemePreference.current()
     }
 
     /// Resolves a raw `theme` directive value (which may carry conditional

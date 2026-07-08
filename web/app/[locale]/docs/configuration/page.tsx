@@ -63,7 +63,6 @@ function buildSettingsFileExample(t: ConfigurationTranslation) {
   "schemaVersion": 1,
 
   // "app": {
-  //   "appearance": "dark",
   //   "menuBarOnly": false,
   //   "newWorkspacePlacement": "afterCurrent",
   //   "windowTitleTemplate": "[mosaic:{windowToken}] {activeWorkspace}",
