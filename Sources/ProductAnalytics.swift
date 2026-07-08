@@ -75,6 +75,13 @@ struct ProductAnalytics: @unchecked Sendable {
         if let shareKind {
             eventProperties["share_kind"] = shareKind.rawValue
         }
+        if event == .connectionFailed, eventProperties["failure_reason"] == nil {
+            if let operation = eventProperties["operation"] as? String {
+                eventProperties["failure_reason"] = operation
+            } else if let errorKind = eventProperties["error_kind"] as? String {
+                eventProperties["failure_reason"] = errorKind
+            }
+        }
         track(ProductAnalyticsEvent(name: event.macEvent, properties: eventProperties, flush: flush))
     }
 
