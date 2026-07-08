@@ -38146,6 +38146,17 @@
         }
       }
     },
+    "collaboration.directory.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading teammates…"
+          }
+        }
+      }
+    },
     "collaboration.directory.share": {
       "extractionState": "manual",
       "localizations": {
