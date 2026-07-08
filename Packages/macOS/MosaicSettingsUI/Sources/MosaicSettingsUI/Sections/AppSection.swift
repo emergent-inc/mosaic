@@ -4,7 +4,7 @@ import MosaicSettings
 import SwiftUI
 
 /// **App** section — mirrors the legacy in-app section row-for-row
-/// inside a single `SettingsCard`: Language, Appearance, App Icon,
+/// inside a single `SettingsCard`: Language, App Icon,
 /// New Workspace Placement, Inherit Working Directory, Minimal Mode,
 /// Keep Workspace Open When Closing Last Surface, Focus Pane on
 /// First Click, File Drops, Open Files With, Open Supported Files in

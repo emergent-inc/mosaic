@@ -11,14 +11,14 @@ import Foundation
 /// every call site so the source of truth stays in one place.
 ///
 /// ```swift
-/// public let appAppearance = DefaultsKey<AppearanceMode>(
-///     id: "app.appearance",
-///     defaultValue: .system,
-///     userDefaultsKey: "appearanceMode"
+/// public let appIcon = DefaultsKey<AppIconMode>(
+///     id: "app.appIcon",
+///     defaultValue: .automatic,
+///     userDefaultsKey: "appIconMode"
 /// )
 /// ```
 public struct DefaultsKey<Value: SettingCodable>: Sendable, Equatable {
-    /// The dotted identifier for the setting (e.g. `"app.appearance"`).
+    /// The dotted identifier for the setting (e.g. `"app.appIcon"`).
     ///
     /// Used for diagnostics, search, and JSON-schema generation. It is
     /// independent of ``userDefaultsKey``, which is the actual UserDefaults

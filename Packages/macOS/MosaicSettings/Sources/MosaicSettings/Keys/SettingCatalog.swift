@@ -19,7 +19,7 @@ import Foundation
 ///     defaults: .standard,
 ///     migrating: catalog.all
 /// )
-/// await store.set(.dark, for: catalog.app.appearance)
+/// await store.set(.dark, for: catalog.browser.theme)
 /// ```
 public struct SettingCatalog: SettingCatalogSection {
     public let app = AppCatalogSection()

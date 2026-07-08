@@ -23,14 +23,14 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func readsDefaultWhenUnset() async {
         let (store, catalog) = makeStore()
-        let value = await store.value(for: catalog.app.appearance)
+        let value = await store.value(for: catalog.browser.theme)
         #expect(value == .system)
     }
 
     @Test func roundTripsTypedEnum() async {
         let (store, catalog) = makeStore()
-        await store.set(.dark, for: catalog.app.appearance)
-        let value = await store.value(for: catalog.app.appearance)
+        await store.set(.dark, for: catalog.browser.theme)
+        let value = await store.value(for: catalog.browser.theme)
         #expect(value == .dark)
     }
 
@@ -62,36 +62,36 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func resetReturnsToDefault() async {
         let (store, catalog) = makeStore()
-        await store.set(.light, for: catalog.app.appearance)
-        await store.reset(catalog.app.appearance)
-        let value = await store.value(for: catalog.app.appearance)
+        await store.set(.light, for: catalog.browser.theme)
+        await store.reset(catalog.browser.theme)
+        let value = await store.value(for: catalog.browser.theme)
         #expect(value == .system)
     }
 
     @Test func valuesStreamYieldsInitialThenChanges() async {
         let (store, catalog) = makeStore()
-        await store.set(.light, for: catalog.app.appearance)
+        await store.set(.light, for: catalog.browser.theme)
 
         // Drive the stream synchronously: awaiting next() before each set()
         // forces the AsyncStream build closure to run (registering the
         // UserDefaults observer) and serializes change delivery, so no write's
         // notification can be missed regardless of scheduler timing.
-        var iterator = store.values(for: catalog.app.appearance).makeAsyncIterator()
+        var iterator = store.values(for: catalog.browser.theme).makeAsyncIterator()
         let initial = await iterator.next()
         #expect(initial == .light)
 
-        await store.set(.dark, for: catalog.app.appearance)
+        await store.set(.dark, for: catalog.browser.theme)
         let dark = await iterator.next()
         #expect(dark == .dark)
 
-        await store.set(.system, for: catalog.app.appearance)
+        await store.set(.system, for: catalog.browser.theme)
         let system = await iterator.next()
         #expect(system == .system)
     }
 
     @Test func valueEventsCarryExplicitMutationSource() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let stream = await store.valueEvents(for: key)
         var iterator = stream.makeAsyncIterator()
 
@@ -116,7 +116,7 @@ struct UserDefaultsSettingsStoreTests {
     @Test func valueEventsDoNotReuseMutationSourceForExternalWrite() async {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         let store = UserDefaultsSettingsStore(defaults: UserDefaults(suiteName: suiteName)!)
-        let key = SettingCatalog().app.appearance
+        let key = SettingCatalog().browser.theme
         let stream = await store.valueEvents(for: key)
         var iterator = stream.makeAsyncIterator()
 
@@ -131,7 +131,7 @@ struct UserDefaultsSettingsStoreTests {
         #expect(tagged?.mutationSource == source)
 
         UserDefaults(suiteName: suiteName)!.set(
-            AppearanceMode.light.encodeForUserDefaults(),
+            BrowserThemeMode.light.encodeForUserDefaults(),
             forKey: key.userDefaultsKey
         )
         let external = await iterator.next()
@@ -141,8 +141,8 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsIgnoreUnrelatedDefaultsNotificationsWithoutValueChange() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
-        let recorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
+        let key = catalog.browser.theme
+        let recorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
         let task = Task {
             let stream = await store.valueEvents(for: key)
             for await event in stream {
@@ -173,7 +173,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsDoNotTagWritesBeforeStreamCreation() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let source = UserDefaultsSettingsMutationSource()
         await store.set(.dark, for: key, source: source)
 
@@ -186,7 +186,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsCanIncludePendingSourceCreatedBeforeStreamCreation() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let source = UserDefaultsSettingsMutationSource()
         await store.set(.dark, for: key, source: source)
 
@@ -201,11 +201,11 @@ struct UserDefaultsSettingsStoreTests {
     @Test func valueEventsMarkIncludedSourceSupersededWhenValueWasOverwritten() async {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         let store = UserDefaultsSettingsStore(defaults: UserDefaults(suiteName: suiteName)!)
-        let key = SettingCatalog().app.appearance
+        let key = SettingCatalog().browser.theme
         let source = UserDefaultsSettingsMutationSource()
         await store.set(.dark, for: key, source: source)
         UserDefaults(suiteName: suiteName)!.set(
-            AppearanceMode.system.encodeForUserDefaults(),
+            BrowserThemeMode.system.encodeForUserDefaults(),
             forKey: key.userDefaultsKey
         )
 
@@ -219,7 +219,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsMarkIncludedSourceSupersededAfterSourceLessStoreWrite() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let source = UserDefaultsSettingsMutationSource()
         await store.set(.dark, for: key, source: source)
         await store.set(.system, for: key)
@@ -234,7 +234,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsMarkIncludedSourceSupersededAfterTaggedStoreWrite() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let source = UserDefaultsSettingsMutationSource()
         await store.set(.dark, for: key, source: source)
         await store.set(.light, for: key, source: UserDefaultsSettingsMutationSource())
@@ -249,8 +249,8 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsYieldSupersededSourceWhenSourceLessWriteKeepsLastValue() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
-        let recorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
+        let key = catalog.browser.theme
+        let recorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
         let task = Task {
             let stream = await store.valueEvents(for: key)
             for await event in stream {
@@ -281,7 +281,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsDeliverNewestSupersededSourceAfterCoalescedSourceLessWrite() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let stream = await store.valueEvents(for: key)
         var iterator = stream.makeAsyncIterator()
 
@@ -296,7 +296,7 @@ struct UserDefaultsSettingsStoreTests {
         await store.set(.light, for: key, source: secondSource)
         await store.set(.system, for: key)
 
-        var sourceLessEvent: UserDefaultsSettingsValueEvent<AppearanceMode>?
+        var sourceLessEvent: UserDefaultsSettingsValueEvent<BrowserThemeMode>?
         for _ in 0..<3 {
             guard let event = await iterator.next() else { break }
             if event.value == .system {
@@ -311,7 +311,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsTagWritesAfterStreamCreationBeforeFirstRead() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let stream = await store.valueEvents(for: key)
 
         let source = UserDefaultsSettingsMutationSource()
@@ -325,7 +325,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsDeliverMutationSourceToEveryActiveObserver() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let firstStream = await store.valueEvents(for: key)
         let secondStream = await store.valueEvents(for: key)
         var firstIterator = firstStream.makeAsyncIterator()
@@ -351,9 +351,9 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func valueEventsDeliverSameValueMutationSourceToEveryActiveObserver() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
-        let firstRecorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
-        let secondRecorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
+        let key = catalog.browser.theme
+        let firstRecorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
+        let secondRecorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
 
         let firstTask = Task {
             let stream = await store.valueEvents(for: key)
@@ -399,7 +399,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func rejectsOlderMutationSourceAfterNewerSourceForSameOwner() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let ownerID = UUID()
         let olderSource = UserDefaultsSettingsMutationSource(ownerID: ownerID, sequence: 1)
         let newerSource = UserDefaultsSettingsMutationSource(ownerID: ownerID, sequence: 2)
@@ -413,7 +413,7 @@ struct UserDefaultsSettingsStoreTests {
 
     @Test func rejectsMutationSourceAfterSourceLessWriteSupersedesIt() async {
         let (store, catalog) = makeStore()
-        let key = catalog.app.appearance
+        let key = catalog.browser.theme
         let source = UserDefaultsSettingsMutationSource(ownerID: UUID(), sequence: 1)
 
         await store.set(.dark, for: key, source: source)
@@ -428,14 +428,14 @@ struct UserDefaultsSettingsStoreTests {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         do {
             let setup = UserDefaults(suiteName: suiteName)!
-            setup.set("dark", forKey: "legacyAppearance")
+            setup.set("dark", forKey: "legacyTheme")
         }
 
-        let migrating = DefaultsKey<AppearanceMode>(
-            id: "app.appearance",
+        let migrating = DefaultsKey<BrowserThemeMode>(
+            id: "test.theme",
             defaultValue: .system,
-            userDefaultsKey: "appearanceMode",
-            legacyUserDefaultsKeys: ["legacyAppearance"]
+            userDefaultsKey: "testThemeMode",
+            legacyUserDefaultsKeys: ["legacyTheme"]
         )
 
         let store = UserDefaultsSettingsStore(
@@ -478,14 +478,14 @@ struct UserDefaultsSettingsStoreTests {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         do {
             let setup = UserDefaults(suiteName: suiteName)!
-            setup.set(true, forKey: "legacyAppearance")
+            setup.set(true, forKey: "legacyTheme")
         }
 
-        let migrating = DefaultsKey<AppearanceMode>(
-            id: "app.appearance",
+        let migrating = DefaultsKey<BrowserThemeMode>(
+            id: "test.theme",
             defaultValue: .system,
-            userDefaultsKey: "appearanceMode",
-            legacyUserDefaultsKeys: ["legacyAppearance"]
+            userDefaultsKey: "testThemeMode",
+            legacyUserDefaultsKeys: ["legacyTheme"]
         )
 
         let store = UserDefaultsSettingsStore(
@@ -498,7 +498,7 @@ struct UserDefaultsSettingsStoreTests {
 
         // The legacy key should remain untouched so admins can recover.
         let verify = UserDefaults(suiteName: suiteName)!
-        #expect(verify.object(forKey: "legacyAppearance") as? Bool == true)
-        #expect(verify.object(forKey: "appearanceMode") == nil)
+        #expect(verify.object(forKey: "legacyTheme") as? Bool == true)
+        #expect(verify.object(forKey: "testThemeMode") == nil)
     }
 }

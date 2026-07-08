@@ -37,7 +37,6 @@ principles:
 ### Value types
 
 - ``SettingCodable``
-- ``AppearanceMode``
 - ``SocketControlMode``
 
 ### Type erasure and migration

@@ -245,12 +245,6 @@
           "default": "system",
           "description": "Preferred app language."
         },
-        "appearance": {
-          "type": "string",
-          "enum": ["system", "light", "dark"],
-          "default": "system",
-          "description": "App appearance mode."
-        },
         "appIcon": {
           "type": "string",
           "enum": ["automatic", "light", "dark"],

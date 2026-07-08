@@ -298,8 +298,8 @@ struct UserDefaultsSettingsStoreNotificationTests {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         nonisolated(unsafe) let backingDefaults = UserDefaults(suiteName: suiteName)!
         let store = UserDefaultsSettingsStore(defaults: backingDefaults)
-        let key = SettingCatalog().app.appearance
-        let recorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
+        let key = SettingCatalog().browser.theme
+        let recorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
         let task = Task {
             let stream = await store.valueEvents(for: key)
             for await event in stream {
@@ -335,8 +335,8 @@ struct UserDefaultsSettingsStoreNotificationTests {
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
         nonisolated(unsafe) let backingDefaults = UserDefaults(suiteName: suiteName)!
         let store = UserDefaultsSettingsStore(defaults: backingDefaults)
-        let key = SettingCatalog().app.appearance
-        let recorder = UserDefaultsSettingsEventRecorder<AppearanceMode>()
+        let key = SettingCatalog().browser.theme
+        let recorder = UserDefaultsSettingsEventRecorder<BrowserThemeMode>()
         let task = Task {
             let stream = await store.valueEvents(for: key)
             for await event in stream {

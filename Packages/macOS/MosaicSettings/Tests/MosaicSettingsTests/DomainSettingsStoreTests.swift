@@ -38,7 +38,7 @@ struct DefaultsKeyDirectAccessTests {
         // Two handles onto the same suite: the actor store writes through
         // one, the synchronous key accessor reads through the other.
         let suiteName = "mosaic.tests.\(UUID().uuidString)"
-        let key = AppCatalogSection().appearance
+        let key = BrowserCatalogSection().theme
         let store = UserDefaultsSettingsStore(defaults: UserDefaults(suiteName: suiteName)!)
         await store.set(.dark, for: key)
         let storeValue = await store.value(for: key)

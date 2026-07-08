@@ -29,8 +29,7 @@ import XCTest
 /// TIER 2 (needs runtime seam): effect lives in the main-app window /
 /// Ghostty / Metal surface or in timing; not observable from a fresh
 /// UI-test launch without an app seam this test must not add.
-///   - Theme (app.appearance / appearanceMode): repaints the terminal
-///     and chrome via the Metal-backed surface; appearance is not a
+///   - Theme: the app pins a fixed dark appearance; appearance is not a
 ///     queryable accessibility attribute.
 ///   - App Icon (app.appIcon / appIconMode): swaps the Dock/app icon
 ///     image; Dock tile imagery is not an XCUITest accessibility element.

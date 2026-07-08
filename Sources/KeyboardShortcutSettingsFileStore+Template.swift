@@ -58,7 +58,6 @@ extension MosaicSettingsFileStore {
             [
                 "app": [
                     "language": AppCatalogSection().language.defaultValue.rawValue,
-                    "appearance": AppearanceSettings.defaultMode.rawValue,
                     "appIcon": AppIconSettings.defaultMode.rawValue,
                     "windowTitleTemplate": WindowTitleTemplate.defaultRawValue,
                     "menuBarOnly": MenuBarOnlySettings.defaultMenuBarOnly,

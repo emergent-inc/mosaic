@@ -1904,50 +1904,6 @@
         }
       }
     },
-    "appearance.auto": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto"
-          }
-        }
-      }
-    },
-    "appearance.dark": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dark"
-          }
-        }
-      }
-    },
-    "appearance.light": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Light"
-          }
-        }
-      }
-    },
-    "appearance.system": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "System"
-          }
-        }
-      }
-    },
     "applescript.error.disabled": {
       "extractionState": "manual",
       "localizations": {
@@ -21659,17 +21615,6 @@
         }
       }
     },
-    "settings.app.appearance": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Appearance"
-          }
-        }
-      }
-    },
     "settings.app.canvasPaneGap": {
       "extractionState": "manual",
       "localizations": {
@@ -26642,17 +26587,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "app.appIcon dock icon application icon app switcher alternate icon"
-          }
-        }
-      }
-    },
-    "settings.search.alias.setting.app.appearance": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "app.appearance theme color scheme light mode dark mode system mode"
           }
         }
       }
