@@ -56,7 +56,6 @@ struct mosaicApp: App {
     @StateObject var closedItemHistoryStore = ClosedItemHistoryStore.shared
     @StateObject private var sidebarState = SidebarState()
     @StateObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
-    @AppStorage(AppearanceSettings.appearanceModeKey) private var appearanceMode = AppearanceSettings.defaultMode.rawValue
     @AppStorage("titlebarControlsStyle") private var titlebarControlsStyle = TitlebarControlsStyle.classic.rawValue
     @AppStorage(DevBuildBannerDebugSettings.sidebarBannerVisibleKey)
     private var showSidebarDevBuildBanner = DevBuildBannerDebugSettings.defaultShowSidebarBanner
@@ -179,9 +178,8 @@ struct mosaicApp: App {
         )
         StartupBreadcrumbLog.append("app.init.settingsRuntime.created")
 
-        let startupAppearance = AppearanceSettings.resolvedMode()
-        Self.applyAppearance(startupAppearance, duringLaunch: true)
-        StartupBreadcrumbLog.append("app.init.appearance.applied", fields: ["mode": startupAppearance.rawValue])
+        AppearanceSettings.applyFixedAppearance()
+        StartupBreadcrumbLog.append("app.init.appearance.applied", fields: ["mode": "fixedDark"])
         let defaults = UserDefaults.standard
         AppBundleIconPersistencePolicy.updateDisableDefault(
             defaults: defaults,
@@ -380,7 +378,7 @@ struct mosaicApp: App {
             MainWindowBootstrapView()
                 .settingsRuntime(settingsRuntime)
                 .mosaicFontMagnificationEnvironment()
-                .mosaicAppearanceColorScheme(appearanceMode)
+                .mosaicFixedColorScheme()
                 .onAppear {
                     SettingsWindowPresenter.configure(
                         openWindow: {
@@ -396,9 +394,6 @@ struct mosaicApp: App {
                     }
 #endif
                     bootstrapMainWindowScene()
-                }
-                .onChange(of: appearanceMode) { _ in
-                    applyAppearance()
                 }
                 .onChange(of: socketControlMode) { _ in
                     updateSocketController()
@@ -873,7 +868,7 @@ struct mosaicApp: App {
                     window.minSize = minSize
                     window.contentMinSize = minSize
                 })
-                .mosaicAppearanceColorScheme(appearanceMode)
+                .mosaicFixedColorScheme()
         }
         .defaultSize(
             width: settingsRuntime.presentation.showsSidebar ? 980 : 480,
@@ -888,7 +883,7 @@ struct mosaicApp: App {
             ConfigSettingsView()
                 .settingsRuntime(settingsRuntime)
                 .mosaicFontMagnificationEnvironment()
-                .mosaicAppearanceColorScheme(appearanceMode)
+                .mosaicFixedColorScheme()
         }
     }
 
@@ -1099,25 +1094,6 @@ struct mosaicApp: App {
         AboutWindowController.shared.show()
     }
 
-    private func applyAppearance() {
-        let mode = AppearanceSettings.applyStoredMode(
-            rawValue: appearanceMode,
-            source: "mosaicApp.appearanceModeChanged"
-        )
-        if appearanceMode != mode.rawValue {
-            appearanceMode = mode.rawValue
-        }
-    }
-
-    private static func applyAppearance(_ mode: AppearanceMode, duringLaunch: Bool = false) {
-        AppearanceSettings.applyLiveMode(
-            mode,
-            source: duringLaunch ? "mosaicApp.launch" : "mosaicApp.applyAppearance",
-            duringLaunch: duringLaunch,
-            synchronizeTerminalTheme: !duringLaunch
-        )
-    }
-
     private func updateSocketController() {
         let mode = SocketControlSettings.effectiveMode(userMode: currentSocketMode)
         if mode != .off {
@@ -1137,7 +1113,7 @@ struct mosaicApp: App {
     private func bootstrapMainWindowScene() {
         appDelegate.scheduleInitialMainWindowBootstrap(debugSource: "swiftUIBootstrap")
         appDelegate.installReloadConfigurationMenuItemAction()
-        applyAppearance()
+        AppearanceSettings.applyFixedAppearance()
     }
 
     private var currentSocketMode: SocketControlMode {
@@ -4081,14 +4057,8 @@ private struct StartupAppearanceDebugView: View {
     private func applyAppearance(_ mode: StartupAppearancePreviewMode) {
         switch mode {
         case .stored:
-            switch AppearanceSettings.resolvedMode() {
-            case .system, .auto:
-                NSApplication.shared.appearance = nil
-            case .light:
-                NSApplication.shared.appearance = NSAppearance(named: .aqua)
-            case .dark:
-                NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
-            }
+            // mosaic pins the app to a fixed dark appearance.
+            NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         case .light:
             NSApplication.shared.appearance = NSAppearance(named: .aqua)
         case .dark:

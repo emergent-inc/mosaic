@@ -85,10 +85,10 @@ struct SettingCatalogTests {
 
     @Test func allReachesEverySection() {
         // Sanity check: the recursive Mirror walk picks up keys from every
-        // nested section. Concretely, both `app.appearance` and
+        // nested section. Concretely, both `app.appIcon` and
         // `automation.socketPassword` must appear in `all`.
         let ids = Set(SettingCatalog().all.map(\.id))
-        #expect(ids.contains("app.appearance"))
+        #expect(ids.contains("app.appIcon"))
         #expect(ids.contains("mobile.iOSPairingHost.enabled"))
         #expect(ids.contains("automation.socketControlMode"))
         #expect(ids.contains("automation.socketPassword"))

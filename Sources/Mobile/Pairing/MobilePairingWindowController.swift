@@ -43,9 +43,8 @@ final class MobilePairingWindowController: ReleasingWindowController {
     }
 
     override func makeWindow() -> NSWindow {
-        let appearanceMode = UserDefaults.standard.string(forKey: AppearanceSettings.appearanceModeKey)
         let root = MobilePairingView()
-            .mosaicAppearanceColorScheme(appearanceMode)
+            .mosaicFixedColorScheme()
         let hostingController = NSHostingController(rootView: root)
 
         let window = NSWindow(contentViewController: hostingController)

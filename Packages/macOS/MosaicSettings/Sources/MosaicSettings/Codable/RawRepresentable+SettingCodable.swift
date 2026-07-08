@@ -7,7 +7,7 @@ import Foundation
 /// to their declaration is enough to make them storable:
 ///
 /// ```swift
-/// public enum AppearanceMode: String, CaseIterable, Sendable, SettingCodable {
+/// public enum BrowserThemeMode: String, CaseIterable, Sendable, SettingCodable {
 ///     case system, light, dark
 /// }
 /// ```

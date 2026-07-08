@@ -330,7 +330,6 @@ extension MosaicSettingsFileStore {
     // validate against this set so new persisted settings need an explicit mosaic.json review.
     static let supportedSettingsJSONPaths: Set<String> = [
         "app.language",
-        "app.appearance",
         "app.appIcon",
         "app.windowTitleTemplate",
         "app.menuBarOnly",

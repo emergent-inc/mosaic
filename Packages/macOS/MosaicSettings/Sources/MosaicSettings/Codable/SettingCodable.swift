@@ -17,7 +17,7 @@ import Foundation
 /// one of the above (for example a struct stored as a nested JSON object).
 ///
 /// ```swift
-/// extension AppearanceMode: SettingCodable {}
+/// extension BrowserThemeMode: SettingCodable {}
 /// // RawRepresentable enums pick up the default implementation for free.
 /// ```
 public protocol SettingCodable: Sendable, Equatable {

@@ -171,9 +171,8 @@ final class HostSettingsActions: SettingsHostActions {
             return
         }
 
-        let appearanceMode = UserDefaults.standard.string(forKey: AppearanceSettings.appearanceModeKey)
         let root = ConfigSettingsView()
-            .mosaicAppearanceColorScheme(appearanceMode)
+            .mosaicFixedColorScheme()
         let hostingController = NSHostingController(rootView: root)
 
         let window = NSWindow(contentViewController: hostingController)

@@ -4937,7 +4937,11 @@ final class CollaborationRuntime {
         publishIncomingInviteAlert()
     }
 
-    private func applyIncomingInvites(_ invites: [CollaborationIncomingSession]) {
+    private func applyIncomingInvites(_ rawInvites: [CollaborationIncomingSession]) {
+        // The backend does not guarantee a recency order, so sort newest-first
+        // locally. This pins the picker's default selection and the auto-surfaced
+        // alert to the most recently shared session.
+        let invites = Self.orderInvitesNewestFirst(rawInvites)
         let previouslySeen = seenIncomingSessionIDs
         let currentIDs = Set(invites.map(\.session))
         let previousCount = incomingSharedSessions.count
@@ -4957,6 +4961,18 @@ final class CollaborationRuntime {
             incomingInviteAlert = nil
             publishIncomingInviteAlert()
         }
+    }
+
+    /// Orders incoming invites newest-first by `createdAt`, delegating the parse
+    /// and stable-sort logic to the testable ``CollaborationInboxOrdering`` helper.
+    private static func orderInvitesNewestFirst(
+        _ invites: [CollaborationIncomingSession]
+    ) -> [CollaborationIncomingSession] {
+        let bySession = Dictionary(invites.map { ($0.session, $0) }, uniquingKeysWith: { first, _ in first })
+        let ordered = CollaborationInboxOrdering.orderNewestFirst(
+            invites.map { CollaborationInboxOrderingInput(session: $0.session, createdAt: $0.createdAt) }
+        )
+        return ordered.compactMap { bySession[$0.session] }
     }
 
     /// Dismiss the auto-surfaced invite alert without joining. The invite stays

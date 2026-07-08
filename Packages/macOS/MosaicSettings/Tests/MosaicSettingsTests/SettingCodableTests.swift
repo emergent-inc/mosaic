@@ -21,9 +21,9 @@ struct SettingCodableTests {
     }
 
     @Test func rawRepresentableEnumRoundTrips() {
-        let encoded = AppearanceMode.dark.encodeForJSON()
+        let encoded = BrowserThemeMode.dark.encodeForJSON()
         #expect(encoded as? String == "dark")
-        #expect(AppearanceMode.decodeFromJSON(encoded) == .dark)
+        #expect(BrowserThemeMode.decodeFromJSON(encoded) == .dark)
     }
 
     @Test func arrayRoundTrip() {

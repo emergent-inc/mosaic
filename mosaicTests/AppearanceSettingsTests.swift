@@ -217,94 +217,37 @@ final class AppearanceSettingsTests: XCTestCase {
         )
     }
 
-    func testResolvedModeDefaultsToSystemWhenUnset() {
-        let suiteName = "AppearanceSettingsTests.Default.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.removeObject(forKey: AppearanceSettings.appearanceModeKey)
-
-        let resolved = AppearanceSettings.resolvedMode(defaults: defaults)
-        XCTAssertEqual(resolved, .system)
-        XCTAssertEqual(defaults.string(forKey: AppearanceSettings.appearanceModeKey), AppearanceMode.system.rawValue)
+    func testApplyFixedAppearancePinsDarkAqua() {
+        AppearanceSettings.applyFixedAppearance()
+        XCTAssertEqual(
+            NSApplication.shared.appearance?.bestMatch(from: [.darkAqua, .aqua]),
+            .darkAqua
+        )
     }
 
-    func testCurrentColorSchemePreferenceUsesStoredDarkModeBeforeAppAppearanceExists() {
+    func testCurrentColorSchemePreferenceIsAlwaysDarkRegardlessOfSystemStyle() {
         withTemporaryAppearanceDefaults(
-            appearanceMode: AppearanceMode.dark.rawValue,
+            appearanceMode: "light",
             appleInterfaceStyle: nil
         ) {
-            XCTAssertEqual(
-                GhosttyConfig.currentColorSchemePreference(appAppearance: nil),
-                .dark
-            )
+            XCTAssertEqual(GhosttyConfig.currentColorSchemePreference(), .dark)
         }
-    }
-
-    func testCurrentColorSchemePreferenceUsesStoredLightModeBeforeAppAppearanceExists() {
         withTemporaryAppearanceDefaults(
-            appearanceMode: AppearanceMode.light.rawValue,
+            appearanceMode: "system",
+            appleInterfaceStyle: nil
+        ) {
+            XCTAssertEqual(GhosttyConfig.currentColorSchemePreference(), .dark)
+        }
+        withTemporaryAppearanceDefaults(
+            appearanceMode: "dark",
             appleInterfaceStyle: "Dark"
         ) {
-            XCTAssertEqual(
-                GhosttyConfig.currentColorSchemePreference(appAppearance: nil),
-                .light
-            )
+            XCTAssertEqual(GhosttyConfig.currentColorSchemePreference(), .dark)
         }
     }
 
-    func testCurrentColorSchemePreferenceUsesSystemDarkBeforeAppAppearanceExists() {
-        withTemporaryAppearanceDefaults(
-            appearanceMode: AppearanceMode.system.rawValue,
-            appleInterfaceStyle: "Dark"
-        ) {
-            XCTAssertEqual(
-                GhosttyConfig.currentColorSchemePreference(appAppearance: nil),
-                .dark
-            )
-        }
-    }
-
-    func testColorSchemePreferenceUsesSystemLightWhenSystemStyleIsUnset() {
-        let suiteName = "AppearanceSettingsTests.SystemLight.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(AppearanceMode.system.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-        defaults.removeObject(forKey: "AppleInterfaceStyle")
-        let lightSystem = AppearanceSettings.SystemAppearance(interfaceStyle: nil)
-
-        XCTAssertEqual(
-            AppearanceSettings.colorSchemePreference(appAppearance: nil, defaults: defaults, systemAppearance: lightSystem),
-            .light
-        )
-        XCTAssertEqual(
-            GhosttyConfig.currentColorSchemePreference(appAppearance: nil, defaults: defaults, systemAppearance: lightSystem),
-            .light
-        )
-    }
-
-    func testSplitGhosttyThemeUsesStoredDarkModeWhenAppAppearanceIsStaleLight() {
-        let suiteName = "AppearanceSettingsTests.SplitThemeStoredDark.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(AppearanceMode.dark.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-
-        let preferredColorScheme = GhosttyConfig.currentColorSchemePreference(
-            appAppearance: NSAppearance(named: .aqua),
-            defaults: defaults,
-            systemAppearance: .init(interfaceStyle: "Dark")
-        )
+    func testSplitGhosttyThemeAlwaysResolvesDarkSide() {
+        let preferredColorScheme = GhosttyConfig.currentColorSchemePreference()
         let resolvedTheme = GhosttyConfig.resolveThemeName(
             from: "light:Catppuccin Latte,dark:Apple System Colors",
             preferredColorScheme: preferredColorScheme
@@ -314,240 +257,21 @@ final class AppearanceSettingsTests: XCTestCase {
         XCTAssertEqual(resolvedTheme, "Apple System Colors")
     }
 
-    func testSplitGhosttyThemeUsesStoredLightModeWhenAppAppearanceIsStaleDark() {
-        let suiteName = "AppearanceSettingsTests.SplitThemeStoredLight.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(AppearanceMode.light.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-
-        let preferredColorScheme = GhosttyConfig.currentColorSchemePreference(
-            appAppearance: NSAppearance(named: .darkAqua),
-            defaults: defaults,
-            systemAppearance: .init(interfaceStyle: "Dark")
-        )
-        let resolvedTheme = GhosttyConfig.resolveThemeName(
-            from: "light:Catppuccin Latte,dark:Apple System Colors",
-            preferredColorScheme: preferredColorScheme
-        )
-
-        XCTAssertEqual(preferredColorScheme, .light)
-        XCTAssertEqual(resolvedTheme, "Catppuccin Latte")
-    }
-
-    func testSplitGhosttyThemeUsesSystemLightWhenAppAppearanceIsStaleDark() {
-        let suiteName = "AppearanceSettingsTests.SplitThemeSystemLight.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(AppearanceMode.system.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-        defaults.removeObject(forKey: "AppleInterfaceStyle")
-
-        let preferredColorScheme = GhosttyConfig.currentColorSchemePreference(
-            appAppearance: NSAppearance(named: .darkAqua),
-            defaults: defaults,
-            systemAppearance: .init(interfaceStyle: nil)
-        )
-        let resolvedTheme = GhosttyConfig.resolveThemeName(
-            from: "light:Monokai Pro Light,dark:Monokai Pro Machine",
-            preferredColorScheme: preferredColorScheme
-        )
-
-        XCTAssertEqual(preferredColorScheme, .light)
-        XCTAssertEqual(resolvedTheme, "Monokai Pro Light")
-    }
-
-    func testSplitGhosttyThemeUsesSystemDarkWhenAppAppearanceIsStaleLight() {
-        let suiteName = "AppearanceSettingsTests.SplitThemeSystemDark.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(AppearanceMode.system.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-
-        let preferredColorScheme = GhosttyConfig.currentColorSchemePreference(
-            appAppearance: NSAppearance(named: .aqua),
-            defaults: defaults,
-            systemAppearance: .init(interfaceStyle: "Dark")
-        )
-        let resolvedTheme = GhosttyConfig.resolveThemeName(
-            from: "light:Monokai Pro Light,dark:Monokai Pro Machine",
-            preferredColorScheme: preferredColorScheme
-        )
-
-        XCTAssertEqual(preferredColorScheme, .dark)
-        XCTAssertEqual(resolvedTheme, "Monokai Pro Machine")
-    }
-
-    func testColorSchemeOverrideIsExplicitOnlyForManualLightAndDarkModes() {
-        XCTAssertEqual(AppearanceSettings.colorSchemeOverride(for: AppearanceMode.light.rawValue), .light)
-        XCTAssertEqual(AppearanceSettings.colorSchemeOverride(for: AppearanceMode.dark.rawValue), .dark)
-        XCTAssertNil(AppearanceSettings.colorSchemeOverride(for: AppearanceMode.system.rawValue))
-        XCTAssertNil(AppearanceSettings.colorSchemeOverride(for: AppearanceMode.auto.rawValue))
-        XCTAssertNil(AppearanceSettings.colorSchemeOverride(for: "invalid"))
-        XCTAssertEqual(AppearanceSettings.colorScheme(for: AppearanceMode.dark.rawValue, fallback: .light), .dark)
-        XCTAssertEqual(AppearanceSettings.colorScheme(for: AppearanceMode.system.rawValue, fallback: .dark), .dark)
-    }
-
-    func testSelectingDarkModeAppliesRuntimeAppearanceAndSynchronizesTerminalTheme() {
-        let suiteName = "AppearanceSettingsTests.SelectDark.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        var appliedAppearanceName: NSAppearance.Name?
-        var synchronizedAppearanceName: NSAppearance.Name?
-        var synchronizedSource: String?
-        let environment = AppearanceSettings.LiveApplyEnvironment(
-            setApplicationAppearance: { appearance in
-                appliedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-            },
-            synchronizeTerminalThemeWithAppearance: { appearance, source in
-                synchronizedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-                synchronizedSource = source
-            },
-            systemAppearance: {
-                XCTFail("Dark mode should not resolve system appearance")
-                return nil
-            }
-        )
-
-        let selected = AppearanceSettings.selectMode(
-            .dark,
-            defaults: defaults,
-            source: "settings.themePicker",
-            environment: environment
-        )
-
-        XCTAssertEqual(selected, .dark)
-        XCTAssertEqual(defaults.string(forKey: AppearanceSettings.appearanceModeKey), AppearanceMode.dark.rawValue)
-        XCTAssertEqual(appliedAppearanceName, .darkAqua)
-        XCTAssertEqual(synchronizedAppearanceName, .darkAqua)
-        XCTAssertEqual(synchronizedSource, "settings.themePicker")
-    }
-
-    func testSelectingSystemModeClearsRuntimeAppearanceOverrideForSystemFollow() {
-        let suiteName = "AppearanceSettingsTests.SelectSystem.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        var appliedAppearanceWasCleared = false
-        var synchronizedAppearanceWasCleared = false
-        let environment = AppearanceSettings.LiveApplyEnvironment(
-            setApplicationAppearance: { appearance in
-                appliedAppearanceWasCleared = appearance == nil
-            },
-            synchronizeTerminalThemeWithAppearance: { appearance, _ in
-                synchronizedAppearanceWasCleared = appearance == nil
-            },
-            systemAppearance: {
-                XCTFail("System mode should clear the app override after launch")
-                return NSAppearance(named: .darkAqua)
-            }
-        )
-
-        let selected = AppearanceSettings.selectMode(
-            .system,
-            defaults: defaults,
-            source: "settings.themePicker",
-            environment: environment
-        )
-
-        XCTAssertEqual(selected, .system)
-        XCTAssertEqual(defaults.string(forKey: AppearanceSettings.appearanceModeKey), AppearanceMode.system.rawValue)
-        XCTAssertTrue(appliedAppearanceWasCleared)
-        XCTAssertTrue(synchronizedAppearanceWasCleared)
-    }
-
-    func testDefaultsObserverAppliesLiveAppearanceWhenStoredModeChanges() {
-        let suiteName = "AppearanceSettingsTests.DefaultsObserver.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Failed to create isolated UserDefaults suite")
-            return
-        }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let notificationCenter = NotificationCenter()
-        var appliedAppearanceName: NSAppearance.Name?
-        var synchronizedAppearanceName: NSAppearance.Name?
-        var synchronizedSource: String?
-        let liveEnvironment = AppearanceSettings.LiveApplyEnvironment(
-            setApplicationAppearance: { appearance in
-                appliedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-            },
-            synchronizeTerminalThemeWithAppearance: { appearance, source in
-                synchronizedAppearanceName = appearance?.bestMatch(from: [.darkAqua, .aqua])
-                synchronizedSource = source
-            },
-            systemAppearance: {
-                XCTFail("Dark mode should not resolve system appearance")
-                return nil
-            }
-        )
-        let observer = AppearanceSettingsUserDefaultsObserver(
-            environment: .init(
-                addDefaultsObserver: { handler in
-                    notificationCenter.addObserver(
-                        forName: UserDefaults.didChangeNotification,
-                        object: nil,
-                        queue: nil
-                    ) { _ in
-                        handler()
-                    }
-                },
-                removeObserver: { observer in
-                    notificationCenter.removeObserver(observer)
-                },
-                currentRawValue: {
-                    defaults.string(forKey: AppearanceSettings.appearanceModeKey)
-                },
-                applyStoredMode: { rawValue, source in
-                    AppearanceSettings.applyStoredMode(
-                        rawValue: rawValue,
-                        defaults: defaults,
-                        source: source,
-                        environment: liveEnvironment
-                    )
-                }
-            ),
-            source: "test.defaultsObserver"
-        )
-
-        defaults.set(AppearanceMode.system.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-        observer.startObserving()
-        defaults.set(AppearanceMode.dark.rawValue, forKey: AppearanceSettings.appearanceModeKey)
-        notificationCenter.post(name: UserDefaults.didChangeNotification, object: defaults)
-
-        XCTAssertEqual(appliedAppearanceName, .darkAqua)
-        XCTAssertEqual(synchronizedAppearanceName, .darkAqua)
-        XCTAssertEqual(synchronizedSource, "test.defaultsObserver")
-    }
-
+    /// Legacy `appearanceMode` UserDefaults values left over from before the
+    /// fixed-dark change must not influence resolution.
     private func withTemporaryAppearanceDefaults(
         appearanceMode: String,
         appleInterfaceStyle: String?,
         body: () -> Void
     ) {
         let defaults = UserDefaults.standard
-        let originalAppearanceMode = defaults.object(forKey: AppearanceSettings.appearanceModeKey)
+        let appearanceModeKey = "appearanceMode"
+        let originalAppearanceMode = defaults.object(forKey: appearanceModeKey)
         let originalAppleInterfaceStyle = defaults.object(forKey: "AppleInterfaceStyle")
         defer {
             restoreDefaultsValue(
                 originalAppearanceMode,
-                key: AppearanceSettings.appearanceModeKey,
+                key: appearanceModeKey,
                 defaults: defaults
             )
             restoreDefaultsValue(
@@ -557,7 +281,7 @@ final class AppearanceSettingsTests: XCTestCase {
             )
         }
 
-        defaults.set(appearanceMode, forKey: AppearanceSettings.appearanceModeKey)
+        defaults.set(appearanceMode, forKey: appearanceModeKey)
         if let appleInterfaceStyle {
             defaults.set(appleInterfaceStyle, forKey: "AppleInterfaceStyle")
         } else {
