@@ -70,6 +70,79 @@ public struct CollaborationTerminalRecipientSelectionStore {
         return Set(currentIDs.filter { storedIDs.contains($0) || !knownIDs.contains($0) })
     }
 
+    /// Returns whether an explicit recipient selection has been recorded for a terminal.
+    /// - Parameters:
+    ///   - sessionCode: The collaboration session code.
+    ///   - terminalKey: The stable terminal key.
+    /// - Returns: True when a selection was previously recorded for this session and terminal.
+    public func hasSelection(sessionCode: String, terminalKey: String) -> Bool {
+        let normalizedCode = inviteCodeStore.normalizedSessionCode(from: sessionCode)
+        let normalizedKey = terminalKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedCode.isEmpty, !normalizedKey.isEmpty else { return false }
+        return selectionsBySessionAndTerminal()[normalizedCode]?[normalizedKey] != nil
+    }
+
+    /// Records additional participants as known without selecting them.
+    ///
+    /// Used when a peer joins a session after the host already made an explicit
+    /// recipient selection: the joiner must not be auto-included, so they are
+    /// recorded as known-but-unselected. Does nothing when no selection exists
+    /// (terminals without a selection keep the default of including new peers).
+    /// - Parameters:
+    ///   - participantIDs: Participant IDs to record as known.
+    ///   - sessionCode: The collaboration session code.
+    ///   - terminalKey: The stable terminal key.
+    public func recordKnownParticipants(
+        _ participantIDs: Set<String>,
+        sessionCode: String,
+        terminalKey: String
+    ) {
+        let normalizedCode = inviteCodeStore.normalizedSessionCode(from: sessionCode)
+        let normalizedKey = terminalKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedCode.isEmpty, !normalizedKey.isEmpty else { return }
+        var selections = selectionsBySessionAndTerminal()
+        guard let stored = selections[normalizedCode]?[normalizedKey] else { return }
+        let knownIDs = Set(stored.knownParticipantIDs).union(participantIDs)
+        selections[normalizedCode, default: [:]][normalizedKey] = CollaborationTerminalRecipientSelection(
+            sessionCode: normalizedCode,
+            terminalKey: normalizedKey,
+            knownParticipantIDs: Self.normalizedParticipantIDs(Array(knownIDs)),
+            selectedParticipantIDs: stored.selectedParticipantIDs
+        )
+        persist(selections)
+    }
+
+    /// Records additional participants as selected recipients (and known).
+    ///
+    /// Used when the host explicitly invites a teammate into a session: the
+    /// invitee must receive already-shared terminals when they join, even
+    /// though they were not present when the selection was made. Does nothing
+    /// when no selection exists (the store default already includes new peers).
+    /// - Parameters:
+    ///   - participantIDs: Participant IDs to record as selected.
+    ///   - sessionCode: The collaboration session code.
+    ///   - terminalKey: The stable terminal key.
+    public func recordSelectedParticipants(
+        _ participantIDs: Set<String>,
+        sessionCode: String,
+        terminalKey: String
+    ) {
+        let normalizedCode = inviteCodeStore.normalizedSessionCode(from: sessionCode)
+        let normalizedKey = terminalKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedCode.isEmpty, !normalizedKey.isEmpty else { return }
+        var selections = selectionsBySessionAndTerminal()
+        guard let stored = selections[normalizedCode]?[normalizedKey] else { return }
+        let knownIDs = Set(stored.knownParticipantIDs).union(participantIDs)
+        let selectedIDs = Set(stored.selectedParticipantIDs).union(participantIDs)
+        selections[normalizedCode, default: [:]][normalizedKey] = CollaborationTerminalRecipientSelection(
+            sessionCode: normalizedCode,
+            terminalKey: normalizedKey,
+            knownParticipantIDs: Self.normalizedParticipantIDs(Array(knownIDs)),
+            selectedParticipantIDs: Self.normalizedParticipantIDs(Array(selectedIDs))
+        )
+        persist(selections)
+    }
+
     /// Records the selected participants for a terminal.
     /// - Parameters:
     ///   - selectedParticipantIDs: Participant IDs selected to receive this terminal.
