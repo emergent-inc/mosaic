@@ -1840,9 +1840,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         // Refresh the collaboration inbox on focus so directory invites surface
         // immediately when you switch to the app, rather than waiting for the poll.
+        // Also warm the org-directory cache so the share picker reflects teammates
+        // added while the app was backgrounded, without requiring an app reload.
         Task { @MainActor in
             await CollaborationRuntime.shared.refreshIncomingSharedSessions()
         }
+        CollaborationRuntime.shared.refreshDirectoryMembersOnFocus()
 
         guard let notificationStore else { return }
         notificationStore.handleApplicationDidBecomeActive()
