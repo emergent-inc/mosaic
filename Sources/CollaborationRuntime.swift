@@ -469,7 +469,11 @@ final class CollaborationJoinAcknowledgementGate {
     }
 }
 
-private struct TerminalOutputCaretSuppression {
+/// Attributes host-echoed `terminal.output` to the remote peer whose input
+/// produced it, so every mirror can show the typist's caret. Receivers filter
+/// out their own peer ID, so the typist never sees their own echo caret.
+private struct TerminalOutputCaretAttribution {
+    let peerID: String
     let expiresAt: Date
 }
 
@@ -926,7 +930,7 @@ final class CollaborationRuntime {
     private var hostedTerminalIDsBySurfaceID: [UUID: String] = [:]
     private var terminalSessionRouter = CollaborationTerminalSessionRouter()
     private var hostedTerminalOutputSequencesByID: [String: UInt64] = [:]
-    private var hostedTerminalOutputCaretSuppressionsByID: [String: TerminalOutputCaretSuppression] = [:]
+    private var hostedTerminalOutputCaretAttributionsByID: [String: TerminalOutputCaretAttribution] = [:]
     /// Last host grid size broadcast per terminal, so a change is only sent to
     /// peers when the host's grid (columns or rows) actually changes.
     private var hostedTerminalBroadcastGridByID: [String: TerminalGridSize] = [:]
@@ -2211,7 +2215,7 @@ final class CollaborationRuntime {
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
-        hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        hostedTerminalOutputCaretAttributionsByID.removeValue(forKey: terminalID)
         hostedTerminalBroadcastGridByID.removeValue(forKey: terminalID)
         mirroredTerminalsByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
@@ -2487,11 +2491,11 @@ final class CollaborationRuntime {
     }
 
     private func terminalOutputPeerID(for terminalID: String) -> String? {
-        if let suppression = hostedTerminalOutputCaretSuppressionsByID[terminalID] {
-            if suppression.expiresAt > Date() {
-                return nil
+        if let attribution = hostedTerminalOutputCaretAttributionsByID[terminalID] {
+            if attribution.expiresAt > Date() {
+                return attribution.peerID
             }
-            hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+            hostedTerminalOutputCaretAttributionsByID.removeValue(forKey: terminalID)
         }
         return peerIdentity.peerID
     }
@@ -4098,7 +4102,7 @@ final class CollaborationRuntime {
         hostedTerminalIDsBySurfaceID.removeAll()
         terminalSessionRouter.removeAll()
         hostedTerminalOutputSequencesByID.removeAll()
-        hostedTerminalOutputCaretSuppressionsByID.removeAll()
+        hostedTerminalOutputCaretAttributionsByID.removeAll()
         hostedTerminalDimensionsProbedAtByID.removeAll()
         mirroredTerminalsByID.removeAll()
         mirroredTerminalIDsBySurfaceID.removeAll()
@@ -4826,12 +4830,40 @@ final class CollaborationRuntime {
             let roomKey = normalizedRoomKey(connection.sessionCode)
             invitedTeammateUserIDsByRoom[roomKey, default: []].insert(userID)
             Self.outgoingInviteStore.addInvitee(userID, forRoomKey: roomKey, descriptor: descriptor)
+            recordInvitedTeammateAsSelectedRecipient(userID: userID, connection: connection)
             await notifyInboxRealtime(inviteeUserID: userID)
             return true
         } catch {
             lastErrorMessage = error.localizedDescription
             return false
         }
+    }
+
+    /// Records a directory-invited teammate as a selected recipient of every
+    /// hosted terminal in the invited session, so they still receive those
+    /// terminals when they join. Late joiners are otherwise recorded as
+    /// known-but-unselected once an explicit selection exists; an explicit
+    /// invite is the host opting them in. An authenticated peer's stable
+    /// participant ID is their account user ID
+    /// (``CollaborationPeerIdentity/authenticatedParticipant``), so the
+    /// invitee's user ID matches the participant ID they will join with.
+    private func recordInvitedTeammateAsSelectedRecipient(
+        userID: String,
+        connection: CollaborationRelayConnection
+    ) {
+        for weakPanel in hostedTerminalsByID.values {
+            guard let panel = weakPanel.panel,
+                  let terminalID = hostedTerminalIDsBySurfaceID[panel.id],
+                  terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else {
+                continue
+            }
+            Self.terminalRecipientSelectionStore.recordSelectedParticipants(
+                [userID],
+                sessionCode: connection.sessionCode,
+                terminalKey: terminalSelectionKey(for: panel)
+            )
+        }
+        workspaceParticipantSnapshotRevision &+= 1
     }
 
     /// Withdraw every directory invite we sent for `room` so a teammate's inbox
@@ -5362,34 +5394,63 @@ final class CollaborationRuntime {
             ownerSnapshot: ownerSnapshot
         )
         syncTerminalTabPresentation(terminalID: terminalID, ownerSnapshot: ownerSnapshot)
+        // First share of this terminal in a session that already has peers:
+        // record an explicit empty recipient selection BEFORE anything hits
+        // the wire, so the terminal is not broadcast to every participant
+        // before the user has checked any names in the recipient picker.
+        // Recipients then receive the open/dimensions/seed sequence from
+        // applyRecipientSelection when checked. A fresh session with no
+        // remote peers (invite-code create flow) records nothing, keeping
+        // the store default that auto-includes the eventual code-joiner.
+        let selectionKey = terminalSelectionKey(for: terminal)
+        let remoteParticipantIDs = currentRemoteParticipantIDs(in: connection)
+        if !remoteParticipantIDs.isEmpty,
+           !Self.terminalRecipientSelectionStore.hasSelection(
+               sessionCode: connection.sessionCode,
+               terminalKey: selectionKey
+           ) {
+            Self.terminalRecipientSelectionStore.record(
+                selectedParticipantIDs: [],
+                knownParticipantIDs: remoteParticipantIDs,
+                sessionCode: connection.sessionCode,
+                terminalKey: selectionKey
+            )
+            workspaceParticipantSnapshotRevision &+= 1
+        }
+        let hasInitialRecipients = !selectedRecipientParticipantIDs(for: terminalID, connection: connection).isEmpty
         Task {
             do {
                 // Order matters: open (pane) -> dimensions (grid lock) -> seed
                 // (content). The seed replay is width-sensitive, so the viewer
                 // must lock its mirror grid to our columns before processing
                 // any screen content or its layout drifts from ours.
-                try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor), via: connection)
-                await sendHostedTerminalDimensionsNow(terminalID: terminalID, connection: connection, force: true)
-                try await sendTerminalRenderGridSnapshotIfPossible(
-                    terminalID: terminalID,
-                    scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
-                    full: true,
-                    requireLiveScrollbackBottom: false,
-                    via: connection
-                )
-                // Retransmit the seed once shortly after share start. The
-                // initial seed can fail to land visibly on the viewer (pane
-                // still 0x0 when it applies, an older build dropping a frame
-                // that raced pane creation, or a nil snapshot on our side);
-                // by the retransmit the viewer pane exists and is laid out,
-                // and the stateSeq overlap-trim makes a duplicate harmless.
-                // This heals every viewer build, unlike viewer-side
-                // re-requests which need the new client.
-                scheduleHostedTerminalReseed(
-                    terminalID: terminalID,
-                    connection: connection,
-                    delay: Self.shareStartSeedRetransmitDelay
-                )
+                // With no selected recipients yet there is nothing to send;
+                // checking a name later delivers the same sequence via
+                // applyRecipientSelection.
+                if hasInitialRecipients {
+                    try await send(.terminalOpen(terminalID: terminalID, descriptor: descriptor), via: connection)
+                    await sendHostedTerminalDimensionsNow(terminalID: terminalID, connection: connection, force: true)
+                    try await sendTerminalRenderGridSnapshotIfPossible(
+                        terminalID: terminalID,
+                        scrollbackLines: Self.terminalInitialRenderGridScrollbackLines,
+                        full: true,
+                        requireLiveScrollbackBottom: false,
+                        via: connection
+                    )
+                    // Retransmit the seed once shortly after share start. The
+                    // initial seed can fail to land visibly on the viewer (pane
+                    // still 0x0 when it applies, an older build dropping a frame
+                    // that raced pane creation, or a nil snapshot on our side);
+                    // by the retransmit the viewer pane exists and is laid out,
+                    // and the stateSeq overlap-trim makes a duplicate harmless.
+                    // This heals every viewer build, unlike viewer-side
+                    // re-requests which need the new client.
+                    scheduleHostedTerminalReseed(
+                        terminalID: terminalID,
+                        connection: connection,
+                        delay: Self.shareStartSeedRetransmitDelay
+                    )
+                }
                 trackCollaboration(
                     .terminalShared,
                     shareKind: .terminal,
@@ -5761,7 +5822,8 @@ final class CollaborationRuntime {
         ) else { return }
         guard let panel = hostedTerminalsByID[terminalID]?.panel else { return }
         if let peer = peerVisibleToThisClient(fromPeerID, in: connection) {
-            hostedTerminalOutputCaretSuppressionsByID[terminalID] = TerminalOutputCaretSuppression(
+            hostedTerminalOutputCaretAttributionsByID[terminalID] = TerminalOutputCaretAttribution(
+                peerID: peer.peerID,
                 expiresAt: Date().addingTimeInterval(1.5)
             )
             panel.surface.hostedView.showTerminalCollaboratorCaret(
@@ -6269,7 +6331,7 @@ final class CollaborationRuntime {
         hostedTerminalsByID.removeValue(forKey: terminalID)
         removeTerminalSurfaceMappings(for: terminalID)
         hostedTerminalOutputSequencesByID.removeValue(forKey: terminalID)
-        hostedTerminalOutputCaretSuppressionsByID.removeValue(forKey: terminalID)
+        hostedTerminalOutputCaretAttributionsByID.removeValue(forKey: terminalID)
         hostedTerminalBroadcastGridByID.removeValue(forKey: terminalID)
         hostedTerminalDimensionsProbedAtByID.removeValue(forKey: terminalID)
         mirroredTerminalRenderGridPatchSequencesByID.removeValue(forKey: terminalID)
@@ -6761,6 +6823,19 @@ final class CollaborationRuntime {
             return (terminalID, panel)
         }
         guard !terminals.isEmpty else { return }
+        // A peer joining after the host made an explicit recipient selection
+        // must not be auto-included: record them as known-but-unselected
+        // BEFORE the seed-eligibility check below. Terminals without a stored
+        // selection (invite-code flow) keep the default that includes new
+        // peers; directory-invited teammates were recorded as selected at
+        // invite time, which this known-only merge preserves.
+        for (terminalID, panel) in terminals where terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode {
+            Self.terminalRecipientSelectionStore.recordKnownParticipants(
+                [peer.stableParticipantID],
+                sessionCode: connection.sessionCode,
+                terminalKey: terminalSelectionKey(for: panel)
+            )
+        }
         Task {
             for (terminalID, panel) in terminals {
                 guard terminalSessionRouter.sessionCode(forTerminalID: terminalID) == connection.sessionCode else {
