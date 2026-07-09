@@ -3533,6 +3533,14 @@ final class CollaborationRuntime {
         if fromSurfaceUUID.flatMap({ agentRoomIDsBySurfaceID[$0] }) != roomID {
             mosaicDebugLog("agentRoom.post: from surface \(fromSurfaceID ?? "nil") is not a mapped member of room \(roomID); event still posts but peers may be unreachable")
         }
+        if rawFromSurfaceID == nil, let fromSurfaceID, !rawTargetSurfaceIDs.isEmpty,
+           rawTargetSurfaceIDs.allSatisfy({ UUID(uuidString: $0)?.uuidString == fromSurfaceID }) {
+            // The focused-panel fallback resolved the sender to the post's only
+            // target: the event is self-addressed and wake/consume will skip
+            // it. The CLI should have pinned --from-surface (or inherited
+            // MOSAIC_SURFACE_ID); log so mis-attribution is diagnosable.
+            mosaicDebugLog("agentRoom.post: focused-panel fallback attributed post to its own target \(fromSurfaceID); event will not be delivered to anyone")
+        }
         #endif
         let result = await agentRoomStore.appendEvent(
             roomID: roomID,
@@ -3770,7 +3778,11 @@ final class CollaborationRuntime {
             surfaceID: recipientSurfaceID
         )
         let prompts = pending.compactMap { event in
-            agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: event, policy: policy)
+            agentRoomActiveDispatchPromptBuilder.broadcastPrompt(
+                for: event,
+                policy: policy,
+                recipientSurfaceID: recipientSurfaceID
+            )
         }
         return ["text": prompts.joined(separator: "\n\n")]
     }
@@ -3855,7 +3867,11 @@ final class CollaborationRuntime {
             return false
         }
         let prompts = pending.compactMap {
-            agentRoomActiveDispatchPromptBuilder.broadcastPrompt(for: $0, policy: room.deliveryPolicy)
+            agentRoomActiveDispatchPromptBuilder.broadcastPrompt(
+                for: $0,
+                policy: room.deliveryPolicy,
+                recipientSurfaceID: surfaceID
+            )
         }
         guard !prompts.isEmpty else { return false }
         guard panel.sendText(prompts.joined(separator: "\n\n")) else { return false }

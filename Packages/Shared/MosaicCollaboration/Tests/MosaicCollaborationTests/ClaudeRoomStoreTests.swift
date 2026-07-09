@@ -356,6 +356,18 @@ struct ClaudeRoomStoreTests {
         // question/answer round trip without a human relaying answers.
         #expect(prompt?.contains("mosaic agent-room post --kind handoff --target-surfaces surface-a") == true)
 
+        // When the recipient is known, the reply command pins --from-surface
+        // to it. Without the pin, the app attributes the answering post to the
+        // *focused* panel — which can be the asker itself, making the answer
+        // self-addressed and undeliverable (hit in the field: a schema handoff
+        // never reached the peer that asked for it).
+        let pinnedPrompt = builder.prompt(for: question, recipientSurfaceID: "surface-b")
+        #expect(
+            pinnedPrompt?.contains(
+                "mosaic agent-room post --kind handoff --from-surface surface-b --target-surfaces surface-a"
+            ) == true
+        )
+
         // Non-question dispatches keep the generic continuation instruction.
         let handoff = ClaudeRoomEvent(
             sequence: 2,

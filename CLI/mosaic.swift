@@ -3713,7 +3713,18 @@ struct MosaicCLI {
                 var params: [String: Any] = ["text": text]
                 if let roomID { params["room_id"] = roomID }
                 if let kind { params["kind"] = kind }
-                if let fromSurfaceID { params["from_surface_id"] = fromSurfaceID }
+                // Default the sender to the calling pane's surface. Without
+                // this, the app resolves the sender from the *focused* panel,
+                // which mis-attributes agent posts to whatever pane the user
+                // happens to be watching — and a post that resolves to its own
+                // target is treated as self-addressed and never delivered.
+                let envFromSurfaceID = ProcessInfo.processInfo.environment["MOSAIC_SURFACE_ID"]?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if let fromSurfaceID {
+                    params["from_surface_id"] = fromSurfaceID
+                } else if let envFromSurfaceID, !envFromSurfaceID.isEmpty {
+                    params["from_surface_id"] = envFromSurfaceID
+                }
                 if let targetSurfacesRaw {
                     params["target_surface_ids"] = targetSurfacesRaw
                         .split(separator: ",")
@@ -23755,7 +23766,7 @@ struct MosaicCLI {
                     params: ["surface_id": surfaceId]
                 )
                 // Standing room directives (persistent, not per-message chatter).
-                let activeInstructions = agentRoomActiveInstructions(from: payload)
+                let activeInstructions = agentRoomActiveInstructions(from: payload, ownSurfaceID: surfaceId)
                 // Drain anything shared with this surface since it last acted. This
                 // is the single, cursor-gated delivery channel for peer messages:
                 // `agent.room.consume` returns only unacknowledged content and then
@@ -25065,11 +25076,15 @@ struct MosaicCLI {
         sessionRecord: ClaudeHookSessionRecord?
     ) -> ClaudeRoomPublishEvent? {
         let transcriptPath = parsedInput.transcriptPath ?? sessionRecord?.transcriptPath
-        // Full-text reply: the hook payload first, then the transcript tail.
+        // Full-text reply: the raw (uncompacted) hook payload first, then the
+        // transcript tail. `parsedInput.object` is the compacted payload whose
+        // string fields are capped at ~240 chars for feed/notification use —
+        // reading it here silently truncated every relayed reply (and, being
+        // non-nil, kept the full-text transcript fallback from ever running).
         // `readTranscriptSummary` is notification-oriented (120-char assistant
         // cap) and must not be used here — a peer that asked for a schema
         // needs it verbatim.
-        let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object)
+        let assistantMessage = claudeRoomAssistantMessageFromHookPayload(parsedInput.rawObject)
             ?? transcriptPath.flatMap { readClaudeRoomTranscriptReply(path: $0) }
         let assistantLabel = String(localized: "cli.claudeHook.roomPublish.peerAssistant", defaultValue: "Shared Claude reply")
         if let assistantMessage {
@@ -25090,7 +25105,7 @@ struct MosaicCLI {
         // No reply text was recoverable: fall back to a ledger-only summary of
         // the turn so digests/recaps still show it happened.
         let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
-        let rawUserMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.object)
+        let rawUserMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.rawObject)
         // Drop the echoed user portion when this turn was triggered by a prompt
         // the app relayed from a peer. Re-publishing it would just duplicate the
         // original message in the shared ledger.
@@ -25196,7 +25211,10 @@ struct MosaicCLI {
         parsedInput: ClaudeHookParsedInput,
         telemetry: CLISocketSentryTelemetry
     ) {
-        guard let prompt = feedPromptText(from: parsedInput.object)?.trimmingCharacters(in: .whitespacesAndNewlines),
+        // Read the raw (uncompacted) payload: `parsedInput.object` caps the
+        // prompt at ~240 chars for feed/notification use, which truncated the
+        // exact context peers were wired to share.
+        guard let prompt = feedPromptText(from: parsedInput.rawObject)?.trimmingCharacters(in: .whitespacesAndNewlines),
               !prompt.isEmpty else { return }
         guard !isMosaicRoomRelayPrompt(prompt) else {
             telemetry.breadcrumb("claude-hook.prompt-submit.relay-skip")
@@ -25213,7 +25231,7 @@ struct MosaicCLI {
         )
     }
 
-    private func agentRoomActiveInstructions(from payload: [String: Any]) -> String {
+    private func agentRoomActiveInstructions(from payload: [String: Any], ownSurfaceID: String? = nil) -> String {
         let surfaces = (payload["reachable_surfaces"] as? [[String: Any]] ?? [])
             .compactMap { surface -> (label: String, surfaceID: String)? in
                 guard let surfaceID = surface["surface_id"] as? String,
@@ -25252,32 +25270,53 @@ struct MosaicCLI {
         )
         let peerLines = surfaces.map { String(format: peerLineFormat, $0.label, $0.surfaceID) }
         let exampleSurface = surfaces[0].surfaceID
+        // Pin the sender in the example command. Without --from-surface the
+        // app attributes the post to the *focused* panel, which can be the
+        // target itself — a self-addressed post is never delivered.
+        let trimmedOwnSurfaceID = ownSurfaceID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fromOption = (trimmedOwnSurfaceID?.isEmpty == false) ? " --from-surface \(trimmedOwnSurfaceID!)" : ""
         return """
         \(intro)
         \(peerLines.joined(separator: "\n"))
 
         \(commandIntro)
-        mosaic agent-room post --kind handoff --target-surfaces \(exampleSurface) -- "<\(promptPlaceholder)>"
+        mosaic agent-room post --kind handoff\(fromOption) --target-surfaces \(exampleSurface) -- "<\(promptPlaceholder)>"
         \(kindHint)
         """
     }
 
+    private static let claudeAssistantMessageHookPayloadKeys = [
+        "last_assistant_message",
+        "lastAssistantMessage",
+        "assistantPreamble",
+        "assistant_preamble",
+        "assistant_response",
+        "assistantResponse",
+    ]
+
     private func claudeAssistantMessageFromHookPayload(_ object: [String: Any]?) -> String? {
         guard let object else { return nil }
-        let keys = [
-            "last_assistant_message",
-            "lastAssistantMessage",
-            "assistantPreamble",
-            "assistant_preamble",
-            "assistant_response",
-            "assistantResponse",
-        ]
+        let keys = Self.claudeAssistantMessageHookPayloadKeys
         let extra = (object["extra"] as? [String: Any]) ?? [:]
         let message = firstString(in: object, keys: keys)
             ?? firstString(in: extra, keys: keys)
         guard let message else { return nil }
         let normalized = normalizedSingleLine(message)
         return normalized.isEmpty ? nil : normalized
+    }
+
+    /// Room-publish variant of `claudeAssistantMessageFromHookPayload`: reads
+    /// the raw (uncompacted) hook payload and preserves multi-line content so
+    /// schemas, diffs, and code blocks relay to wired peers verbatim.
+    private func claudeRoomAssistantMessageFromHookPayload(_ rawObject: [String: Any]?) -> String? {
+        guard let rawObject else { return nil }
+        let keys = Self.claudeAssistantMessageHookPayloadKeys
+        let extra = (rawObject["extra"] as? [String: Any]) ?? [:]
+        let message = firstString(in: rawObject, keys: keys)
+            ?? firstString(in: extra, keys: keys)
+        guard let message else { return nil }
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private struct TranscriptSummary {

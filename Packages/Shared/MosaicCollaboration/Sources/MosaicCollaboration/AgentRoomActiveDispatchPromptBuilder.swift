@@ -66,16 +66,26 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
     }
 
     /// Builds the terminal input text for an active dispatch event.
-    public func prompt(for event: ClaudeRoomEvent) -> String? {
+    ///
+    /// - Parameter recipientSurfaceID: The surface receiving this prompt. When
+    ///   provided, the reply instruction pins `--from-surface` to it so the
+    ///   recipient's answering post is attributed to its own pane instead of
+    ///   whatever panel the user happens to have focused (a focused-panel
+    ///   fallback that can make the answer self-addressed and undeliverable).
+    public func prompt(for event: ClaudeRoomEvent, recipientSurfaceID: String? = nil) -> String? {
         guard shouldDispatch(event), let label = Self.label(for: event.kind) else { return nil }
-        return prompt(label: label, event: event)
+        return prompt(label: label, event: event, recipientSurfaceID: recipientSurfaceID)
     }
 
     /// Builds the terminal input text for a broadcastable event (targeted
     /// interrupts, or plain messages in a live room).
-    public func broadcastPrompt(for event: ClaudeRoomEvent, policy: ClaudeRoomDeliveryPolicy) -> String? {
+    public func broadcastPrompt(
+        for event: ClaudeRoomEvent,
+        policy: ClaudeRoomDeliveryPolicy,
+        recipientSurfaceID: String? = nil
+    ) -> String? {
         guard shouldBroadcast(event, policy: policy), let label = Self.label(for: event.kind) else { return nil }
-        return prompt(label: label, event: event)
+        return prompt(label: label, event: event, recipientSurfaceID: recipientSurfaceID)
     }
 
     private static func label(for kind: ClaudeRoomEventKind) -> String? {
@@ -93,13 +103,13 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
         }
     }
 
-    private func prompt(label: String, event: ClaudeRoomEvent) -> String {
+    private func prompt(label: String, event: ClaudeRoomEvent, recipientSurfaceID: String?) -> String {
         let source = event.fromSurfaceID.map { " from surface \($0)" } ?? ""
         return """
         \(label)\(source):
         \(truncated(event.text))
 
-        \(followUpInstruction(for: event))
+        \(followUpInstruction(for: event, recipientSurfaceID: recipientSurfaceID))
         """
     }
 
@@ -108,13 +118,14 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
     /// wakes the asker the same way this prompt woke the answerer, so two
     /// wired agents can complete a question/answer round trip with no human
     /// in the middle. This is machine-protocol text, not user-facing UI.
-    private func followUpInstruction(for event: ClaudeRoomEvent) -> String {
+    private func followUpInstruction(for event: ClaudeRoomEvent, recipientSurfaceID: String?) -> String {
         guard event.kind == .question, let asker = event.fromSurfaceID else {
             return "Please respond or continue from this shared-room update."
         }
+        let fromOption = recipientSurfaceID.map { " --from-surface \($0)" } ?? ""
         return """
         Answer by posting back to the asking surface (this actively wakes it):
-        mosaic agent-room post --kind handoff --target-surfaces \(asker) -- "<your answer>"
+        mosaic agent-room post --kind handoff\(fromOption) --target-surfaces \(asker) -- "<your answer>"
         """
     }
 
