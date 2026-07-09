@@ -5,8 +5,12 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
 
     /// Creates an active dispatch prompt builder.
     ///
+    /// The default cap is sized for real working content (schemas, diffs,
+    /// multi-paragraph answers): the old 1,200-character cap truncated exactly
+    /// the payloads peers were wired together to share.
+    ///
     /// - Parameter maxTextCharacters: Maximum number of event text characters to include.
-    public init(maxTextCharacters: Int = 1_200) {
+    public init(maxTextCharacters: Int = 4_000) {
         self.maxTextCharacters = maxTextCharacters
     }
 
@@ -95,7 +99,22 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
         \(label)\(source):
         \(truncated(event.text))
 
-        Please respond or continue from this shared-room update.
+        \(followUpInstruction(for: event))
+        """
+    }
+
+    /// Tells the woken agent how to close the loop. A question must be
+    /// answered with a targeted post back to the asker — that post actively
+    /// wakes the asker the same way this prompt woke the answerer, so two
+    /// wired agents can complete a question/answer round trip with no human
+    /// in the middle. This is machine-protocol text, not user-facing UI.
+    private func followUpInstruction(for event: ClaudeRoomEvent) -> String {
+        guard event.kind == .question, let asker = event.fromSurfaceID else {
+            return "Please respond or continue from this shared-room update."
+        }
+        return """
+        Answer by posting back to the asking surface (this actively wakes it):
+        mosaic agent-room post --kind handoff --target-surfaces \(asker) -- "<your answer>"
         """
     }
 

@@ -303,6 +303,90 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
+    func pendingEventsPeeksWithoutAdvancingTheCursor() async throws {
+        // The wake dispatch must be able to inspect a member's backlog before
+        // committing to consume it, so a skipped or failed terminal injection
+        // never swallows undelivered events.
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", deliveryPolicy: .semiLive)
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.appendEvent(
+            roomID: "room-1",
+            kind: .question,
+            fromSurfaceID: "surface-a",
+            targetSurfaceIDs: ["surface-b"],
+            text: "Can you share the schema?"
+        )
+
+        let peeked = await store.pendingEvents(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+        #expect(peeked.map(\.text) == ["Can you share the schema?"])
+
+        // Peeking again returns the same backlog: the cursor did not move.
+        let peekedAgain = await store.pendingEvents(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+        #expect(peekedAgain.map(\.text) == ["Can you share the schema?"])
+
+        // Consume delivers the same events and only then advances the cursor.
+        let consumed = await store.consumePendingEvents(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+        #expect(consumed.map(\.text) == ["Can you share the schema?"])
+        let afterConsume = await store.pendingEvents(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+        #expect(afterConsume.isEmpty)
+    }
+
+    @Test
+    func questionPromptTellsTheWokenAgentHowToAnswerBack() {
+        let builder = AgentRoomActiveDispatchPromptBuilder()
+        let question = ClaudeRoomEvent(
+            sequence: 1,
+            roomID: "room-1",
+            kind: .question,
+            fromSurfaceID: "surface-a",
+            targetSurfaceIDs: ["surface-b"],
+            text: "Can you share the schema?"
+        )
+
+        let prompt = builder.prompt(for: question)
+        // The reply command targets the asker, whose own wake closes the
+        // question/answer round trip without a human relaying answers.
+        #expect(prompt?.contains("mosaic agent-room post --kind handoff --target-surfaces surface-a") == true)
+
+        // Non-question dispatches keep the generic continuation instruction.
+        let handoff = ClaudeRoomEvent(
+            sequence: 2,
+            roomID: "room-1",
+            kind: .handoff,
+            fromSurfaceID: "surface-a",
+            targetSurfaceIDs: ["surface-b"],
+            text: "Take over the contact page."
+        )
+        #expect(builder.prompt(for: handoff)?.contains("Please respond or continue") == true)
+    }
+
+    @Test
+    func defaultDispatchPromptCapCarriesRealWorkingContent() {
+        // The old 1,200-char default truncated exactly the payloads wired
+        // agents exist to share (schemas, diffs, multi-paragraph answers).
+        let builder = AgentRoomActiveDispatchPromptBuilder()
+        let schema = String(repeating: "column BIGINT NOT NULL,\n", count: 100) + "END_OF_SCHEMA_MARKER"
+        #expect(schema.count > 1_200)
+        let message = ClaudeRoomEvent(
+            sequence: 1,
+            roomID: "room-1",
+            kind: .message,
+            fromSurfaceID: "surface-a",
+            text: schema
+        )
+        let prompt = builder.broadcastPrompt(for: message, policy: .semiLive)
+        #expect(prompt?.contains("END_OF_SCHEMA_MARKER") == true)
+    }
+
+    @Test
     func liveRoomBroadcastsPlainMessagesButManualDoesNot() {
         let builder = AgentRoomActiveDispatchPromptBuilder(maxTextCharacters: 40)
         let message = ClaudeRoomEvent(

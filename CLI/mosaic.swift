@@ -23819,16 +23819,24 @@ struct MosaicCLI {
                     surfaceId: surfaceId,
                     telemetry: telemetry
                 )
-                if let text = claudeRoomPublishText(parsedInput: parsedInput, sessionRecord: mappedSession) {
+                if let publish = claudeRoomPublishEvent(parsedInput: parsedInput, sessionRecord: mappedSession) {
                     _ = try? client.sendV2(
                         method: "agent.room.post",
                         params: [
                             "from_surface_id": surfaceId,
-                            "kind": "summary",
-                            "text": text,
+                            "kind": publish.kind,
+                            "text": publish.text,
                         ]
                     )
                 }
+                // The turn just settled idle: ask the app to type any targeted
+                // question/handoff/blocker that arrived while this agent was
+                // busy into the pane now (the app-side wake is idle-gated and
+                // cursor-gated, so this is a no-op when nothing is pending).
+                _ = try? client.sendV2(
+                    method: "agent.room.wake_flush",
+                    params: ["surface_id": surfaceId]
+                )
             } catch {
                 telemetry.breadcrumb("claude-hook.room-publish.error", data: ["error": String(describing: error)])
             }
@@ -25039,39 +25047,95 @@ struct MosaicCLI {
         return ("Completed", body)
     }
 
-    private func claudeRoomPublishText(
+    /// A turn's room-publish payload: the event kind decides whether wired
+    /// peers receive it live (`message` broadcasts via `agent.room.consume`;
+    /// `summary` is ledger-only and shows up in digests/recaps).
+    private struct ClaudeRoomPublishEvent {
+        let kind: String
+        let text: String
+    }
+
+    /// Maximum characters published for a turn's content. Sized for real
+    /// working payloads (schemas, diffs, multi-paragraph answers): the old
+    /// 500-char cap truncated exactly the content peers were wired to share.
+    private static let claudeRoomPublishTextLimit = 4_000
+
+    private func claudeRoomPublishEvent(
         parsedInput: ClaudeHookParsedInput,
         sessionRecord: ClaudeHookSessionRecord?
-    ) -> String? {
+    ) -> ClaudeRoomPublishEvent? {
         let transcriptPath = parsedInput.transcriptPath ?? sessionRecord?.transcriptPath
+        // Full-text reply: the hook payload first, then the transcript tail.
+        // `readTranscriptSummary` is notification-oriented (120-char assistant
+        // cap) and must not be used here — a peer that asked for a schema
+        // needs it verbatim.
+        let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object)
+            ?? transcriptPath.flatMap { readClaudeRoomTranscriptReply(path: $0) }
+        let assistantLabel = String(localized: "cli.claudeHook.roomPublish.peerAssistant", defaultValue: "Shared Claude reply")
+        if let assistantMessage {
+            let trimmed = assistantMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                // Broadcastable `message`: the user's prompt already relayed
+                // live at UserPromptSubmit, so the reply is the only part of
+                // the turn peers are still missing. The old `summary` kind was
+                // ledger-only and silently kept replies from ever reaching
+                // wired peers.
+                return ClaudeRoomPublishEvent(
+                    kind: "message",
+                    text: truncate("\(assistantLabel): \(trimmed)", maxLength: Self.claudeRoomPublishTextLimit)
+                )
+            }
+        }
+
+        // No reply text was recoverable: fall back to a ledger-only summary of
+        // the turn so digests/recaps still show it happened.
         let transcript = transcriptPath.flatMap { readTranscriptSummary(path: $0) }
         let rawUserMessage = transcript?.lastUserMessage ?? feedPromptText(from: parsedInput.object)
         // Drop the echoed user portion when this turn was triggered by a prompt
         // the app relayed from a peer. Re-publishing it would just duplicate the
-        // original message in the shared ledger. The assistant reply is the
-        // peer's own new contribution, so keep that.
+        // original message in the shared ledger.
         let userMessage = rawUserMessage.flatMap { isMosaicRoomRelayPrompt($0) ? nil : $0 }
-        let assistantMessage = claudeAssistantMessageFromHookPayload(parsedInput.object)
-            ?? transcript?.lastAssistantMessage
-
         let userLabel = String(localized: "cli.claudeHook.roomPublish.peerUser", defaultValue: "Shared user message")
-        let assistantLabel = String(localized: "cli.claudeHook.roomPublish.peerAssistant", defaultValue: "Shared Claude reply")
-        let turnText = [
-            userMessage.map { "\(userLabel): \($0)" },
-            assistantMessage.map { "\(assistantLabel): \($0)" },
-        ]
-        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
-            .joined(separator: " | ")
-        if !turnText.isEmpty {
-            return truncate(turnText, maxLength: 500)
+        if let userMessage {
+            let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return ClaudeRoomPublishEvent(
+                    kind: "summary",
+                    text: truncate("\(userLabel): \(trimmed)", maxLength: Self.claudeRoomPublishTextLimit)
+                )
+            }
         }
 
         guard let completion = summarizeClaudeHookStop(parsedInput: parsedInput, sessionRecord: sessionRecord) else {
             return nil
         }
         let body = completion.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        return body.isEmpty ? completion.subtitle : "\(completion.subtitle): \(body)"
+        let text = body.isEmpty ? completion.subtitle : "\(completion.subtitle): \(body)"
+        return ClaudeRoomPublishEvent(kind: "summary", text: text)
+    }
+
+    /// Reads the last assistant message from the transcript tail, preserving
+    /// multi-line content, for room publishing. Skips meta and subagent
+    /// sidechain lines the same way the app's wire-time backfill parser does.
+    private func readClaudeRoomTranscriptReply(path: String) -> String? {
+        guard let lines = readRecentTextFileLines(path: path, maxBytes: 1_048_576) else { return nil }
+        var lastAssistantMessage: String?
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty,
+                  let lineData = trimmed.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                  (obj["isMeta"] as? Bool) != true,
+                  (obj["isSidechain"] as? Bool) != true,
+                  let message = obj["message"] as? [String: Any],
+                  (message["role"] as? String) == "assistant" else {
+                continue
+            }
+            if let text = extractMessageText(from: message), !text.isEmpty {
+                lastAssistantMessage = text
+            }
+        }
+        return lastAssistantMessage
     }
 
     /// Recognizes a prompt that the app relayed into this terminal from a peer
@@ -25144,7 +25208,7 @@ struct MosaicCLI {
             params: [
                 "from_surface_id": surfaceId,
                 "kind": "message",
-                "text": truncate("\(userLabel): \(prompt)", maxLength: 500),
+                "text": truncate("\(userLabel): \(prompt)", maxLength: Self.claudeRoomPublishTextLimit),
             ]
         )
     }
@@ -25172,7 +25236,7 @@ struct MosaicCLI {
         )
         let commandIntro = String(
             localized: "cli.claudeHook.roomContext.activeCommandIntro",
-            defaultValue: "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging:"
+            defaultValue: "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging (a targeted post is typed into an idle peer's terminal immediately, so it wakes and responds without the user):"
         )
         let peerLineFormat = String(
             localized: "cli.claudeHook.roomContext.activePeerLineFormat",
@@ -25184,7 +25248,7 @@ struct MosaicCLI {
         )
         let kindHint = String(
             localized: "cli.claudeHook.roomContext.activeKindHint",
-            defaultValue: "Use --kind question for a question and --kind blocker for an urgent blocker."
+            defaultValue: "Use --kind question for a question and --kind blocker for an urgent blocker. The peer's targeted reply wakes you the same way, so prefer this round trip over asking the user to ferry answers between agents."
         )
         let peerLines = surfaces.map { String(format: peerLineFormat, $0.label, $0.surfaceID) }
         let exampleSurface = surfaces[0].surfaceID
