@@ -1492,6 +1492,51 @@ final class MainWindowFocusControllerRightSidebarHideTests: XCTestCase {
         XCTAssertFalse(controller.toggleRightSidebarOrTerminalFocus())
         XCTAssertTrue(controller.allowsTerminalFocus(workspaceId: workspaceId, panelId: panelId))
     }
+
+    @MainActor
+    func testFocusShortcutToggleOpensFilesModeWhenSidebarHidden() {
+        let fileExplorerState = FileExplorerState()
+        fileExplorerState.setVisible(false)
+        fileExplorerState.mode = .sessions
+        let controller = MainWindowFocusController(
+            windowId: UUID(),
+            window: nil,
+            tabManager: TabManager(),
+            fileExplorerState: fileExplorerState
+        )
+
+        XCTAssertTrue(controller.toggleRightSidebarOrTerminalFocus())
+
+        XCTAssertTrue(fileExplorerState.isVisible)
+        XCTAssertEqual(
+            fileExplorerState.mode,
+            .files,
+            "Opening the sidebar via the focus shortcut must deterministically land on Files, not a remembered mode"
+        )
+        XCTAssertEqual(controller.intent, .rightSidebar(mode: .files))
+    }
+
+    @MainActor
+    func testFocusShortcutToggleKeepsCurrentModeWhenSidebarVisible() {
+        let fileExplorerState = FileExplorerState()
+        fileExplorerState.setVisible(true)
+        fileExplorerState.mode = .sessions
+        let controller = MainWindowFocusController(
+            windowId: UUID(),
+            window: nil,
+            tabManager: TabManager(),
+            fileExplorerState: fileExplorerState
+        )
+
+        XCTAssertTrue(controller.toggleRightSidebarOrTerminalFocus())
+
+        XCTAssertEqual(
+            fileExplorerState.mode,
+            .sessions,
+            "Focusing an already-visible sidebar keeps its current mode"
+        )
+        XCTAssertEqual(controller.intent, .rightSidebar(mode: .sessions))
+    }
 }
 
 final class ShortcutHintDebugSettingsTests: XCTestCase {

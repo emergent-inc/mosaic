@@ -163,3 +163,68 @@ struct BrowserWindowPortalRegistryNotificationTests {
         )
     }
 }
+
+@MainActor
+@Suite(.serialized)
+struct BrowserWindowPortalRightSidebarOverlapTests {
+    private func realizeWindowLayout(_ window: NSWindow) {
+        window.makeKeyAndOrderFront(nil)
+        window.displayIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        window.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    /// Regression: the browser portal paints above all SwiftUI content, so a
+    /// slot whose anchor frame is stale (e.g. right sidebar just opened but the
+    /// pane has not re-laid-out yet) must never draw over the right sidebar
+    /// column (Files/Find/Vault). The portal must clamp non-dock slots to the
+    /// content area left of the sidebar.
+    @Test func browserSlotIsClampedOutOfVisibleRightSidebarColumn() throws {
+        let previousAppDelegate = AppDelegate.shared
+        let appDelegate = AppDelegate()
+        defer { AppDelegate.shared = previousAppDelegate }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        let windowId = UUID()
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.main.\(windowId.uuidString)")
+        realizeWindowLayout(window)
+        let contentView = try #require(window.contentView)
+
+        let tabManager = TabManager()
+        let fileExplorerState = FileExplorerState()
+        fileExplorerState.setVisible(true)
+        fileExplorerState.width = 100
+        appDelegate.registerMainWindowContextForTesting(
+            windowId: windowId,
+            tabManager: tabManager,
+            fileExplorerState: fileExplorerState
+        )
+        defer { appDelegate.unregisterMainWindowContextForTesting(windowId: windowId) }
+
+        // Stale anchor spanning the full content width, as if the sidebar
+        // opened without the pane layout (and portal geometry) catching up.
+        let anchor = NSView(frame: contentView.bounds)
+        contentView.addSubview(anchor)
+        let webView = MosaicWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        defer { BrowserWindowPortalRegistry.detach(webView: webView) }
+
+        BrowserWindowPortalRegistry.bind(webView: webView, to: anchor, visibleInUI: true)
+        BrowserWindowPortalRegistry.synchronizeForAnchor(anchor)
+
+        let slot = try #require(webView.superview as? WindowBrowserSlotView)
+        #expect(!slot.isHidden)
+        let sidebarLeadingEdge = contentView.bounds.width - fileExplorerState.width
+        #expect(
+            slot.frame.maxX <= sidebarLeadingEdge + 0.5,
+            "Browser slot must not extend into the right sidebar column (slot maxX \(slot.frame.maxX), sidebar leading edge \(sidebarLeadingEdge))"
+        )
+    }
+
+}
