@@ -38416,7 +38416,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging:"
+            "value": "To actively ask another peer to act, run this shell command instead of using Claude Code's built-in background-agent messaging (a targeted post is typed into an idle peer's terminal immediately, so it wakes and responds without the user):"
           }
         }
       }
@@ -38460,7 +38460,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use --kind question for a question and --kind blocker for an urgent blocker."
+            "value": "Use --kind question for a question and --kind blocker for an urgent blocker. The peer's targeted reply wakes you the same way, so prefer this round trip over asking the user to ferry answers between agents."
           }
         }
       }

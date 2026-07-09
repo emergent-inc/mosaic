@@ -83,6 +83,11 @@ public enum ControlCommandExecutionPolicy: Sendable, Equatable {
         // ClaudeRoomStore actor and reads transcript files, so it runs async on
         // the socket worker for the same reason as agent.room.consume.
         "agent.room.recap",
+        // `agent.room.wake_flush` (Stop-hook wake trigger) awaits the
+        // ClaudeRoomStore actor and reads the hook session store off disk, so
+        // it runs async on the socket worker like consume/recap; the terminal
+        // injection inside hops back to the main actor.
+        "agent.room.wake_flush",
         "system.top",
         "system.memory",
         // `workspace.env` is a read that resolves a workspace and copies its
