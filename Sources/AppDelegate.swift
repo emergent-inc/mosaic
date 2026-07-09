@@ -13416,7 +13416,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 "\(debugShortcutRouteSnapshot(event: event))"
             )
 #endif
-            return true
+            // Consume only when the toggle actually acted (same pattern as
+            // toggleTerminalCopyMode). If there is no main-window context to
+            // act on, let the key continue down the responder chain instead of
+            // being silently eaten.
+            return result
         }
 
         if matchConfiguredShortcut(event: event, action: .sendFeedback) {

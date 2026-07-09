@@ -521,7 +521,16 @@ final class MainWindowFocusController {
         case .terminal:
             return restoreFocusedPanelFocusFromRightSidebarIfNeeded(currentResponder: window?.firstResponder)
         case .rightSidebar:
-            return focusRightSidebar(mode: requestedMode, focusFirstItem: focusFirstItem)
+            // Deterministic landing spot: when the sidebar is hidden, the focus
+            // shortcut always opens the Files tree. The remembered mode only
+            // applies while the sidebar is already visible, so the shortcut
+            // never surprises the user by reopening Vault/Feed/Dock.
+            let resolvedMode: RightSidebarMode? = {
+                if let requestedMode { return requestedMode }
+                if fileExplorerState?.isVisible != true { return .files }
+                return nil
+            }()
+            return focusRightSidebar(mode: resolvedMode, focusFirstItem: focusFirstItem)
         }
     }
 

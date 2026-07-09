@@ -227,4 +227,45 @@ struct BrowserWindowPortalRightSidebarOverlapTests {
         )
     }
 
+    /// During a right-sidebar resizer drag, external geometry syncs must flush
+    /// synchronously (mirroring the terminal portal) so web content tracks the
+    /// drag instead of rendering a tick behind.
+    @Test func interactiveGeometryResizeFlushesExternalSyncSynchronously() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 420),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        realizeWindowLayout(window)
+        let contentView = try #require(window.contentView)
+
+        let shiftedContainer = NSView(frame: NSRect(x: 40, y: 60, width: 260, height: 180))
+        contentView.addSubview(shiftedContainer)
+        let anchor = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 180))
+        shiftedContainer.addSubview(anchor)
+        let webView = MosaicWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        defer { BrowserWindowPortalRegistry.detach(webView: webView) }
+
+        BrowserWindowPortalRegistry.bind(webView: webView, to: anchor, visibleInUI: true)
+        BrowserWindowPortalRegistry.synchronizeForAnchor(anchor)
+        let slot = try #require(webView.superview as? WindowBrowserSlotView)
+        let originalMinX = slot.frame.minX
+
+        shiftedContainer.frame.origin.x += 96
+        contentView.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+
+        BrowserWindowPortalRegistry.beginInteractiveGeometryResize()
+        defer { BrowserWindowPortalRegistry.endInteractiveGeometryResize() }
+        BrowserWindowPortalRegistry.scheduleExternalGeometrySynchronize(for: window)
+
+        // No run-loop turn: the interactive-resize flush path must have applied
+        // the new geometry synchronously.
+        #expect(
+            abs(slot.frame.minX - (originalMinX + 96)) <= 0.5,
+            "Interactive-resize external sync should apply synchronously (slot minX \(slot.frame.minX), expected \(originalMinX + 96))"
+        )
+    }
 }

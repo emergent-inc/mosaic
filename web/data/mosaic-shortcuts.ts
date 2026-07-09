@@ -122,7 +122,14 @@ export const shortcutCategories: ShortcutCategory[] = [
         combos: [["⌃", "⌘", "."]],
         description: { en: "Collapse or expand focused workspace group" },
       },
-      { id: "focusRightSidebar", combos: [["⌘", "⇧", "E"]], description: { en: "Toggle right-sidebar focus" } },
+      {
+        id: "focusRightSidebar",
+        combos: [["⌘", "⇧", "E"]],
+        description: { en: "Toggle right-sidebar focus" },
+        note: {
+          en: "Opens the Files tree when the sidebar is hidden; when visible, toggles focus with the sidebar's current mode.",
+        },
+      },
       {
         id: "navigateRightSidebarRows",
         combos: [["J / K"], ["⌃", "N / P"], ["H / L"]],

@@ -2069,6 +2069,14 @@ final class WindowBrowserPortal: NSObject {
     }
 
     fileprivate func scheduleExternalGeometrySynchronize() {
+        // During sidebar/split drags new geometry can arrive faster than the
+        // queued sync runs. Flush immediately so web content tracks the drag
+        // instead of rendering one tick behind (mirrors the terminal portal's
+        // interactive-resize flush path).
+        if BrowserWindowPortalRegistry.isInteractiveGeometryResizeActive {
+            synchronizeAllEntriesFromExternalGeometryChange()
+            return
+        }
         guard !hasExternalGeometrySyncScheduled else { return }
         hasExternalGeometrySyncScheduled = true
         DispatchQueue.main.async { [weak self] in
@@ -3218,6 +3226,28 @@ final class WindowBrowserPortal: NSObject {
         return true
     }
 
+    /// Bounds a slot may occupy inside the host. Defensive guard: the browser
+    /// portal renders above all SwiftUI content, so a stale anchor frame must
+    /// never paint over the right sidebar column (Files/Find/Vault). Dock slots
+    /// legitimately live inside the right sidebar and are exempt.
+    private func allowedSlotBounds(
+        for containerView: WindowBrowserSlotView,
+        hostBounds: NSRect
+    ) -> NSRect {
+        guard !containerView.isRightSidebarDockSlot,
+              let window,
+              let fileExplorerState = AppDelegate.shared?
+                  .contextForMainTerminalWindow(window)?
+                  .fileExplorerState,
+              fileExplorerState.isVisible
+        else { return hostBounds }
+        let sidebarWidth = min(max(fileExplorerState.width, 0), hostBounds.width)
+        guard sidebarWidth > 0 else { return hostBounds }
+        var allowed = hostBounds
+        allowed.size.width = max(0, hostBounds.width - sidebarWidth)
+        return allowed
+    }
+
     private func synchronizeWebView(
         withId webViewId: ObjectIdentifier,
         source: String,
@@ -3467,7 +3497,8 @@ final class WindowBrowserPortal: NSObject {
             frameInHost.origin.y.isFinite &&
             frameInHost.size.width.isFinite &&
             frameInHost.size.height.isFinite
-        let clampedFrame = frameInHost.intersection(hostBounds)
+        let allowedBounds = allowedSlotBounds(for: containerView, hostBounds: hostBounds)
+        let clampedFrame = frameInHost.intersection(allowedBounds)
         let hasVisibleIntersection =
             !clampedFrame.isNull &&
             clampedFrame.width > 1 &&
@@ -3863,6 +3894,22 @@ enum BrowserWindowPortalRegistry {
 
     private static var portalsByWindowId: [ObjectIdentifier: WindowBrowserPortal] = [:]
     private static var webViewToWindowId: [ObjectIdentifier: ObjectIdentifier] = [:]
+    private static var interactiveGeometryResizeCount = 0
+
+    /// Mirrors `TerminalWindowPortalRegistry`'s interactive-resize flag: while a
+    /// sidebar/split drag is active, external geometry syncs flush synchronously
+    /// instead of coalescing behind the drag stream.
+    static var isInteractiveGeometryResizeActive: Bool {
+        interactiveGeometryResizeCount > 0
+    }
+
+    static func beginInteractiveGeometryResize() {
+        interactiveGeometryResizeCount += 1
+    }
+
+    static func endInteractiveGeometryResize() {
+        interactiveGeometryResizeCount = max(0, interactiveGeometryResizeCount - 1)
+    }
 
     private static func postRegistryDidChange(for webView: WKWebView) {
         NotificationCenter.default.post(name: .browserPortalRegistryDidChange, object: webView)
