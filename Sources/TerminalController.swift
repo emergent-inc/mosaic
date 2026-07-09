@@ -1249,6 +1249,14 @@ class TerminalController {
                 )
                 return .ok(payload)
             }
+        case "agent.room.wake_flush":
+            let surfaceID = request.params["surface_id"] as? String
+            return v2AsyncResultCall(id: request.id, timeoutSeconds: 5) {
+                let payload = await CollaborationRuntime.shared.agentRoomWakeFlushForAutomation(
+                    surfaceID: surfaceID
+                )
+                return .ok(payload)
+            }
         case "system.top":
             return v2Result(id: request.id, v2SystemTop(params: request.params))
         case "system.memory":
@@ -2213,6 +2221,7 @@ class TerminalController {
             "agent.room.digest",
             "agent.room.consume",
             "agent.room.recap",
+            "agent.room.wake_flush",
             "system.identify",
             "system.tree",
             "sidebar.custom.open",

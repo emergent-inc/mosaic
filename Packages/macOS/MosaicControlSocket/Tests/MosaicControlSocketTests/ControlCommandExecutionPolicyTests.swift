@@ -57,6 +57,9 @@ struct ControlCommandExecutionPolicyTests {
         // agent.room.recap (SessionStart recap + cursor reset) awaits the same
         // actor and reads transcript files, so it shares the worker lane.
         #expect(ControlCommandExecutionPolicy(forMethod: "agent.room.recap") == .socketWorker(mainThreadCallable: false))
+        // agent.room.wake_flush (Stop-hook wake trigger) awaits the same actor
+        // and reads the hook session store, so it shares the worker lane too.
+        #expect(ControlCommandExecutionPolicy(forMethod: "agent.room.wake_flush") == .socketWorker(mainThreadCallable: false))
         // The other agent.room.* verbs intentionally stay on the main actor
         // (processCommand serves them); guard the asymmetry so a future edit
         // does not silently move consume off the worker lane again.

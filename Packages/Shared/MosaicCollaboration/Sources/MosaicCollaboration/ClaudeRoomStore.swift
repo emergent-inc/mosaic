@@ -243,15 +243,56 @@ public actor ClaudeRoomStore {
         surfaceID: String? = nil
     ) -> [ClaudeRoomEvent] {
         guard var room = rooms[roomID] else { return [] }
-        let memberIndex = room.members.firstIndex { member in
+        let memberIndex = pendingMemberIndex(in: room, memberID: memberID, surfaceID: surfaceID)
+        let pending = pendingEvents(in: room, memberIndex: memberIndex, memberID: memberID, surfaceID: surfaceID)
+        if let memberIndex {
+            let acknowledged = room.members[memberIndex].acknowledgedEventSequence ?? 0
+            room.members[memberIndex].acknowledgedEventSequence = max(acknowledged, room.lastSequence)
+            rooms[roomID] = room
+            persist()
+        }
+        return pending
+    }
+
+    /// Returns the same unacknowledged events `consumePendingEvents` would
+    /// deliver, WITHOUT advancing the member's acknowledgment cursor.
+    ///
+    /// This is the wake-dispatch peek: the runtime needs to decide whether a
+    /// surface has anything worth typing into its terminal before it commits
+    /// to consuming the backlog, so a failed or skipped injection never
+    /// swallows undelivered events.
+    public func pendingEvents(
+        roomID: String,
+        memberID: String? = nil,
+        surfaceID: String? = nil
+    ) -> [ClaudeRoomEvent] {
+        guard let room = rooms[roomID] else { return [] }
+        let memberIndex = pendingMemberIndex(in: room, memberID: memberID, surfaceID: surfaceID)
+        return pendingEvents(in: room, memberIndex: memberIndex, memberID: memberID, surfaceID: surfaceID)
+    }
+
+    private func pendingMemberIndex(
+        in room: ClaudeRoomSnapshot,
+        memberID: String?,
+        surfaceID: String?
+    ) -> Int? {
+        room.members.firstIndex { member in
             if let memberID, member.id == memberID { return true }
             if let surfaceID, member.surfaceID == surfaceID { return true }
             return false
         }
+    }
+
+    private func pendingEvents(
+        in room: ClaudeRoomSnapshot,
+        memberIndex: Int?,
+        memberID: String?,
+        surfaceID: String?
+    ) -> [ClaudeRoomEvent] {
         let resolvedMemberID = memberIndex.map { room.members[$0].id } ?? memberID
         let resolvedSurfaceID = memberIndex.map { room.members[$0].surfaceID } ?? surfaceID
         let acknowledged = memberIndex.flatMap { room.members[$0].acknowledgedEventSequence } ?? 0
-        let pending = room.events.filter { event in
+        return room.events.filter { event in
             guard event.sequence > acknowledged else { return false }
             if let resolvedSurfaceID, event.fromSurfaceID == resolvedSurfaceID { return false }
             if let resolvedMemberID, event.fromMemberID == resolvedMemberID { return false }
@@ -262,12 +303,6 @@ public actor ClaudeRoomStore {
             }
             return true
         }
-        if let memberIndex {
-            room.members[memberIndex].acknowledgedEventSequence = max(acknowledged, room.lastSequence)
-            rooms[roomID] = room
-            persist()
-        }
-        return pending
     }
 
     /// Appends a transcript turn to the room's queryable transcript index.
