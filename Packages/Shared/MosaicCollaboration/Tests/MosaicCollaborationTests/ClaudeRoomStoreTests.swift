@@ -69,9 +69,9 @@ struct ClaudeRoomStoreTests {
             to: "room-1"
         )
 
-        let result = await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a")
+        let result = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
 
-        #expect(result == nil)
+        #expect(result.members.isEmpty)
         #expect(await store.room(id: "room-1") == nil)
     }
 
@@ -91,10 +91,40 @@ struct ClaudeRoomStoreTests {
         let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
         #expect(room.members.map(\.surfaceID) == ["surface-b"])
 
-        let result = await store.disconnect(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+        let result = try #require(await store.disconnect(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b"))
 
-        #expect(result == nil)
+        #expect(result.members.isEmpty)
         #expect(await store.room(id: "room-1") == nil)
+    }
+
+    @Test
+    func disconnectMatchingNothingDoesNotReapAPreCreatedEmptyRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", title: "Pre-created")
+
+        let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-missing", surfaceID: "surface-missing"))
+
+        #expect(room.members.isEmpty)
+        #expect(await store.room(id: "room-1") != nil)
+    }
+
+    @Test
+    func reapedRoomStaysGoneAfterPersistenceReload() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claude-room-store-tests-\(UUID().uuidString)")
+            .appendingPathComponent("agent-rooms.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let store = ClaudeRoomStore(persistenceURL: url)
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a")
+
+        let reloaded = ClaudeRoomStore(persistenceURL: url)
+        #expect(await reloaded.room(id: "room-1") == nil)
     }
 
     @Test
