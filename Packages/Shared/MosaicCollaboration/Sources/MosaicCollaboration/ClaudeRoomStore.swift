@@ -130,13 +130,19 @@ public actor ClaudeRoomStore {
         return room
     }
 
-    /// Removes a member or surface from a room.
+    /// Removes a member or surface from a room. When this empties the room,
+    /// the room itself is reaped (not just the member) so disconnecting the
+    /// last participant does not leave a dead room persisted forever.
     public func disconnect(roomID: String, memberID: String?, surfaceID: String?) -> ClaudeRoomSnapshot? {
         guard var room = rooms[roomID] else { return nil }
         room.members.removeAll { member in
             if let memberID, member.id == memberID { return true }
             if let surfaceID, member.surfaceID == surfaceID { return true }
             return false
+        }
+        if room.members.isEmpty {
+            removeRoom(id: roomID)
+            return nil
         }
         rooms[roomID] = room
         persist()
