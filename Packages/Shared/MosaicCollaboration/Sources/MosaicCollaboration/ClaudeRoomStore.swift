@@ -140,13 +140,13 @@ public actor ClaudeRoomStore {
     /// no-op calls.
     public func disconnect(roomID: String, memberID: String?, surfaceID: String?) -> ClaudeRoomSnapshot? {
         guard var room = rooms[roomID] else { return nil }
-        let memberCountBeforeRemoval = room.members.count
+        let hadMembersBeforeRemoval = !room.members.isEmpty
         room.members.removeAll { member in
             if let memberID, member.id == memberID { return true }
             if let surfaceID, member.surfaceID == surfaceID { return true }
             return false
         }
-        if room.members.isEmpty, room.members.count < memberCountBeforeRemoval {
+        if hadMembersBeforeRemoval, room.members.isEmpty {
             removeRoom(id: roomID)
             return room
         }
