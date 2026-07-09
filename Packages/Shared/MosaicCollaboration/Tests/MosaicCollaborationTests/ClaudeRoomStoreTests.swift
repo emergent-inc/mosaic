@@ -61,6 +61,43 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
+    func disconnectingLastSurfaceReapsTheRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+
+        let result = await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a")
+
+        #expect(result == nil)
+        #expect(await store.room(id: "room-1") == nil)
+    }
+
+    @Test
+    func disconnectingLastOfTwoSurfacesReapsTheRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+
+        let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
+        #expect(room.members.map(\.surfaceID) == ["surface-b"])
+
+        let result = await store.disconnect(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b")
+
+        #expect(result == nil)
+        #expect(await store.room(id: "room-1") == nil)
+    }
+
+    @Test
     func reconnectingSameSurfaceDoesNotDuplicateMember() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
@@ -78,7 +115,7 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
-    func movingSurfaceBetweenRoomsLeavesOldRoomEmpty() async throws {
+    func movingSurfaceBetweenRoomsReapsTheOldRoom() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
         _ = await store.createRoom(id: "room-2")
@@ -94,9 +131,8 @@ struct ClaudeRoomStoreTests {
             to: "room-2"
         )
 
-        let roomOne = try #require(await store.room(id: "room-1"))
+        #expect(await store.room(id: "room-1") == nil)
         let roomTwo = try #require(await store.room(id: "room-2"))
-        #expect(roomOne.members.isEmpty)
         #expect(roomTwo.members.map(\.surfaceID) == ["surface-a"])
     }
 
