@@ -17,6 +17,21 @@ entry, and the targeted question never woke the idle author):
    the ledger until the *user* manually prompted the target pane. The Stop
    hook must call `agent.room.wake_flush` so the app can type pending
    targeted wake events into the now-idle pane.
+
+Second field round (both hit again after the 500-char fix shipped):
+
+3. The hook-payload parser compacts every string field to ~240 chars for
+   feed/notification use, and the room publishers read the *compacted* payload.
+   A prompt or `last_assistant_message` longer than 240 chars relayed truncated
+   even though the publish cap was 4,000 — and, because the compacted value was
+   non-nil, the full-text transcript fallback never ran. The publishers must
+   read the raw payload.
+
+4. `agent-room post` without `--from-surface` let the app fall back to the
+   *focused* panel as the sender. An agent answering a question got its handoff
+   attributed to the pane the user was watching — the target itself — so the
+   self-addressed event was never delivered. The CLI must default the sender
+   from `MOSAIC_SURFACE_ID`.
 """
 
 from __future__ import annotations
@@ -269,6 +284,12 @@ def main() -> int:
                 "session_id": session_id,
                 "cwd": "/tmp",
                 "transcript_path": transcript_path,
+                # Real Stop payloads carry the reply inline. The parser compacts
+                # this field to ~240 chars for feed use; the room publisher must
+                # read the raw value (or it relays a truncated reply AND skips
+                # the full-text transcript fallback because the compacted value
+                # is non-nil).
+                "last_assistant_message": assistant_reply,
             },
             env,
         )
@@ -296,12 +317,22 @@ def main() -> int:
             )
 
         # 1b. The full reply must survive: the end marker sits past the old
-        # 500-char truncation point.
+        # 500-char truncation point (and far past the parser's 240-char
+        # payload compaction).
         posted_text = (reply_request.get("params") or {}).get("text") or ""
         if "END_OF_SCHEMA_MARKER" not in posted_text:
             return fail(
                 "assistant reply was truncated before the end marker "
                 f"(len={len(posted_text)}): {posted_text[-120:]!r}"
+            )
+
+        # 1c. Multi-line structure must survive too: the compacted payload
+        # path normalized the reply to a single line, which mangles schemas
+        # and code blocks for the receiving peer.
+        if "\n-- END_OF_SCHEMA_MARKER" not in posted_text:
+            return fail(
+                "assistant reply lost its multi-line structure "
+                f"(tail={posted_text[-120:]!r})"
             )
 
         # 2. The Stop hook must ask the app to flush pending targeted wake
@@ -312,7 +343,100 @@ def main() -> int:
         if surface_id not in flushes[0]:
             return fail(f"wake_flush must carry the pane's surface id: {flushes[0]!r}")
 
-    print("PASS: assistant reply relays as full-length message and stop triggers wake flush")
+        # 3. A long user prompt must relay full-length. The parser compacts the
+        # payload's `prompt` to ~240 chars for feed use; the relay publisher
+        # must read the raw prompt or the seeded context peers were wired to
+        # share arrives truncated.
+        seed_lines = [f"- requirement {index:03d}: keep this line" for index in range(20)]
+        seeded_prompt = (
+            "Here is the context you need to share with your peer:\n"
+            + "\n".join(seed_lines)
+            + "\nEND_OF_PROMPT_MARKER"
+        )
+        if len(seeded_prompt) <= 500:
+            return fail("test bug: seeded prompt must exceed the 240-char compaction by a margin")
+
+        prompt_start = len(server.commands)
+        run_claude_hook(
+            cli_path,
+            server.socket_path,
+            "prompt-submit",
+            {
+                "session_id": session_id,
+                "cwd": "/tmp",
+                "transcript_path": transcript_path,
+                "prompt": seeded_prompt,
+            },
+            env,
+        )
+        prompt_posts = [
+            post
+            for post in commands_with(server.commands[prompt_start:], "agent.room.post")
+            if "Shared user message" in post
+        ]
+        if not prompt_posts:
+            return fail("prompt-submit did not relay the user prompt to the room")
+        try:
+            prompt_request = json.loads(prompt_posts[0])
+        except json.JSONDecodeError:
+            return fail(f"agent.room.post request is not JSON: {prompt_posts[0]!r}")
+        prompt_text = (prompt_request.get("params") or {}).get("text") or ""
+        if "END_OF_PROMPT_MARKER" not in prompt_text:
+            return fail(
+                "user prompt was truncated before the end marker "
+                f"(len={len(prompt_text)}): {prompt_text[-120:]!r}"
+            )
+
+        # 4. `agent-room post` without --from-surface must attribute the post
+        # to the calling pane (MOSAIC_SURFACE_ID), not leave the sender for the
+        # app to resolve from the focused panel. A focused-panel fallback can
+        # attribute the post to its own target, and a self-addressed event is
+        # never delivered.
+        target_surface = str(uuid.uuid4()).upper()
+        post_start = len(server.commands)
+        proc = subprocess.run(
+            [
+                cli_path,
+                "--socket",
+                server.socket_path,
+                "agent-room",
+                "post",
+                "--kind",
+                "handoff",
+                "--target-surfaces",
+                target_surface,
+                "--",
+                "Full schema: CREATE TABLE task_comments (id BIGSERIAL PRIMARY KEY);",
+            ],
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=8,
+            check=False,
+        )
+        if proc.returncode != 0:
+            return fail(
+                f"agent-room post failed: exit={proc.returncode} "
+                f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
+            )
+        cli_posts = commands_with(server.commands[post_start:], "agent.room.post")
+        if not cli_posts:
+            return fail("agent-room post did not reach the socket")
+        try:
+            cli_post_request = json.loads(cli_posts[0])
+        except json.JSONDecodeError:
+            return fail(f"agent.room.post request is not JSON: {cli_posts[0]!r}")
+        posted_from = (cli_post_request.get("params") or {}).get("from_surface_id")
+        if posted_from != surface_id:
+            return fail(
+                "agent-room post must default from_surface_id to MOSAIC_SURFACE_ID "
+                f"(expected {surface_id}, got {posted_from!r})"
+            )
+
+    print(
+        "PASS: full-length reply and prompt relay, stop triggers wake flush, "
+        "and agent-room post is attributed to the calling pane"
+    )
     return 0
 
 
