@@ -1,7 +1,7 @@
 import Foundation
 
 enum MosaicBranding {
-    static let docsBaseURL = URL(string: "https://mosaic.com/docs")!
+    static let docsBaseURL = URL(string: "https://mosaic.inc/docs")!
     static let githubRepositoryURL = URL(string: "https://github.com/emergent-inc/mosaic")!
     static let githubIssuesURL = URL(string: "https://github.com/emergent-inc/mosaic/issues")!
 
