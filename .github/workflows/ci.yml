@@ -646,6 +646,7 @@ jobs:
           python3 tests/test_shell_git_config_remote_url_parsing.py
           MOSAIC_CLI_BIN="$CLI_BIN" python3 tests/test_claude_hook_stop_last_assistant.py
           MOSAIC_CLI_BIN="$CLI_BIN" python3 tests/test_claude_hook_clear_running_status.py
+          MOSAIC_CLI_BIN="$CLI_BIN" python3 tests/test_claude_hook_room_wake_relay.py
           MOSAIC_CLI_BIN="$CLI_BIN" python3 tests/test_pi_extension_install.py
           MOSAIC_CLI_BIN="$CLI_BIN" python3 tests/test_omp_extension_install.py
 
