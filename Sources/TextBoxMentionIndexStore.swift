@@ -1,5 +1,13 @@
 import Foundation
 
+/// A workspace file surfaced by quick-open (command palette). Value snapshot of
+/// a mention-index file candidate with the absolute path preserved.
+struct TextBoxQuickOpenFileCandidate: Equatable, Sendable {
+    let relativePath: String
+    let absolutePath: String
+    let displayPath: String
+}
+
 actor TextBoxMentionIndexStore {
     static let shared = TextBoxMentionIndexStore()
 
@@ -63,6 +71,41 @@ actor TextBoxMentionIndexStore {
             )
                 .map { $0.suggestion(trigger: query.trigger) }
         }
+    }
+
+    /// Full ranked list of file candidates under `rootDirectory` for the
+    /// command palette's quick-open rows. Awaits the full index build (instead
+    /// of the root-level fallback) so the first palette query already searches
+    /// the whole tree. Directories are excluded; quick-open opens files.
+    func quickOpenFileCandidates(
+        rootDirectory: String?,
+        limit: Int
+    ) async -> [TextBoxQuickOpenFileCandidate] {
+        guard limit > 0,
+              let rootDirectory = Self.normalizedDirectory(rootDirectory) else { return [] }
+        let index = await fileIndex(rootDirectory: rootDirectory, now: Date())
+        if Task.isCancelled { return [] }
+        var results: [TextBoxQuickOpenFileCandidate] = []
+        results.reserveCapacity(min(limit, 1024))
+        for candidate in index.rankedCandidates(
+            matching: "",
+            limit: Self.maxIndexedDirectories + Self.maxIndexedFiles,
+            shouldCancel: { Task.isCancelled }
+        ) {
+            guard candidate.systemImageName == "doc" else { continue }
+            let relativePath = candidate.title.hasPrefix("@")
+                ? String(candidate.title.dropFirst())
+                : candidate.title
+            results.append(TextBoxQuickOpenFileCandidate(
+                relativePath: relativePath,
+                absolutePath: candidate.targetPath,
+                displayPath: candidate.subtitle
+            ))
+            if results.count >= limit {
+                break
+            }
+        }
+        return results
     }
 
     func warmIndexes(rootDirectory: String?) async {

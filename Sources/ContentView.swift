@@ -1181,6 +1181,10 @@ struct ContentView: View {
     @State private var commandPaletteForkableAgentAvailabilityTasksByPanelKey: [String: Task<Void, Never>] = [:]
     @State private var commandPaletteForkableAgentProbeFingerprintsByPanelKey: [String: String] = [:]
     @State private var isCommandPaletteSearchPending = false
+    @State private var commandPaletteQuickOpenFiles: [TextBoxQuickOpenFileCandidate] = []
+    @State private var commandPaletteQuickOpenFilesFingerprint: Int = 0
+    @State private var commandPaletteQuickOpenFilesRoot: String?
+    @State private var commandPaletteQuickOpenFilesLoadTask: Task<Void, Never>?
     @State private var commandPalettePendingActivation: CommandPalettePendingActivation?
     @State private var commandPaletteResultsRevision: UInt64 = 0
     @State private var commandPaletteUsageHistoryByCommandId: [String: CommandPaletteUsageEntry] = [:]
@@ -1360,6 +1364,8 @@ struct ContentView: View {
     )
     private static let commandPaletteUsageDefaultsKey = "commandPalette.commandUsage.v1"
     nonisolated private static let commandPaletteCommandsPrefix = ">"
+    /// Cap on quick-open file rows fed into the switcher search corpus.
+    nonisolated private static let commandPaletteQuickOpenFileLimit = 2000
     private static let commandPaletteVisiblePreviewResultLimit = 48
     private static let commandPaletteVisiblePreviewCandidateLimit = 128
     private static let maximumSidebarWidthRatio: CGFloat = 1.0 / 3.0
@@ -1777,6 +1783,7 @@ struct ContentView: View {
                 hoveredResizerHandles.remove(handle)
                 if isResizerDragging {
                     TerminalWindowPortalRegistry.endInteractiveGeometryResize()
+                    BrowserWindowPortalRegistry.endInteractiveGeometryResize()
                     isResizerDragging = false
                 }
                 if sidebarDragStartWidth != nil {
@@ -1792,6 +1799,7 @@ struct ContentView: View {
                         let config = resizerConfig(for: handle, availableWidth: availableWidth)
                         if !isResizerDragging {
                             TerminalWindowPortalRegistry.beginInteractiveGeometryResize()
+                            BrowserWindowPortalRegistry.beginInteractiveGeometryResize()
                             isResizerDragging = true
                             config.captureStart()
                         }
@@ -1801,6 +1809,7 @@ struct ContentView: View {
                     .onEnded { _ in
                         if isResizerDragging {
                             TerminalWindowPortalRegistry.endInteractiveGeometryResize()
+                            BrowserWindowPortalRegistry.endInteractiveGeometryResize()
                             isResizerDragging = false
                             let config = resizerConfig(for: handle, availableWidth: availableWidth)
                             config.finishDrag()
@@ -3291,11 +3300,11 @@ struct ContentView: View {
                 _ = AppDelegate.shared?.restoreTerminalFocusAfterRightSidebarHidden(in: observedWindow)
             }
             syncFileExplorerDirectory()
-            if let observedWindow {
-                TerminalWindowPortalRegistry.scheduleExternalGeometrySynchronize(for: observedWindow)
-            } else {
-                TerminalWindowPortalRegistry.scheduleExternalGeometrySynchronizeForAllWindows()
-            }
+            // Toggling the right sidebar is a pure SwiftUI layout change, so both
+            // portal layers need an explicit resync. Terminal-only resync here left
+            // stale browser slots painting over the sidebar column (portals render
+            // above SwiftUI content).
+            schedulePortalGeometrySynchronize()
         })
 
         view = AnyView(view.onChange(of: fileExplorerState.mode) { _, _ in
@@ -3337,6 +3346,7 @@ struct ContentView: View {
         view = AnyView(view.onDisappear {
             if isResizerDragging {
                 TerminalWindowPortalRegistry.endInteractiveGeometryResize()
+                BrowserWindowPortalRegistry.endInteractiveGeometryResize()
                 isResizerDragging = false
                 if sidebarDragStartWidth != nil {
                     persistSidebarWidth(sidebarWidth)
@@ -4841,6 +4851,7 @@ struct ContentView: View {
         return commandPaletteEntriesFingerprint(
             for: scope,
             includeSurfaces: commandPaletteSwitcherIncludesSurfaceEntries,
+            includeFiles: commandPaletteSwitcherIncludesFileEntries,
             commandsContext: scope == .commands ? commandPaletteCachedCommandsContext() : nil
         )
     }
@@ -4871,14 +4882,18 @@ struct ContentView: View {
         )
     }
 
+    private var commandPaletteSwitcherIncludesFileEntries: Bool {
+        Self.commandPaletteSwitcherIncludesFileEntries(query: commandPaletteQuery)
+    }
+
     private var commandPaletteSearchPlaceholder: String {
         switch commandPaletteListScope {
         case .commands:
             return String(localized: "commandPalette.search.commandsPlaceholder", defaultValue: "Type a command")
         case .switcher:
             return commandPaletteSearchAllSurfaces
-                ? String(localized: "commandPalette.search.switcherPlaceholderAllSurfaces", defaultValue: "Search workspaces and surfaces")
-                : String(localized: "commandPalette.search.switcherPlaceholder", defaultValue: "Search workspaces")
+                ? String(localized: "commandPalette.search.switcherPlaceholderAllSurfaces", defaultValue: "Search workspaces, surfaces, and files")
+                : String(localized: "commandPalette.search.switcherPlaceholder", defaultValue: "Search workspaces and files")
         }
     }
 
@@ -4888,8 +4903,8 @@ struct ContentView: View {
             return String(localized: "commandPalette.search.commandsEmpty", defaultValue: "No commands match your search.")
         case .switcher:
             return commandPaletteSearchAllSurfaces
-                ? String(localized: "commandPalette.search.switcherEmptyAllSurfaces", defaultValue: "No workspaces or surfaces match your search.")
-                : String(localized: "commandPalette.search.switcherEmpty", defaultValue: "No workspaces match your search.")
+                ? String(localized: "commandPalette.search.switcherEmptyAllSurfaces", defaultValue: "No workspaces, surfaces, or files match your search.")
+                : String(localized: "commandPalette.search.switcherEmpty", defaultValue: "No workspaces or files match your search.")
         }
     }
 
@@ -4943,20 +4958,22 @@ struct ContentView: View {
     private func commandPaletteEntries(for scope: CommandPaletteListScope) -> [CommandPaletteCommand] {
         commandPaletteEntries(
             for: scope,
-            includeSurfaces: commandPaletteSwitcherIncludesSurfaceEntries
+            includeSurfaces: commandPaletteSwitcherIncludesSurfaceEntries,
+            includeFiles: commandPaletteSwitcherIncludesFileEntries
         )
     }
 
     private func commandPaletteEntries(
         for scope: CommandPaletteListScope,
         includeSurfaces: Bool,
+        includeFiles: Bool = false,
         commandsContext: CommandPaletteCommandsContext? = nil
     ) -> [CommandPaletteCommand] {
         switch scope {
         case .commands:
             return commandPaletteCommands(commandsContext: commandsContext ?? commandPaletteCachedCommandsContext())
         case .switcher:
-            return commandPaletteSwitcherEntries(includeSurfaces: includeSurfaces)
+            return commandPaletteSwitcherEntries(includeSurfaces: includeSurfaces, includeFiles: includeFiles)
         }
     }
 
@@ -4967,6 +4984,15 @@ struct ContentView: View {
         let scope = commandPaletteListScope(for: query)
         guard scope == .switcher else { return false }
         return searchAllSurfaces && !commandPaletteQueryForMatching(query: query, scope: scope).isEmpty
+    }
+
+    /// Quick-open file rows join the switcher corpus once the user starts
+    /// typing (an empty query keeps the clean workspace list). Unlike surface
+    /// rows, they are not gated behind the search-all-surfaces setting.
+    nonisolated private static func commandPaletteSwitcherIncludesFileEntries(query: String) -> Bool {
+        let scope = commandPaletteListScope(for: query)
+        guard scope == .switcher else { return false }
+        return !commandPaletteQueryForMatching(query: query, scope: scope).isEmpty
     }
 
     private func refreshCommandPaletteSearchCorpus(
@@ -4982,6 +5008,7 @@ struct ContentView: View {
             searchAllSurfaces: commandPaletteSearchAllSurfaces,
             query: effectiveQuery
         )
+        let includeFiles = Self.commandPaletteSwitcherIncludesFileEntries(query: effectiveQuery)
         let terminalOpenTargets = resolveCommandPaletteTerminalOpenTargets(for: scope)
         if commandPaletteTerminalOpenTargetAvailability != terminalOpenTargets {
             commandPaletteTerminalOpenTargetAvailability = terminalOpenTargets
@@ -4993,6 +5020,7 @@ struct ContentView: View {
         let fingerprint = commandPaletteEntriesFingerprint(
             for: scope,
             includeSurfaces: includeSurfaces,
+            includeFiles: includeFiles,
             commandsContext: commandsContext
         )
         guard force || cachedCommandPaletteScope != scope || cachedCommandPaletteFingerprint != fingerprint else {
@@ -5002,6 +5030,7 @@ struct ContentView: View {
         let entries = commandPaletteEntries(
             for: scope,
             includeSurfaces: includeSurfaces,
+            includeFiles: includeFiles,
             commandsContext: commandsContext
         )
         commandPaletteSearchCommandsByID = CommandPaletteSearchOrchestrator.firstValueDictionary(
@@ -5374,13 +5403,15 @@ struct ContentView: View {
     private func commandPaletteEntriesFingerprint(for scope: CommandPaletteListScope) -> Int {
         commandPaletteEntriesFingerprint(
             for: scope,
-            includeSurfaces: commandPaletteSwitcherIncludesSurfaceEntries
+            includeSurfaces: commandPaletteSwitcherIncludesSurfaceEntries,
+            includeFiles: commandPaletteSwitcherIncludesFileEntries
         )
     }
 
     private func commandPaletteEntriesFingerprint(
         for scope: CommandPaletteListScope,
         includeSurfaces: Bool,
+        includeFiles: Bool = false,
         commandsContext: CommandPaletteCommandsContext? = nil
     ) -> Int {
         switch scope {
@@ -5389,7 +5420,13 @@ struct ContentView: View {
                 commandsContext: commandsContext ?? commandPaletteCachedCommandsContext()
             )
         case .switcher:
-            return commandPaletteSwitcherEntriesFingerprint(includeSurfaces: includeSurfaces)
+            var hasher = Hasher()
+            hasher.combine(commandPaletteSwitcherEntriesFingerprint(includeSurfaces: includeSurfaces))
+            hasher.combine(includeFiles)
+            if includeFiles {
+                hasher.combine(commandPaletteQuickOpenFilesFingerprint)
+            }
+            return hasher.finalize()
         }
     }
 
@@ -5505,7 +5542,10 @@ struct ContentView: View {
         }
     }
 
-    private func commandPaletteSwitcherEntries(includeSurfaces: Bool) -> [CommandPaletteCommand] {
+    private func commandPaletteSwitcherEntries(
+        includeSurfaces: Bool,
+        includeFiles: Bool = false
+    ) -> [CommandPaletteCommand] {
         let windowContexts = commandPaletteSwitcherWindowContexts()
         guard !windowContexts.isEmpty else { return [] }
 
@@ -5613,7 +5653,85 @@ struct ContentView: View {
             }
         }
 
+        if includeFiles, !commandPaletteQuickOpenFiles.isEmpty {
+            let fileKindLabel = String(localized: "commandPalette.kind.file", defaultValue: "File")
+            for file in commandPaletteQuickOpenFiles {
+                let absolutePath = file.absolutePath
+                let fileName = (file.relativePath as NSString).lastPathComponent
+                entries.append(
+                    CommandPaletteCommand(
+                        id: "switcher.file.\(absolutePath)",
+                        rank: nextRank,
+                        title: file.relativePath,
+                        subtitle: file.displayPath,
+                        shortcutHint: nil,
+                        kindLabel: fileKindLabel,
+                        keywords: ["file", "open", fileName],
+                        dismissOnRun: true,
+                        action: {
+                            openQuickOpenFile(path: absolutePath)
+                        }
+                    )
+                )
+                nextRank += 1
+            }
+        }
+
         return entries
+    }
+
+    /// Loads the quick-open file corpus for the selected (local) workspace.
+    /// Kicked off when the palette is presented so the rows are ready by the
+    /// time the user types the first character (which is what reveals them).
+    private func beginCommandPaletteQuickOpenFilesLoad() {
+        commandPaletteQuickOpenFilesLoadTask?.cancel()
+        commandPaletteQuickOpenFilesLoadTask = nil
+
+        guard let workspace = tabManager.selectedWorkspace,
+              !workspace.isRemoteWorkspace else {
+            clearCommandPaletteQuickOpenFiles()
+            return
+        }
+        let root = workspace.currentDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !root.isEmpty else {
+            clearCommandPaletteQuickOpenFiles()
+            return
+        }
+        if commandPaletteQuickOpenFilesRoot == root, !commandPaletteQuickOpenFiles.isEmpty {
+            return
+        }
+
+        commandPaletteQuickOpenFilesLoadTask = Task { @MainActor in
+            let candidates = await TextBoxMentionIndexStore.shared.quickOpenFileCandidates(
+                rootDirectory: root,
+                limit: Self.commandPaletteQuickOpenFileLimit
+            )
+            guard !Task.isCancelled else { return }
+            commandPaletteQuickOpenFilesLoadTask = nil
+            commandPaletteQuickOpenFilesRoot = root
+            commandPaletteQuickOpenFiles = candidates
+            var hasher = Hasher()
+            hasher.combine(root)
+            for candidate in candidates {
+                hasher.combine(candidate.absolutePath)
+            }
+            commandPaletteQuickOpenFilesFingerprint = hasher.finalize()
+            guard isCommandPalettePresented,
+                  Self.commandPaletteSwitcherIncludesFileEntries(query: commandPaletteQuery) else {
+                return
+            }
+            scheduleCommandPaletteResultsRefresh(preservePendingActivation: true)
+        }
+    }
+
+    private func clearCommandPaletteQuickOpenFiles() {
+        commandPaletteQuickOpenFiles = []
+        commandPaletteQuickOpenFilesFingerprint = 0
+        commandPaletteQuickOpenFilesRoot = nil
+    }
+
+    private func openQuickOpenFile(path: String) {
+        openFilePreviewFromSidebar(filePath: path)
     }
 
     private func commandPaletteSwitcherWindowContexts() -> [CommandPaletteSwitcherWindowContext] {
@@ -9055,6 +9173,7 @@ struct ContentView: View {
         isCommandPalettePresented = true
         commandPaletteForkableAgentActivePanelKey = nil
         refreshCommandPaletteUsageHistory()
+        beginCommandPaletteQuickOpenFilesLoad()
         resetCommandPaletteListState(initialQuery: initialQuery)
     }
 
@@ -9101,6 +9220,9 @@ struct ContentView: View {
         cancelCommandPaletteSearch()
         cancelCommandPaletteSearchIndexBuild()
         cancelCommandPaletteForkableAgentAvailabilityProbe()
+        commandPaletteQuickOpenFilesLoadTask?.cancel()
+        commandPaletteQuickOpenFilesLoadTask = nil
+        clearCommandPaletteQuickOpenFiles()
         commandPaletteForkableAgentActivePanelKey = nil
         commandPaletteSearchRequestID &+= 1
         isCommandPalettePresented = false

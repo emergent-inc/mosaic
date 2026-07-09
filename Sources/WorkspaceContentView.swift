@@ -731,6 +731,14 @@ struct EmptyPanelView: View {
         _ = workspace.newBrowserSurface(inPane: paneId)
     }
 
+    private func browseFiles() {
+        #if DEBUG
+        mosaicDebugLog("emptyPane.browseFiles pane=\(paneId.id.uuidString.prefix(5))")
+        #endif
+        focusPane()
+        _ = AppDelegate.shared?.focusRightSidebarInActiveMainWindow(mode: .files)
+    }
+
     private var newSurfaceShortcut: StoredShortcut {
         let _ = keyboardShortcutSettingsObserver.revision
         return KeyboardShortcutSettings.shortcut(for: .newSurface)
@@ -739,6 +747,11 @@ struct EmptyPanelView: View {
     private var openBrowserShortcut: StoredShortcut {
         let _ = keyboardShortcutSettingsObserver.revision
         return KeyboardShortcutSettings.shortcut(for: .openBrowser)
+    }
+
+    private var focusRightSidebarShortcut: StoredShortcut {
+        let _ = keyboardShortcutSettingsObserver.revision
+        return KeyboardShortcutSettings.shortcut(for: .focusRightSidebar)
     }
 
     @ViewBuilder
@@ -777,17 +790,24 @@ struct EmptyPanelView: View {
 
             HStack(spacing: 12) {
                 emptyPaneActionButton(
-                    title: "Terminal",
+                    title: String(localized: "emptyPanel.action.terminal", defaultValue: "Terminal"),
                     systemImage: "terminal.fill",
                     shortcut: newSurfaceShortcut,
                     action: createTerminal
                 )
 
                 emptyPaneActionButton(
-                    title: "Browser",
+                    title: String(localized: "emptyPanel.action.browser", defaultValue: "Browser"),
                     systemImage: "globe",
                     shortcut: openBrowserShortcut,
                     action: createBrowser
+                )
+
+                emptyPaneActionButton(
+                    title: String(localized: "emptyPanel.action.files", defaultValue: "Files"),
+                    systemImage: "folder",
+                    shortcut: focusRightSidebarShortcut,
+                    action: browseFiles
                 )
             }
         }

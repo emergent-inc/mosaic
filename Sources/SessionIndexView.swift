@@ -569,6 +569,7 @@ private struct SessionRow: View, Equatable {
     let onDelete: SessionDeleteFn
     @State private var isHovered: Bool = false
     @State private var isDeleteHovered: Bool = false
+    @State private var isResumeHovered: Bool = false
 
     static func == (lhs: SessionRow, rhs: SessionRow) -> Bool {
         // Skip body re-eval during scroll when the entry is unchanged.
@@ -590,6 +591,7 @@ private struct SessionRow: View, Equatable {
                 .mosaicFont(size: 11, weight: .light, monospacedDigit: true)
                 .foregroundColor(.secondary.opacity(0.65))
                 .fixedSize()
+            resumeButton
             deleteButton
         }
         .padding(.leading, 32)
@@ -603,6 +605,7 @@ private struct SessionRow: View, Equatable {
             isHovered = hovering
             if !hovering {
                 isDeleteHovered = false
+                isResumeHovered = false
             }
         }
         .help(helpText)
@@ -625,6 +628,35 @@ private struct SessionRow: View, Equatable {
         }
         .contextMenu {
             sessionRowMenuItems(entry: entry, onResume: onResume, onDelete: onDelete)
+        }
+    }
+
+    /// Hover-revealed primary action: resuming a session should not require
+    /// discovering the context menu. Reserves layout space (opacity 0) so the
+    /// row does not shift when hovering.
+    @ViewBuilder
+    private var resumeButton: some View {
+        if let onResume {
+            TrackedButton("sessionindexview_button_resume", action: {
+                onResume(entry)
+            }) {
+                Image(systemName: "play.fill")
+                    .mosaicFont(size: 9, weight: .bold)
+                    .foregroundColor(resumeForegroundColor)
+                    .frame(width: 16, height: 16)
+                    .background(
+                        Circle()
+                            .fill(isResumeHovered ? HeaderChromeIconStyle.closeHoverBackgroundColor : Color.clear)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "sessionIndex.row.resume.tooltip", defaultValue: "Resume in New Tab"))
+            .accessibilityLabel(String(localized: "sessionIndex.row.resume", defaultValue: "Resume in New Tab"))
+            .fixedSize()
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+            .onHover { isResumeHovered = $0 }
         }
     }
 
@@ -673,6 +705,10 @@ private struct SessionRow: View, Equatable {
 
     private var deleteForegroundColor: Color {
         return isDeleteHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
+    }
+
+    private var resumeForegroundColor: Color {
+        return isResumeHovered ? .primary.opacity(0.95) : .secondary.opacity(0.8)
     }
 
     private var rowBackgroundColor: Color {

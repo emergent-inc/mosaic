@@ -8249,6 +8249,17 @@
         }
       }
     },
+    "commandPalette.kind.file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        }
+      }
+    },
     "commandPalette.kind.markdown": {
       "extractionState": "manual",
       "localizations": {
@@ -8442,7 +8453,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No workspaces match your search."
+            "value": "No workspaces or files match your search."
           }
         }
       }
@@ -8453,7 +8464,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No workspaces or surfaces match your search."
+            "value": "No workspaces, surfaces, or files match your search."
           }
         }
       }
@@ -8464,7 +8475,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search workspaces"
+            "value": "Search workspaces and files"
           }
         }
       }
@@ -8475,7 +8486,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search workspaces and surfaces"
+            "value": "Search workspaces, surfaces, and files"
           }
         }
       }
@@ -13749,6 +13760,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trust Project Dock?"
+          }
+        }
+      }
+    },
+    "emptyPanel.action.browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser"
+          }
+        }
+      }
+    },
+    "emptyPanel.action.files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files"
+          }
+        }
+      }
+    },
+    "emptyPanel.action.terminal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal"
           }
         }
       }
@@ -21352,6 +21396,17 @@
       }
     },
     "sessionIndex.row.resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume in New Tab"
+          }
+        }
+      }
+    },
+    "sessionIndex.row.resume.tooltip": {
       "extractionState": "manual",
       "localizations": {
         "en": {
