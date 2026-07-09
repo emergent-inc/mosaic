@@ -7343,22 +7343,22 @@ final class SidebarWorkspaceShortcutHintMetricsTests: XCTestCase {
 final class MosaicVisibleBrandingTests: XCTestCase {
     func testHelpMenuResourcesUseMosaicDestinations() {
         let docResources: [(MosaicHelpResource, String)] = [
-            (.gettingStarted, "https://mosaic.com/docs/getting-started"),
-            (.concepts, "https://mosaic.com/docs/concepts"),
-            (.configuration, "https://mosaic.com/docs/configuration"),
-            (.customCommands, "https://mosaic.com/docs/custom-commands"),
-            (.dock, "https://mosaic.com/docs/dock"),
-            (.keyboardShortcuts, "https://mosaic.com/docs/keyboard-shortcuts"),
-            (.apiReference, "https://mosaic.com/docs/api"),
-            (.browserAutomation, "https://mosaic.com/docs/browser-automation"),
-            (.notifications, "https://mosaic.com/docs/notifications"),
-            (.ssh, "https://mosaic.com/docs/ssh"),
-            (.skills, "https://mosaic.com/docs/skills"),
-            (.claudeCodeTeams, "https://mosaic.com/docs/agent-integrations/claude-code-teams"),
-            (.ohMyOpenCode, "https://mosaic.com/docs/agent-integrations/oh-my-opencode"),
-            (.ohMyCodex, "https://mosaic.com/docs/agent-integrations/oh-my-codex"),
-            (.ohMyClaudeCode, "https://mosaic.com/docs/agent-integrations/oh-my-claudecode"),
-            (.changelog, "https://mosaic.com/docs/changelog"),
+            (.gettingStarted, "https://mosaic.inc/docs/getting-started"),
+            (.concepts, "https://mosaic.inc/docs/concepts"),
+            (.configuration, "https://mosaic.inc/docs/configuration"),
+            (.customCommands, "https://mosaic.inc/docs/custom-commands"),
+            (.dock, "https://mosaic.inc/docs/dock"),
+            (.keyboardShortcuts, "https://mosaic.inc/docs/keyboard-shortcuts"),
+            (.apiReference, "https://mosaic.inc/docs/api"),
+            (.browserAutomation, "https://mosaic.inc/docs/browser-automation"),
+            (.notifications, "https://mosaic.inc/docs/notifications"),
+            (.ssh, "https://mosaic.inc/docs/ssh"),
+            (.skills, "https://mosaic.inc/docs/skills"),
+            (.claudeCodeTeams, "https://mosaic.inc/docs/agent-integrations/claude-code-teams"),
+            (.ohMyOpenCode, "https://mosaic.inc/docs/agent-integrations/oh-my-opencode"),
+            (.ohMyCodex, "https://mosaic.inc/docs/agent-integrations/oh-my-codex"),
+            (.ohMyClaudeCode, "https://mosaic.inc/docs/agent-integrations/oh-my-claudecode"),
+            (.changelog, "https://mosaic.inc/docs/changelog"),
         ]
 
         for (resource, expectedURL) in docResources {
@@ -7369,8 +7369,8 @@ final class MosaicVisibleBrandingTests: XCTestCase {
     }
 
     func testSidebarAndHelpMenuShareMosaicDestinations() {
-        XCTAssertEqual(MosaicBranding.docsBaseURL.absoluteString, "https://mosaic.com/docs")
-        XCTAssertEqual(MosaicBranding.docsURL("changelog").absoluteString, "https://mosaic.com/docs/changelog")
+        XCTAssertEqual(MosaicBranding.docsBaseURL.absoluteString, "https://mosaic.inc/docs")
+        XCTAssertEqual(MosaicBranding.docsURL("changelog").absoluteString, "https://mosaic.inc/docs/changelog")
         XCTAssertEqual(MosaicBranding.githubRepositoryURL.absoluteString, "https://github.com/emergent-inc/mosaic")
         XCTAssertEqual(MosaicBranding.githubIssuesURL.absoluteString, "https://github.com/emergent-inc/mosaic/issues")
     }

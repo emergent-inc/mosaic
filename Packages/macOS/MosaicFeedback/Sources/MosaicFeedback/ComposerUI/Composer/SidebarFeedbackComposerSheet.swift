@@ -65,7 +65,7 @@ public struct SidebarFeedbackComposerSheet: View {
             Text(
                 String(
                     localized: "sidebar.help.feedback.successBody",
-                    defaultValue: "You can also reach us at contact@emergent.inc.",
+                    defaultValue: "You can also reach us at contact@mosaic.inc.",
                     bundle: .module
                 )
             )
@@ -88,7 +88,7 @@ public struct SidebarFeedbackComposerSheet: View {
             Text(
                 String(
                     localized: "sidebar.help.feedback.note",
-                    defaultValue: "A human will read this. You can also reach us at contact@emergent.inc.",
+                    defaultValue: "A human will read this. You can also reach us at contact@mosaic.inc.",
                     bundle: .module
                 )
             )
@@ -352,7 +352,7 @@ public struct SidebarFeedbackComposerSheet: View {
         case .invalidEndpoint:
             return String(
                 localized: "sidebar.help.feedback.endpointError",
-                defaultValue: "Feedback is unavailable right now. Email contact@emergent.inc instead.",
+                defaultValue: "Feedback is unavailable right now. Email contact@mosaic.inc instead.",
                 bundle: .module
             )
         case .invalidResponse:
@@ -394,6 +394,14 @@ public struct SidebarFeedbackComposerSheet: View {
                     defaultValue: "Check your message and attachments, then try again.",
                     bundle: .module
                 )
+            case 404:
+                // The endpoint is gone (e.g. a deployment/domain change), so
+                // retrying can't succeed; steer users to email instead.
+                return String(
+                    localized: "sidebar.help.feedback.endpointError",
+                    defaultValue: "Feedback is unavailable right now. Email contact@mosaic.inc instead.",
+                    bundle: .module
+                )
             case 429:
                 return String(
                     localized: "sidebar.help.feedback.rateLimited",
@@ -403,7 +411,7 @@ public struct SidebarFeedbackComposerSheet: View {
             case 500...599:
                 return String(
                     localized: "sidebar.help.feedback.endpointError",
-                    defaultValue: "Feedback is unavailable right now. Email contact@emergent.inc instead.",
+                    defaultValue: "Feedback is unavailable right now. Email contact@mosaic.inc instead.",
                     bundle: .module
                 )
             default:

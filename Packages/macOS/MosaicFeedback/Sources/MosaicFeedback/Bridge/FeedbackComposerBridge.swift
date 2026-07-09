@@ -82,14 +82,14 @@ public struct FeedbackComposerBridge {
         return NSPredicate(format: "SELF MATCHES %@", pattern).evaluate(with: email)
     }
 
-    private static func userFacingMessage(for error: any Error) -> String {
+    static func userFacingMessage(for error: any Error) -> String {
         guard let submissionError = error as? FeedbackComposerSubmissionError else {
             return "Couldn't send feedback. Please try again."
         }
 
         switch submissionError {
         case .invalidEndpoint:
-            return "Feedback is unavailable right now. Email contact@emergent.inc instead."
+            return "Feedback is unavailable right now. Email contact@mosaic.inc instead."
         case .invalidResponse:
             return "Couldn't send feedback. Please try again."
         case .attachmentReadFailed:
@@ -105,10 +105,14 @@ public struct FeedbackComposerBridge {
             switch statusCode {
             case 400, 413, 415:
                 return "Check your message and attachments, then try again."
+            case 404:
+                // The endpoint is gone (e.g. a deployment/domain change), so
+                // retrying can't succeed; steer users to email instead.
+                return "Feedback is unavailable right now. Email contact@mosaic.inc instead."
             case 429:
                 return "Too many feedback attempts. Please try again later."
             case 500...599:
-                return "Feedback is unavailable right now. Email contact@emergent.inc instead."
+                return "Feedback is unavailable right now. Email contact@mosaic.inc instead."
             default:
                 return "Couldn't send feedback. Please try again."
             }
