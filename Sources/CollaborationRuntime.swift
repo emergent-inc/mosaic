@@ -3831,8 +3831,15 @@ final class CollaborationRuntime {
             #endif
             return false
         }
-        if hook.agentLifecycle == AgentHibernationLifecycleState.running.rawValue
-            || hook.agentLifecycle == AgentHibernationLifecycleState.needsInput.rawValue {
+        // Defer only while mid-turn (`running`); the Stop hook's wake_flush
+        // delivers once the turn settles. `needsInput` is deliberately NOT a
+        // defer state: Claude Code's Notification hook reports it for the
+        // ordinary "waiting for your input" idle prompt — the exact state a
+        // wake exists to interrupt (verified empirically: an idle wired pane
+        // sits at `needsInput`, and no later hook ever flips it to `idle`, so
+        // deferring on it would strand every ping forever). The rare
+        // mid-dialog overlap this admits is the accepted trade-off.
+        if hook.agentLifecycle == AgentHibernationLifecycleState.running.rawValue {
             #if DEBUG
             mosaicDebugLog("agentRoom.wake deferred surface \(surfaceID.prefix(8)): lifecycle=\(hook.agentLifecycle ?? "nil")")
             #endif
@@ -3852,10 +3859,15 @@ final class CollaborationRuntime {
         }
         guard !prompts.isEmpty else { return false }
         guard panel.sendText(prompts.joined(separator: "\n\n")) else { return false }
-        // Claude Code treats plain return inside a pasted multi-line block as
-        // a newline; ctrl+enter is its submit chord (mirrors the TextBox
-        // composer and the mobile paste dispatch).
-        _ = panel.sendNamedKeyResult("ctrl+enter")
+        // `sendText` delivers the whole prompt as one bracketed paste, which
+        // Claude Code's line editor holds as a single block, so a plain
+        // return submits it (verified empirically; ctrl+enter is ignored on a
+        // pasted block, unlike the TextBox composer's typed-newline case).
+        // The TUI needs a beat to ingest the paste before the submit key: a
+        // return sent in the same instant is swallowed and the block sits
+        // unsubmitted at the prompt (observed in the tagged-app dogfood).
+        try? await Task.sleep(nanoseconds: 600_000_000)
+        _ = panel.sendNamedKeyResult("return")
         _ = await agentRoomStore.consumePendingEvents(
             roomID: roomID,
             memberID: memberID,
