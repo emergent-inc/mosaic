@@ -9,6 +9,14 @@ main = "src/index.ts"
 compatibility_date = "2026-06-01"
 workers_dev = true
 
+# Grant verification (www contract, see src/grant.ts):
+# - MOSAIC_COLLAB_GRANT_SECRET is a secret shared with www; set it via
+#   `wrangler secret put MOSAIC_COLLAB_GRANT_SECRET`.
+# - COLLABORATION_REQUIRE_GRANT stays "false" until all clients send grants;
+#   presented grants are verified regardless of this flag.
+[vars]
+COLLABORATION_REQUIRE_GRANT = "false"
+
 [observability]
 enabled = true
 
@@ -24,6 +32,18 @@ class_name = "CollaborationSessionIndexObject"
 name = "COLLABORATION_INBOX"
 class_name = "CollaborationInboxObject"
 
+[[durable_objects.bindings]]
+name = "TEAM_SESSIONS"
+class_name = "TeamSessionsObject"
+
+# Team session transcripts (Claude Code JSONL bodies). Create the bucket once
+# before the first deploy: `wrangler r2 bucket create mosaic-team-session-transcripts`.
+# Session sync also needs the native-auth shared secret:
+# `wrangler secret put MOSAIC_NATIVE_AUTH_SECRET` (same value as www).
+[[r2_buckets]]
+binding = "TEAM_SESSION_TRANSCRIPTS"
+bucket_name = "mosaic-team-session-transcripts"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["CollaborationSessionObject"]
@@ -35,4 +55,8 @@ new_sqlite_classes = ["CollaborationSessionIndexObject"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["CollaborationInboxObject"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["TeamSessionsObject"]
 

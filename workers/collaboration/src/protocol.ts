@@ -4,6 +4,10 @@ export interface PeerInfo {
   displayName: string;
   color: string;
   imageURL?: string;
+  /// Client surface that opened the connection ("web" for sharing.mosaic.inc
+  /// guests). Absent for native app peers; forwarded verbatim in peer lists so
+  /// clients can badge web guests.
+  origin?: string;
 }
 
 export interface RelayEnvelope {
@@ -35,6 +39,7 @@ export function parsePeer(value: unknown): PeerInfo | null {
   const imageURL = typeof record.imageURL === "string" && record.imageURL.trim() !== ""
     ? record.imageURL
     : undefined;
+  const origin = normalizePeerOrigin(record.origin);
   const peer: PeerInfo = {
     peerID: record.peerID,
     participantID,
@@ -42,7 +47,16 @@ export function parsePeer(value: unknown): PeerInfo | null {
     color: record.color,
   };
   if (imageURL !== undefined) peer.imageURL = imageURL;
+  if (origin !== undefined) peer.origin = origin;
   return peer;
+}
+
+function normalizePeerOrigin(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "" || trimmed.length > 16) return undefined;
+  if (!/^[a-z0-9-]+$/.test(trimmed)) return undefined;
+  return trimmed;
 }
 
 export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | null {

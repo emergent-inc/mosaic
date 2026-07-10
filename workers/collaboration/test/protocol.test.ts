@@ -39,6 +39,31 @@ test("parsePeer drops absent, empty, whitespace, and non-string imageURL", () =>
   }
 });
 
+test("parsePeer keeps a sanitized origin and drops invalid ones", () => {
+  expect(parsePeer({
+    peerID: "p1",
+    displayName: "Peer",
+    color: "#123456",
+    origin: "WEB",
+  })).toEqual({
+    peerID: "p1",
+    participantID: "p1",
+    displayName: "Peer",
+    color: "#123456",
+    origin: "web",
+  });
+  for (const origin of [undefined, null, "", "   ", 42, "a".repeat(17), "we b", "web!"]) {
+    const parsed = parsePeer({
+      peerID: "p1",
+      displayName: "Peer",
+      color: "#123456",
+      origin,
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed).not.toHaveProperty("origin");
+  }
+});
+
 test("parseEnvelope rejects malformed or oversized frames", () => {
   expect(parseEnvelope("{")).toBeNull();
   expect(parseEnvelope(JSON.stringify({ nope: true }))).toBeNull();

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { collaborationFetch, type CollaborationWorkerEnv } from "../src/handler";
+import { mintGrant } from "./grant.test";
 
 class FakeSessionStub {
   createdSessionCode: string | null = null;
@@ -656,6 +657,141 @@ test("admin session index forwards pagination query parameters", async () => {
   const requestURL = new URL(indexNamespace.stubs.get("global")?.requests[0]?.url ?? "");
   expect(listResponse.status).toBe(200);
   expect(requestURL.search).toBe("?limit=2&cursor=session%3A00000000");
+});
+
+const GRANT_SECRET = "test-collab-secret";
+
+function grantEnv(
+  namespace: FakeSessionNamespace,
+  requireGrant: boolean,
+): CollaborationWorkerEnv {
+  return {
+    COLLABORATION_SESSIONS: namespace,
+    MOSAIC_COLLAB_GRANT_SECRET: GRANT_SECRET,
+    COLLABORATION_REQUIRE_GRANT: requireGrant ? "true" : "false",
+  };
+}
+
+test("connect with a valid grant for the room is routed to the session", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+  const grant = await mintGrant({
+    room: "5ZNHGF9P",
+    exp: Math.floor(Date.now() / 1000) + 120,
+  });
+
+  const response = await collaborationFetch(
+    new Request(
+      `http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect?grant=${encodeURIComponent(grant)}`,
+      { method: "GET" }
+    ),
+    grantEnv(namespace, true)
+  );
+
+  expect(response.status).toBe(299);
+});
+
+test("connect with a grant for a different room is rejected", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+  const grant = await mintGrant({
+    room: "OTHERRM1",
+    exp: Math.floor(Date.now() / 1000) + 120,
+  });
+
+  const response = await collaborationFetch(
+    new Request(
+      `http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect?grant=${encodeURIComponent(grant)}`,
+      { method: "GET" }
+    ),
+    grantEnv(namespace, false)
+  );
+  const body = await response.json() as { error: string };
+
+  expect(response.status).toBe(403);
+  expect(body.error).toBe("grant_room_mismatch");
+  expect(namespace.stubs.get("5ZNHGF9P")?.fetchRequests ?? []).toHaveLength(0);
+});
+
+test("connect with an invalid grant is rejected even when grants are optional", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+
+  const response = await collaborationFetch(
+    new Request(
+      "http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect?grant=mosaicgrant1.bogus.bogus",
+      { method: "GET" }
+    ),
+    grantEnv(namespace, false)
+  );
+  const body = await response.json() as { error: string };
+
+  expect(response.status).toBe(401);
+  expect(body.error).toBe("invalid_grant");
+});
+
+test("connect without a grant passes while grants are optional", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+
+  const response = await collaborationFetch(
+    new Request("http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect", {
+      method: "GET",
+    }),
+    grantEnv(namespace, false)
+  );
+
+  expect(response.status).toBe(299);
+});
+
+test("connect without a grant is rejected once grants are required", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+
+  const response = await collaborationFetch(
+    new Request("http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect", {
+      method: "GET",
+    }),
+    grantEnv(namespace, true)
+  );
+  const body = await response.json() as { error: string };
+
+  expect(response.status).toBe(401);
+  expect(body.error).toBe("grant_required");
+});
+
+test("connect grant room comparison normalizes formatted codes", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+  const grant = await mintGrant({
+    room: "5znh-gf9p",
+    exp: Math.floor(Date.now() / 1000) + 120,
+  });
+
+  const response = await collaborationFetch(
+    new Request(
+      `http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect?grant=${encodeURIComponent(grant)}`,
+      { method: "GET" }
+    ),
+    grantEnv(namespace, true)
+  );
+
+  expect(response.status).toBe(299);
+});
+
+test("connect ignores grants when no shared secret is configured", async () => {
+  const namespace = new FakeSessionNamespace();
+  namespace.get("5ZNHGF9P").createdSessionCode = "5ZNHGF9P";
+
+  const response = await collaborationFetch(
+    new Request(
+      "http://relay.test/v1/collaboration/sessions/5ZNHGF9P/connect?grant=mosaicgrant1.bogus.bogus",
+      { method: "GET" }
+    ),
+    { COLLABORATION_SESSIONS: namespace }
+  );
+
+  expect(response.status).toBe(299);
 });
 
 test("deleted index records disappear from admin session list", async () => {

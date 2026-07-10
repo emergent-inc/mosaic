@@ -1,9 +1,11 @@
+import { grantFromRequest, verifyCollabGrant } from "./grant";
 import {
   json,
   normalizeSessionCode,
   randomSessionCode,
   type SessionCreateResponse,
 } from "./protocol";
+import { teamSessionsFetch, type TeamSessionsEnv } from "./team-sessions-handler";
 
 interface CollaborationSessionStub {
   create(
@@ -35,11 +37,17 @@ interface CollaborationInboxNamespace {
   get(id: unknown): CollaborationInboxStub;
 }
 
-export interface CollaborationWorkerEnv {
+export interface CollaborationWorkerEnv extends TeamSessionsEnv {
   COLLABORATION_SESSIONS: CollaborationSessionNamespace;
   COLLABORATION_SESSION_INDEX?: CollaborationSessionIndexNamespace;
   COLLABORATION_INBOX?: CollaborationInboxNamespace;
   COLLABORATION_ADMIN_TOKEN?: string;
+  /// Shared HMAC secret with www (MOSAIC_COLLAB_GRANT_SECRET there). When set,
+  /// any presented join grant is verified. Set via `wrangler secret`.
+  MOSAIC_COLLAB_GRANT_SECRET?: string;
+  /// "true" -> connects without a grant are rejected. Left unset/false during
+  /// rollout so existing native code-joins keep working.
+  COLLABORATION_REQUIRE_GRANT?: string;
 }
 
 const SESSION_INDEX_OBJECT_NAME = "global";
@@ -53,6 +61,9 @@ export async function collaborationFetch(
   if (url.pathname === "/healthz") {
     return json({ ok: true, service: "mosaic-collaboration" });
   }
+
+  const teamSessionsResponse = await teamSessionsFetch(request, url, env);
+  if (teamSessionsResponse !== null) return teamSessionsResponse;
 
   if (
     url.pathname === "/v1/collaboration/sessions" &&
@@ -108,6 +119,8 @@ export async function collaborationFetch(
   if (match && request.method === "GET") {
     const sessionCode = normalizeSessionCode(decodeURIComponent(match[1]));
     if (!sessionCode) return json({ error: "invalid_session_code" }, 400);
+    const grantError = await enforceConnectGrant(request, url, env, sessionCode);
+    if (grantError) return grantError;
     const stub = env.COLLABORATION_SESSIONS.get(
       env.COLLABORATION_SESSIONS.idFromName(sessionCode),
     );
@@ -115,6 +128,45 @@ export async function collaborationFetch(
   }
 
   return json({ error: "not_found" }, 404);
+}
+
+// Gate WebSocket connects on the www-minted join grant. A presented grant is
+// always verified (bad grants never fall back to ungated access); connects
+// without any grant are only rejected once COLLABORATION_REQUIRE_GRANT="true".
+// Grant claims must target the same room the caller is connecting to; the
+// grant's `room` is normalized with the same rules as the connect path so
+// formatting differences ("5znh-gf9p" vs "5ZNHGF9P") cannot cause a mismatch.
+async function enforceConnectGrant(
+  request: Request,
+  url: URL,
+  env: CollaborationWorkerEnv,
+  sessionCode: string,
+): Promise<Response | null> {
+  const secret = env.MOSAIC_COLLAB_GRANT_SECRET?.trim() ?? "";
+  const requireGrant =
+    (env.COLLABORATION_REQUIRE_GRANT ?? "").trim().toLowerCase() === "true";
+  const grant = grantFromRequest(request, url);
+
+  if (grant === null) {
+    if (requireGrant && secret !== "") {
+      return json({ error: "grant_required" }, 401);
+    }
+    return null;
+  }
+  if (secret === "") {
+    // No shared secret configured: cannot verify, so ignore the grant rather
+    // than lock every caller out of the relay.
+    return null;
+  }
+  const claims = await verifyCollabGrant(grant, secret);
+  if (claims === null) {
+    return json({ error: "invalid_grant" }, 401);
+  }
+  const grantRoom = normalizeSessionCode(claims.room) ?? claims.room;
+  if (grantRoom !== sessionCode) {
+    return json({ error: "grant_room_mismatch" }, 403);
+  }
+  return null;
 }
 
 // Report whether a session's relay room still exists, so www can prune stale
