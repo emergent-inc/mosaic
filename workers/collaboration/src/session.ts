@@ -79,6 +79,7 @@ export class CollaborationSessionObject extends DurableObject<CollaborationSessi
       color: url.searchParams.get("color"),
       imageURL: url.searchParams.get("imageURL"),
       origin: url.searchParams.get("origin"),
+      caps: url.searchParams.get("caps"),
     });
     if (peer === null) {
       return new Response(JSON.stringify({ error: "invalid_peer" }), { status: 400 });

@@ -3,15 +3,85 @@ import { CollaborationRelaySessionState, type RelaySocket } from "../src/session
 
 class FakeSocket implements RelaySocket {
   sent: string[] = [];
+  sentBinary: ArrayBuffer[] = [];
   closed: Array<{ code: number; reason: string }> = [];
 
-  send(data: string): void {
-    this.sent.push(data);
+  send(data: string | ArrayBuffer | ArrayBufferView): void {
+    if (typeof data === "string") {
+      this.sent.push(data);
+      return;
+    }
+    this.sentBinary.push(data instanceof ArrayBuffer ? data : (data.buffer as ArrayBuffer));
   }
 
   close(code: number, reason: string): void {
     this.closed.push({ code, reason });
   }
+}
+
+const BINARY_MAGIC = 0xcb;
+const BINARY_VERSION = 1;
+
+/// Minimal encoder mirroring the wire layout in src/binary.ts, used to build
+/// test frames the relay must route.
+function encodeBinaryFrame(input: {
+  kind: "terminal.output" | "terminal.input";
+  sequence?: number;
+  terminalID: string;
+  fromPeerID: string;
+  caretPeerID?: string;
+  recipientParticipantIDs?: string[];
+  payload: Uint8Array;
+}): ArrayBuffer {
+  const enc = new TextEncoder();
+  const terminalID = enc.encode(input.terminalID);
+  const fromPeerID = enc.encode(input.fromPeerID);
+  const caret = input.caretPeerID != null ? enc.encode(input.caretPeerID) : null;
+  const recipients =
+    input.recipientParticipantIDs != null
+      ? input.recipientParticipantIDs.map((id) => enc.encode(id))
+      : null;
+  const parts: number[] = [
+    BINARY_MAGIC,
+    BINARY_VERSION,
+    input.kind === "terminal.output" ? 1 : 2,
+    (caret !== null ? 1 : 0) | (recipients !== null ? 2 : 0),
+  ];
+  const seq = BigInt(input.sequence ?? 0);
+  for (let i = 0; i < 8; i += 1) parts.push(Number((seq >> BigInt(8 * (7 - i))) & 0xffn));
+  const pushString = (bytes: Uint8Array) => {
+    parts.push((bytes.length >>> 8) & 0xff, bytes.length & 0xff);
+    for (const b of bytes) parts.push(b);
+  };
+  pushString(terminalID);
+  pushString(fromPeerID);
+  if (caret !== null) pushString(caret);
+  if (recipients !== null) {
+    parts.push((recipients.length >>> 8) & 0xff, recipients.length & 0xff);
+    for (const id of recipients) pushString(id);
+  }
+  for (const b of input.payload) parts.push(b);
+  return new Uint8Array(parts).buffer;
+}
+
+function decodePayload(buffer: ArrayBuffer): Uint8Array {
+  // The payload is the trailing bytes; find it by re-reading the header length.
+  const view = new Uint8Array(buffer);
+  let offset = 4 + 8;
+  const readStr = () => {
+    const len = (view[offset] << 8) | view[offset + 1];
+    offset += 2 + len;
+  };
+  const flags = view[3];
+  readStr(); // terminalID
+  readStr(); // fromPeerID
+  if ((flags & 1) !== 0) readStr(); // caret
+  if ((flags & 2) !== 0) {
+    const count = (view[offset] << 8) | view[offset + 1];
+    offset += 2;
+    for (let i = 0; i < count; i += 1) readStr();
+  }
+  return view.subarray(offset);
 }
 
 const peer = (peerID: string) => ({
@@ -308,4 +378,127 @@ test("heartbeat timeout closes stale peers and notifies survivors", () => {
     peerID: "p1",
     reason: "timeout",
   });
+});
+
+test("forwards binary terminal output unchanged to other peers", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  const frame = encodeBinaryFrame({
+    kind: "terminal.output",
+    sequence: 42,
+    terminalID: "term1",
+    fromPeerID: "p1",
+    payload: new Uint8Array([0x6f, 0x6b]),
+  });
+  state.handleMessage("p1", frame, 1100);
+
+  expect(second.sentBinary).toHaveLength(1);
+  // Zero-copy forward: the exact same buffer is relayed.
+  expect(second.sentBinary[0]).toBe(frame);
+  expect([...decodePayload(second.sentBinary[0])]).toEqual([0x6f, 0x6b]);
+  expect(first.sentBinary).toHaveLength(0);
+});
+
+test("routes binary frames only to selected participants", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  const third = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+  state.addPeer("ABCD-1234", peer("p3"), third, 1000);
+
+  state.handleMessage(
+    "p1",
+    encodeBinaryFrame({
+      kind: "terminal.output",
+      sequence: 1,
+      terminalID: "term1",
+      fromPeerID: "p1",
+      recipientParticipantIDs: ["p2-participant"],
+      payload: new Uint8Array([0x01]),
+    }),
+    1100,
+  );
+
+  expect(second.sentBinary).toHaveLength(1);
+  expect(third.sentBinary).toHaveLength(0);
+});
+
+test("binary frames with empty recipients are not forwarded", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  state.handleMessage(
+    "p1",
+    encodeBinaryFrame({
+      kind: "terminal.output",
+      sequence: 1,
+      terminalID: "term1",
+      fromPeerID: "p1",
+      recipientParticipantIDs: [],
+      payload: new Uint8Array([0x01]),
+    }),
+    1100,
+  );
+
+  expect(second.sentBinary).toHaveLength(0);
+});
+
+test("binary frame with a spoofed fromPeerID closes the sender", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  state.handleMessage(
+    "p1",
+    encodeBinaryFrame({
+      kind: "terminal.output",
+      sequence: 1,
+      terminalID: "term1",
+      fromPeerID: "p2",
+      payload: new Uint8Array([0x01]),
+    }),
+    1100,
+  );
+
+  expect(first.closed).toEqual([{ code: 1003, reason: "invalid frame" }]);
+  expect(JSON.parse(second.sent.at(-1) ?? "{}")).toEqual({
+    type: "peer.left",
+    peerID: "p1",
+    reason: "disconnect",
+  });
+  expect(state.peerCount).toBe(1);
+});
+
+test("binary traffic refreshes liveness", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  state.handleMessage(
+    "p1",
+    encodeBinaryFrame({
+      kind: "terminal.output",
+      sequence: 1,
+      terminalID: "term1",
+      fromPeerID: "p1",
+      payload: new Uint8Array([0x01]),
+    }),
+    31_000,
+  );
+  state.expire(31_001, 30_000);
+
+  expect(first.closed).toEqual([]);
 });

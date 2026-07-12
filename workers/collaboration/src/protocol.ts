@@ -8,6 +8,10 @@ export interface PeerInfo {
   /// guests). Absent for native app peers; forwarded verbatim in peer lists so
   /// clients can badge web guests.
   origin?: string;
+  /// Wire-format capabilities the peer supports (e.g. "binv1" for the binary
+  /// terminal I/O hot path). Forwarded verbatim so senders can gate binary
+  /// frames on every recipient advertising support.
+  caps?: string[];
 }
 
 export interface RelayEnvelope {
@@ -40,6 +44,7 @@ export function parsePeer(value: unknown): PeerInfo | null {
     ? record.imageURL
     : undefined;
   const origin = normalizePeerOrigin(record.origin);
+  const caps = normalizePeerCaps(record.caps);
   const peer: PeerInfo = {
     peerID: record.peerID,
     participantID,
@@ -48,7 +53,25 @@ export function parsePeer(value: unknown): PeerInfo | null {
   };
   if (imageURL !== undefined) peer.imageURL = imageURL;
   if (origin !== undefined) peer.origin = origin;
+  if (caps !== undefined) peer.caps = caps;
   return peer;
+}
+
+/// Normalizes peer capabilities from either a connect query string
+/// (comma-separated tokens) or a JSON `peer.update` array.
+function normalizePeerCaps(value: unknown): string[] | undefined {
+  let tokens: string[];
+  if (typeof value === "string") {
+    tokens = value.split(",");
+  } else if (Array.isArray(value)) {
+    tokens = value.filter((token): token is string => typeof token === "string");
+  } else {
+    return undefined;
+  }
+  const normalized = tokens
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token !== "" && token.length <= 16 && /^[a-z0-9-]+$/.test(token));
+  return normalized.length > 0 ? [...new Set(normalized)] : undefined;
 }
 
 function normalizePeerOrigin(value: unknown): string | undefined {

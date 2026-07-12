@@ -27,7 +27,55 @@ function webSocketURL(base: URL, sessionCode: string, peerID: string): URL {
   url.searchParams.set("peerID", peerID);
   url.searchParams.set("displayName", `smoke-${peerID}`);
   url.searchParams.set("color", peerID === "peer-a" ? "#ff0000" : "#0000ff");
+  url.searchParams.set("caps", "binv1");
   return url;
+}
+
+const BINARY_MAGIC = 0xcb;
+
+/// Minimal encoder for a binary `terminal.output` frame, mirroring the layout in
+/// src/binary.ts. Used to smoke-test binary pass-through through the relay.
+function encodeBinaryOutput(input: {
+  terminalID: string;
+  fromPeerID: string;
+  recipientParticipantIDs: string[];
+  payload: Uint8Array;
+}): ArrayBuffer {
+  const enc = new TextEncoder();
+  const parts: number[] = [BINARY_MAGIC, 1, 1, 0b10]; // magic, version, kind=output, flags=hasRecipients
+  for (let i = 0; i < 8; i += 1) parts.push(0); // sequence = 0
+  const pushString = (bytes: Uint8Array) => {
+    parts.push((bytes.length >>> 8) & 0xff, bytes.length & 0xff);
+    for (const b of bytes) parts.push(b);
+  };
+  pushString(enc.encode(input.terminalID));
+  pushString(enc.encode(input.fromPeerID));
+  parts.push(
+    (input.recipientParticipantIDs.length >>> 8) & 0xff,
+    input.recipientParticipantIDs.length & 0xff,
+  );
+  for (const id of input.recipientParticipantIDs) pushString(enc.encode(id));
+  for (const b of input.payload) parts.push(b);
+  return new Uint8Array(parts).buffer;
+}
+
+function binaryOutputPayload(buffer: ArrayBuffer): Uint8Array {
+  const view = new Uint8Array(buffer);
+  let offset = 4 + 8;
+  const flags = view[3];
+  const readStr = () => {
+    const len = (view[offset] << 8) | view[offset + 1];
+    offset += 2 + len;
+  };
+  readStr(); // terminalID
+  readStr(); // fromPeerID
+  if ((flags & 1) !== 0) readStr(); // caret
+  if ((flags & 2) !== 0) {
+    const count = (view[offset] << 8) | view[offset + 1];
+    offset += 2;
+    for (let i = 0; i < count; i += 1) readStr();
+  }
+  return view.subarray(offset);
 }
 
 function pastedSessionCodeVariant(sessionCode: string): string {
@@ -51,6 +99,12 @@ function parseJSON(data: unknown): JsonObject {
 class SmokePeer {
   private socket: WebSocket;
   private frames: JsonObject[] = [];
+  private binaryFrames: ArrayBuffer[] = [];
+  private binaryWaiters: Array<{
+    resolve: (buffer: ArrayBuffer) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }> = [];
   private waiters: Array<{
     predicate: (frame: JsonObject) => boolean;
     resolve: (frame: JsonObject) => void;
@@ -60,7 +114,17 @@ class SmokePeer {
 
   constructor(url: URL) {
     this.socket = new WebSocket(url.href);
+    this.socket.binaryType = "arraybuffer";
     this.socket.addEventListener("message", (event) => {
+      if (event.data instanceof ArrayBuffer) {
+        this.binaryFrames.push(event.data);
+        for (const waiter of [...this.binaryWaiters]) {
+          clearTimeout(waiter.timer);
+          waiter.resolve(event.data);
+        }
+        this.binaryWaiters = [];
+        return;
+      }
       const frame = parseJSON(event.data);
       this.frames.push(frame);
       for (const waiter of [...this.waiters]) {
@@ -98,6 +162,26 @@ class SmokePeer {
     this.socket.send(JSON.stringify(frame));
   }
 
+  sendBinary(buffer: ArrayBuffer): void {
+    this.socket.send(buffer);
+  }
+
+  async waitForBinary(description: string): Promise<ArrayBuffer> {
+    const existing = this.binaryFrames.at(0);
+    if (existing) return existing;
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          this.binaryWaiters = this.binaryWaiters.filter((candidate) => candidate !== waiter);
+          reject(new Error(`timed out waiting for ${description}`));
+        }, timeoutMs),
+      };
+      this.binaryWaiters.push(waiter);
+    });
+  }
+
   async waitFor(predicate: (frame: JsonObject) => boolean, description: string): Promise<JsonObject> {
     const existing = this.frames.find(predicate);
     if (existing) return existing;
@@ -130,6 +214,11 @@ class SmokePeer {
       waiter.reject(error);
     }
     this.waiters = [];
+    for (const waiter of this.binaryWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.reject(error);
+    }
+    this.binaryWaiters = [];
   }
 }
 
@@ -180,6 +269,23 @@ async function main(): Promise<void> {
     const forwarded = await second.waitFor((frame) => frame.type === "document.update", "document update forwarding");
     if (forwarded.documentID !== "smoke-doc" || forwarded.fromPeerID !== "peer-a") {
       fail(`unexpected forwarded frame: ${JSON.stringify(forwarded)}`);
+    }
+
+    // Binary hot-path pass-through: peer-a sends a binary terminal.output routed
+    // to peer-b's participant; the relay must forward the raw buffer unchanged.
+    const binaryPayload = new TextEncoder().encode("smoke-binary\r\n");
+    first.sendBinary(
+      encodeBinaryOutput({
+        terminalID: "smoke-terminal",
+        fromPeerID: "peer-a",
+        recipientParticipantIDs: ["peer-b"],
+        payload: binaryPayload,
+      }),
+    );
+    const receivedBinary = await second.waitForBinary("binary terminal.output forwarding");
+    const receivedPayload = binaryOutputPayload(receivedBinary);
+    if (new TextDecoder().decode(receivedPayload) !== "smoke-binary\r\n") {
+      fail(`unexpected binary payload: ${JSON.stringify([...receivedPayload])}`);
     }
 
     console.log(`collaboration relay smoke OK: ${relayURL.href} session ${created.sessionCode}`);

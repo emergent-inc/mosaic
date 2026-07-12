@@ -1,7 +1,8 @@
 import { parseEnvelope, parsePeer, type PeerInfo, type RelayEnvelope } from "./protocol";
+import { isBinaryFrame, parseBinaryFrameHeader } from "./binary";
 
 export interface RelaySocket {
-  send(data: string): void;
+  send(data: string | ArrayBuffer | ArrayBufferView): void;
   close(code: number, reason: string): void;
 }
 
@@ -31,6 +32,10 @@ export class CollaborationRelaySessionState {
   handleMessage(peerID: string, data: string | ArrayBuffer, now: number): void {
     const entry = this.peers.get(peerID);
     if (!entry) return;
+    if (isBinaryFrame(data)) {
+      this.handleBinaryMessage(peerID, entry, data, now);
+      return;
+    }
     const envelope = parseEnvelope(data);
     if (envelope === null) {
       this.closePeer(peerID, 1003, "invalid frame");
@@ -70,6 +75,31 @@ export class CollaborationRelaySessionState {
     this.broadcast(peerID, { type: "peer.left", peerID, reason });
   }
 
+  private handleBinaryMessage(
+    peerID: string,
+    entry: PeerConnection,
+    buffer: ArrayBuffer,
+    now: number,
+  ): void {
+    const header = parseBinaryFrameHeader(buffer);
+    // `fromPeerID` is sender-authoritative on the wire; the relay validates it
+    // matches the connection's peer (mirroring the `peer.update` check) and
+    // then forwards the original buffer unchanged -- the large payload is never
+    // re-encoded.
+    if (header === null || header.fromPeerID !== peerID) {
+      this.closePeer(peerID, 1003, "invalid frame");
+      this.dropPeer(peerID, "disconnect");
+      return;
+    }
+    entry.lastHeartbeatAt = now;
+    this.peers.set(peerID, entry);
+    const recipients =
+      header.recipientParticipantIDs === null
+        ? null
+        : new Set(header.recipientParticipantIDs);
+    this.broadcastBinary(peerID, buffer, recipients);
+  }
+
   private broadcast(fromPeerID: string, body: unknown, recipientParticipantIDs: Set<string> | null = null): void {
     const encoded = JSON.stringify(body);
     for (const [peerID, entry] of this.peers) {
@@ -77,6 +107,22 @@ export class CollaborationRelaySessionState {
       if (recipientParticipantIDs !== null && !recipientParticipantIDs.has(entry.peer.participantID)) continue;
       try {
         entry.socket.send(encoded);
+      } catch {
+        this.dropPeer(peerID, "disconnect");
+      }
+    }
+  }
+
+  private broadcastBinary(
+    fromPeerID: string,
+    buffer: ArrayBuffer,
+    recipientParticipantIDs: Set<string> | null,
+  ): void {
+    for (const [peerID, entry] of this.peers) {
+      if (peerID === fromPeerID) continue;
+      if (recipientParticipantIDs !== null && !recipientParticipantIDs.has(entry.peer.participantID)) continue;
+      try {
+        entry.socket.send(buffer);
       } catch {
         this.dropPeer(peerID, "disconnect");
       }
