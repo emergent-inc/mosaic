@@ -1,0 +1,12 @@
+---
+description: Workspace scope — macOS app only; web/ is out of scope
+alwaysApply: true
+---
+
+This workspace is for the macOS mosaic app only.
+
+- Do not edit, search, or reference `web/` unless the user explicitly asks.
+- Do not run `bun`, `npm`, or Next.js commands under `web/`.
+- For settings/schema/docs, use Swift sources and `docs/` — not `web/data/` or `web/messages/`.
+- Localization changes belong in `Resources/Localizable.xcstrings`, not `web/messages/`.
+- Skip `mosaic-backend` and other web-focused skills unless the user explicitly requests web/backend work.

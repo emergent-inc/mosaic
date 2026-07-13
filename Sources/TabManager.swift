@@ -2058,10 +2058,11 @@ class TabManager: ObservableObject {
     func updateSurfaceShellActivity(
         tabId: UUID,
         surfaceId: UUID,
-        state: PanelShellActivityState
+        state: PanelShellActivityState,
+        command: String? = nil
     ) {
         guard let tab = tabs.first(where: { $0.id == tabId }) else { return }
-        tab.updatePanelShellActivityState(panelId: surfaceId, state: state)
+        tab.updatePanelShellActivityState(panelId: surfaceId, state: state, command: command)
         if state == .promptIdle {
             pullRequestProbing.scheduleWorkspacePullRequestRefresh(
                 workspaceId: tabId,

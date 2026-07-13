@@ -2925,6 +2925,58 @@ struct MosaicCLI {
         ?? defaultBrowserSettingsDomain
     }
 
+    /// `mosaic session pull <session-id> [--team <team-id>]`.
+    ///
+    /// Thin shim over the app's `mosaic://session/pull` deep link so the CLI
+    /// and the dashboard share one app-side pull flow (auth, checkout
+    /// resolution, git fetch, transcript placement, resume) instead of
+    /// duplicating it here.
+    private func runTeamSessionCommand(commandArgs: [String]) throws {
+        let usage = "Usage: mosaic session pull <session-id> [--team <team-id>]"
+        guard let sub = commandArgs.first?.lowercased(), sub == "pull" else {
+            throw CLIError(message: usage)
+        }
+        let (teamId, remaining) = parseOption(Array(commandArgs.dropFirst()), name: "--team")
+        guard remaining.count == 1, let sessionId = remaining.first, !sessionId.isEmpty else {
+            throw CLIError(message: usage)
+        }
+        guard sessionId.range(of: "^[A-Za-z0-9._-]{1,256}$", options: .regularExpression) != nil else {
+            throw CLIError(message: "session pull: invalid session id '\(sessionId)'")
+        }
+
+        var components = URLComponents()
+        components.scheme = "mosaic"
+        components.host = "session"
+        components.path = "/pull"
+        var queryItems = [URLQueryItem(name: "id", value: sessionId)]
+        if let teamId, !teamId.isEmpty {
+            queryItems.append(URLQueryItem(name: "team", value: teamId))
+        }
+        components.queryItems = queryItems
+        guard let url = components.url else {
+            throw CLIError(message: "session pull: could not build the deep link URL")
+        }
+
+        // Route the deep link at the mosaic app this CLI belongs to (tagged dev
+        // builds register their own schemes/bundle ids), falling back to the
+        // system handler for the `mosaic://` scheme.
+        var arguments = [url.absoluteString]
+        let bundleId = Self.normalizedEnvValue(ProcessInfo.processInfo.environment["MOSAIC_BUNDLE_ID"])
+            ?? Self.containingAppBundleIdentifier()
+        if let bundleId {
+            arguments = ["-b", bundleId] + arguments
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = arguments
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw CLIError(message: "session pull: could not open the mosaic app to pull the session")
+        }
+        print("Asked mosaic to pull session \(sessionId). The app opens a new workspace once the session is ready.")
+    }
+
     // Presentation flags are global, but command option values can also look like flags.
     private static let commandOptionsWithValues: Set<String> = [
         "--action", "--after-workspace", "--agent", "--amount", "--arch",
@@ -2936,7 +2988,7 @@ struct MosaicCLI {
         "--order", "--out", "--pane", "--panel", "--path", "--profile", "--property",
         "--provider", "--relay-port", "--script", "--selector", "--session",
         "--shell", "--source", "--subtitle", "--surface", "--tab", "--target-pane",
-        "--text", "--timeout", "--timeout-ms", "--title", "--transcript",
+        "--team", "--text", "--timeout", "--timeout-ms", "--title", "--transcript",
         "--turn", "--type", "--url", "--url-contains", "--value", "--window",
         "--workspace", "--checkpoint", "--checkpoint-id",
     ]
@@ -3522,6 +3574,9 @@ struct MosaicCLI {
             let response = try client.sendV2(method: "system.capabilities")
             print(jsonString(formatIDs(response, mode: idFormat)))
 
+        case "session":
+            try runTeamSessionCommand(commandArgs: commandArgs)
+
         case "collaboration", "collab", "multiplayer":
             let sub = commandArgs.first?.lowercased() ?? "status"
             let rest = Array(commandArgs.dropFirst())
@@ -3535,6 +3590,9 @@ struct MosaicCLI {
                 print("Collaboration: \((response["status"] as? String) ?? "unknown")")
                 if let code = response["session_code"] as? String {
                     print("  session_code: \(code)")
+                }
+                if let shareLink = response["share_link"] as? String {
+                    print("  share_link:   \(shareLink)")
                 }
                 print("  relay_url:    \((response["relay_url"] as? String) ?? "?")")
                 print("  shared_files: \((response["shared_documents"] as? Int) ?? 0)")
@@ -3566,6 +3624,9 @@ struct MosaicCLI {
                 print("Created collaboration session.")
                 print("  relay_url:    \((response["relay_url"] as? String) ?? "?")")
                 print("  session_code: \((response["session_code"] as? String) ?? "?")")
+                if let shareLink = response["share_link"] as? String {
+                    print("  share_link:   \(shareLink)")
+                }
 
             case "join":
                 let (relayURL, afterRelay) = parseOption(rest, name: "--relay-url")
@@ -3619,7 +3680,13 @@ struct MosaicCLI {
                     break
                 }
                 let allRooms = response["rooms"] as? [[String: Any]] ?? []
-                print("Claude rooms: \(allRooms.count)")
+                print(String.localizedStringWithFormat(
+                    String(
+                        localized: "cli.agentRoom.status.count",
+                        defaultValue: "Agent context links: %lld"
+                    ),
+                    allRooms.count
+                ))
                 if let latest = response["latest_room_id"] as? String {
                     print("  latest_room_id: \(latest)")
                 }
@@ -3629,7 +3696,7 @@ struct MosaicCLI {
                 if roomFilter != nil, rooms.isEmpty {
                     print(String(
                         localized: "cli.agentRoom.status.noSuchRoom",
-                        defaultValue: "  No room matches that --room-id."
+                        defaultValue: "  No context link matches that --room-id."
                     ))
                 }
                 for room in rooms {
@@ -3646,7 +3713,14 @@ struct MosaicCLI {
                 if let title { params["title"] = title }
                 if let policy { params["delivery_policy"] = policy }
                 let response = try client.sendV2(method: "agent.room.create", params: params)
-                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Created Claude room \((response["room_id"] as? String) ?? "")")
+                let createdText = String(
+                    format: String(
+                        localized: "cli.agentRoom.create.fallback",
+                        defaultValue: "Created agent context link %@"
+                    ),
+                    (response["room_id"] as? String) ?? ""
+                )
+                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: createdText)
 
             case "connect":
                 let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
@@ -3662,7 +3736,15 @@ struct MosaicCLI {
                 if let agentSessionID { params["agent_session_id"] = agentSessionID }
                 if let displayName { params["display_name"] = displayName }
                 let response = try client.sendV2(method: "agent.room.connect_surface", params: params)
-                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Connected surface to Claude room")
+                printV2Payload(
+                    response,
+                    jsonOutput: jsonOutput,
+                    idFormat: idFormat,
+                    fallbackText: String(
+                        localized: "cli.agentRoom.connect.fallback",
+                        defaultValue: "Linked surface to shared agent context"
+                    )
+                )
 
             case "disconnect":
                 let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
@@ -3674,7 +3756,15 @@ struct MosaicCLI {
                 if let roomID { params["room_id"] = roomID }
                 if let surfaceID { params["surface_id"] = surfaceID }
                 let response = try client.sendV2(method: "agent.room.disconnect_surface", params: params)
-                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Disconnected surface from Claude room")
+                printV2Payload(
+                    response,
+                    jsonOutput: jsonOutput,
+                    idFormat: idFormat,
+                    fallbackText: String(
+                        localized: "cli.agentRoom.disconnect.fallback",
+                        defaultValue: "Unlinked surface from shared agent context"
+                    )
+                )
 
             case "reset", "clear":
                 let (roomID, remaining) = parseOption(rest, name: "--room-id")
@@ -3696,7 +3786,7 @@ struct MosaicCLI {
                     idFormat: idFormat,
                     fallbackText: String(
                         localized: "cli.agentRoom.reset.fallback",
-                        defaultValue: "Reset Claude room state"
+                        defaultValue: "Reset shared agent context"
                     )
                 )
 
@@ -3732,7 +3822,15 @@ struct MosaicCLI {
                         .filter { !$0.isEmpty }
                 }
                 let response = try client.sendV2(method: "agent.room.post", params: params)
-                printV2Payload(response, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: "Posted Claude room event")
+                printV2Payload(
+                    response,
+                    jsonOutput: jsonOutput,
+                    idFormat: idFormat,
+                    fallbackText: String(
+                        localized: "cli.agentRoom.post.fallback",
+                        defaultValue: "Posted shared agent context event"
+                    )
+                )
 
             case "digest":
                 let (roomID, afterRoom) = parseOption(rest, name: "--room-id")
@@ -14343,6 +14441,17 @@ struct MosaicCLI {
 
             Check connectivity to the mosaic socket server.
             """
+        case "session":
+            return String(localized: "cli.session.usage", defaultValue: """
+            Usage: mosaic session pull <session-id> [--team <team-id>]
+
+            Pull a teammate's synced coding session from the team corpus and
+            continue it locally. The app downloads the transcript, fetches the
+            session's branch and WIP snapshot ref, and opens a new workspace
+            running `claude --resume <session-id> --fork-session`.
+
+            Requires being signed in to mosaic with Team Session Sync available.
+            """)
         case "capabilities":
             return """
             Usage: mosaic capabilities
@@ -16380,7 +16489,17 @@ struct MosaicCLI {
         let lastSequence = room["last_sequence"] as? Int ?? 0
         let events = room["events"] as? [[String: Any]] ?? []
         let members = room["members"] as? [[String: Any]] ?? []
-        print("  room \(roomID)  policy=\(policy)  events=\(events.count)  last_seq=\(lastSequence)  members=\(members.count)")
+        print(String.localizedStringWithFormat(
+            String(
+                localized: "cli.agentRoom.status.line",
+                defaultValue: "  context-link %@  policy=%@  events=%lld  last_seq=%lld  terminals=%lld"
+            ),
+            roomID,
+            policy,
+            events.count,
+            lastSequence,
+            members.count
+        ))
         for member in members {
             let surface = member["surfaceID"] as? String ?? "?"
             let shortSurface = String(surface.prefix(8))
@@ -23480,7 +23599,7 @@ struct MosaicCLI {
                 telemetry.breadcrumb("claude-hook.session-start.room-recap")
                 let recapHeader = String(
                     localized: "cli.claudeHook.roomRecap.header",
-                    defaultValue: "Shared Claude room recap (recent activity from wired peer agents):"
+                    defaultValue: "Shared agent context recap (recent activity from linked agents):"
                 )
                 print(jsonString([
                     "hookSpecificOutput": [
@@ -23767,6 +23886,11 @@ struct MosaicCLI {
                 )
                 // Standing room directives (persistent, not per-message chatter).
                 let activeInstructions = agentRoomActiveInstructions(from: payload, ownSurfaceID: surfaceId)
+                // Standing data-source section: wired read-only terminals and
+                // the exact command to read each one on demand (built app-side
+                // from room membership; empty when the room has none).
+                let dataSourceInstructions = (payload["data_source_instructions"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 // Drain anything shared with this surface since it last acted. This
                 // is the single, cursor-gated delivery channel for peer messages:
                 // `agent.room.consume` returns only unacknowledged content and then
@@ -23780,13 +23904,13 @@ struct MosaicCLI {
                 )
                 let pendingText = (consumePayload?["text"] as? String)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let contextSections = [pendingText, activeInstructions]
+                let contextSections = [pendingText, activeInstructions, dataSourceInstructions]
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 if !contextSections.isEmpty {
                     let roomContextHeader = String(
                         localized: "cli.claudeHook.roomContext.header",
-                        defaultValue: "Shared Claude room context:"
+                        defaultValue: "Shared agent context:"
                     )
                     print(jsonString([
                         "hookSpecificOutput": [
@@ -25162,6 +25286,10 @@ struct MosaicCLI {
     /// Keep the two lists in sync.
     private func isMosaicRoomRelayPrompt(_ text: String) -> Bool {
         let relayPromptHeaderPrefixes = [
+            "Linked context message",
+            "Linked context handoff",
+            "Linked context question",
+            "Linked context blocker",
             "Shared room message",
             "Shared room handoff",
             "Shared room question",
@@ -25238,6 +25366,12 @@ struct MosaicCLI {
                       !surfaceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     return nil
                 }
+                // Data sources are plain terminals: posting to them does
+                // nothing, so they are excluded from the actionable peer list
+                // (the digest's data_source_instructions section covers them).
+                if (surface["role"] as? String) == "dataSource" {
+                    return nil
+                }
                 let rawLabel = (surface["display_name"] as? String)?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 let fallbackLabelFormat = String(
@@ -25250,7 +25384,7 @@ struct MosaicCLI {
         guard !surfaces.isEmpty else { return "" }
         let intro = String(
             localized: "cli.claudeHook.roomContext.activeIntro",
-            defaultValue: "Reachable mosaic room peers:"
+            defaultValue: "Reachable linked agents:"
         )
         let commandIntro = String(
             localized: "cli.claudeHook.roomContext.activeCommandIntro",

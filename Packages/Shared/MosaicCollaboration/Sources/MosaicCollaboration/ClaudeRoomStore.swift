@@ -111,6 +111,11 @@ public actor ClaudeRoomStore {
             if updated.acknowledgedEventSequence == nil {
                 updated.acknowledgedEventSequence = room.members[index].acknowledgedEventSequence
             }
+            // Same for the role: a reconnect that does not restate the role
+            // (e.g. a host-side session rebind) keeps the classified one.
+            if updated.role == nil {
+                updated.role = room.members[index].role
+            }
             room.members[index] = updated
         } else {
             room.members.append(member)

@@ -7,12 +7,40 @@ import SwiftUI
 
 // MARK: - Explorer Visual Style
 
+/// Chrome-aligned colors for the AppKit file explorer. Mirrors the left
+/// workspace sidebar's fixed-hex palette (`MosaicSidebarStyle` in
+/// ContentView.swift, `MosaicChromePalette`) so Files/Find reads as mosaic
+/// chrome instead of native macOS sidebar styling. The right sidebar paints
+/// an opaque `MosaicChromePalette.sidebarBackgroundColor` (#141414) panel
+/// fill, so these fixed colors always sit on the same dark chrome the left
+/// sidebar uses.
+enum FileExplorerAppearance {
+    /// Selected row while the tree owns keyboard focus (left sidebar selected row: #1C1C1C).
+    static let selectionFillFocused: NSColor = MosaicChromePalette.selectedSidebarRowColor
+    /// Selected row without keyboard focus, one step dimmer (matches hover).
+    static let selectionFillUnfocused: NSColor = NSColor(hex: "#181818") ?? .darkGray
+    /// Pointer-hover row fill (left sidebar hover row: #181818).
+    static let hoverFill: NSColor = NSColor(hex: "#181818") ?? .darkGray
+    /// Row title text (left sidebar primary text: #E8E8E8).
+    static let primaryText: NSColor = NSColor(hex: "#E8E8E8") ?? .white
+    /// Muted text and chrome icons (left sidebar secondary text: #B8B8B8).
+    static let secondaryText: NSColor = NSColor(hex: "#B8B8B8") ?? .lightGray
+    /// File glyph tint, one step quieter than folders (left sidebar muted text: #A8A8A8).
+    static let tertiaryText: NSColor = NSColor(hex: "#A8A8A8") ?? .lightGray
+    /// Search field pill fill, a quiet raised surface on the #141414 panel.
+    static let searchFieldFill: NSColor = NSColor(hex: "#1E1E1E") ?? .darkGray
+}
+
 enum FileExplorerStyle: Int, CaseIterable {
     case liquidGlass = 0
     case highDensity = 1
     case terminalStealth = 2
     case proStudio = 3
     case finder = 4
+    /// Default. Derives colors from `FileExplorerAppearance` so the tree
+    /// matches the app's custom chrome (left sidebar palette on the solid
+    /// #141414 panel). The other cases remain as Debug-menu presets.
+    case mosaic = 5
 
     var label: String {
         switch self {
@@ -21,6 +49,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return "Terminal Stealth"
         case .proStudio: return "Pro Studio"
         case .finder: return "Finder"
+        case .mosaic: return "Mosaic"
         }
     }
 
@@ -32,6 +61,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: baseHeight = 24
         case .proStudio: baseHeight = 32
         case .finder: baseHeight = 26
+        case .mosaic: baseHeight = 24
         }
         return GlobalFontMagnification.scaledSize(baseHeight)
     }
@@ -43,6 +73,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return 14
         case .proStudio: return 20
         case .finder: return 18
+        case .mosaic: return 14
         }
     }
 
@@ -53,6 +84,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return 12
         case .proStudio: return 18
         case .finder: return 18
+        case .mosaic: return 13
         }
     }
 
@@ -63,6 +95,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return .light
         case .proStudio: return .regular
         case .finder: return .medium
+        case .mosaic: return .regular
         }
     }
 
@@ -73,6 +106,8 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return GlobalFontMagnification.monospacedSystemFont(ofSize: 12, weight: .regular)
         case .proStudio: return GlobalFontMagnification.systemFont(ofSize: 14, weight: .semibold)
         case .finder: return GlobalFontMagnification.systemFont(ofSize: 13, weight: .regular)
+        // Matches SessionIndexView row typography (13pt light).
+        case .mosaic: return GlobalFontMagnification.systemFont(ofSize: 13, weight: .light)
         }
     }
 
@@ -83,6 +118,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return 6
         case .proStudio: return 12
         case .finder: return 6
+        case .mosaic: return 6
         }
     }
 
@@ -93,6 +129,8 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return 0
         case .proStudio: return 4
         case .finder: return 4
+        // Matches SessionIndexView.rowBackground horizontal padding.
+        case .mosaic: return 6
         }
     }
 
@@ -103,6 +141,8 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return 0
         case .proStudio: return 8
         case .finder: return 5
+        // Matches the left workspace sidebar row corner radius (TabItemView).
+        case .mosaic: return 9
         }
     }
 
@@ -113,6 +153,27 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return .controlAccentColor
         case .proStudio: return .controlAccentColor
         case .finder: return .controlAccentColor.withAlphaComponent(0.15)
+        case .mosaic: return FileExplorerAppearance.selectionFillFocused
+        }
+    }
+
+    /// Selection fill for the row layer, honoring keyboard-focus emphasis.
+    func selectionFillColor(focused: Bool) -> NSColor {
+        guard !focused else { return selectionColor }
+        switch self {
+        case .mosaic:
+            return FileExplorerAppearance.selectionFillUnfocused
+        default:
+            return .labelColor.withAlphaComponent(0.08)
+        }
+    }
+
+    /// Whether the focused selection fill is strong enough that AppKit should
+    /// switch cell content to the emphasized (light-on-dark) background style.
+    var usesEmphasizedSelectionText: Bool {
+        switch self {
+        case .highDensity, .terminalStealth, .proStudio: return true
+        case .liquidGlass, .finder, .mosaic: return false
         }
     }
 
@@ -123,11 +184,20 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return .white.withAlphaComponent(0.03)
         case .proStudio: return .white.withAlphaComponent(0.1)
         case .finder: return .labelColor.withAlphaComponent(0.04)
+        case .mosaic: return FileExplorerAppearance.hoverFill
         }
     }
 
     var usesBorderSelection: Bool {
         self == .terminalStealth
+    }
+
+    /// Row title text color when no git status/error applies.
+    var primaryTextColor: NSColor {
+        switch self {
+        case .mosaic: return FileExplorerAppearance.primaryText
+        default: return .labelColor
+        }
     }
 
     var fileIconTint: NSColor {
@@ -137,6 +207,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return .tertiaryLabelColor
         case .proStudio: return .secondaryLabelColor
         case .finder: return NSColor(white: 0.55, alpha: 1.0)
+        case .mosaic: return FileExplorerAppearance.tertiaryText
         }
     }
 
@@ -147,6 +218,7 @@ enum FileExplorerStyle: Int, CaseIterable {
         case .terminalStealth: return .tertiaryLabelColor
         case .proStudio: return .systemBlue
         case .finder: return .systemBlue
+        case .mosaic: return FileExplorerAppearance.secondaryText
         }
     }
 
@@ -160,7 +232,7 @@ enum FileExplorerStyle: Int, CaseIterable {
             case .renamed: return .systemPurple
             case .untracked: return .quaternaryLabelColor
             }
-        case .highDensity:
+        case .highDensity, .mosaic:
             switch status {
             case .modified: return .systemYellow
             case .added: return .systemGreen
@@ -198,9 +270,9 @@ enum FileExplorerStyle: Int, CaseIterable {
     static var current: FileExplorerStyle {
         let defaults = UserDefaults.standard
         if defaults.object(forKey: "fileExplorer.style") == nil {
-            return .highDensity
+            return .mosaic
         }
-        return FileExplorerStyle(rawValue: defaults.integer(forKey: "fileExplorer.style")) ?? .highDensity
+        return FileExplorerStyle(rawValue: defaults.integer(forKey: "fileExplorer.style")) ?? .mosaic
     }
 }
 

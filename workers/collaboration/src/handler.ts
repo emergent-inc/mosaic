@@ -5,7 +5,10 @@ import {
   randomSessionCode,
   type SessionCreateResponse,
 } from "./protocol";
-import { teamSessionsFetch, type TeamSessionsEnv } from "./team-sessions-handler";
+import {
+  teamSessionsFetch,
+  type TeamSessionsEnv,
+} from "./team-sessions-handler";
 
 interface CollaborationSessionStub {
   create(
@@ -119,7 +122,12 @@ export async function collaborationFetch(
   if (match && request.method === "GET") {
     const sessionCode = normalizeSessionCode(decodeURIComponent(match[1]));
     if (!sessionCode) return json({ error: "invalid_session_code" }, 400);
-    const grantError = await enforceConnectGrant(request, url, env, sessionCode);
+    const grantError = await enforceConnectGrant(
+      request,
+      url,
+      env,
+      sessionCode,
+    );
     if (grantError) return grantError;
     const stub = env.COLLABORATION_SESSIONS.get(
       env.COLLABORATION_SESSIONS.idFromName(sessionCode),

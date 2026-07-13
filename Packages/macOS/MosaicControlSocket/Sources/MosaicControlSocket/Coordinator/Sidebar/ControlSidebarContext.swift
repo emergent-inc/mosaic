@@ -185,10 +185,19 @@ public protocol ControlSidebarContext: AnyObject {
 
     /// Runs the explicit-scope `report_shell_state` fast path (dedupe gate +
     /// enqueue).
-    func controlSidebarScheduleScopedShellState(scope: ControlSidebarPanelScope, stateRawValue: String)
+    func controlSidebarScheduleScopedShellState(
+        scope: ControlSidebarPanelScope,
+        stateRawValue: String,
+        command: String?
+    )
 
     /// Applies the fallback `report_shell_state` update.
-    func controlSidebarUpdateShellState(tabArg: String?, panelArg: String?, stateRawValue: String) -> ControlSidebarPanelWriteResolution
+    func controlSidebarUpdateShellState(
+        tabArg: String?,
+        panelArg: String?,
+        stateRawValue: String,
+        command: String?
+    ) -> ControlSidebarPanelWriteResolution
 
     /// Enqueues the explicit-scope `report_tty` registration.
     func controlSidebarScheduleScopedTTY(scope: ControlSidebarPanelScope, ttyName: String)

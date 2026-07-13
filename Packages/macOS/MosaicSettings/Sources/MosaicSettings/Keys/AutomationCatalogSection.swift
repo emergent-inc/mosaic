@@ -58,6 +58,16 @@ public struct AutomationCatalogSection: SettingCatalogSection {
         userDefaultsKey: "suppressSubagentNotifications"
     )
 
+    /// Opt-in team session sync: uploads each Claude Code session (transcript
+    /// + git state) to the signed-in team's shared corpus at turn boundaries
+    /// so teammates can pull and continue it. Default off: enabling it sends
+    /// coding-session content to the team's cloud storage.
+    public let teamSessionSync = DefaultsKey<Bool>(
+        id: "automation.teamSessionSync",
+        defaultValue: false,
+        userDefaultsKey: "teamSessionSyncEnabled"
+    )
+
     // Several agent-integration toggles are intentionally exposed under both
     // `automation.*` (this catalog) and `integrations.*` (IntegrationsCatalogSection)
     // with the same `userDefaultsKey`, so writes through either namespace land

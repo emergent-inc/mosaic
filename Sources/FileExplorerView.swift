@@ -1,6 +1,7 @@
 import AppKit
 import Bonsplit
 import Combine
+import MosaicAppKitSupportUI
 import MosaicFoundation
 import MosaicWorkspaces
 import MosaicSettings
@@ -631,10 +632,33 @@ struct FileExplorerPanelView: NSViewRepresentable {
 
 /// Pure AppKit container holding the header bar and outline view.
 @MainActor
+/// Rounded pill fill behind the borderless search field, matching the
+/// right-sidebar chrome pill language (`RightSidebarChromePillModifier`).
+/// Resolves its fill in `updateLayer` so it tracks appearance changes.
+private final class FileExplorerSearchPillView: NSView {
+    override var wantsUpdateLayer: Bool { true }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerCurve = .continuous
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func updateLayer() {
+        layer?.cornerRadius = RightSidebarChromeMetrics.controlCornerRadius
+        layer?.backgroundColor = FileExplorerAppearance.searchFieldFill.cgColor
+    }
+}
+
 final class FileExplorerContainerView: NSView {
     private let headerView: FileExplorerHeaderView
     private let searchBarView: NSView
     private let searchField: FileExplorerSearchField
+    private let searchFieldPill = FileExplorerSearchPillView()
     private let searchStatusLabel: NSTextField
     private let scrollView: NSScrollView
     private let outlineView: FileExplorerNSOutlineView
@@ -665,6 +689,7 @@ final class FileExplorerContainerView: NSView {
     private var presentation: FileExplorerPanelPresentation
     private let coordinator: FileExplorerPanelView.Coordinator
     private var fontMagnificationObserver: GlobalFontMagnificationChangeObserver?
+    private var chromeAppearanceObserver: NSObjectProtocol?
     private let searchDebounceDelayMilliseconds = 200
     private var searchBarVisibleHeight: CGFloat { max(48, GlobalFontMagnification.scaled(48)) }
     private var searchFieldVisibleHeight: CGFloat { max(24, GlobalFontMagnification.scaled(24)) }
@@ -709,10 +734,19 @@ final class FileExplorerContainerView: NSView {
         searchBarView.isHidden = true
         addSubview(searchBarView)
 
+        // Chrome pill behind the search field, replacing the stock NSSearchField
+        // bezel so Find matches the right-sidebar pill language (mode bar,
+        // Vault controls).
+        searchFieldPill.translatesAutoresizingMaskIntoConstraints = false
+        searchBarView.addSubview(searchFieldPill)
+
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.setAccessibilityIdentifier("FileExplorerSearchField")
         searchField.placeholderString = String(localized: "fileExplorer.search.placeholder", defaultValue: "Search files")
         searchField.focusRingType = .none
+        searchField.isBezeled = false
+        searchField.isBordered = false
+        searchField.drawsBackground = false
         searchField.cell?.usesSingleLineMode = true
         searchField.cell?.isScrollable = true
         searchField.cell?.lineBreakMode = .byClipping
@@ -737,7 +771,7 @@ final class FileExplorerContainerView: NSView {
         searchBarView.addSubview(searchField)
 
         searchStatusLabel.translatesAutoresizingMaskIntoConstraints = false
-        searchStatusLabel.textColor = .secondaryLabelColor
+        searchStatusLabel.textColor = FileExplorerAppearance.secondaryText
         searchStatusLabel.lineBreakMode = .byTruncatingTail
         searchStatusLabel.maximumNumberOfLines = 1
         searchStatusLabel.alignment = .left
@@ -747,7 +781,7 @@ final class FileExplorerContainerView: NSView {
 
         // Empty state label
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        emptyLabel.textColor = .secondaryLabelColor
+        emptyLabel.textColor = FileExplorerAppearance.secondaryText
         emptyLabel.alignment = .center
         emptyLabel.isHidden = true
         addSubview(emptyLabel)
@@ -765,12 +799,27 @@ final class FileExplorerContainerView: NSView {
             self?.searchResultsView.rowHeight = FileExplorerSearchResultCellView.preferredRowHeight
             self?.searchResultsView.reloadData()
         }
+        // Terminal theme changes move the chrome-derived separator color and
+        // the composited background the tree sits on; refresh the resolved
+        // chrome colors live (mirrors DockPanelView.refreshAppearance and the
+        // SwiftUI WindowChromeBorder refresh hook).
+        chromeAppearanceObserver = NotificationCenter.default.addObserver(
+            forName: .ghosttyDefaultBackgroundDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshChromeAppearance()
+            }
+        }
 
         // Outline view setup
         outlineView.headerView = nil
         outlineView.usesAlternatingRowBackgroundColors = false
         outlineView.style = .plain
-        outlineView.selectionHighlightStyle = .regular
+        // Custom chrome fills only: FileExplorerRowView draws selection in
+        // drawBackground(in:), so native selection chrome stays fully off.
+        outlineView.selectionHighlightStyle = .none
         outlineView.rowSizeStyle = .default
         outlineView.indentationPerLevel = FileExplorerStyle.current.indentation
         outlineView.allowsMultipleSelection = true
@@ -801,10 +850,9 @@ final class FileExplorerContainerView: NSView {
 
         // Scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
+        // Thin overlay scrollers matching the left sidebar and terminal.
+        scrollView.applySidebarOverlayScrollerConfiguration()
         scrollView.horizontalScrollElasticity = .none
-        scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
         scrollView.documentView = outlineView
@@ -814,7 +862,7 @@ final class FileExplorerContainerView: NSView {
         searchResultsView.headerView = nil
         searchResultsView.usesAlternatingRowBackgroundColors = false
         searchResultsView.style = .plain
-        searchResultsView.selectionHighlightStyle = .regular
+        searchResultsView.selectionHighlightStyle = .none
         searchResultsView.backgroundColor = .clear
         searchResultsView.rowHeight = FileExplorerSearchResultCellView.preferredRowHeight
         searchResultsView.allowsMultipleSelection = true
@@ -849,10 +897,8 @@ final class FileExplorerContainerView: NSView {
         searchResultsView.menu = searchMenu
 
         searchScrollView.translatesAutoresizingMaskIntoConstraints = false
-        searchScrollView.hasVerticalScroller = true
-        searchScrollView.hasHorizontalScroller = false
+        searchScrollView.applySidebarOverlayScrollerConfiguration()
         searchScrollView.horizontalScrollElasticity = .none
-        searchScrollView.autohidesScrollers = true
         searchScrollView.borderType = .noBorder
         searchScrollView.drawsBackground = false
         searchScrollView.documentView = searchResultsView
@@ -881,6 +927,11 @@ final class FileExplorerContainerView: NSView {
             searchFieldHeightConstraint,
             searchField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
 
+            searchFieldPill.leadingAnchor.constraint(equalTo: searchField.leadingAnchor),
+            searchFieldPill.trailingAnchor.constraint(equalTo: searchField.trailingAnchor),
+            searchFieldPill.topAnchor.constraint(equalTo: searchField.topAnchor),
+            searchFieldPill.bottomAnchor.constraint(equalTo: searchField.bottomAnchor),
+
             searchStatusLabel.leadingAnchor.constraint(equalTo: searchField.leadingAnchor, constant: 4),
             searchStatusLabel.trailingAnchor.constraint(equalTo: searchField.trailingAnchor),
             searchStatusLabel.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 2),
@@ -904,18 +955,36 @@ final class FileExplorerContainerView: NSView {
     }
 
     private func applyChromeFonts() {
-        searchField.font = GlobalFontMagnification.systemFont(ofSize: 12, weight: .regular)
+        // 11pt matches RightSidebarChromeControlStyle.labelSize (mode bar,
+        // Vault control labels).
+        searchField.font = GlobalFontMagnification.systemFont(ofSize: 11, weight: .regular)
         searchStatusLabel.font = GlobalFontMagnification.systemFont(ofSize: 11, weight: .medium)
         emptyLabel.font = GlobalFontMagnification.systemFont(ofSize: 13)
         searchFieldHeightConstraint?.constant = searchFieldVisibleHeight
         if isSearchVisible {
             searchBarHeightConstraint?.constant = searchBarVisibleHeight
         }
+        searchFieldPill.needsDisplay = true
         headerView.applyFonts()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        if let chromeAppearanceObserver {
+            NotificationCenter.default.removeObserver(chromeAppearanceObserver)
+        }
+    }
+
+    /// Re-resolves colors derived from the terminal chrome background (the
+    /// header separator, the search pill fill). Row/label colors are dynamic
+    /// NSColors and re-resolve on their own when the sidebar's appearance
+    /// (color scheme) changes.
+    private func refreshChromeAppearance() {
+        headerView.refreshChromeColors()
+        searchFieldPill.needsDisplay = true
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
@@ -1559,6 +1628,11 @@ extension FileExplorerContainerView: NSSearchFieldDelegate, NSTableViewDataSourc
 
     func numberOfRows(in tableView: NSTableView) -> Int {
         searchSnapshot.results.count
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        // Same chrome-aligned row (selection/hover fills) as the file tree.
+        FileExplorerRowView()
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {

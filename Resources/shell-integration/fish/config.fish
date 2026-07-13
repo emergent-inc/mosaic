@@ -258,13 +258,24 @@ if test "$_mosaic_integration_enabled" != 0
         end
     end
 
-    function _mosaic_report_shell_activity_state --argument-names state
+    function _mosaic_report_shell_activity_state --argument-names state command_hint
         test -n "$state"; or return 0
         _mosaic_socket_is_unix; or return 0
         test -n "$MOSAIC_TAB_ID"; or return 0
         test -n "$MOSAIC_PANEL_ID"; or return 0
         test "$_MOSAIC_SHELL_ACTIVITY_LAST" = "$state"; and return 0
         set -g _MOSAIC_SHELL_ACTIVITY_LAST "$state"
+        if test "$state" = running; and test -n "$command_hint"
+            begin
+                set -l encoded_command (printf '%s' "$command_hint" | base64 | string replace -a \n '')
+                if test -n "$encoded_command"
+                    _mosaic_send "report_shell_state $state --command-b64=$encoded_command --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+                else
+                    _mosaic_send "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+                end
+            end >/dev/null 2>&1 &
+            return 0
+        end
         _mosaic_send_bg "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
     end
 
@@ -287,7 +298,7 @@ if test "$_mosaic_integration_enabled" != 0
 
     function _mosaic_preexec --on-event fish_preexec
         _mosaic_report_tty_once
-        _mosaic_report_shell_activity_state running
+        _mosaic_report_shell_activity_state running "$argv[1]"
         _mosaic_ports_kick command
     end
 

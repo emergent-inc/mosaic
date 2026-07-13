@@ -274,6 +274,7 @@ enum AutomationSettingsFileMapping {
         .init(jsonKey: "geminiIntegration", defaultsKey: automation.geminiIntegration.userDefaultsKey),
         .init(jsonKey: "kiroIntegration", defaultsKey: automation.kiroIntegration.userDefaultsKey),
         .init(jsonKey: "workspaceAutoNaming", defaultsKey: automation.workspaceAutoNaming.userDefaultsKey),
+        .init(jsonKey: "teamSessionSync", defaultsKey: automation.teamSessionSync.userDefaultsKey),
     ]
 
     static let stringSettings: [SettingsFileStringMapping] = [
@@ -414,6 +415,7 @@ extension MosaicSettingsFileStore {
         "automation.autoNamingAgent",
         "automation.ripgrepBinaryPath",
         "automation.suppressSubagentNotifications",
+        "automation.teamSessionSync",
         "automation.ampIntegration",
         "automation.cursorIntegration",
         "automation.geminiIntegration",

@@ -174,7 +174,8 @@ struct mosaicApp: App {
                 coordinator: authComposition.coordinator,
                 browserSignIn: authComposition.browserSignIn
             ),
-            hostActions: HostSettingsActions(configFileURL: configFileURL)
+            hostActions: HostSettingsActions(configFileURL: configFileURL),
+            presentation: .full
         )
         StartupBreadcrumbLog.append("app.init.settingsRuntime.created")
 
@@ -2299,10 +2300,10 @@ private struct AcknowledgmentsView: View {
 // MARK: - File Explorer Style Debug
 
 private struct FileExplorerStyleDebugView: View {
-    @AppStorage("fileExplorer.style") private var styleRawValue: Int = 0
+    @AppStorage("fileExplorer.style") private var styleRawValue: Int = FileExplorerStyle.mosaic.rawValue
 
     private var currentStyle: FileExplorerStyle {
-        FileExplorerStyle(rawValue: styleRawValue) ?? .liquidGlass
+        FileExplorerStyle(rawValue: styleRawValue) ?? .mosaic
     }
 
     var body: some View {
@@ -2364,6 +2365,7 @@ private struct FileExplorerStyleDebugView: View {
         case .terminalStealth: return "Monospace, border selection, desaturated"
         case .proStudio: return "Logic Pro, chunky rows, pill selection"
         case .finder: return "Finder sidebar, filled icons, hover tint"
+        case .mosaic: return "Default: matches mosaic sidebar chrome (Vault rows)"
         }
     }
 }

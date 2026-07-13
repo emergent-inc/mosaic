@@ -38,6 +38,8 @@ private var tmuxWorkspacePaneWindowOverlayKey: UInt8 = 0
 let commandPaletteOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.commandPalette.overlay.container")
 let tutorialVideoOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.tutorialVideo.overlay.container")
 let tmuxWorkspacePaneOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.tmuxWorkspacePane.overlay.container")
+private var rightSidebarWindowOverlayKey: UInt8 = 0
+let rightSidebarOverlayContainerIdentifier = NSUserInterfaceItemIdentifier("mosaic.rightSidebar.overlay.container")
 
 private enum MosaicSidebarStyle {
     static let background = Color(nsColor: MosaicChromePalette.sidebarBackgroundColor)
@@ -853,6 +855,190 @@ private func tmuxWorkspacePaneWindowOverlayController(for window: NSWindow, crea
     guard createIfNeeded else { return nil }
     let controller = WindowTmuxWorkspacePaneOverlayController(window: window)
     objc_setAssociatedObject(window, &tmuxWorkspacePaneWindowOverlayKey, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    return controller
+}
+
+/// AppKit container for the right sidebar hosted ABOVE the portal layer.
+///
+/// The sidebar historically lived inside the main SwiftUI hosting view, i.e.
+/// BELOW the terminal/browser portal hosts, and survived only through portal
+/// hit-test pass-through heuristics and geometry clamps. Hosting it in this
+/// container (same overlay tier as the command palette) makes it a first-class
+/// window component: portals can neither paint over it nor intercept its
+/// clicks.
+@MainActor
+final class RightSidebarOverlayContainerView: NSView {
+    /// Mirrors right-sidebar visibility. When false the container is inert.
+    var sidebarInteractionEnabled = false
+    /// Leading strip (in points) that passes hits through to the SwiftUI
+    /// resizer living in the main hosting view below.
+    var resizerPassThroughBandWidth: CGFloat = SidebarResizeInteraction.sidebarSideHitWidth
+
+    override var isOpaque: Bool { false }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard sidebarInteractionEnabled else { return nil }
+        guard let superview else { return nil }
+        let localPoint = convert(point, from: superview)
+        guard bounds.contains(localPoint) else { return nil }
+        if localPoint.x < resizerPassThroughBandWidth {
+            // The width-drag divider sits at the sidebar's leading edge; its
+            // SwiftUI handle lives below this overlay.
+            return nil
+        }
+        return super.hitTest(point)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        // Match MainWindowHostingView: titlebar-band controls (mode bar pills,
+        // close, open-as-pane) respond on the first click of an inactive window.
+        guard let event, let window else { return false }
+        return isMinimalModeTitlebarControlHit(window: window, locationInWindow: event.locationInWindow)
+    }
+}
+
+@MainActor
+final class WindowRightSidebarOverlayController: NSObject {
+    private weak var window: NSWindow?
+    let containerView = RightSidebarOverlayContainerView(frame: .zero)
+    private let hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+    private let chromeComposition = AppWindowChromeComposition()
+    private var installConstraints: [NSLayoutConstraint] = []
+    private var widthConstraint: NSLayoutConstraint?
+    private weak var installedContainerView: NSView?
+    private weak var installedReferenceView: NSView?
+
+    init(window: NSWindow) {
+        self.window = window
+        super.init()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.wantsLayer = true
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.isHidden = true
+        containerView.alphaValue = 0
+        containerView.identifier = rightSidebarOverlayContainerIdentifier
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        // The mode bar must reach the titlebar band; never inset for the
+        // full-size-content titlebar (the main hosting view zeroes it too).
+        hostingView.safeAreaRegions = []
+        containerView.addSubview(hostingView)
+        NSLayoutConstraint.activate([
+            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+        ])
+        _ = ensureInstalled()
+    }
+
+    /// Re-resolves the installation target (e.g. after a glass-root swap) and
+    /// re-pins constraints. Root view and state are preserved.
+    func reinstallForChromeChange() {
+        _ = ensureInstalled()
+    }
+
+    @discardableResult
+    private func ensureInstalled() -> Bool {
+        guard let window,
+              let target = chromeComposition
+                .contentOverlayTargetResolver
+                .installationTarget(for: window) else { return false }
+
+        if containerView.superview !== target.container || installedReferenceView !== target.reference {
+            NSLayoutConstraint.deactivate(installConstraints)
+            installConstraints.removeAll()
+            widthConstraint = nil
+            containerView.removeFromSuperview()
+            addContainerViewMaintainingOverlayOrder(in: target.container)
+            let width = containerView.widthAnchor.constraint(equalToConstant: 0)
+            installConstraints = [
+                containerView.topAnchor.constraint(equalTo: target.reference.topAnchor),
+                containerView.bottomAnchor.constraint(equalTo: target.reference.bottomAnchor),
+                containerView.trailingAnchor.constraint(equalTo: target.reference.trailingAnchor),
+                width,
+            ]
+            widthConstraint = width
+            NSLayoutConstraint.activate(installConstraints)
+            installedContainerView = target.container
+            installedReferenceView = target.reference
+#if DEBUG
+            mosaicDebugLog(
+                "rightSidebar.overlay.install container=\(String(describing: type(of: target.container))) " +
+                "reference=\(String(describing: type(of: target.reference)))"
+            )
+#endif
+        }
+
+        return true
+    }
+
+    /// Places the sidebar overlay above the portal hosts but below the command
+    /// palette overlay (the palette also re-promotes itself when it opens).
+    private func addContainerViewMaintainingOverlayOrder(in container: NSView) {
+        if let paletteContainer = container.subviews.first(where: {
+            $0.identifier == commandPaletteOverlayContainerIdentifier
+        }) {
+            container.addSubview(containerView, positioned: .below, relativeTo: paletteContainer)
+        } else {
+            container.addSubview(containerView, positioned: .above, relativeTo: nil)
+        }
+    }
+
+    private func promoteAbovePortalHostsIfNeeded() {
+        guard let container = installedContainerView,
+              containerView.superview === container else { return }
+        // Re-assert ordering when becoming visible: portal hosts re-install
+        // themselves over time and must never end up above the sidebar.
+        let portalIsAbove = container.subviews.drop(while: { $0 !== containerView })
+            .dropFirst()
+            .contains { $0 is WindowTerminalHostView || $0 is WindowBrowserHostView }
+        guard portalIsAbove else { return }
+        addContainerViewMaintainingOverlayOrder(in: container)
+    }
+
+    private var hasMountedRootView = false
+
+    /// - Parameters:
+    ///   - isActiveHost: false while Dock mode uses the legacy in-tree hosting;
+    ///     the overlay then unmounts its root so sidebar focus hosts (outline,
+    ///     search, feed) are never registered twice.
+    ///   - isVisible: right-sidebar visibility for this window.
+    func update(isActiveHost: Bool, isVisible: Bool, width: CGFloat, makeRootView: () -> AnyView) {
+        guard ensureInstalled() else { return }
+        widthConstraint?.constant = width
+        let showsSidebar = isActiveHost && isVisible
+        containerView.sidebarInteractionEnabled = showsSidebar
+        if isActiveHost {
+            // Keep the root view mounted while hidden so mode content (file
+            // tree, sessions) preserves state across visibility toggles;
+            // RightSidebarPanelView's own mount policy defers heavy content
+            // until the first show.
+            hostingView.rootView = makeRootView()
+            hasMountedRootView = true
+        } else if hasMountedRootView {
+            hostingView.rootView = AnyView(EmptyView())
+            hasMountedRootView = false
+        }
+        if showsSidebar {
+            promoteAbovePortalHostsIfNeeded()
+            containerView.isHidden = false
+            containerView.alphaValue = 1
+        } else {
+            containerView.isHidden = true
+            containerView.alphaValue = 0
+        }
+    }
+}
+
+@MainActor
+func rightSidebarWindowOverlayController(for window: NSWindow) -> WindowRightSidebarOverlayController {
+    if let existing = objc_getAssociatedObject(window, &rightSidebarWindowOverlayKey) as? WindowRightSidebarOverlayController {
+        return existing
+    }
+    let controller = WindowRightSidebarOverlayController(window: window)
+    objc_setAssociatedObject(window, &rightSidebarWindowOverlayKey, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     return controller
 }
 private func commandPaletteOwningWebView(for responder: NSResponder?) -> WKWebView? {
@@ -2032,17 +2218,34 @@ struct ContentView: View {
     }
 
     private func terminalContentWithRightSidebarPanel(appearance: WindowAppearanceSnapshot) -> some View {
-        // The right-sidebar shell remains in the view tree so its frame can
-        // animate without SwiftUI insertion/removal. Cold hidden launches defer
-        // heavy mode content until the sidebar has been shown at least once.
+        // The right-sidebar column stays reserved in this HStack so terminal
+        // panes size identically in both hosting modes. The sidebar itself
+        // normally renders in the window overlay tier above the portal hosts
+        // (WindowRightSidebarOverlayController); only Dock mode falls back to
+        // in-tree hosting because its portal-backed surfaces must render in
+        // the portal layer, which sits above this view.
         return HStack(spacing: 0) {
             terminalContentWithSidebarDropOverlay(appearance: appearance)
-            rightSidebarPanelWithBackdrop(appearance: appearance)
+            if rightSidebarUsesOverlayHost {
+                Color.clear
+                    .frame(width: rightSidebarWidth)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            } else {
+                rightSidebarPanelWithBackdrop(appearance: appearance)
+            }
         }
     }
 
     private var rightSidebarVisible: Bool {
         fileExplorerState.isVisible
+    }
+
+    /// Dock mode hosts live terminal/browser surfaces through the portal layer,
+    /// which composites above the sidebar overlay — so Dock keeps the legacy
+    /// in-tree placement; every other mode is hosted above the portals.
+    private var rightSidebarUsesOverlayHost: Bool {
+        fileExplorerState.mode != .dock
     }
 
     private var rightSidebarWidth: CGFloat {
@@ -3190,6 +3393,11 @@ struct ContentView: View {
         view = AnyView(view.background(WindowAccessor(dedupeByWindow: false) { window in
             let tmuxOverlayState = tmuxWorkspacePaneWindowOverlayState(for: window)
             tmuxWorkspacePaneWindowOverlayController(for: window, createIfNeeded: tmuxOverlayState != nil)?.update(state: tmuxOverlayState)
+            rightSidebarWindowOverlayController(for: window).update(
+                isActiveHost: rightSidebarUsesOverlayHost,
+                isVisible: rightSidebarVisible,
+                width: rightSidebarWidth
+            ) { AnyView(rightSidebarPanelWithBackdrop(appearance: windowAppearanceSnapshot)) }
             let overlayController = commandPaletteWindowOverlayController(for: window)
             overlayController.update(isVisible: isCommandPalettePresented) { AnyView(commandPaletteOverlay) }
             tutorialVideoWindowOverlayController(for: window)
@@ -3305,10 +3513,19 @@ struct ContentView: View {
             // stale browser slots painting over the sidebar column (portals render
             // above SwiftUI content).
             schedulePortalGeometrySynchronize()
+            // The trailing mosaic-logo titlebar accessory hides while the right
+            // sidebar is visible (it would cover the mode bar's close button).
+            if let observedWindow {
+                AppDelegate.shared?.reapplyTitlebarAccessoryVisibility(to: observedWindow)
+            }
         })
 
         view = AnyView(view.onChange(of: fileExplorerState.mode) { _, _ in
             syncFileExplorerDirectory()
+            // Mode switches relayout the sidebar (e.g. Dock mounts portal-backed
+            // surfaces, Find shows the search bar); portals need the same explicit
+            // resync the visibility/width handlers perform.
+            schedulePortalGeometrySynchronize()
         })
 
         view = AnyView(view.onChange(of: sidebarMatchTerminalBackground) { _ in
@@ -3429,6 +3646,7 @@ struct ContentView: View {
         if backdropResult.didChangeGlassRoot {
             let tmuxOverlayState = tmuxWorkspacePaneWindowOverlayState(for: window)
             tmuxWorkspacePaneWindowOverlayController(for: window, createIfNeeded: tmuxOverlayState != nil)?.update(state: tmuxOverlayState)
+            rightSidebarWindowOverlayController(for: window).reinstallForChromeChange()
             commandPaletteWindowOverlayController(for: window)
                 .update(isVisible: isCommandPalettePresented) { commandPaletteOverlayView }
             tutorialVideoWindowOverlayController(for: window)
@@ -3454,6 +3672,10 @@ struct ContentView: View {
             fileExplorerState: fileExplorerState,
             mosaicConfigStore: mosaicConfigStore
         )
+        // attachUpdateAccessory above ran before this window's context (and its
+        // fileExplorerState) was registered; re-evaluate so a restored-visible
+        // right sidebar hides the trailing logo from the first frame.
+        AppDelegate.shared?.reapplyTitlebarAccessoryVisibility(to: window)
         installFileDropOverlayWhenReady(on: window, tabManager: tabManager)
     }
 

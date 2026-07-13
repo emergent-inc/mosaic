@@ -170,6 +170,7 @@ extension MosaicSettingsFileStore {
                     "claudeBinaryPath": "",
                     "ripgrepBinaryPath": "",
                     "suppressSubagentNotifications": IntegrationsCatalogSection().suppressSubagentNotifications.defaultValue,
+                    "teamSessionSync": AutomationCatalogSection().teamSessionSync.defaultValue,
                     "ampIntegration": IntegrationsCatalogSection().ampHooksEnabled.defaultValue,
                     "cursorIntegration": IntegrationsCatalogSection().cursorHooksEnabled.defaultValue,
                     "geminiIntegration": IntegrationsCatalogSection().geminiHooksEnabled.defaultValue,

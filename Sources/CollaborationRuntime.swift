@@ -62,9 +62,41 @@ private struct CollaborationPeerWire: Codable {
     let displayName: String
     let color: String
     let imageURL: String?
+    /// Client surface tag set by the relay connect ("web" for
+    /// sharing.mosaic.inc guests); absent for native peers.
+    let origin: String?
+    /// Wire-format capabilities this peer advertises (e.g. "binv1" for the
+    /// binary terminal I/O hot path). Absent for peers on older builds.
+    let caps: [String]?
+
+    init(
+        peerID: String,
+        participantID: String?,
+        displayName: String,
+        color: String,
+        imageURL: String?,
+        origin: String? = nil,
+        caps: [String]? = nil
+    ) {
+        self.peerID = peerID
+        self.participantID = participantID
+        self.displayName = displayName
+        self.color = color
+        self.imageURL = imageURL
+        self.origin = origin
+        self.caps = caps
+    }
 
     var stableParticipantID: String {
         participantID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? peerID
+    }
+
+    var isWebGuest: Bool {
+        origin?.caseInsensitiveCompare("web") == .orderedSame
+    }
+
+    var supportsBinaryFrames: Bool {
+        caps?.contains { $0.caseInsensitiveCompare(CollaborationBinaryCapability.token) == .orderedSame } ?? false
     }
 }
 
@@ -544,6 +576,8 @@ struct CollaborationTerminalRecipientSnapshot: Equatable, Identifiable {
     let participantID: String
     let displayName: String
     let isSelected: Bool
+    /// True for browser guests joined via sharing.mosaic.inc.
+    var isWebGuest = false
 
     var id: String { participantID }
 }
@@ -552,14 +586,22 @@ typealias CollaborationWorkspaceParticipantSnapshot = CollaborationParticipantAv
 
 struct AgentRoomHeaderState: Equatable {
     var isConnected = false
-    var label = ""
     /// True when any locally connected member of this room has no Claude hook
     /// session record (context will not sync for that member).
     var isDegraded = false
+    /// True when this surface is wired into its room as a read-only data
+    /// source (a plain terminal peers read on demand) rather than an agent.
+    var isDataSource = false
     /// 1-based room number among active rooms on this machine.
     var displayNumber: Int?
     /// Stable palette index for accent color and pane highlight.
     var paletteIndex: Int?
+    /// Internal context-group identity used to coordinate wordless hover feedback.
+    var roomID: String?
+    /// Number of terminals currently participating in the linked context.
+    var memberCount = 0
+    /// True while any terminal's connector in this linked group is hovered.
+    var isGroupHovered = false
 }
 
 private final class AgentRoomWireAnchor {
@@ -1086,7 +1128,13 @@ final class CollaborationRuntime {
     private var agentRoomDegradedSurfaceIDs: Set<UUID> = []
     @ObservationIgnored private var agentRoomWireAnchorsBySurfaceID: [UUID: AgentRoomWireAnchor] = [:]
     @ObservationIgnored private let agentRoomWireOverlay = AgentRoomWireOverlayController()
-    @ObservationIgnored private var draggingAgentRoomSourceSurfaceID: UUID?
+    /// Observable (not `@ObservationIgnored`) so terminal headers can show a
+    /// temporary drop socket on every pane while a wire drag is in flight.
+    private(set) var draggingAgentRoomSourceSurfaceID: UUID?
+    /// The connector currently under the pointer. Keeping the originating surface
+    /// lets an old hover-exit avoid clearing a newer hover in another terminal.
+    private var hoveredAgentRoomSurfaceID: UUID?
+    private var hoveredAgentRoomID: String?
     @ObservationIgnored private let productAnalytics = ProductAnalytics.shared
     private var latestAgentRoomID: String?
     private static let agentRoomDisplayOrderDefaultsKey = "collaboration.agentRoom.displayOrder"
@@ -1137,8 +1185,14 @@ final class CollaborationRuntime {
         var liveRoom = room
         liveRoom.members = room.members.filter { member in
             guard let surfaceID = UUID(uuidString: member.surfaceID),
-                  terminalPanel(surfaceID: surfaceID) != nil,
-                  let hook = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
+                  terminalPanel(surfaceID: surfaceID) != nil else {
+                return false
+            }
+            // A data source never had a hook session; the pane still existing
+            // is the only ownership proof available, and rebinding it keeps a
+            // restored room's read-on-demand wiring intact.
+            if member.resolvedRole == .dataSource { return true }
+            guard let hook = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
                   let agentSessionID = member.agentSessionID else {
                 return false
             }
@@ -1465,6 +1519,26 @@ final class CollaborationRuntime {
             return [ownerID]
         }
         return Array(selectedRecipientParticipantIDs(for: terminalID, connection: connection)).sorted()
+    }
+
+    /// Whether every recipient of a hot-path frame advertises the binary
+    /// capability, so the sender can use the compact binary transport instead
+    /// of JSON + base64. A participant is binary-safe only when *all* of its
+    /// peers support binary (a frame routed to a participant reaches every peer
+    /// sharing that participant ID). Mixed-version sessions fall back to JSON.
+    private func recipientsSupportBinaryFrames(
+        _ recipients: [String]?,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        CollaborationBinaryCapability.recipientsSupportBinary(
+            recipients: recipients,
+            peers: connection.peersByID.values.map {
+                CollaborationCapabilityPeer(
+                    participantID: $0.stableParticipantID,
+                    supportsBinary: $0.supportsBinaryFrames
+                )
+            }
+        )
     }
 
     /// Recipients for presence frames (pointer/selection). Unlike
@@ -1963,7 +2037,8 @@ final class CollaborationRuntime {
             participantID: peerIdentity.participantID,
             displayName: peerIdentity.displayName,
             color: peerIdentity.color,
-            imageURL: peerIdentity.imageURL
+            imageURL: peerIdentity.imageURL,
+            caps: [CollaborationBinaryCapability.token]
         )
     }
 
@@ -1978,7 +2053,8 @@ final class CollaborationRuntime {
                 CollaborationTerminalRecipientSnapshot(
                     participantID: peer.stableParticipantID,
                     displayName: peer.displayName,
-                    isSelected: selectedIDs.contains(peer.stableParticipantID)
+                    isSelected: selectedIDs.contains(peer.stableParticipantID),
+                    isWebGuest: peer.isWebGuest
                 )
             }
     }
@@ -2278,23 +2354,47 @@ final class CollaborationRuntime {
         // in call order.
         if let connection = connection(forTerminalID: terminalID),
            let task = connection.webSocketTask {
-            let wire = CollaborationTerminalOutputWire(
-                type: "terminal.output",
+            let recipients = recipientParticipantIDsForSending(
                 terminalID: terminalID,
-                sequence: sequence,
-                dataBase64: data.base64EncodedString(),
-                caretPeerID: terminalOutputPeerID(for: terminalID),
-                recipientParticipantIDs: recipientParticipantIDsForSending(
-                    terminalID: terminalID,
-                    connection: connection
-                )
+                connection: connection
             )
-            if let payload = try? encoder.encode(wire) {
-                task.send(.string(String(decoding: payload, as: UTF8.self))) { _ in }
+            let caretPeerID = terminalOutputPeerID(for: terminalID)
+            // Prefer the compact binary transport when every recipient supports
+            // it: this drops the ~33% base64 inflation and the JSON parse/decode
+            // the viewer pays per output chunk. Mixed-version sessions fall back
+            // to JSON + base64. Either way the frame is encoded inline and handed
+            // straight to URLSession's FIFO queue to preserve echo ordering.
+            if recipientsSupportBinaryFrames(recipients, connection: connection) {
+                let frame = CollaborationBinaryFrame(
+                    kind: .terminalOutput,
+                    sequence: sequence,
+                    terminalID: terminalID,
+                    fromPeerID: peerIdentity.peerID,
+                    caretPeerID: caretPeerID,
+                    recipientParticipantIDs: recipients,
+                    payload: data
+                )
+                task.send(.data(frame.encoded())) { _ in }
                 Self.echoLog(
-                    "host-send terminal=\(terminalID.prefix(8)) bytes=\(data.count) " +
+                    "host-send via=binary terminal=\(terminalID.prefix(8)) bytes=\(data.count) " +
                     "t=\(Self.echoTimestampMillis())"
                 )
+            } else {
+                let wire = CollaborationTerminalOutputWire(
+                    type: "terminal.output",
+                    terminalID: terminalID,
+                    sequence: sequence,
+                    dataBase64: data.base64EncodedString(),
+                    caretPeerID: caretPeerID,
+                    recipientParticipantIDs: recipients
+                )
+                if let payload = try? encoder.encode(wire) {
+                    task.send(.string(String(decoding: payload, as: UTF8.self))) { _ in }
+                    Self.echoLog(
+                        "host-send via=json terminal=\(terminalID.prefix(8)) bytes=\(data.count) " +
+                        "t=\(Self.echoTimestampMillis())"
+                    )
+                }
             }
         }
         // A host resize produces redraw output; piggyback a column re-broadcast
@@ -2322,22 +2422,38 @@ final class CollaborationRuntime {
         ) else { return }
         guard let connection = connection(forTerminalID: terminalID),
               let task = connection.webSocketTask else { return }
-        let wire = CollaborationTerminalInputWire(
-            type: "terminal.input",
+        let recipients = recipientParticipantIDsForSending(
             terminalID: terminalID,
-            inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
-            dataBase64: filteredData.base64EncodedString(),
-            fromPeerID: peerIdentity.peerID,
-            recipientParticipantIDs: recipientParticipantIDsForSending(
-                terminalID: terminalID,
-                connection: connection
-            )
+            connection: connection
         )
         // Keystrokes are latency-critical: encode inline (tiny payload) and
         // hand the frame straight to URLSession's FIFO send queue, exactly
         // like pointer frames. Routing through the `frameWriter` codec actor
         // queued keystrokes behind large frames (768KB render-grid seeds,
         // output bursts), which read as typing lag on the shared terminal.
+        //
+        // Prefer the binary transport when the host (input recipient) supports
+        // it; fall back to JSON + base64 otherwise.
+        if recipientsSupportBinaryFrames(recipients, connection: connection) {
+            let frame = CollaborationBinaryFrame(
+                kind: .terminalInput,
+                sequence: 0,
+                terminalID: terminalID,
+                fromPeerID: peerIdentity.peerID,
+                recipientParticipantIDs: recipients,
+                payload: filteredData
+            )
+            task.send(.data(frame.encoded())) { _ in }
+            return
+        }
+        let wire = CollaborationTerminalInputWire(
+            type: "terminal.input",
+            terminalID: terminalID,
+            inputID: "\(peerIdentity.peerID)-\(UUID().uuidString)",
+            dataBase64: filteredData.base64EncodedString(),
+            fromPeerID: peerIdentity.peerID,
+            recipientParticipantIDs: recipients
+        )
         guard let payload = try? encoder.encode(wire) else { return }
         task.send(.string(String(decoding: payload, as: UTF8.self))) { _ in }
     }
@@ -2638,11 +2754,15 @@ final class CollaborationRuntime {
             } else if let member = mirrorHostRoomMember(forPanel: panel, roomID: roomID) {
                 // A mirrored pane is degraded until the host completes the join
                 // (attaches its live Claude session), which only happens once the
-                // host has granted the terminal-drive bridge consent.
-                isDegraded = member.agentSessionID == nil
+                // host has granted the terminal-drive bridge consent. Data-source
+                // members never carry an agent session, so they are exempt.
+                isDegraded = member.resolvedRole == .agent && member.agentSessionID == nil
             } else {
                 isDegraded = false
             }
+            let isDataSource = agentRoomSnapshotsByID[roomID]?.members
+                .first { $0.surfaceID == panel.id.uuidString }?
+                .resolvedRole == .dataSource
             // Display numbers follow the persistent first-seen wiring order and
             // must stay stable when another room empties out. Filtering to only
             // currently-populated rooms here renumbers survivors: emptying the
@@ -2657,13 +2777,77 @@ final class CollaborationRuntime {
             )
             return AgentRoomHeaderState(
                 isConnected: true,
-                label: CollaborationStrings.agentRoomLabel(number: displayNumber),
                 isDegraded: isDegraded,
+                isDataSource: isDataSource,
                 displayNumber: displayNumber,
-                paletteIndex: AgentRoomDisplayPalette.paletteIndex(forDisplayNumber: displayNumber)
+                paletteIndex: AgentRoomDisplayPalette.paletteIndex(forDisplayNumber: displayNumber),
+                roomID: roomID,
+                memberCount: agentRoomSnapshotsByID[roomID]?.members.count ?? 1,
+                isGroupHovered: hoveredAgentRoomID == roomID
             )
         }
-        return AgentRoomHeaderState(isConnected: false, label: CollaborationStrings.connectAgentRoom)
+        return AgentRoomHeaderState()
+    }
+
+    /// Coordinates hover emphasis across every terminal in one linked-context
+    /// group without exposing room terminology in the UI.
+    func setAgentContextLinkHover(surfaceID: UUID, roomID: String?, isHovering: Bool) {
+        if isHovering {
+            hoveredAgentRoomSurfaceID = surfaceID
+            hoveredAgentRoomID = roomID
+        } else if hoveredAgentRoomSurfaceID == surfaceID {
+            hoveredAgentRoomSurfaceID = nil
+            hoveredAgentRoomID = nil
+        }
+    }
+
+    /// Whether a locally hosted surface is currently running a coding-agent
+    /// session (provider agnostic: any agent kind the restorable-session index
+    /// tracks, with a live scoped process in the pane).
+    ///
+    /// This drives wire-port visibility and the member-role classification at
+    /// wire time: agent surfaces join rooms as `.agent`, everything else joins
+    /// as a read-only `.dataSource`. Reads only the cached index snapshot so
+    /// it is safe to call from a SwiftUI body.
+    func isCodingAgentSurface(surfaceID: UUID) -> Bool {
+        guard let panel = terminalPanel(surfaceID: surfaceID) else { return false }
+        if let workspace = TerminalController.shared.tabManager?.tabs
+            .first(where: { $0.id == panel.workspaceId }) {
+            // Shell pre-exec and Mosaic-owned launch paths publish this
+            // optimistic hint before the agent process has initialized.
+            if workspace.foregroundCodingAgentKind(forPanelId: surfaceID) != nil {
+                return true
+            }
+            // Agent session-start hooks confirm the optimistic launch by
+            // registering their live PID over the socket (`set_agent_pid`).
+            if workspace.hasLiveStructuredAgentPID(forPanelId: surfaceID) {
+                return true
+            }
+        }
+        guard let index = SharedLiveAgentIndex.shared.index else {
+            return false
+        }
+        // A restorable panel entry is one liveness proxy: the index loader
+        // already drops hook records whose recorded pid is dead, so a
+        // lingering entry means either a live scoped process or a pid-less
+        // hook record (some agent kinds never record one — requiring a live
+        // pid here would hide the port for those providers entirely).
+        if index.snapshot(workspaceId: panel.workspaceId, panelId: surfaceID) != nil {
+            return true
+        }
+        // A freshly launched agent has no transcript until its first turn, so
+        // it is not restorable yet — but its hook record carries a live,
+        // mosaic-scoped pid, which is proof enough that an agent runs here.
+        return index.hasLiveCodingAgent(workspaceId: panel.workspaceId, panelId: surfaceID)
+    }
+
+    /// Whether a pane's header should offer the agent-room wire port as a
+    /// drag origin. True for local coding-agent surfaces and for mirrored
+    /// (remote) panes — a mirror bridges the host's agent into the room, and
+    /// the host's agent-ness cannot be detected from this machine.
+    func agentRoomWirePortIsAvailable(for panel: TerminalPanel) -> Bool {
+        if mirroredTerminalIDsBySurfaceID[panel.id] != nil { return true }
+        return isCodingAgentSurface(surfaceID: panel.id)
     }
 
     /// The room a pane's header pill should reflect. Local panes read the direct
@@ -2907,19 +3091,41 @@ final class CollaborationRuntime {
 
         let memberSurfaceID = endpoint.memberSurfaceID
         let hookSession = endpoint.isRemote ? nil : Self.claudeHookSessionRef(surfaceID: memberSurfaceID)
+        // Classify the endpoint at wire time. A remote endpoint bridges the
+        // host's agent, so it stays `.agent` (the host completes the join). A
+        // local pane with neither a coding-agent session in the live index nor
+        // a Claude hook record is a plain terminal: it joins as a read-only
+        // `.dataSource` that peers read on demand.
+        let role: ClaudeRoomMemberRole
+        if endpoint.isRemote {
+            role = .agent
+        } else if hookSession != nil || isCodingAgentSurface(surfaceID: endpoint.localSurfaceID) {
+            role = .agent
+        } else {
+            role = .dataSource
+        }
         let member = ClaudeRoomMember(
             surfaceID: memberSurfaceID,
             agentSessionID: hookSession?.sessionID,
             peerID: endpoint.peerID,
-            displayName: endpoint.displayName
+            displayName: endpoint.displayName,
+            role: role
         )
 
         if let previousRoomID = endpoint.existingRoomID, previousRoomID != roomID {
-            if let previousRoom = await agentRoomStore.disconnect(
+            let departingMember = agentRoomSnapshotsByID[previousRoomID]?.members
+                .first { $0.surfaceID == memberSurfaceID }
+            if var previousRoom = await agentRoomStore.disconnect(
                 roomID: previousRoomID,
                 memberID: agentRoomMemberID(surfaceID: memberSurfaceID, inRoomID: previousRoomID),
                 surfaceID: memberSurfaceID
             ) {
+                if let departingMember, departingMember.resolvedRole == .dataSource {
+                    previousRoom = await announceAgentRoomDataSourceDisconnected(
+                        roomID: previousRoomID,
+                        member: departingMember
+                    )
+                }
                 cacheAgentRoom(previousRoom)
                 reconcileAgentRoomMembership(with: previousRoom)
                 try? await send(.agentRoomSnapshot(previousRoom))
@@ -2940,6 +3146,15 @@ final class CollaborationRuntime {
         let broadcastRoom: ClaudeRoomSnapshot
         if endpoint.isRemote {
             broadcastRoom = room
+        } else if role == .dataSource {
+            // A data source has no transcript to ingest or backfill. Instead,
+            // tell wired agents it exists and how to read it on demand.
+            broadcastRoom = await announceAgentRoomDataSourceConnected(
+                roomID: roomID,
+                member: member,
+                wasAlreadyInRoom: endpoint.existingRoomID == roomID
+            ) ?? room
+            cacheAgentRoom(broadcastRoom)
         } else {
             await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
             broadcastRoom = await backfillAgentRoomLedgerFromTranscripts(
@@ -2954,15 +3169,67 @@ final class CollaborationRuntime {
         return broadcastRoom
     }
 
+    /// Posts the ledger notice telling wired agents that a read-only
+    /// data-source terminal joined the room (with the exact command to read
+    /// it). The notice is a plain `.message`, so semi-live rooms deliver it
+    /// through each agent's next `agent.room.consume` — pull-based, no wake.
+    /// Returns `nil` when nothing was posted (re-wire into the same room).
+    private func announceAgentRoomDataSourceConnected(
+        roomID: String,
+        member: ClaudeRoomMember,
+        wasAlreadyInRoom: Bool
+    ) async -> ClaudeRoomSnapshot? {
+        guard !wasAlreadyInRoom else { return nil }
+        let entry = AgentRoomDataSourceGuide.Entry(
+            surfaceID: member.surfaceID,
+            displayName: member.displayName
+        )
+        let result = await agentRoomStore.appendEvent(
+            roomID: roomID,
+            kind: .message,
+            fromMemberID: member.id,
+            fromSurfaceID: member.surfaceID,
+            text: AgentRoomDataSourceGuide.connectedEventText(entry: entry)
+        )
+        return result.room
+    }
+
+    /// Posts the ledger notice that a data-source terminal left the room, so
+    /// agents stop trying to read a surface that is no longer shared.
+    private func announceAgentRoomDataSourceDisconnected(
+        roomID: String,
+        member: ClaudeRoomMember
+    ) async -> ClaudeRoomSnapshot {
+        let entry = AgentRoomDataSourceGuide.Entry(
+            surfaceID: member.surfaceID,
+            displayName: member.displayName
+        )
+        let result = await agentRoomStore.appendEvent(
+            roomID: roomID,
+            kind: .message,
+            fromSurfaceID: member.surfaceID,
+            text: AgentRoomDataSourceGuide.disconnectedEventText(entry: entry)
+        )
+        return result.room
+    }
+
     private func disconnectAgentRoomEndpoint(
         _ endpoint: AgentRoomWireEndpoint,
         roomID: String
     ) async {
-        let room = await agentRoomStore.disconnect(
+        let departingMember = agentRoomSnapshotsByID[roomID]?.members
+            .first { $0.surfaceID == endpoint.memberSurfaceID }
+        var room = await agentRoomStore.disconnect(
             roomID: roomID,
             memberID: agentRoomMemberID(surfaceID: endpoint.memberSurfaceID, inRoomID: roomID),
             surfaceID: endpoint.memberSurfaceID
         )
+        if room != nil, let departingMember, departingMember.resolvedRole == .dataSource {
+            room = await announceAgentRoomDataSourceDisconnected(
+                roomID: roomID,
+                member: departingMember
+            )
+        }
         if !endpoint.isRemote {
             agentRoomIDsBySurfaceID.removeValue(forKey: endpoint.localSurfaceID)
             agentRoomMemberIDsBySurfaceID.removeValue(forKey: endpoint.localSurfaceID)
@@ -3000,7 +3267,7 @@ final class CollaborationRuntime {
     func statusPayload() -> [String: Any] {
         let connection = activeConnection
         let peers = connection.map { Array($0.peersByID.values) } ?? []
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "connected": connection != nil,
             "relay_url": relayURLString,
             "session_code": sessionCode ?? NSNull(),
@@ -3008,14 +3275,22 @@ final class CollaborationRuntime {
             "session_count": connectionsBySessionCode.count,
             "shared_documents": statesByDocumentID.values.filter(\.isShared).count,
             "shared_terminals": terminalStatesByID.values.filter(\.isShared).count,
-            "peers": peers.map { peer in
-                [
+            "peers": peers.map { peer -> [String: Any] in
+                var entry: [String: Any] = [
                     "peer_id": peer.peerID,
                     "display_name": peer.displayName,
                     "color": peer.color,
                 ]
+                if let origin = peer.origin {
+                    entry["origin"] = origin
+                }
+                return entry
             },
         ]
+        if let sessionCode,
+           let shareLink = CollaborationShareLink.url(forSessionCode: sessionCode) {
+            payload["share_link"] = shareLink.absoluteString
+        }
         return payload
     }
 
@@ -3227,7 +3502,10 @@ final class CollaborationRuntime {
         for member in room.members {
             guard let surfaceUUID = UUID(uuidString: member.surfaceID),
                   agentRoomIDsBySurfaceID[surfaceUUID] == room.id else { continue }
-            let degraded = Self.claudeHookSessionRef(surfaceID: member.surfaceID) == nil
+            // Data-source members are plain terminals by design: no hook
+            // session is expected, so they never count as a dead link.
+            let degraded = member.resolvedRole == .agent
+                && Self.claudeHookSessionRef(surfaceID: member.surfaceID) == nil
             if degraded != agentRoomDegradedSurfaceIDs.contains(surfaceUUID) {
                 if degraded {
                     agentRoomDegradedSurfaceIDs.insert(surfaceUUID)
@@ -3282,7 +3560,7 @@ final class CollaborationRuntime {
             if let room = await connectAgentRoomEndpoint(endpoint, roomID: roomID) {
                 return agentRoomPayload(room)
             }
-            return ["connected": false, "error": "Could not bridge the remote terminal into a room."]
+            return ["connected": false, "error": CollaborationStrings.contextLinkRemoteBridgeFailed]
         }
         let roomID = AgentRoomSelection.roomIDForSurfaceConnection(
             requestedRoomID: requestedRoomID,
@@ -3300,20 +3578,39 @@ final class CollaborationRuntime {
             return ["connected": false, "error": "No terminal surface is available."]
         }
         let hookSession = Self.claudeHookSessionRef(surfaceID: surfaceID.uuidString)
+        // Same classification as the wire-drag path: an explicit agent session
+        // id, a Claude hook record, or a live coding-agent session marks the
+        // member as an agent; a plain terminal joins as a read-only data source.
+        let role: ClaudeRoomMemberRole
+        if agentSessionID != nil || hookSession != nil || isCodingAgentSurface(surfaceID: surfaceID) {
+            role = .agent
+        } else {
+            role = .dataSource
+        }
         let member = ClaudeRoomMember(
             surfaceID: surfaceID.uuidString,
             agentSessionID: agentSessionID ?? hookSession?.sessionID,
             peerID: peerIdentity.peerID,
-            displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle
+            displayName: displayName ?? terminalPanel(surfaceID: surfaceID)?.displayTitle,
+            role: role
         )
+        let wasAlreadyInRoom = agentRoomIDsBySurfaceID[surfaceID] == roomID
         if let previousRoomID = agentRoomIDsBySurfaceID[surfaceID], previousRoomID != roomID {
             // Moving to a different room must drop the old membership, or the
             // store keeps routing digests/events to a surface that left.
-            if let previousRoom = await agentRoomStore.disconnect(
+            let departingMember = agentRoomSnapshotsByID[previousRoomID]?.members
+                .first { $0.surfaceID == surfaceID.uuidString }
+            if var previousRoom = await agentRoomStore.disconnect(
                 roomID: previousRoomID,
                 memberID: agentRoomMemberIDsBySurfaceID[surfaceID],
                 surfaceID: surfaceID.uuidString
             ) {
+                if let departingMember, departingMember.resolvedRole == .dataSource {
+                    previousRoom = await announceAgentRoomDataSourceDisconnected(
+                        roomID: previousRoomID,
+                        member: departingMember
+                    )
+                }
                 cacheAgentRoom(previousRoom)
                 try? await send(.agentRoomSnapshot(previousRoom))
             }
@@ -3326,6 +3623,17 @@ final class CollaborationRuntime {
         latestAgentRoomID = roomID
         cacheAgentRoom(room)
         reconcileAgentRoomMembership(with: room)
+        if role == .dataSource {
+            // No transcript to ingest or backfill; advertise the source instead.
+            let announcedRoom = await announceAgentRoomDataSourceConnected(
+                roomID: roomID,
+                member: member,
+                wasAlreadyInRoom: wasAlreadyInRoom
+            ) ?? room
+            cacheAgentRoom(announcedRoom)
+            try? await send(.agentRoomSnapshot(announcedRoom))
+            return agentRoomPayload(announcedRoom)
+        }
         await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
         let backfilledRoom = await backfillAgentRoomLedgerFromTranscripts(
             roomID: roomID,
@@ -3375,7 +3683,7 @@ final class CollaborationRuntime {
         roomID: String,
         members: [ClaudeRoomMember]
     ) async {
-        for member in members {
+        for member in members where member.resolvedRole == .agent {
             let turns = await agentRoomStore.transcriptTurns(
                 roomID: roomID,
                 surfaceID: member.surfaceID,
@@ -3425,13 +3733,26 @@ final class CollaborationRuntime {
         let targetRoomID = roomID
             ?? parsedSurfaceID.flatMap { agentRoomIDsBySurfaceID[$0] }
             ?? latestAgentRoomID
-        guard let targetRoomID else { return ["disconnected": false, "error": "No Claude room is active."] }
+        guard let targetRoomID else {
+            return ["disconnected": false, "error": CollaborationStrings.noActiveAgentContextLink]
+        }
         let memberID = parsedSurfaceID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
-        let room = await agentRoomStore.disconnect(
+        let departingMember = agentRoomSnapshotsByID[targetRoomID]?.members.first { member in
+            if let memberID, member.id == memberID { return true }
+            if let surfaceID, member.surfaceID == surfaceID { return true }
+            return false
+        }
+        var room = await agentRoomStore.disconnect(
             roomID: targetRoomID,
             memberID: memberID,
             surfaceID: surfaceID
         )
+        if room != nil, let departingMember, departingMember.resolvedRole == .dataSource {
+            room = await announceAgentRoomDataSourceDisconnected(
+                roomID: targetRoomID,
+                member: departingMember
+            )
+        }
         if let parsedSurfaceID {
             agentRoomIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
             agentRoomMemberIDsBySurfaceID.removeValue(forKey: parsedSurfaceID)
@@ -3443,7 +3764,7 @@ final class CollaborationRuntime {
             try? await send(.agentRoomSnapshot(room))
             return agentRoomPayload(room)
         }
-        return ["disconnected": false, "error": "Claude room not found."]
+        return ["disconnected": false, "error": CollaborationStrings.agentContextLinkNotFound]
     }
 
     func disconnectAgentRoomSurfaceForAutomationRequest(roomID: String?, surfaceID: String?) -> [String: Any] {
@@ -3461,7 +3782,11 @@ final class CollaborationRuntime {
                 if latestAgentRoomID == requestedRoomID {
                     latestAgentRoomID = nil
                 }
-                return ["reset": false, "error": "Claude room not found.", "room_id": requestedRoomID]
+                return [
+                    "reset": false,
+                    "error": CollaborationStrings.agentContextLinkNotFound,
+                    "room_id": requestedRoomID,
+                ]
             }
             for member in removed.members {
                 if let surfaceID = UUID(uuidString: member.surfaceID) {
@@ -3522,7 +3847,7 @@ final class CollaborationRuntime {
             #endif
             return [
                 "posted": false,
-                "error": "No Claude room is active.",
+                "error": CollaborationStrings.noActiveAgentContextLink,
                 "from_surface_resolved": fromSurfaceUUID?.uuidString ?? NSNull(),
             ]
         }
@@ -3595,7 +3920,7 @@ final class CollaborationRuntime {
         if let publicPayload = payload["payload"] as? [String: Any] {
             return publicPayload
         }
-        return ["posted": false, "error": "No Claude room is active."]
+        return ["posted": false, "error": CollaborationStrings.noActiveAgentContextLink]
     }
 
     private func postAgentRoomEventSnapshotForAutomation(
@@ -3613,7 +3938,7 @@ final class CollaborationRuntime {
             latestRoomID: latestAgentRoomID
         )
         guard let roomID else {
-            return ["payload": ["posted": false, "error": "No Claude room is active."]]
+            return ["payload": ["posted": false, "error": CollaborationStrings.noActiveAgentContextLink]]
         }
         let kind = rawKind.flatMap(ClaudeRoomEventKind.init(rawValue:)) ?? .message
         let fromSurfaceID = fromSurfaceUUID?.uuidString ?? rawFromSurfaceID
@@ -3653,7 +3978,7 @@ final class CollaborationRuntime {
             latestRoomID: latestAgentRoomID
         )
         guard let roomID, let room = await agentRoomStore.room(id: roomID) else {
-            return ["digest": "", "error": "Claude room not found."]
+            return ["digest": "", "error": CollaborationStrings.agentContextLinkNotFound]
         }
         let contextPackText = await peerAgentRoomContextText(
             roomID: roomID,
@@ -3679,7 +4004,7 @@ final class CollaborationRuntime {
             latestRoomID: latestAgentRoomID
         )
         guard let roomID, let room = agentRoomSnapshotsByID[roomID] else {
-            return ["digest": "", "error": "Claude room not found."]
+            return ["digest": "", "error": CollaborationStrings.agentContextLinkNotFound]
         }
         return agentRoomDigestPayload(room: room, surfaceID: surfaceUUID?.uuidString, since: since)
     }
@@ -3718,8 +4043,15 @@ final class CollaborationRuntime {
                         "surface_id": member.surfaceID,
                         "display_name": member.displayName ?? NSNull(),
                         "agent_session_id": member.agentSessionID ?? NSNull(),
+                        "role": member.resolvedRole.rawValue,
                     ] as [String: Any]
                 },
+            // Standing section (not cursor-gated) so agents learn about wired
+            // read-only terminals on every prompt, not just from the one-time
+            // connect notice.
+            "data_source_instructions": AgentRoomDataSourceGuide.standingInstructions(
+                for: AgentRoomDataSourceGuide.entries(in: room, excludingSurfaceID: surfaceID)
+            ),
         ]
     }
 
@@ -3833,6 +4165,15 @@ final class CollaborationRuntime {
         let surfaceID = Self.normalizedAgentRoomSurfaceID(rawSurfaceID)
         guard let room = await agentRoomStore.room(id: roomID),
               let panel = terminalForAutomation(workspaceID: nil, surfaceID: surfaceID) else {
+            return false
+        }
+        // A data-source member is a plain terminal by contract: never type a
+        // relay prompt into it, even if a stale hook record from a previous
+        // agent run in the same pane would otherwise pass the hook check below.
+        if room.members.first(where: { $0.surfaceID == surfaceID })?.resolvedRole == .dataSource {
+            #if DEBUG
+            mosaicDebugLog("agentRoom.wake skipped surface \(surfaceID.prefix(8)): data-source member")
+            #endif
             return false
         }
         // Without a hook-linked Claude session the pane may be a plain shell;
@@ -3966,7 +4307,17 @@ final class CollaborationRuntime {
         } else {
             recapRoom = refreshed
         }
-        let recap = agentRoomDigestBuilder.digest(for: recapRoom)
+        // A restarted session also lost the standing data-source section, so
+        // re-attach it here rather than waiting for the next prompt's digest.
+        let dataSourceInstructions = AgentRoomDataSourceGuide.standingInstructions(
+            for: AgentRoomDataSourceGuide.entries(in: refreshed, excludingSurfaceID: recipientSurfaceID)
+        )
+        let recap = [
+            agentRoomDigestBuilder.digest(for: recapRoom),
+            dataSourceInstructions,
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n\n")
         // The recap covers everything up to lastSequence; consuming acknowledges
         // exactly that range so prompt-time delivery starts fresh from here.
         let memberID = surfaceUUID.flatMap { agentRoomMemberIDsBySurfaceID[$0] }
@@ -3992,7 +4343,11 @@ final class CollaborationRuntime {
         let now = Date()
         let cutoff = now.addingTimeInterval(-agentRoomBackfillFreshnessWindow)
         for member in members {
-            guard let ref = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
+            // Data sources have no agent transcript; a stale hook record left
+            // by a previous agent run in the same pane must not resurrect its
+            // conversation into the room.
+            guard member.resolvedRole == .agent,
+                  let ref = Self.claudeHookSessionRef(surfaceID: member.surfaceID),
                   let transcriptPath = ref.transcriptPath else { continue }
             let fileURL = URL(fileURLWithPath: transcriptPath)
             let parsedTurns = ClaudeTranscriptFileParser.parseTurns(
@@ -4144,6 +4499,9 @@ final class CollaborationRuntime {
             trackCollaborationLayoutSnapshot(reason: "session_created", sessionCode: response.sessionCode)
             var payload = statusPayload()
             payload["session_code"] = response.sessionCode
+            if let shareLink = CollaborationShareLink.url(forSessionCode: response.sessionCode) {
+                payload["share_link"] = shareLink.absoluteString
+            }
             payload["shared_terminal"] = didShareTerminal
             return payload
         } catch {
@@ -4674,22 +5032,79 @@ final class CollaborationRuntime {
     private func presentCreatedSessionDialog(code: String) {
         let normalizedCode = Self.normalizedSessionCode(from: code)
         let panel = CollaborationSessionCreatedPanel(code: normalizedCode)
-        guard panel.run() == .alertFirstButtonReturn else { return }
+        switch panel.run() {
+        case .alertFirstButtonReturn:
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(normalizedCode, forType: .string)
+            #if DEBUG
+            print("[PostHog] firing: invite_code_copied")
+            #endif
+            PostHogAnalytics.shared.capture("invite_code_copied", properties: [
+                "context": "session_created_dialog",
+            ])
+            trackCollaboration(
+                .inviteCodeCopied,
+                entrypoint: .createdSessionDialog,
+                result: .completed,
+                properties: ["session_code_present": true]
+            )
+            trackCollaborationLayoutSnapshot(reason: "invite_code_copied", sessionCode: normalizedCode)
+        case .alertThirdButtonReturn:
+            copyShareLinkToPasteboard(
+                sessionCode: normalizedCode,
+                analyticsContext: "session_created_dialog",
+                entrypoint: .createdSessionDialog
+            )
+        default:
+            break
+        }
+    }
+
+    /// Copies the browser share link for `sessionCode` to the pasteboard.
+    /// Single mutation path for every "copy link" surface (created-session
+    /// dialog, terminal share popover) per the shared-behavior policy.
+    private func copyShareLinkToPasteboard(
+        sessionCode: String,
+        analyticsContext: String,
+        entrypoint: CollaborationAnalyticsEntrypoint
+    ) {
+        guard let url = CollaborationShareLink.url(forSessionCode: sessionCode) else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(normalizedCode, forType: .string)
+        NSPasteboard.general.setString(url.absoluteString, forType: .string)
         #if DEBUG
-        print("[PostHog] firing: invite_code_copied")
+        print("[PostHog] firing: share_link_copied")
         #endif
-        PostHogAnalytics.shared.capture("invite_code_copied", properties: [
-            "context": "session_created_dialog",
+        PostHogAnalytics.shared.capture("share_link_copied", properties: [
+            "context": analyticsContext,
         ])
         trackCollaboration(
             .inviteCodeCopied,
-            entrypoint: .createdSessionDialog,
+            entrypoint: entrypoint,
             result: .completed,
-            properties: ["session_code_present": true]
+            properties: [
+                "session_code_present": true,
+                "share_link": true,
+            ]
         )
-        trackCollaborationLayoutSnapshot(reason: "invite_code_copied", sessionCode: normalizedCode)
+        trackCollaborationLayoutSnapshot(reason: "share_link_copied", sessionCode: sessionCode)
+    }
+
+    /// Copies the browser share link for the session hosting `terminal`.
+    func copyTerminalSessionShareLink(for terminal: TerminalPanel) {
+        let resolver = CollaborationTerminalInviteCodeResolver(
+            hostedTerminalIDsBySurfaceID: hostedTerminalIDsBySurfaceID,
+            terminalSessionRouter: terminalSessionRouter
+        )
+        guard let sessionCode = resolver.inviteCode(forHostedSurfaceID: terminal.id) else {
+            return
+        }
+        let normalizedCode = Self.normalizedSessionCode(from: sessionCode)
+        guard !normalizedCode.isEmpty else { return }
+        copyShareLinkToPasteboard(
+            sessionCode: normalizedCode,
+            analyticsContext: "share_terminal_popover",
+            entrypoint: .recipientPopover
+        )
     }
 
     @discardableResult
@@ -5439,6 +5854,7 @@ final class CollaborationRuntime {
             URLQueryItem(name: "participantID", value: peerIdentity.participantID),
             URLQueryItem(name: "displayName", value: peerIdentity.displayName),
             URLQueryItem(name: "color", value: peerIdentity.color),
+            URLQueryItem(name: "caps", value: CollaborationBinaryCapability.token),
         ]
         if let imageURL = peerIdentity.imageURL {
             components.queryItems?.append(URLQueryItem(name: "imageURL", value: imageURL))
@@ -6600,6 +7016,17 @@ final class CollaborationRuntime {
             // bursts (visible as cursor stutter).
             receiveNextMessage(for: connection)
 
+            // Fast path: binary hot-path frames (terminal.output/input) carry
+            // raw bytes with a tiny header and no JSON/base64. Steady-state
+            // output applies inline (grid locked, chain idle); everything else
+            // takes the ordered chain, which decodes binary in `handleFrameData`.
+            if CollaborationBinaryFrame.isBinaryFrame(data) {
+                if !applyBinaryOutputFastPath(data, connection: connection) {
+                    enqueueOrderedFrameProcessing(data, connection: connection)
+                }
+                return
+            }
+
             // Fast path: collaborator pointer frames are tiny and
             // latest-position-wins, so apply them immediately instead of
             // queueing them behind earlier heavy frames in the ordered chain.
@@ -6644,6 +7071,66 @@ final class CollaborationRuntime {
 
     private static let terminalPointerTypeToken = Data("\"terminal.pointer\"".utf8)
     private static let terminalPointerFastPathMaxBytes = 2048
+
+    /// Applies a binary `terminal.output` frame synchronously when it is safe to
+    /// do so (ordered chain idle and mirror grid locked), mirroring
+    /// `applyTerminalOutputFastPath` for the JSON transport. Returns `false`
+    /// (without side effects) for input frames or when inline application would
+    /// reorder, so the caller routes the frame through the ordered chain.
+    private func applyBinaryOutputFastPath(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) -> Bool {
+        guard connection.pendingOrderedFrameCount == 0,
+              let frame = CollaborationBinaryFrame.decode(data),
+              frame.kind == .terminalOutput,
+              mirroredTerminalGridLockedIDs.contains(frame.terminalID) else {
+            return false
+        }
+        Self.echoLog(
+            "viewer-recv via=binary-fast terminal=\(frame.terminalID.prefix(8)) bytes=\(frame.payload.count) " +
+            "t=\(Self.echoTimestampMillis())"
+        )
+        handleRemoteTerminalOutput(
+            terminalID: frame.terminalID,
+            sequence: frame.sequence,
+            data: frame.payload,
+            caretPeerID: frame.caretPeerID,
+            connection: connection
+        )
+        return true
+    }
+
+    /// Decodes and dispatches a binary hot-path frame (`terminal.output` or
+    /// `terminal.input`) from the ordered processing chain, reusing the same
+    /// handlers as the JSON transport.
+    private func handleBinaryFrame(
+        _ data: Data,
+        connection: CollaborationRelayConnection
+    ) {
+        guard let frame = CollaborationBinaryFrame.decode(data) else { return }
+        switch frame.kind {
+        case .terminalOutput:
+            Self.echoLog(
+                "viewer-recv via=binary-chain terminal=\(frame.terminalID.prefix(8)) bytes=\(frame.payload.count) " +
+                "pending=\(connection.pendingOrderedFrameCount) t=\(Self.echoTimestampMillis())"
+            )
+            handleRemoteTerminalOutput(
+                terminalID: frame.terminalID,
+                sequence: frame.sequence,
+                data: frame.payload,
+                caretPeerID: frame.caretPeerID,
+                connection: connection
+            )
+        case .terminalInput:
+            handleRemoteTerminalInput(
+                terminalID: frame.terminalID,
+                data: frame.payload,
+                fromPeerID: frame.fromPeerID,
+                connection: connection
+            )
+        }
+    }
 
     /// Applies a `terminal.output` frame synchronously if `data` is one and it
     /// is safe to do so without reordering. Returns `false` (without side
@@ -6717,6 +7204,10 @@ final class CollaborationRuntime {
         _ data: Data,
         connection: CollaborationRelayConnection
     ) async throws {
+        if CollaborationBinaryFrame.isBinaryFrame(data) {
+            handleBinaryFrame(data, connection: connection)
+            return
+        }
         let frameType = try decoder.decode(CollaborationFrameType.self, from: data)
         switch frameType.type {
         case "session.joined":
@@ -7477,18 +7968,43 @@ final class CollaborationRuntime {
         let wasMapped = agentRoomIDsBySurfaceID[surfaceUUID] == roomID
         let hook = Self.claudeHookSessionRef(surfaceID: surfaceID)
         let needsSession = member.agentSessionID == nil && hook != nil
-        guard !wasMapped || needsSession else { return false }
+        // A remote wire registers the host surface as `.agent` because the
+        // viewer cannot see what runs here. The host can: a hosted pane with
+        // no hook session and no coding-agent session is a plain terminal, so
+        // reclassify it as a read-only data source on join completion.
+        let needsDataSourceRole = member.resolvedRole == .agent
+            && hook == nil
+            && !isCodingAgentSurface(surfaceID: surfaceUUID)
+        guard !wasMapped || needsSession || needsDataSourceRole else { return false }
 
         agentRoomIDsBySurfaceID[surfaceUUID] = roomID
         agentRoomMemberIDsBySurfaceID[surfaceUUID] = member.id
         registerAgentRoomDisplayOrder(roomID: roomID)
         _ = await agentRoomStore.setDeliveryPolicy(roomID: roomID, policy: .semiLive)
-        if needsSession, let hook {
+        if needsSession || needsDataSourceRole {
             var updated = member
-            updated.agentSessionID = hook.sessionID
+            if needsSession, let hook {
+                updated.agentSessionID = hook.sessionID
+            }
+            if needsDataSourceRole {
+                updated.role = .dataSource
+            }
             _ = await agentRoomStore.connect(member: updated, to: roomID)
         }
         let room = await agentRoomStore.room(id: roomID) ?? ClaudeRoomSnapshot(id: roomID)
+        if needsDataSourceRole {
+            var announcedMember = member
+            announcedMember.role = .dataSource
+            let announced = await announceAgentRoomDataSourceConnected(
+                roomID: roomID,
+                member: announcedMember,
+                wasAlreadyInRoom: wasMapped
+            ) ?? room
+            cacheAgentRoom(announced)
+            refreshAgentRoomHookHealth(room: announced)
+            agentRoomHeaderRevision &+= 1
+            return true
+        }
         await ingestAgentRoomTranscriptFiles(roomID: roomID, members: room.members)
         let backfilled = await backfillAgentRoomLedgerFromTranscripts(
             roomID: roomID,
@@ -7917,23 +8433,75 @@ enum CollaborationStrings {
         String(localized: "collaboration.action.copyInviteCode", defaultValue: "Copy Invite Code")
     }
 
+    static var copyInviteLink: String {
+        String(localized: "collaboration.action.copyInviteLink", defaultValue: "Copy Web Link")
+    }
+
     static var share: String {
         String(localized: "collaboration.action.share", defaultValue: "Share")
     }
 
     static var connectAgentRoom: String {
-        String(localized: "collaboration.agentRoom.connect", defaultValue: "Link agent room")
+        String(localized: "collaboration.agentRoom.connect", defaultValue: "Link agent context")
     }
 
-    static func agentRoomLabel(number: Int) -> String {
+    static var noActiveAgentContextLink: String {
         String(
-            format: String(localized: "collaboration.agentRoom.labelFormat", defaultValue: "Room %d"),
-            number
+            localized: "collaboration.agentRoom.error.noActiveLink",
+            defaultValue: "No agent context link is active."
         )
     }
 
-    static var agentRoomDragHint: String {
-        String(localized: "collaboration.agentRoom.dragHint", defaultValue: "Drag")
+    static var agentContextLinkNotFound: String {
+        String(
+            localized: "collaboration.agentRoom.error.linkNotFound",
+            defaultValue: "Agent context link not found."
+        )
+    }
+
+    static var contextLinkRemoteBridgeFailed: String {
+        String(
+            localized: "collaboration.agentRoom.error.remoteBridgeFailed",
+            defaultValue: "Could not link the remote terminal to shared agent context."
+        )
+    }
+
+    static func agentContextLinkAccessibilityLabel(otherTerminalCount: Int, isDataSource: Bool) -> String {
+        if isDataSource {
+            if otherTerminalCount == 1 {
+                return String(
+                    localized: "collaboration.agentRoom.accessibility.dataSourceSingle",
+                    defaultValue: "Linked to 1 other terminal as a read-only data source."
+                )
+            }
+            return String.localizedStringWithFormat(
+                String(
+                    localized: "collaboration.agentRoom.accessibility.dataSourceMultiple",
+                    defaultValue: "Linked to %lld other terminals as a read-only data source."
+                ),
+                otherTerminalCount
+            )
+        }
+        if otherTerminalCount == 1 {
+            return String(
+                localized: "collaboration.agentRoom.accessibility.agentSingle",
+                defaultValue: "Linked to 1 other terminal. Agent context is shared."
+            )
+        }
+        return String.localizedStringWithFormat(
+            String(
+                localized: "collaboration.agentRoom.accessibility.agentMultiple",
+                defaultValue: "Linked to %lld other terminals. Agent context is shared."
+            ),
+            otherTerminalCount
+        )
+    }
+
+    static var agentRoomDropSocketLabel: String {
+        String(
+            localized: "collaboration.agentRoom.dropSocketLabel",
+            defaultValue: "Wire drop target"
+        )
     }
 
     static var stopSharingTerminal: String {
@@ -8029,6 +8597,14 @@ enum CollaborationStrings {
 
     static var copyCode: String {
         String(localized: "collaboration.action.copyCode", defaultValue: "Copy Code")
+    }
+
+    static var copyLink: String {
+        String(localized: "collaboration.action.copyLink", defaultValue: "Copy Link")
+    }
+
+    static var webGuestBadge: String {
+        String(localized: "collaboration.recipient.webBadge", defaultValue: "web")
     }
 
     static var sessionCreatedTitle: String {
@@ -8837,7 +9413,7 @@ private final class CollaborationSessionCreatedPanel {
     private var actionBoxes: [ButtonActionBox] = []
 
     init(code: String) {
-        let size = NSSize(width: 420, height: 286)
+        let size = NSSize(width: 420, height: 318)
         window = CollaborationDialogPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
@@ -8911,23 +9487,44 @@ private final class CollaborationSessionCreatedPanel {
         codeContainer.translatesAutoresizingMaskIntoConstraints = false
         codeContainer.addSubview(codeField)
         stack.addArrangedSubview(codeContainer)
-        stack.setCustomSpacing(22, after: codeContainer)
+        stack.setCustomSpacing(8, after: codeContainer)
+
+        // Browser join link for web collaborators (sharing.mosaic.inc).
+        let linkField = NSTextField(
+            labelWithString: CollaborationShareLink.url(forSessionCode: code)?.absoluteString ?? ""
+        )
+        linkField.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        linkField.textColor = .secondaryLabelColor
+        linkField.alignment = .center
+        linkField.isSelectable = true
+        linkField.lineBreakMode = .byTruncatingMiddle
+        linkField.translatesAutoresizingMaskIntoConstraints = false
+        let linkContainer = NSView()
+        linkContainer.translatesAutoresizingMaskIntoConstraints = false
+        linkContainer.addSubview(linkField)
+        stack.addArrangedSubview(linkContainer)
+        stack.setCustomSpacing(18, after: linkContainer)
 
         let buttonRow = NSStackView()
         buttonRow.orientation = .horizontal
         buttonRow.alignment = .centerY
-        buttonRow.spacing = 16
+        buttonRow.spacing = 12
         buttonRow.translatesAutoresizingMaskIntoConstraints = false
 
         let doneButton = makeButton(title: CollaborationStrings.done, keyEquivalent: "\u{1b}") { [weak self] in
             self?.finish(.alertSecondButtonReturn)
         }
+        let copyLinkButton = makeButton(title: CollaborationStrings.copyLink, keyEquivalent: "") { [weak self] in
+            self?.finish(.alertThirdButtonReturn)
+        }
         let copyButton = makeButton(title: CollaborationStrings.copyCode, keyEquivalent: "\r") { [weak self] in
             self?.finish(.alertFirstButtonReturn)
         }
         styleSecondaryButton(doneButton)
+        styleSecondaryButton(copyLinkButton)
         stylePrimaryButton(copyButton)
         buttonRow.addArrangedSubview(doneButton)
+        buttonRow.addArrangedSubview(copyLinkButton)
         buttonRow.addArrangedSubview(copyButton)
 
         // Same fixed-width-container centering as the code field (see above).
@@ -8951,13 +9548,20 @@ private final class CollaborationSessionCreatedPanel {
             codeField.heightAnchor.constraint(equalToConstant: 46),
             codeField.centerXAnchor.constraint(equalTo: codeContainer.centerXAnchor),
             codeField.centerYAnchor.constraint(equalTo: codeContainer.centerYAnchor),
+            linkContainer.widthAnchor.constraint(equalToConstant: 364),
+            linkContainer.heightAnchor.constraint(equalToConstant: 18),
+            linkField.widthAnchor.constraint(lessThanOrEqualToConstant: 364),
+            linkField.centerXAnchor.constraint(equalTo: linkContainer.centerXAnchor),
+            linkField.centerYAnchor.constraint(equalTo: linkContainer.centerYAnchor),
             buttonContainer.widthAnchor.constraint(equalToConstant: 364),
             buttonContainer.heightAnchor.constraint(equalToConstant: 36),
             buttonRow.centerXAnchor.constraint(equalTo: buttonContainer.centerXAnchor),
             buttonRow.centerYAnchor.constraint(equalTo: buttonContainer.centerYAnchor),
-            doneButton.widthAnchor.constraint(equalToConstant: 144),
-            copyButton.widthAnchor.constraint(equalToConstant: 144),
+            doneButton.widthAnchor.constraint(equalToConstant: 108),
+            copyLinkButton.widthAnchor.constraint(equalToConstant: 116),
+            copyButton.widthAnchor.constraint(equalToConstant: 116),
             doneButton.heightAnchor.constraint(equalToConstant: 36),
+            copyLinkButton.heightAnchor.constraint(equalToConstant: 36),
             copyButton.heightAnchor.constraint(equalToConstant: 36),
         ])
     }

@@ -1202,3 +1202,72 @@ struct FileSearchControllerTests {
         }
     }
 }
+
+// MARK: - Chrome-aligned style tokens
+
+@MainActor
+@Suite(.serialized)
+struct FileExplorerStyleAppearanceTests {
+    /// The file explorer's default style must be the chrome-aligned `.mosaic`
+    /// preset, not one of the debug presets.
+    @Test func defaultStyleIsMosaic() {
+        let key = "fileExplorer.style"
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: key)
+        #expect(FileExplorerStyle.current == .mosaic)
+    }
+
+    /// The mosaic style uses the same fixed-hex chrome fills as the left
+    /// workspace sidebar (`MosaicSidebarStyle`/`MosaicChromePalette`) instead
+    /// of the system accent color or adaptive label overlays, so the file
+    /// tree reads as mosaic chrome rather than native macOS styling.
+    @Test func mosaicSelectionAndHoverMatchSidebarChromePalette() throws {
+        let focused = FileExplorerStyle.mosaic.selectionFillColor(focused: true)
+        let unfocused = FileExplorerStyle.mosaic.selectionFillColor(focused: false)
+        let hover = FileExplorerStyle.mosaic.hoverColor
+
+        // Left-sidebar palette: selected row #1C1C1C, hover row #181818.
+        let expectations: [(name: String, color: NSColor, expectedWhite: CGFloat)] = [
+            ("focused", focused, 0x1C / 255.0),
+            ("unfocused", unfocused, 0x18 / 255.0),
+            ("hover", hover, 0x18 / 255.0),
+        ]
+        for (name, color, expectedWhite) in expectations {
+            let srgb = try #require(
+                color.usingColorSpace(.sRGB),
+                "Could not resolve \(name) fill to sRGB"
+            )
+            #expect(
+                abs(srgb.alphaComponent - 1.0) < 0.001,
+                "\(name) fill must be opaque chrome, got alpha \(srgb.alphaComponent)"
+            )
+            #expect(
+                abs(srgb.redComponent - expectedWhite) < 0.005 &&
+                    abs(srgb.greenComponent - expectedWhite) < 0.005 &&
+                    abs(srgb.blueComponent - expectedWhite) < 0.005,
+                "\(name) fill must match the sidebar chrome gray \(expectedWhite)"
+            )
+        }
+        #expect(!FileExplorerStyle.mosaic.usesEmphasizedSelectionText)
+
+        // Row geometry matches the left sidebar workspace rows (radius 9).
+        #expect(FileExplorerStyle.mosaic.selectionRadius == 9)
+    }
+
+    /// Debug presets keep their own colors; the strong-fill ones still use
+    /// emphasized selected-text rendering.
+    @Test func debugPresetsKeepStrongSelectionBehavior() {
+        #expect(FileExplorerStyle.highDensity.usesEmphasizedSelectionText)
+        #expect(FileExplorerStyle.terminalStealth.usesEmphasizedSelectionText)
+        #expect(FileExplorerStyle.proStudio.usesEmphasizedSelectionText)
+        #expect(!FileExplorerStyle.liquidGlass.usesEmphasizedSelectionText)
+        #expect(!FileExplorerStyle.finder.usesEmphasizedSelectionText)
+    }
+}

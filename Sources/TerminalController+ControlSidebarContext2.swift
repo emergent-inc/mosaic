@@ -214,25 +214,40 @@ extension TerminalController {
         }
     }
 
-    func controlSidebarScheduleScopedShellState(scope: ControlSidebarPanelScope, stateRawValue: String) {
+    func controlSidebarScheduleScopedShellState(
+        scope: ControlSidebarPanelScope,
+        stateRawValue: String,
+        command: String?
+    ) {
         guard let state = PanelShellActivityState(rawValue: stateRawValue) else {
             // Unreachable: the coordinator only forwards a value this app produced.
             return
         }
-        guard socketFastPathState.shouldPublishShellActivity(
+        let shouldPublishState = socketFastPathState.shouldPublishShellActivity(
             workspaceId: scope.workspaceID,
             panelId: scope.panelID,
             state: state.rawValue
-        ) else {
+        )
+        guard shouldPublishState || command != nil || state == .promptIdle else {
             return
         }
         TerminalMutationBus.shared.enqueueMainActorMutation {
             guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: scope.workspaceID) else { return }
-            tabManager.updateSurfaceShellActivity(tabId: scope.workspaceID, surfaceId: scope.panelID, state: state)
+            tabManager.updateSurfaceShellActivity(
+                tabId: scope.workspaceID,
+                surfaceId: scope.panelID,
+                state: state,
+                command: command
+            )
         }
     }
 
-    func controlSidebarUpdateShellState(tabArg: String?, panelArg: String?, stateRawValue: String) -> ControlSidebarPanelWriteResolution {
+    func controlSidebarUpdateShellState(
+        tabArg: String?,
+        panelArg: String?,
+        stateRawValue: String,
+        command: String?
+    ) -> ControlSidebarPanelWriteResolution {
         guard let state = PanelShellActivityState(rawValue: stateRawValue) else {
             // Unreachable: the coordinator only forwards a value this app produced.
             return .tabNotFound
@@ -244,7 +259,12 @@ extension TerminalController {
             prune: true,
             requireLiveSurface: true
         ) { tab, surfaceId in
-            tabManager.updateSurfaceShellActivity(tabId: tab.id, surfaceId: surfaceId, state: state)
+            tabManager.updateSurfaceShellActivity(
+                tabId: tab.id,
+                surfaceId: surfaceId,
+                state: state,
+                command: command
+            )
         }
     }
 

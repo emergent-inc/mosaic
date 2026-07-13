@@ -115,6 +115,27 @@ final class FileExplorerNSOutlineView: NSOutlineView {
         return frame
     }
 
+    /// Replaces the stock macOS disclosure triangle with the chevron glyphs
+    /// the rest of the app's chrome uses (Vault section headers draw the same
+    /// `chevron.down`), keeping native click/keyboard expand behavior.
+    override func makeView(withIdentifier identifier: NSUserInterfaceItemIdentifier, owner: Any?) -> NSView? {
+        let view = super.makeView(withIdentifier: identifier, owner: owner)
+        if identifier == NSOutlineView.disclosureButtonIdentifier, let button = view as? NSButton {
+            let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+            button.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+            button.alternateImage = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+            button.contentTintColor = FileExplorerAppearance.secondaryText
+            button.imagePosition = .imageOnly
+            button.isBordered = false
+            // .toggle shows `alternateImage` while the button state is on
+            // (item expanded); the stock disclosure bezel ignores images.
+            button.setButtonType(.toggle)
+        }
+        return view
+    }
+
     override func frameOfCell(atColumn column: Int, row: Int) -> NSRect {
         var frame = super.frameOfCell(atColumn: column, row: row)
         let cellShift: CGFloat = Self.leadingMargin - 6

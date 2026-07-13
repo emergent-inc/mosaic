@@ -626,12 +626,26 @@ _mosaic_report_tty_once() {
 
 _mosaic_report_shell_activity_state() {
     local state="$1"
+    local command_hint="${2:-}"
     [[ -n "$state" ]] || return 0
     [[ -S "$MOSAIC_SOCKET_PATH" ]] || return 0
     [[ -n "$MOSAIC_TAB_ID" ]] || return 0
     [[ -n "$MOSAIC_PANEL_ID" ]] || return 0
     [[ "$_MOSAIC_SHELL_ACTIVITY_LAST" == "$state" ]] && return 0
     _MOSAIC_SHELL_ACTIVITY_LAST="$state"
+    if [[ "$state" == "running" && -n "$command_hint" ]]; then
+        {
+            local encoded_command
+            encoded_command="$(printf '%s' "$command_hint" | base64 | tr -d '\n')"
+            if [[ -n "$encoded_command" ]]; then
+                _mosaic_send "report_shell_state $state --command-b64=$encoded_command --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+            else
+                _mosaic_send "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+            fi
+        } >/dev/null 2>&1 &
+        disown
+        return 0
+    fi
     _mosaic_send_bg "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
 }
 
@@ -1446,7 +1460,7 @@ _mosaic_preexec_command() {
         [[ -n "$t" && "$t" != "not a tty" ]] && _MOSAIC_TTY_NAME="$t"
     fi
 
-    _mosaic_report_shell_activity_state running
+    _mosaic_report_shell_activity_state running "$cmd"
     _mosaic_report_tty_once
     _mosaic_ports_kick command
     _mosaic_halt_pr_poll_loop

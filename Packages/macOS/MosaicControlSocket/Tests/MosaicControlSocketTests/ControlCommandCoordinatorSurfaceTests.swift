@@ -178,4 +178,43 @@ struct ControlCommandCoordinatorSurfaceTests {
 
         #expect(context.reportedPWD?.path == "/srv/work/bar ")
     }
+
+    @Test func reportShellStateForwardsOptionalCommandHint() {
+        let (coordinator, context) = makeCoordinator()
+        let workspaceID = UUID()
+        let surfaceID = UUID()
+
+        _ = coordinator.handle(ControlRequest(
+            id: .int(1),
+            method: "surface.report_shell_state",
+            params: [
+                "workspace_id": .string(workspaceID.uuidString),
+                "surface_id": .string(surfaceID.uuidString),
+                "state": .string("running"),
+                "command": .string("env DEBUG=1 codex"),
+            ]
+        ))
+
+        #expect(context.reportedShellState?.workspaceID == workspaceID)
+        #expect(context.reportedShellState?.requestedSurfaceID == surfaceID)
+        #expect(context.reportedShellState?.stateRawValue == "running")
+        #expect(context.reportedShellState?.command == "env DEBUG=1 codex")
+    }
+
+    @Test func legacyReportShellStateDecodesCommandHint() {
+        let (coordinator, context) = makeCoordinator()
+        let workspaceID = UUID()
+        let surfaceID = UUID()
+        let encodedCommand = Data("bash -lc 'opencode'".utf8).base64EncodedString()
+
+        let result = coordinator.sidebarReportShellState(
+            "running --command-b64=\(encodedCommand) --tab=\(workspaceID.uuidString) --panel=\(surfaceID.uuidString)"
+        )
+
+        #expect(result == "OK")
+        #expect(context.reportedSidebarShellState?.scope.workspaceID == workspaceID)
+        #expect(context.reportedSidebarShellState?.scope.panelID == surfaceID)
+        #expect(context.reportedSidebarShellState?.stateRawValue == "running")
+        #expect(context.reportedSidebarShellState?.command == "bash -lc 'opencode'")
+    }
 }

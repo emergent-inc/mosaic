@@ -40,6 +40,221 @@ private final class FakeBonsplitTabItemRegionView: NSView, BonsplitTabItemHitReg
 }
 
 @MainActor
+final class TitlebarMosaicLogoAccessoryPlacementTests: XCTestCase {
+    private func makeMainWindow() -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 400),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.main.\(UUID().uuidString)")
+        return window
+    }
+
+    private func accessory(
+        _ identifier: String,
+        in window: NSWindow
+    ) -> NSTitlebarAccessoryViewController? {
+        window.titlebarAccessoryViewControllers.first { $0.view.identifier?.rawValue == identifier }
+    }
+
+    /// Forces standard presentation mode (minimal mode hides all accessories,
+    /// which would mask what these tests assert). Returns a restore closure.
+    private func forceStandardPresentationMode() -> () -> Void {
+        let key = WorkspacePresentationModeSettings.modeKey
+        let previous = UserDefaults.standard.string(forKey: key)
+        UserDefaults.standard.set(WorkspacePresentationModeSettings.Mode.standard.rawValue, forKey: key)
+        return {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+    }
+
+    /// The decorative logo accessory sits on the TRAILING titlebar edge.
+    /// (While the right sidebar is visible it hides instead — covered below.)
+    func testMosaicLogoAccessoryIsTrailing() {
+        _ = NSApplication.shared
+        let restorePresentationMode = forceStandardPresentationMode()
+        defer { restorePresentationMode() }
+
+        let controller = UpdateTitlebarAccessoryController(
+            updateLog: UpdateLogStore(),
+            settingsRuntime: nil
+        )
+        let window = makeMainWindow()
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+
+        controller.attach(to: window)
+
+        guard let logo = accessory("mosaic.titlebarMosaicLogo", in: window) else {
+            XCTFail("Expected the logo accessory to be attached")
+            return
+        }
+        XCTAssertEqual(logo.layoutAttribute, .right, "Logo accessory must be trailing")
+    }
+
+    /// Native accessories composite above the full-size content view, so a
+    /// visible trailing logo would cover the right sidebar's Files/Find/Vault
+    /// mode bar and its close button. The logo must hide while that window's
+    /// right sidebar is visible (and reappear when it closes); the leading
+    /// titlebar controls stay visible throughout.
+    func testMosaicLogoHidesWhileRightSidebarIsVisible() {
+        _ = NSApplication.shared
+        let restorePresentationMode = forceStandardPresentationMode()
+        defer { restorePresentationMode() }
+
+        let previousAppDelegate = AppDelegate.shared
+        let appDelegate = AppDelegate()
+        defer { AppDelegate.shared = previousAppDelegate }
+
+        let window = makeMainWindow()
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+
+        let windowId = UUID()
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.main.\(windowId.uuidString)")
+        let tabManager = TabManager()
+        let fileExplorerState = FileExplorerState()
+        fileExplorerState.setVisible(false)
+        appDelegate.registerMainWindowContextForTesting(
+            windowId: windowId,
+            tabManager: tabManager,
+            fileExplorerState: fileExplorerState
+        )
+        defer { appDelegate.unregisterMainWindowContextForTesting(windowId: windowId) }
+
+        let controller = UpdateTitlebarAccessoryController(
+            updateLog: UpdateLogStore(),
+            settingsRuntime: nil
+        )
+        controller.attach(to: window)
+
+        guard let logo = accessory("mosaic.titlebarMosaicLogo", in: window),
+              let controls = accessory("mosaic.titlebarControls", in: window) else {
+            XCTFail("Expected controls and logo accessories to be attached")
+            return
+        }
+        XCTAssertFalse(logo.view.isHidden, "Logo should be visible while the right sidebar is hidden")
+
+        fileExplorerState.setVisible(true)
+        controller.reapplyAccessoryVisibility(to: window)
+        XCTAssertTrue(logo.view.isHidden, "Logo must hide while the right sidebar is visible")
+        XCTAssertFalse(controls.view.isHidden, "Titlebar controls must stay visible when only the logo hides")
+
+        fileExplorerState.setVisible(false)
+        controller.reapplyAccessoryVisibility(to: window)
+        XCTAssertFalse(logo.view.isHidden, "Logo should reappear after the right sidebar closes")
+    }
+}
+
+@MainActor
+final class RightSidebarOverlayHostingTests: XCTestCase {
+    private func makeMainWindow() -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 500),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.main.\(UUID().uuidString)")
+        window.orderFront(nil)
+        return window
+    }
+
+    private func overlayHostContainer(of window: NSWindow) -> NSView? {
+        window.contentView?.superview
+    }
+
+    /// The sidebar overlay must sit above the portal hosts (which paint over
+    /// the main SwiftUI content) and below the command palette overlay.
+    func testSidebarOverlayInstallsAbovePortalHostsAndBelowPalette() {
+        _ = NSApplication.shared
+        let window = makeMainWindow()
+        defer { window.orderOut(nil) }
+        guard let themeFrame = overlayHostContainer(of: window) else {
+            XCTFail("Expected a theme frame container")
+            return
+        }
+
+        // Simulate the existing layer stack: a portal host above the content
+        // view, and the command palette overlay at the very top.
+        let terminalHost = WindowTerminalHostView(frame: themeFrame.bounds)
+        themeFrame.addSubview(terminalHost, positioned: .above, relativeTo: window.contentView)
+        let paletteStandIn = NSView(frame: themeFrame.bounds)
+        paletteStandIn.identifier = commandPaletteOverlayContainerIdentifier
+        themeFrame.addSubview(paletteStandIn, positioned: .above, relativeTo: nil)
+
+        let controller = rightSidebarWindowOverlayController(for: window)
+        controller.update(isActiveHost: true, isVisible: true, width: 240) { AnyView(EmptyView()) }
+
+        let subviews = themeFrame.subviews
+        guard let sidebarIndex = subviews.firstIndex(where: { $0.identifier == rightSidebarOverlayContainerIdentifier }),
+              let terminalIndex = subviews.firstIndex(where: { $0 === terminalHost }),
+              let paletteIndex = subviews.firstIndex(where: { $0 === paletteStandIn }) else {
+            XCTFail("Expected sidebar overlay, terminal host, and palette stand-in to be installed")
+            return
+        }
+        XCTAssertGreaterThan(sidebarIndex, terminalIndex, "Sidebar overlay must render above the terminal portal host")
+        XCTAssertLessThan(sidebarIndex, paletteIndex, "Sidebar overlay must stay below the command palette overlay")
+        XCTAssertFalse(controller.containerView.isHidden)
+        XCTAssertTrue(controller.containerView.sidebarInteractionEnabled)
+    }
+
+    /// The overlay container is inert while the sidebar is hidden, passes the
+    /// leading resizer band through to the SwiftUI resizer below, and owns
+    /// hits everywhere else.
+    func testOverlayContainerHitTestScoping() {
+        let parent = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 400))
+        let container = RightSidebarOverlayContainerView(frame: parent.bounds)
+        parent.addSubview(container)
+        let content = NSView(frame: container.bounds)
+        container.addSubview(content)
+
+        container.sidebarInteractionEnabled = false
+        XCTAssertNil(
+            container.hitTest(NSPoint(x: 120, y: 200)),
+            "A hidden/inactive sidebar overlay must be transparent to hit-testing"
+        )
+
+        container.sidebarInteractionEnabled = true
+        XCTAssertNotNil(
+            container.hitTest(NSPoint(x: 120, y: 200)),
+            "A visible sidebar overlay owns hits over its content"
+        )
+        XCTAssertNil(
+            container.hitTest(NSPoint(x: SidebarResizeInteraction.sidebarSideHitWidth - 1, y: 200)),
+            "The leading resizer band must pass through to the width-drag handle below"
+        )
+    }
+
+    /// Dock mode keeps the legacy in-tree hosting (its surfaces are portal-
+    /// backed and must render in the portal layer), so the overlay must fully
+    /// deactivate: hidden, inert, root unmounted.
+    func testDockFallbackDeactivatesOverlayHost() {
+        _ = NSApplication.shared
+        let window = makeMainWindow()
+        defer { window.orderOut(nil) }
+
+        let controller = rightSidebarWindowOverlayController(for: window)
+        controller.update(isActiveHost: true, isVisible: true, width: 240) { AnyView(EmptyView()) }
+        XCTAssertFalse(controller.containerView.isHidden)
+
+        controller.update(isActiveHost: false, isVisible: true, width: 240) { AnyView(EmptyView()) }
+        XCTAssertTrue(controller.containerView.isHidden, "Overlay must hide while Dock uses in-tree hosting")
+        XCTAssertFalse(controller.containerView.sidebarInteractionEnabled)
+
+        controller.update(isActiveHost: true, isVisible: true, width: 240) { AnyView(EmptyView()) }
+        XCTAssertFalse(controller.containerView.isHidden, "Overlay resumes when leaving Dock mode")
+        XCTAssertTrue(controller.containerView.sidebarInteractionEnabled)
+    }
+}
+
+@MainActor
 final class WindowGlassEffectTests: XCTestCase {
     func testRemoveRestoresOriginalContentHierarchy() {
         _ = NSApplication.shared

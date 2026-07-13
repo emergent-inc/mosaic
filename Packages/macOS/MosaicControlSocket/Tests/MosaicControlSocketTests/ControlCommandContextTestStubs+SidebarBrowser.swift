@@ -146,9 +146,18 @@ extension ControlSidebarContext {
         .tabNotFound
     }
 
-    func controlSidebarScheduleScopedShellState(scope: ControlSidebarPanelScope, stateRawValue: String) {}
+    func controlSidebarScheduleScopedShellState(
+        scope: ControlSidebarPanelScope,
+        stateRawValue: String,
+        command: String?
+    ) {}
 
-    func controlSidebarUpdateShellState(tabArg: String?, panelArg: String?, stateRawValue: String) -> ControlSidebarPanelWriteResolution {
+    func controlSidebarUpdateShellState(
+        tabArg: String?,
+        panelArg: String?,
+        stateRawValue: String,
+        command: String?
+    ) -> ControlSidebarPanelWriteResolution {
         .tabNotFound
     }
 

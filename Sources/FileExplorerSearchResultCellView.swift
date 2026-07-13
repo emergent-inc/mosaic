@@ -9,7 +9,7 @@ final class FileExplorerSearchResultCellView: NSTableCellView {
             46,
             ceil(
                 13 +
-                    lineHeight(for: GlobalFontMagnification.systemFont(ofSize: 12, weight: .semibold)) +
+                    lineHeight(for: GlobalFontMagnification.systemFont(ofSize: 12, weight: .medium)) +
                     lineHeight(for: GlobalFontMagnification.monospacedSystemFont(ofSize: 11, weight: .regular))
             )
         )
@@ -27,12 +27,12 @@ final class FileExplorerSearchResultCellView: NSTableCellView {
 
     private func setupViews() {
         pathLabel.translatesAutoresizingMaskIntoConstraints = false
-        pathLabel.textColor = .labelColor
+        pathLabel.textColor = FileExplorerAppearance.primaryText
         pathLabel.lineBreakMode = .byTruncatingMiddle
         pathLabel.maximumNumberOfLines = 1
 
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
-        previewLabel.textColor = .secondaryLabelColor
+        previewLabel.textColor = FileExplorerAppearance.secondaryText
         previewLabel.lineBreakMode = .byTruncatingTail
         previewLabel.maximumNumberOfLines = 1
 
@@ -51,7 +51,7 @@ final class FileExplorerSearchResultCellView: NSTableCellView {
     }
 
     func configure(with result: FileSearchResult) {
-        pathLabel.font = GlobalFontMagnification.systemFont(ofSize: 12, weight: .semibold)
+        pathLabel.font = GlobalFontMagnification.systemFont(ofSize: 12, weight: .medium)
         previewLabel.font = GlobalFontMagnification.monospacedSystemFont(ofSize: 11, weight: .regular)
         pathLabel.stringValue = "\(result.relativePath):\(result.lineNumber)"
         previewLabel.stringValue = result.preview.isEmpty ? " " : result.preview

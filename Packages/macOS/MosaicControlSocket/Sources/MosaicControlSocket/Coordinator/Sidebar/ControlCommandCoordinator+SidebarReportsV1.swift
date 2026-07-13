@@ -259,9 +259,14 @@ extension ControlCommandCoordinator {
         guard let stateRawValue = context?.controlSurfaceParseShellActivityState(rawState) else {
             return "ERROR: Invalid shell state '\(rawState)' — expected prompt or running"
         }
+        let command = sidebarDecodedShellCommand(parsed.options["command-b64"])
 
         if let scope = sidebarExplicitScope(options: parsed.options) {
-            sidebarContext?.controlSidebarScheduleScopedShellState(scope: scope, stateRawValue: stateRawValue)
+            sidebarContext?.controlSidebarScheduleScopedShellState(
+                scope: scope,
+                stateRawValue: stateRawValue,
+                command: command
+            )
             return "OK"
         }
 
@@ -272,13 +277,26 @@ extension ControlCommandCoordinator {
         let resolution = sidebarContext?.controlSidebarUpdateShellState(
             tabArg: parsed.options["tab"],
             panelArg: parsed.options["panel"] ?? parsed.options["surface"],
-            stateRawValue: stateRawValue
+            stateRawValue: stateRawValue,
+            command: command
         ) ?? .tabNotFound
         return sidebarPanelWriteReply(
             resolution,
             hasTabOption: parsed.options["tab"] != nil,
             missingPanelUsage: "report_shell_state <prompt|running> [--tab=X] [--panel=Y]"
         )
+    }
+
+    private func sidebarDecodedShellCommand(_ encoded: String?) -> String? {
+        guard let encoded,
+              encoded.utf8.count <= 87_384,
+              let data = Data(base64Encoded: encoded),
+              data.count <= 65_536,
+              let command = String(data: data, encoding: .utf8),
+              !command.isEmpty else {
+            return nil
+        }
+        return command
     }
 
     /// `report_tty` — record a surface's TTY name.

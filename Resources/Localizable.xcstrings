@@ -5544,6 +5544,17 @@
         }
       }
     },
+    "cli.session.usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage: mosaic session pull <session-id> [--team <team-id>]\n\nPull a teammate's synced coding session from the team corpus and\ncontinue it locally. The app downloads the transcript, fetches the\nsession's branch and WIP snapshot ref, and opens a new workspace\nrunning `claude --resume <session-id> --fork-session`.\n\nRequires being signed in to mosaic with Team Session Sync available."
+          }
+        }
+      }
+    },
     "cli.sessions.error.agentRequiresValue": {
       "extractionState": "manual",
       "localizations": {
@@ -24228,6 +24239,50 @@
         }
       }
     },
+    "settings.automation.teamSessionSync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Team Session Sync"
+          }
+        }
+      }
+    },
+    "settings.automation.teamSessionSync.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requires signing in to mosaic. Transcripts and git state (including a snapshot of uncommitted changes pushed to a hidden ref) upload at each turn boundary."
+          }
+        }
+      }
+    },
+    "settings.automation.teamSessionSync.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coding sessions stay on this Mac only."
+          }
+        }
+      }
+    },
+    "settings.automation.teamSessionSync.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code sessions sync to your team's shared corpus so teammates can pull and continue them."
+          }
+        }
+      }
+    },
     "settings.automation.workspaceAutoNaming": {
       "extractionState": "manual",
       "localizations": {
@@ -35815,6 +35870,116 @@
         }
       }
     },
+    "teamSessions.pull.chooseMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the project folder to continue this session in."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.chooseMessage.repo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your local checkout of %@ to continue this session in."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.choosePrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Checkout"
+          }
+        }
+      }
+    },
+    "teamSessions.pull.error.download": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not download the session from your team's corpus."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.error.place": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not write the session transcript for Claude to resume."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.error.signedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to mosaic to pull a team session."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.error.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Pull Session"
+          }
+        }
+      }
+    },
+    "teamSessions.pull.info.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session Pulled"
+          }
+        }
+      }
+    },
+    "teamSessions.pull.note.dirtyTree": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Branch %@ was created with the session's code state, but your working tree has changes, so it was not checked out automatically."
+          }
+        }
+      }
+    },
+    "teamSessions.pull.note.noGitState": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The session transcript was pulled, but its git state could not be fetched. Make sure the owner's branch is pushed."
+          }
+        }
+      }
+    },
     "terminal.agentHibernation.lastActivity": {
       "extractionState": "manual",
       "localizations": {
@@ -37596,6 +37761,17 @@
         }
       }
     },
+    "collaboration.action.copyLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        }
+      }
+    },
     "collaboration.action.done": {
       "extractionState": "manual",
       "localizations": {
@@ -38416,7 +38592,95 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link agent room"
+            "value": "Link agent context"
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.accessibility.agentSingle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked to 1 other terminal. Agent context is shared."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.accessibility.agentMultiple": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked to %lld other terminals. Agent context is shared."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.accessibility.dataSourceSingle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked to 1 other terminal as a read-only data source."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.accessibility.dataSourceMultiple": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked to %lld other terminals as a read-only data source."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.connectHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to another terminal to link their agent context."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.error.noActiveLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No agent context link is active."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.error.linkNotFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent context link not found."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.error.remoteBridgeFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not link the remote terminal to shared agent context."
           }
         }
       }
@@ -38427,7 +38691,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Room %d"
+            "value": "Context %d"
           }
         }
       }
@@ -38443,13 +38707,46 @@
         }
       }
     },
+    "collaboration.agentRoom.dataSourceLabelFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Context %d · Data source"
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.dataSourceHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This terminal is linked as a read-only data source. Linked agents can read its contents on demand."
+          }
+        }
+      }
+    },
+    "collaboration.agentRoom.dropSocketLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wire drop target"
+          }
+        }
+      }
+    },
     "cli.claudeHook.roomContext.header": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shared Claude room context:"
+            "value": "Shared agent context:"
           }
         }
       }
@@ -38460,7 +38757,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reachable mosaic room peers:"
+            "value": "Reachable linked agents:"
           }
         }
       }
@@ -38575,6 +38872,28 @@
         }
       }
     },
+    "collaboration.action.copyInviteLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Web Link"
+          }
+        }
+      }
+    },
+    "collaboration.recipient.webBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "web"
+          }
+        }
+      }
+    },
     "collaboration.action.signIn": {
       "extractionState": "manual",
       "localizations": {
@@ -38603,7 +38922,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shared Claude room recap (recent activity from wired peer agents):"
+            "value": "Shared agent context recap (recent activity from linked agents):"
           }
         }
       }
@@ -38614,7 +38933,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
+            "value": "A linked agent has no active Claude hook session, so shared context may not sync. Restart Claude in that terminal to relink."
           }
         }
       }
@@ -38625,7 +38944,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wired agents share context through this room."
+            "value": "Linked terminals share agent context."
           }
         }
       }
@@ -38637,6 +38956,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "This shared terminal is no longer live. Re-open it, then wire the agents again."
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.count": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent context links: %lld"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.status.line": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "  context-link %@  policy=%@  events=%lld  last_seq=%lld  terminals=%lld"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.create.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created agent context link %@"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.connect.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked surface to shared agent context"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.disconnect.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlinked surface from shared agent context"
+          }
+        }
+      }
+    },
+    "cli.agentRoom.post.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posted shared agent context event"
           }
         }
       }
@@ -38658,7 +39043,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reset Claude room state"
+            "value": "Reset shared agent context"
           }
         }
       }
@@ -38669,7 +39054,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "  No room matches that --room-id."
+            "value": "  No context link matches that --room-id."
           }
         }
       }

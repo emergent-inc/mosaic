@@ -59,6 +59,15 @@ func isNativeTitlebarDragGap(
         return false
     }
 
+    // SwiftUI titlebar controls (right-sidebar mode bar pills, close /
+    // open-as-pane, Vault control bar) are not NSControls, so the visible-
+    // control walk below cannot see them. They register their frames via
+    // `titlebarInteractiveControl()`; a click over a registered region is a
+    // control click, never a drag gap.
+    if isMinimalModeTitlebarControlHit(window: window, locationInWindow: locationInWindow) {
+        return false
+    }
+
     if let frameView = window.contentView?.superview,
        titlebarDragPointHitsVisibleControl(locationInWindow, in: frameView) {
         return false

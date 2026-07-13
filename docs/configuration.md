@@ -81,6 +81,20 @@ Opt-in AI auto-naming of workspaces and tabs from agent conversation content. Wh
 
 Default: `false`. Manual renames (sidebar, command palette, CLI, or `/rename`) always win: a workspace or tab you renamed yourself is never auto-named again until you clear its custom name. Enable it from **Settings > Automation > Workspace Auto-Naming**.
 
+## `automation.teamSessionSync`
+
+Opt-in team session sync. When enabled and you are signed in to mosaic, each Claude Code session syncs to your team's shared corpus at every turn boundary: the transcript, plus git state (repository remote, branch, HEAD, and a snapshot of uncommitted changes pushed to the hidden ref `refs/mosaic/sessions/<session-id>`). Teammates see the session live in the team dashboard and can continue it locally with `mosaic session pull <session-id>` (or the dashboard's "Continue in mosaic" link), which resumes it as a fork via `claude --resume <session-id> --fork-session`.
+
+```json
+{
+  "automation": {
+    "teamSessionSync": true
+  }
+}
+```
+
+Default: `false`. Enable it from **Settings > Automation > Team Session Sync**.
+
 ## `diffViewer.defaultLayout`
 
 Controls the initial layout for newly opened diff viewers.

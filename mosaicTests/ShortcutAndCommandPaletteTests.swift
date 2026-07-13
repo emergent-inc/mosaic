@@ -1493,6 +1493,70 @@ final class MainWindowFocusControllerRightSidebarHideTests: XCTestCase {
         XCTAssertTrue(controller.allowsTerminalFocus(workspaceId: workspaceId, panelId: panelId))
     }
 
+    private final class FirstResponderCountingWindow: NSWindow {
+        var makeFirstResponderCallCount = 0
+
+        override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+            makeFirstResponderCallCount += 1
+            return super.makeFirstResponder(responder)
+        }
+    }
+
+    /// A pending right-sidebar focus request whose endpoint already owns first
+    /// responder must complete without re-asserting focus. The completion path
+    /// runs from FileExplorerContainerView.layout() on every layout pass —
+    /// re-calling makeFirstResponder there cancels in-flight button clicks.
+    @MainActor
+    func testPendingFocusRequestCompletesWithoutReassertingFirstResponder() {
+        let fileExplorerState = FileExplorerState()
+        fileExplorerState.setVisible(true)
+        fileExplorerState.mode = .sessions
+        let window = FirstResponderCountingWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        let contentView = NSView(frame: window.contentView?.bounds ?? .zero)
+        window.contentView = contentView
+        let controller = MainWindowFocusController(
+            windowId: UUID(),
+            window: window,
+            tabManager: TabManager(),
+            fileExplorerState: fileExplorerState
+        )
+
+        // Request focus before any host is registered: stays pending.
+        XCTAssertTrue(controller.focusRightSidebar(mode: .sessions, focusFirstItem: true))
+        XCTAssertEqual(controller.debugPendingRightSidebarFocusMode, .sessions)
+
+        // The host appears and (as in production, via user click or the host's
+        // own focus plumbing) already owns first responder.
+        let focusHost = RightSidebarKeyboardFocusView(frame: NSRect(x: 0, y: 0, width: 24, height: 24))
+        defer {
+            _ = window.makeFirstResponder(nil)
+            focusHost.removeFromSuperview()
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        contentView.addSubview(focusHost)
+        XCTAssertTrue(window.makeFirstResponder(focusHost))
+
+        window.makeFirstResponderCallCount = 0
+        controller.registerRightSidebarHost(focusHost)
+
+        XCTAssertNil(
+            controller.debugPendingRightSidebarFocusMode,
+            "A satisfied pending request should complete on registration"
+        )
+        XCTAssertEqual(
+            window.makeFirstResponderCallCount,
+            0,
+            "Completing an already-satisfied focus request must not re-assert first responder"
+        )
+        XCTAssertTrue(window.firstResponder === focusHost)
+    }
+
     @MainActor
     func testFocusShortcutToggleOpensFilesModeWhenSidebarHidden() {
         let fileExplorerState = FileExplorerState()

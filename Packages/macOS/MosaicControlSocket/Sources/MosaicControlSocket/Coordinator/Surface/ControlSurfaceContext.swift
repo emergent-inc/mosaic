@@ -333,11 +333,13 @@ public protocol ControlSurfaceContext: AnyObject {
     ///   - requestedSurfaceID: The explicit `surface_id`, or `nil` for the
     ///     workspace-wide async path.
     ///   - stateRawValue: The parsed activity state's raw value.
+    ///   - command: The foreground shell command, when reported at command start.
     /// - Returns: The report-shell-state resolution.
     func controlSurfaceReportShellState(
         workspaceID: UUID,
         requestedSurfaceID: UUID?,
-        stateRawValue: String
+        stateRawValue: String,
+        command: String?
     ) -> ControlSurfaceReportShellStateResolution
 
     /// Kicks the port scanner for `surface.ports_kick`.

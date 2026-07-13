@@ -111,9 +111,16 @@ struct FishShellIntegrationTests {
             function _mosaic_send_bg
                 printf '%s\\n' $argv[1] >> "$MOSAIC_TEST_LOG"
             end
+            functions -e _mosaic_send
+            function _mosaic_send
+                printf '%s\\n' $argv[1] >> "$MOSAIC_TEST_LOG"
+            end
             set -g _MOSAIC_TTY_NAME ttys777
             set -g _MOSAIC_TTY_REPORTED 0
             _mosaic_preexec
+            _mosaic_prompt
+            _mosaic_preexec "codex --resume abc"
+            wait
             _mosaic_prompt
             printf 'USER_CONFIG=%s\\n' "$MOSAIC_USER_FISH_CONFIG_SOURCED"
             printf 'USER_CONFD=%s\\n' "$MOSAIC_USER_FISH_CONFD_SOURCED"
@@ -150,6 +157,10 @@ struct FishShellIntegrationTests {
         )
         expectTrue(
             result.stdout.contains("report_shell_state running --tab=11111111-1111-1111-1111-111111111111 --panel=22222222-2222-2222-2222-222222222222"),
+            result.stdout
+        )
+        expectTrue(
+            result.stdout.contains("report_shell_state running --command-b64=Y29kZXggLS1yZXN1bWUgYWJj --tab=11111111-1111-1111-1111-111111111111 --panel=22222222-2222-2222-2222-222222222222"),
             result.stdout
         )
         expectTrue(

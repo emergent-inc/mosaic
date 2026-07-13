@@ -22,6 +22,7 @@ public struct AutomationSection: View {
     @State private var autoNamingStatusModel: DefaultsValueModel<String>
     @State private var ripgrepPathModel: DefaultsValueModel<String>
     @State private var suppressSubagentModel: DefaultsValueModel<Bool>
+    @State private var teamSessionSyncModel: DefaultsValueModel<Bool>
     @State private var ampModel: DefaultsValueModel<Bool>
     @State private var cursorModel: DefaultsValueModel<Bool>
     @State private var geminiModel: DefaultsValueModel<Bool>
@@ -71,6 +72,7 @@ public struct AutomationSection: View {
         ))
         _ripgrepPathModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.integrations.ripgrepCustomBinaryPath))
         _suppressSubagentModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.integrations.suppressSubagentNotifications))
+        _teamSessionSyncModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.automation.teamSessionSync))
         _ampModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.integrations.ampHooksEnabled))
         _cursorModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.integrations.cursorHooksEnabled))
         _geminiModel = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.integrations.geminiHooksEnabled))
@@ -93,6 +95,7 @@ public struct AutomationSection: View {
             autoNamingCard
             ripgrepPathCard
             suppressSubagentCard
+            teamSessionSyncCard
             ampCard
             cursorCard
             geminiCard
@@ -126,7 +129,7 @@ public struct AutomationSection: View {
                 localized: "settings.automation.openAccess.dialog.message",
                 defaultValue: "This disables ancestry and password checks and opens the socket to all local users. Only enable when you understand the risk."
             ))
-        }.task { startSettingsObservation([socketPasswordModel, modeModel, claudeCodeModel, codexModel, claudePathModel, autoNamingModel, autoNamingAgentModel, autoNamingStatusModel, ripgrepPathModel, suppressSubagentModel, ampModel, cursorModel, geminiModel, kiroModel, kiroLevelModel, portBaseModel, portRangeModel]) }
+        }.task { startSettingsObservation([socketPasswordModel, modeModel, claudeCodeModel, codexModel, claudePathModel, autoNamingModel, autoNamingAgentModel, autoNamingStatusModel, ripgrepPathModel, suppressSubagentModel, teamSessionSyncModel, ampModel, cursorModel, geminiModel, kiroModel, kiroLevelModel, portBaseModel, portRangeModel]) }
     }
 
     @ViewBuilder
@@ -389,6 +392,26 @@ public struct AutomationSection: View {
             }
             SettingsCardDivider()
             SettingsCardNote(String(localized: "settings.automation.suppressSubagentNotifications.note", defaultValue: "Uses process ancestry from hook processes. Disable if nested Codex or Claude sessions should trigger completion notifications."))
+        }
+    }
+
+    @ViewBuilder
+    private var teamSessionSyncCard: some View {
+        SettingsCard {
+            SettingsCardRow(
+                configurationReview: .json("automation.teamSessionSync"),
+                String(localized: "settings.automation.teamSessionSync", defaultValue: "Team Session Sync"),
+                subtitle: teamSessionSyncModel.current
+                    ? String(localized: "settings.automation.teamSessionSync.subtitleOn", defaultValue: "Claude Code sessions sync to your team's shared corpus so teammates can pull and continue them.")
+                    : String(localized: "settings.automation.teamSessionSync.subtitleOff", defaultValue: "Coding sessions stay on this Mac only.")
+            ) {
+                Toggle("", isOn: Binding(get: { teamSessionSyncModel.current }, set: { teamSessionSyncModel.set($0) }))
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("SettingsTeamSessionSyncToggle")
+            }
+            SettingsCardDivider()
+            SettingsCardNote(String(localized: "settings.automation.teamSessionSync.note", defaultValue: "Requires signing in to mosaic. Transcripts and git state (including a snapshot of uncommitted changes pushed to a hidden ref) upload at each turn boundary."))
         }
     }
 

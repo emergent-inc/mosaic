@@ -15,6 +15,8 @@ final class WorkspaceSidebarAgentRuntimeObservationModel {
     @ObservationIgnored
     private(set) var agentLifecycleStatesByPanelId: [UUID: [String: AgentHibernationLifecycleState]] = [:]
     @ObservationIgnored
+    private(set) var foregroundCodingAgentKindsByPanelId: [UUID: String] = [:]
+    @ObservationIgnored
     private(set) var changeGeneration: UInt64 = 0
 
     @ObservationIgnored
@@ -52,6 +54,12 @@ final class WorkspaceSidebarAgentRuntimeObservationModel {
     func setAgentLifecycleStatesByPanelId(_ newValue: [UUID: [String: AgentHibernationLifecycleState]]) {
         guard agentLifecycleStatesByPanelId != newValue else { return }
         agentLifecycleStatesByPanelId = newValue
+        notifyChanged()
+    }
+
+    func setForegroundCodingAgentKindsByPanelId(_ newValue: [UUID: String]) {
+        guard foregroundCodingAgentKindsByPanelId != newValue else { return }
+        foregroundCodingAgentKindsByPanelId = newValue
         notifyChanged()
     }
 

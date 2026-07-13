@@ -294,7 +294,7 @@ struct ClaudeRoomStoreTests {
         )
 
         #expect(builder.shouldDispatch(handoff))
-        #expect(builder.prompt(for: handoff)?.contains("Shared room handoff from surface surface-a") == true)
+        #expect(builder.prompt(for: handoff)?.contains("Linked context handoff from surface surface-a") == true)
         #expect(builder.prompt(for: handoff)?.contains("Build the contact pa...") == true)
         #expect(!builder.shouldDispatch(summary))
         #expect(builder.prompt(for: summary) == nil)
@@ -415,7 +415,7 @@ struct ClaudeRoomStoreTests {
 
         // Broadcast prompt carries the relay header and the message text.
         let prompt = builder.broadcastPrompt(for: message, policy: .semiLive)
-        #expect(prompt?.contains("Shared room message from surface surface-a") == true)
+        #expect(prompt?.contains("Linked context message from surface surface-a") == true)
         #expect(prompt?.contains("the british are coming") == true)
         #expect(builder.broadcastPrompt(for: message, policy: .manual) == nil)
 
@@ -434,12 +434,18 @@ struct ClaudeRoomStoreTests {
     @Test
     func relayPromptDetectionMatchesInjectedHeadersOnly() {
         // Every header the builder can inject must be recognized as a relay prompt.
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Linked context message from surface surface-a:\nhi"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Linked context handoff from surface surface-a:\ndo x"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Linked context question from surface surface-a:\nq"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Linked context blocker from surface surface-a:\nb"))
+        // Legacy headers remain recognized so persisted or in-flight prompts from
+        // an older build cannot be echoed into a relay loop.
         #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room message from surface surface-a:\nhi"))
         #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room handoff from surface surface-a:\ndo x"))
         #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room question from surface surface-a:\nq"))
         #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Shared room blocker from surface surface-a:\nb"))
         // Leading whitespace is tolerated.
-        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("   Shared room message from surface s:\nhi"))
+        #expect(AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("   Linked context message from surface s:\nhi"))
         // Ordinary user prompts are not treated as relays.
         #expect(!AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("the british are coming"))
         #expect(!AgentRoomActiveDispatchPromptBuilder.isRelayPrompt("Please review the shared room"))

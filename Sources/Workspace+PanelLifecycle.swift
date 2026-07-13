@@ -4,11 +4,60 @@ import MosaicCore
 import Darwin
 import Foundation
 import MosaicSidebar
+import MosaicWorkspaces
+
+/// Pure predicate for "a structured coding-agent hook has a live registration
+/// on this panel". This is the instant push-path signal behind the agent-room
+/// wire port: agent session-start hooks send `set_agent_pid` to the app over
+/// the socket the moment the agent boots, seconds before the hook-store file
+/// watcher reloads the restorable-session index.
+enum StructuredAgentPanelLiveness {
+    /// Mirrors `Workspace.agentStatusKey(forAgentPIDKey:)`'s dot-prefix rule:
+    /// a PID key like `codex.session-b` belongs to the `codex` status key.
+    static func statusKey(forAgentPIDKey key: String) -> String {
+        guard let dotIndex = key.firstIndex(of: ".") else { return key }
+        return String(key[..<dotIndex])
+    }
+
+    /// Returns true when any structured agent hook key (claude_code, codex,
+    /// cursor, ...) is registered on the panel. When the registration carries
+    /// a pid it must still be alive — a SIGKILL'd agent fires no session-end
+    /// hook and would otherwise pin the signal forever.
+    static func hasLiveStructuredAgentPID(
+        panelPIDKeys: Set<String>,
+        agentPIDs: [String: pid_t],
+        isProcessAlive: (pid_t) -> Bool
+    ) -> Bool {
+        for key in panelPIDKeys
+        where AgentHibernationLifecycleStatusKeys.isAllowed(statusKey(forAgentPIDKey: key)) {
+            if let pid = agentPIDs[key] {
+                if pid > 0, isProcessAlive(pid) { return true }
+            } else {
+                // Ownership registered without a pid: trust the hook.
+                return true
+            }
+        }
+        return false
+    }
+}
 
 extension Workspace {
     private static let structuredAgentHookStatusKeys = AgentHibernationLifecycleStatusKeys.allowedStatusKeys
     private static let managedSubagentEnvironmentKey = "MOSAIC_AGENT_MANAGED_SUBAGENT"
     private static let truthyStartupEnvironmentValues: Set<String> = ["1", "true", "yes", "on", "enabled"]
+
+    /// Whether a structured coding-agent hook (claude_code, codex, ...) holds
+    /// a live PID registration on this panel. See `StructuredAgentPanelLiveness`.
+    func hasLiveStructuredAgentPID(
+        forPanelId panelId: UUID,
+        isProcessAlive: (pid_t) -> Bool = { kill($0, 0) == 0 }
+    ) -> Bool {
+        StructuredAgentPanelLiveness.hasLiveStructuredAgentPID(
+            panelPIDKeys: agentPIDKeysByPanelId[panelId] ?? [],
+            agentPIDs: agentPIDs,
+            isProcessAlive: isProcessAlive
+        )
+    }
 
     var agentPIDs: [String: pid_t] {
         get { sidebarAgentRuntimeObservation.agentPIDs }
@@ -28,6 +77,60 @@ extension Workspace {
     var agentLifecycleStatesByPanelId: [UUID: [String: AgentHibernationLifecycleState]] {
         get { sidebarAgentRuntimeObservation.agentLifecycleStatesByPanelId }
         set { sidebarAgentRuntimeObservation.setAgentLifecycleStatesByPanelId(newValue) }
+    }
+
+    var foregroundCodingAgentKindsByPanelId: [UUID: String] {
+        get { sidebarAgentRuntimeObservation.foregroundCodingAgentKindsByPanelId }
+        set { sidebarAgentRuntimeObservation.setForegroundCodingAgentKindsByPanelId(newValue) }
+    }
+
+    func foregroundCodingAgentKind(forPanelId panelId: UUID) -> String? {
+        foregroundCodingAgentKindsByPanelId[panelId]
+    }
+
+    func updateForegroundCodingAgentHint(
+        panelId: UUID,
+        shellState: PanelShellActivityState,
+        command: String?
+    ) {
+        guard panels[panelId] != nil else { return }
+        switch shellState {
+        case .promptIdle:
+            foregroundCodingAgentKindsByPanelId.removeValue(forKey: panelId)
+        case .commandRunning:
+            guard let command else { return }
+            if let definition = MosaicTaskManagerCodingAgentDefinition.matchingCommand(command) {
+                foregroundCodingAgentKindsByPanelId[panelId] = definition.id
+            } else {
+                foregroundCodingAgentKindsByPanelId.removeValue(forKey: panelId)
+            }
+        case .unknown:
+            break
+        }
+    }
+
+    func seedForegroundCodingAgentHint(for panel: TerminalPanel) {
+        let launchCommands = [
+            panel.surface.initialCommand,
+            panel.surface.tmuxStartCommand,
+            panel.surface.initialInput,
+        ]
+        for command in launchCommands.compactMap({ $0 }) {
+            if let definition = MosaicTaskManagerCodingAgentDefinition.matchingCommand(command) {
+                foregroundCodingAgentKindsByPanelId[panel.id] = definition.id
+                return
+            }
+        }
+
+        if let launchKind = panel.surface.startupEnvironmentValue("MOSAIC_AGENT_LAUNCH_KIND"),
+           let definition = MosaicTaskManagerCodingAgentDefinition.matchingDefinition(
+               processName: "",
+               processPath: nil,
+               arguments: [],
+               environment: ["MOSAIC_AGENT_LAUNCH_KIND": launchKind]
+           ) {
+            foregroundCodingAgentKindsByPanelId[panel.id] = definition.id
+        }
     }
 
     func agentRuntimeState(forPanelId panelId: UUID) -> DetachedAgentRuntimeState? {
@@ -246,6 +349,11 @@ extension Workspace {
             removeAgentPIDOwnership(key: key)
             didChange = true
         }
+        if let ownedPanelId,
+           isStructuredAgentHookPIDKey(key),
+           foregroundCodingAgentKindsByPanelId.removeValue(forKey: ownedPanelId) != nil {
+            didChange = true
+        }
         if let lifecyclePanelId = ownedPanelId ?? panelId {
             let lifecycleStatusKey = agentStatusKey(forAgentPIDKey: key)
             if clearAgentLifecycle(key: lifecycleStatusKey, panelId: lifecyclePanelId) {
@@ -367,6 +475,7 @@ extension Workspace {
         manualUnreadPanelIds.remove(panelId)
         manualUnreadMarkedAt.removeValue(forKey: panelId)
         panelShellActivityStates.removeValue(forKey: panelId)
+        foregroundCodingAgentKindsByPanelId.removeValue(forKey: panelId)
         clearAgentLifecycleStates(panelId: panelId)
         surfaceTTYNames.removeValue(forKey: panelId)
         discardRemotePTYSessionID(panelId: panelId)

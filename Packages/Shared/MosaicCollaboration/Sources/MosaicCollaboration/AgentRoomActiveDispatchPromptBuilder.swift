@@ -22,6 +22,12 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
     /// agent-to-agent protocol, not user-facing UI. The CLI publish hook keeps
     /// a mirror of this list (see `isMosaicRoomRelayPrompt` in `CLI/mosaic.swift`).
     public static let relayPromptHeaderPrefixes: [String] = [
+        "Linked context message",
+        "Linked context handoff",
+        "Linked context question",
+        "Linked context blocker",
+        // Legacy prefixes remain recognized so persisted/in-flight prompts from
+        // older builds are never re-published into a loop.
         "Shared room message",
         "Shared room handoff",
         "Shared room question",
@@ -91,13 +97,13 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
     private static func label(for kind: ClaudeRoomEventKind) -> String? {
         switch kind {
         case .handoff:
-            return "Shared room handoff"
+            return "Linked context handoff"
         case .question:
-            return "Shared room question"
+            return "Linked context question"
         case .blocker:
-            return "Shared room blocker"
+            return "Linked context blocker"
         case .message:
-            return "Shared room message"
+            return "Linked context message"
         case .summary, .task, .decision, .finding, .fileChanged, .testResult, .reviewFinding, .status:
             return nil
         }
@@ -120,7 +126,7 @@ public struct AgentRoomActiveDispatchPromptBuilder: Sendable {
     /// in the middle. This is machine-protocol text, not user-facing UI.
     private func followUpInstruction(for event: ClaudeRoomEvent, recipientSurfaceID: String?) -> String {
         guard event.kind == .question, let asker = event.fromSurfaceID else {
-            return "Please respond or continue from this shared-room update."
+            return "Please respond or continue from this linked-context update."
         }
         let fromOption = recipientSurfaceID.map { " --from-surface \($0)" } ?? ""
         return """

@@ -1466,6 +1466,9 @@ extension Workspace {
                 } else {
                     restoredAgentResumeStatesByPanelId[terminalPanel.id] = .manualResumeAvailable
                 }
+                if restoredAgentWillRunStartupCommand || restoredAgentWillRunStartupInput {
+                    foregroundCodingAgentKindsByPanelId[terminalPanel.id] = restorableAgent.kind.rawValue
+                }
                 invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: terminalPanel.id)
                 if let restoredHibernation,
                    restorableAgent.resumeCommand != nil {
@@ -3143,6 +3146,7 @@ final class Workspace: Identifiable, ObservableObject {
             )
             configureNewTerminalPanel(terminalPanel)
             panels[terminalPanel.id] = terminalPanel
+            seedForegroundCodingAgentHint(for: terminalPanel)
             panelTitles[terminalPanel.id] = terminalPanel.displayTitle
             seedTerminalInheritanceFontPoints(panelId: terminalPanel.id, configTemplate: configTemplate)
 
@@ -4600,8 +4604,13 @@ final class Workspace: Identifiable, ObservableObject {
         return restoredDirectoryStillExists
     }
 
-    func updatePanelShellActivityState(panelId: UUID, state: PanelShellActivityState) {
+    func updatePanelShellActivityState(
+        panelId: UUID,
+        state: PanelShellActivityState,
+        command: String? = nil
+    ) {
         guard panels[panelId] != nil else { return }
+        updateForegroundCodingAgentHint(panelId: panelId, shellState: state, command: command)
         let previousState = panelShellActivityStates[panelId] ?? .unknown
         guard previousState != state else { return }
         panelShellActivityStates[panelId] = state
@@ -4732,10 +4741,13 @@ final class Workspace: Identifiable, ObservableObject {
         guard preparation.didResume else {
             return false
         }
-        if restoredAgentSnapshotsByPanelId[panelId] != nil {
+        if let restoredAgent = restoredAgentSnapshotsByPanelId[panelId] {
             restoredAgentResumeStatesByPanelId[panelId] = preparation.queuedStartupInput
                 ? .awaitingAutoResumeCommand
                 : .manualResumeAvailable
+            if preparation.queuedStartupInput {
+                foregroundCodingAgentKindsByPanelId[panelId] = restoredAgent.kind.rawValue
+            }
             invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: panelId)
         }
         clearAgentLifecycleStates(panelId: panelId)
@@ -5122,6 +5134,9 @@ final class Workspace: Identifiable, ObservableObject {
         pruneRemoteRelaySurfaceAliases(validSurfaceIds: validSurfaceIds)
         remoteDetectedSurfaceIds = remoteDetectedSurfaceIds.filter { validSurfaceIds.contains($0) }
         panelShellActivityStates = panelShellActivityStates.filter { validSurfaceIds.contains($0.key) }
+        foregroundCodingAgentKindsByPanelId = foregroundCodingAgentKindsByPanelId.filter {
+            validSurfaceIds.contains($0.key)
+        }
         panelPullRequests = panelPullRequests.filter { validSurfaceIds.contains($0.key) }
         let staleAgentPIDPanelIds = agentPIDKeysByPanelId.keys.filter { !validSurfaceIds.contains($0) }
         var didClearStaleAgentRuntime = false
@@ -7145,6 +7160,7 @@ final class Workspace: Identifiable, ObservableObject {
         )
         configureNewTerminalPanel(newPanel)
         panels[newPanel.id] = newPanel
+        seedForegroundCodingAgentHint(for: newPanel)
         panelTitles[newPanel.id] = newPanel.displayTitle
         let normalizedRemotePTYSessionID = normalizedRemotePTYSessionID(remotePTYSessionID)
         let tracksRemoteTerminalSurface = remoteTerminalStartupCommand != nil || normalizedRemotePTYSessionID != nil
@@ -7417,6 +7433,7 @@ final class Workspace: Identifiable, ObservableObject {
         )
         configureNewTerminalPanel(newPanel)
         panels[newPanel.id] = newPanel
+        seedForegroundCodingAgentHint(for: newPanel)
         panelTitles[newPanel.id] = newPanel.displayTitle
         let normalizedRemotePTYSessionID = normalizedRemotePTYSessionID(remotePTYSessionID)
         let tracksRemoteTerminalSurface = remoteTerminalStartupCommand != nil || normalizedRemotePTYSessionID != nil
@@ -7705,6 +7722,7 @@ final class Workspace: Identifiable, ObservableObject {
         )
         configureNewTerminalPanel(replacementPanel)
         panels[panelId] = replacementPanel
+        seedForegroundCodingAgentHint(for: replacementPanel)
         panelTitles[panelId] = replacementPanel.displayTitle
         if let customTitle {
             panelCustomTitles[panelId] = customTitle
@@ -11009,6 +11027,7 @@ final class Workspace: Identifiable, ObservableObject {
         )
         configureNewTerminalPanel(newPanel)
         panels[newPanel.id] = newPanel
+        seedForegroundCodingAgentHint(for: newPanel)
         panelTitles[newPanel.id] = newPanel.displayTitle
         if startupCommand != nil {
             trackRemoteTerminalSurface(newPanel.id)

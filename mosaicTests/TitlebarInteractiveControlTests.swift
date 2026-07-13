@@ -309,6 +309,57 @@ struct TitlebarInteractiveControlTests {
 
     }
 
+    /// Regression: SwiftUI titlebar controls (right-sidebar mode bar pills,
+    /// close, open-as-pane) are not NSControls, so the native-gap classifier
+    /// cannot find them via its visible-control walk. It must consult the
+    /// `titlebarInteractiveControl()` registry — otherwise NSApp.sendEvent
+    /// consumes their clicks as window-drag gap and the whole mode bar is dead.
+    @Test func registeredTitlebarControlRegionIsNotANativeDragGap() {
+        _ = NSApplication.shared
+
+        let window = RecordingDragWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_020, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        window.identifier = NSUserInterfaceItemIdentifier("mosaic.main.titlebar-gap-registry-test")
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        let contentView = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        window.contentView = contentView
+
+        // Simulate a mode-bar button's registered region in the titlebar band
+        // (full-size content view: the band is the strip above contentLayoutRect).
+        let bandBottom = window.contentLayoutRect.maxY
+        let region = TitlebarInteractiveControlRegion.RegisteredView(
+            frame: NSRect(x: 760, y: bandBottom + 2, width: 56, height: 20)
+        )
+        contentView.addSubview(region)
+        defer { region.removeFromSuperview() }
+
+        let controlPoint = NSPoint(x: region.frame.midX, y: region.frame.midY)
+        #expect(
+            !isNativeTitlebarDragGap(window: window, locationInWindow: controlPoint),
+            "A point over a titlebarInteractiveControl region must never classify as empty drag gap."
+        )
+        #expect(
+            !performNativeTitlebarGapMouseDown(
+                window: window,
+                event: Self.makeLeftMouseDownEvent(location: controlPoint, window: window)
+            ),
+            "The gap mouse-down handler must yield so the control receives the click."
+        )
+        #expect(window.performDragCallCount == 0)
+
+        let emptyGapPoint = NSPoint(x: 400, y: controlPoint.y)
+        #expect(
+            isNativeTitlebarDragGap(window: window, locationInWindow: emptyGapPoint),
+            "Titlebar chrome away from registered controls should stay draggable."
+        )
+    }
+
     @Test func attachedRightLogoAccessoryUsesExplicitWindowDragPath() {
         _ = NSApplication.shared
 

@@ -984,6 +984,103 @@ final class RestorableAgentSessionIndexTests: XCTestCase {
 
     // A drifted hook record for an arbitrary (non-Claude) agent: the recorded runtime cwd differs
     // from the frozen launch working directory, mirroring the production drift in CLI/mosaic.swift.
+    // A freshly launched Claude session has no transcript file until its first
+    // turn, so it is not restorable — but its hook record carries a live,
+    // mosaic-scoped pid. Liveness-driven UI (the agent-room wire port) reads
+    // `hasLiveCodingAgent`, which must be true here even though `snapshot` is
+    // nil. Regression for the wire dot missing on a just-started agent.
+    func testFreshClaudeSessionWithLiveProcessIsLiveButNotRestorable() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory
+            .appendingPathComponent("mosaic-fresh-live-agent-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: root) }
+        let cwd = root.appendingPathComponent("repo", isDirectory: true)
+        let configDir = root.appendingPathComponent("claude-config", isDirectory: true)
+        try fm.createDirectory(at: cwd, withIntermediateDirectories: true)
+        try fm.createDirectory(at: configDir, withIntermediateDirectories: true)
+
+        let workspaceId = UUID()
+        let panelId = UUID()
+        let sessionId = "77777777-7777-7777-7777-777777777777"
+        var record = hookRecord(
+            sessionId: sessionId,
+            workspaceId: workspaceId,
+            panelId: panelId,
+            cwd: cwd.path,
+            configDir: configDir.path,
+            updatedAt: 10
+        )
+        record["pid"] = 4_321
+        try writeClaudeHookStore(root: root, sessions: [sessionId: record])
+
+        let index = RestorableAgentSessionIndex.load(
+            homeDirectory: root.path,
+            fileManager: fm,
+            registry: MosaicVaultAgentRegistry(registrations: []),
+            detectedSnapshots: [:],
+            processArgumentsProvider: { pid in
+                guard pid == 4_321 else { return nil }
+                return MosaicTopProcessArguments(
+                    arguments: ["/usr/local/bin/claude", "--dangerously-skip-permissions"],
+                    environment: [
+                        "MOSAIC_WORKSPACE_ID": workspaceId.uuidString,
+                        "MOSAIC_SURFACE_ID": panelId.uuidString,
+                        "MOSAIC_AGENT_LAUNCH_KIND": "claude",
+                    ]
+                )
+            }
+        )
+
+        XCTAssertNil(
+            index.snapshot(workspaceId: workspaceId, panelId: panelId),
+            "no transcript exists yet, so the session must not be restorable"
+        )
+        XCTAssertTrue(
+            index.hasLiveCodingAgent(workspaceId: workspaceId, panelId: panelId),
+            "a live mosaic-scoped agent process must register as a live coding agent"
+        )
+    }
+
+    func testFreshClaudeSessionWithDeadProcessIsNotLive() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory
+            .appendingPathComponent("mosaic-dead-live-agent-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: root) }
+        let cwd = root.appendingPathComponent("repo", isDirectory: true)
+        let configDir = root.appendingPathComponent("claude-config", isDirectory: true)
+        try fm.createDirectory(at: cwd, withIntermediateDirectories: true)
+        try fm.createDirectory(at: configDir, withIntermediateDirectories: true)
+
+        let workspaceId = UUID()
+        let panelId = UUID()
+        let sessionId = "88888888-8888-8888-8888-888888888888"
+        var record = hookRecord(
+            sessionId: sessionId,
+            workspaceId: workspaceId,
+            panelId: panelId,
+            cwd: cwd.path,
+            configDir: configDir.path,
+            updatedAt: 10
+        )
+        record["pid"] = 4_321
+        try writeClaudeHookStore(root: root, sessions: [sessionId: record])
+
+        // The recorded pid is dead (no process arguments resolve for it).
+        let index = RestorableAgentSessionIndex.load(
+            homeDirectory: root.path,
+            fileManager: fm,
+            registry: MosaicVaultAgentRegistry(registrations: []),
+            detectedSnapshots: [:],
+            processArgumentsProvider: { _ in nil }
+        )
+
+        XCTAssertNil(index.snapshot(workspaceId: workspaceId, panelId: panelId))
+        XCTAssertFalse(
+            index.hasLiveCodingAgent(workspaceId: workspaceId, panelId: panelId),
+            "a dead pid must not register as a live coding agent"
+        )
+    }
+
     private func driftedAgentHookRecord(
         launcher: String,
         sessionId: String,

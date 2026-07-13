@@ -424,6 +424,11 @@ extension AppDelegate {
 
     @discardableResult
     func handleMosaicExternalURLs(from urls: [URL]) -> Bool {
+        if urls.count == 1,
+           let sessionPull = MosaicSessionPullURLRequest.parse(urls[0]) {
+            TeamSessionPullCoordinator.shared.pull(request: sessionPull)
+            return true
+        }
         let intentCounts = mosaicExternalURLIntentCounts(in: urls)
         guard intentCounts.total > 0 else { return false }
         guard intentCounts.total == 1 else {
@@ -445,6 +450,23 @@ extension AppDelegate {
             return true
         }
         return false
+    }
+
+    /// The tab manager a pulled team session's new workspace lands in.
+    func tabManagerForSessionPull() -> TabManager? {
+        tabManager ?? mainWindowContexts.values.first?.tabManager
+    }
+
+    /// Every live tab manager, used to scan open workspaces for a local
+    /// checkout matching a pulled session's repository.
+    func allTabManagersForSessionPull() -> [TabManager] {
+        var managers: [TabManager] = []
+        var seen = Set<ObjectIdentifier>()
+        for candidate in [tabManager].compactMap({ $0 }) + mainWindowContexts.values.map(\.tabManager) {
+            guard seen.insert(ObjectIdentifier(candidate)).inserted else { continue }
+            managers.append(candidate)
+        }
+        return managers
     }
 
     private struct MosaicExternalURLIntentCounts {

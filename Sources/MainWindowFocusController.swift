@@ -692,6 +692,23 @@ final class MainWindowFocusController {
               request.mode == mode else {
             return
         }
+        // Already satisfied: the endpoint (or its field editor) owns first
+        // responder. Complete the request without re-asserting focus — this is
+        // called from FileExplorerContainerView.layout() on every layout pass,
+        // and a redundant makeFirstResponder churns the responder chain.
+        if let responder = window?.firstResponder,
+           rightSidebarModeOwning(responder) == mode {
+            rightSidebarFocusState = .focused(mode: request.mode, target: request.target)
+            publishFeedFocusSnapshot()
+            return
+        }
+        // Never steal first responder mid-click: a layout-driven
+        // makeFirstResponder during a pointer-down cancels the pressed
+        // control's mouse tracking (dead buttons). The request stays pending
+        // and resolves on the next call after the button is released.
+        guard NSEvent.pressedMouseButtons == 0 else {
+            return
+        }
         let result = focusRightSidebarEndpoint(mode: mode, target: request.target)
         if result {
             rightSidebarFocusState = .focused(mode: mode, target: request.target)

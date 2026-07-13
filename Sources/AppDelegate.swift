@@ -1490,6 +1490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         SystemWideHotkeyController.shared.start()
         AgentHibernationController.shared.start()
         RendererRealizationController.shared.start()
+        TeamSessionSyncService.shared.start()
         NSApp.servicesProvider = self
 
         StartupBreadcrumbLog.append("appDelegate.didFinish.bootstrap.begin")
@@ -12252,6 +12253,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func attachUpdateAccessory(to window: NSWindow) {
         titlebarAccessoryController.start()
         titlebarAccessoryController.attach(to: window)
+    }
+
+    /// Re-evaluates titlebar accessory visibility (e.g. the trailing mosaic
+    /// logo hides while the window's right sidebar is visible).
+    func reapplyTitlebarAccessoryVisibility(to window: NSWindow) {
+        titlebarAccessoryController.reapplyAccessoryVisibility(to: window)
     }
 
     // Satisfies MosaicAppKitSupportUI's WindowDecorating seam (see extension below).

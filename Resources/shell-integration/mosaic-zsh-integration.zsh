@@ -818,12 +818,25 @@ _mosaic_report_tty_once() {
 
 _mosaic_report_shell_activity_state() {
     local state="$1"
+    local command_hint="${2:-}"
     [[ -n "$state" ]] || return 0
     [[ -S "$MOSAIC_SOCKET_PATH" ]] || return 0
     [[ -n "$MOSAIC_TAB_ID" ]] || return 0
     [[ -n "$MOSAIC_PANEL_ID" ]] || return 0
     [[ "$_MOSAIC_SHELL_ACTIVITY_LAST" == "$state" ]] && return 0
     _MOSAIC_SHELL_ACTIVITY_LAST="$state"
+    if [[ "$state" == "running" && -n "$command_hint" ]]; then
+        {
+            local encoded_command
+            encoded_command="$(print -rn -- "$command_hint" | base64 | tr -d '\n')"
+            if [[ -n "$encoded_command" ]]; then
+                _mosaic_send "report_shell_state $state --command-b64=$encoded_command --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+            else
+                _mosaic_send "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
+            fi
+        } >/dev/null 2>&1 &!
+        return 0
+    fi
     _mosaic_send_bg "report_shell_state $state --tab=$MOSAIC_TAB_ID --panel=$MOSAIC_PANEL_ID"
 }
 
@@ -1656,7 +1669,7 @@ _mosaic_preexec() {
     fi
 
     _MOSAIC_CMD_START="$(_mosaic_now)"
-    _mosaic_report_shell_activity_state running
+    _mosaic_report_shell_activity_state running "$cmd"
     _mosaic_record_pr_command_hint "$cmd"
 
     # Heuristic: commands that may change git branch/dirty state without changing $PWD.

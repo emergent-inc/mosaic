@@ -4162,6 +4162,12 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             )
         }
 
+        // Web guests send top-origin normalized view coordinates without a
+        // coordinateSpace tag. AppKit uses a bottom-left origin, so flip Y.
+        if coordinateSpace == nil, row == nil, column == nil {
+            return NSPoint(x: x * bounds.width, y: (1 - y) * bounds.height)
+        }
+
         return NSPoint(x: x * bounds.width, y: y * bounds.height)
     }
 

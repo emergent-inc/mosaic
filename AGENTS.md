@@ -1,5 +1,9 @@
 # mosaic agent notes
 
+## Workspace scope
+
+This checkout is macOS-app work only. Treat `web/` as out of scope unless the user explicitly asks for web, backend, or marketing-site changes. Do not edit files under `web/`, run web tooling (`bun`, `npm`, Next.js), or follow web-specific guidance in skills and bot rules unless explicitly requested. For settings schema, docs, and localization, use Swift sources (`Sources/`, `Resources/Localizable.xcstrings`, `docs/`) instead of `web/data/` or `web/messages/`.
+
 ## Initial setup
 
 Run the setup script to initialize submodules, build GhosttyKit, and install the pbxproj normalization pre-commit hook:

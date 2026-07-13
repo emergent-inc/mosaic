@@ -470,7 +470,8 @@ extension ControlSurfaceContext {
     func controlSurfaceReportShellState(
         workspaceID: UUID,
         requestedSurfaceID: UUID?,
-        stateRawValue: String
+        stateRawValue: String,
+        command: String?
     ) -> ControlSurfaceReportShellStateResolution { .pending }
 
     func controlSurfacePortsKick(

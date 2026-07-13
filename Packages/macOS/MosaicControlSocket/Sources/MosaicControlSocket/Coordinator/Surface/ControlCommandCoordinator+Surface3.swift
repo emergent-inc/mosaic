@@ -279,11 +279,13 @@ extension ControlCommandCoordinator {
               let stateRawValue = context?.controlSurfaceParseShellActivityState(rawState) else {
             return .err(code: "invalid_params", message: "state must be prompt, running, or unknown", data: nil)
         }
+        let command = rawString(params, "command")
 
         let resolution = context?.controlSurfaceReportShellState(
             workspaceID: workspaceID,
             requestedSurfaceID: requestedSurfaceID,
-            stateRawValue: stateRawValue
+            stateRawValue: stateRawValue,
+            command: command
         ) ?? .pending
         switch resolution {
         case .explicit(let surfaceID, let published):

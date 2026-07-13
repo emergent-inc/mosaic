@@ -2668,12 +2668,17 @@ private final class HoverTrackingNSView: NSView {
     }
 }
 
-/// Right-aligned native titlebar accessory that shows the Mosaic logo in the
+/// Trailing native titlebar accessory that shows the Mosaic logo in the
 /// top-right of the window titlebar. The logo is purely decorative: it never
-/// handles clicks. The container reuses `TitlebarAccessoryContainerView`, whose
-/// window-drag convention lets a click/double-click on the logo region drag the
-/// window just like the surrounding empty titlebar, because the hosted image
-/// view is transparent to hit-testing.
+/// handles clicks. Native accessories composite above the full-size content
+/// view, and the right sidebar's Files/Find/Vault mode bar occupies the same
+/// trailing titlebar band — so the logo is HIDDEN whenever that window's right
+/// sidebar is visible (see `applyAccessoryVisibility`), otherwise it would
+/// cover the mode bar's close button. The container reuses
+/// `TitlebarAccessoryContainerView`, whose window-drag convention lets a
+/// click/double-click on the logo region drag the window just like the
+/// surrounding empty titlebar, because the hosted image view is transparent to
+/// hit-testing.
 final class TitlebarMosaicLogoAccessoryViewController: NSTitlebarAccessoryViewController {
     // Aspect ratio of the MosaicLogo asset (145 x 37).
     private static let logoAspectRatio: CGFloat = 145.0 / 37.0
@@ -2898,6 +2903,9 @@ final class UpdateTitlebarAccessoryController {
 
         if !window.titlebarAccessoryViewControllers.contains(where: { $0.view.identifier == logoIdentifier }) {
             let logo = TitlebarMosaicLogoAccessoryViewController()
+            // Trailing brand mark. Hidden while the right sidebar is visible
+            // (applyAccessoryVisibility) so it never covers the sidebar's
+            // mode-bar close button.
             logo.layoutAttribute = .right
             logo.view.identifier = logoIdentifier
             window.addTitlebarAccessoryViewController(logo)
@@ -2915,17 +2923,40 @@ final class UpdateTitlebarAccessoryController {
 #endif
     }
 
+    /// Re-evaluates accessory visibility for a window. Public seam so window
+    /// chrome (e.g. right-sidebar visibility changes in ContentView) can drive
+    /// the logo's hide/show without re-attaching.
+    func reapplyAccessoryVisibility(to window: NSWindow) {
+        applyAccessoryVisibility(for: window)
+    }
+
     private func applyAccessoryVisibility(for window: NSWindow) {
         guard canAccessTitlebarAccessories(on: window) else {
             attachedWindows.remove(window)
             pendingAttachRetries.removeValue(forKey: ObjectIdentifier(window))
             return
         }
-        let shouldHide = WorkspacePresentationModeSettings.mode() == .minimal
+        let hideAllAccessories = WorkspacePresentationModeSettings.mode() == .minimal
             || window.styleMask.contains(.fullScreen)
-        for accessory in window.titlebarAccessoryViewControllers
-            where accessory.view.identifier == controlsIdentifier
-                || accessory.view.identifier == logoIdentifier {
+        // The decorative logo is trailing and would composite above the right
+        // sidebar's mode bar (native accessories always sit over the full-size
+        // content view), covering its close button. Hide it — not remove it —
+        // while that window's right sidebar is visible.
+        let rightSidebarVisible = AppDelegate.shared?
+            .contextForMainTerminalWindow(window)?
+            .fileExplorerState?
+            .isVisible == true
+        let hideLogo = hideAllAccessories || rightSidebarVisible
+        for accessory in window.titlebarAccessoryViewControllers {
+            let shouldHide: Bool
+            switch accessory.view.identifier {
+            case controlsIdentifier:
+                shouldHide = hideAllAccessories
+            case logoIdentifier:
+                shouldHide = hideLogo
+            default:
+                continue
+            }
             accessory.isHidden = shouldHide
             accessory.view.isHidden = shouldHide
             accessory.view.alphaValue = shouldHide ? 0 : 1

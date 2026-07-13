@@ -18,6 +18,15 @@ private enum TerminalCollaborationChipStyle {
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
     @ObservedObject var panel: TerminalPanel
+    /// Observed so the wire port appears/disappears as coding-agent sessions
+    /// start and stop in this pane (the index reloads off-main and publishes).
+    @ObservedObject private var liveAgentIndex = SharedLiveAgentIndex.shared
+    /// Bumped by the workspace agent-runtime change stream so the wire port
+    /// appears the instant an agent's session-start hook registers its PID
+    /// (`set_agent_pid`), without waiting for the slower index reload. The
+    /// observation model is `@ObservationIgnored` throughout, so body reads
+    /// are not tracked and this explicit invalidation is required.
+    @State private var agentRuntimeChangeGeneration: UInt64 = 0
     @AppStorage(NotificationPaneRingSettings.enabledKey)
     private var notificationPaneRingEnabled = NotificationPaneRingSettings.defaultEnabled
     @AppStorage(TerminalTextBoxInputSettings.maxLinesKey)
@@ -158,6 +167,19 @@ struct TerminalPanelView: View {
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
             terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
         }
+        .task(id: panel.workspaceId) {
+            // Re-render on agent-runtime changes (agent hooks registering or
+            // clearing PIDs via the socket). The stream ends when the view
+            // disappears or the panel moves workspaces; `task(id:)` resubscribes
+            // against the new workspace.
+            guard let workspace = TerminalController.shared.tabManager?.tabs
+                .first(where: { $0.id == panel.workspaceId }) else {
+                return
+            }
+            for await _ in workspace.sidebarAgentRuntimeObservation.changes() {
+                agentRuntimeChangeGeneration &+= 1
+            }
+        }
     }
 
     private func terminalHeader(agentRoomState: AgentRoomHeaderState) -> some View {
@@ -212,48 +234,67 @@ struct TerminalPanelView: View {
 
     @ViewBuilder
     private func agentRoomLeadingHeader(state: AgentRoomHeaderState) -> some View {
+        // The wire port is a drag *origin* only on panes running a coding
+        // agent (provider agnostic) or already wired into a room. Other panes
+        // show a temporary drop-only socket while a wire drag is in flight,
+        // so the drag has a visible landing point everywhere it may drop.
+        let allowsWireDrag = CollaborationRuntime.shared.agentRoomWirePortIsAvailable(for: panel)
+        let wireDragSourceID = CollaborationRuntime.shared.draggingAgentRoomSourceSurfaceID
         HStack(spacing: 6) {
-            terminalAgentRoomButton(agentRoomState: state)
-            agentRoomLabel(state: state)
+            if allowsWireDrag || state.isConnected {
+                terminalAgentRoomButton(agentRoomState: state, allowsWireDrag: allowsWireDrag)
+            } else if let wireDragSourceID, wireDragSourceID != panel.id {
+                agentRoomWireDropSocket
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: wireDragSourceID != nil)
+        .onAppear {
+            // Boot the hook-store watcher so agent starts/stops in this pane
+            // reach the cached index (and therefore the wire port) promptly.
+            SharedLiveAgentIndex.shared.scheduleRefreshIfStale()
         }
     }
 
-    @ViewBuilder
-    private func agentRoomLabel(state: AgentRoomHeaderState) -> some View {
-        if state.isConnected, let displayNumber = state.displayNumber {
-            Text(CollaborationStrings.agentRoomLabel(number: displayNumber))
-                .mosaicFont(size: 11)
-                .foregroundStyle(agentRoomLabelForeground(state: state))
-                .lineLimit(1)
-                .help(agentRoomHelp(state: state))
-                .accessibilityLabel(agentRoomAccessibilityLabel(state: state))
-                .accessibilityIdentifier("TerminalAgentRoomLabel")
-        }
+    /// Drop-only wire socket: the same ring as the wire port, with the anchor
+    /// registered (so the drag-end fallback hit-test can land on it) but no
+    /// drag source and no click handling. Drops are accepted by the header's
+    /// existing `.onDrop` and the terminal pane drop target.
+    private var agentRoomWireDropSocket: some View {
+        agentRoomWireCircle(
+            isHovered: isPaneHovered,
+            isConnected: false,
+            isDataSource: false,
+            isDegraded: false,
+            accentColor: Color.accentColor.opacity(0.9)
+        )
+        .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
+        .accessibilityIdentifier("TerminalAgentRoomDropSocket")
+        .accessibilityLabel(CollaborationStrings.agentRoomDropSocketLabel)
+        .transition(.opacity)
     }
 
     private func agentRoomAccessibilityLabel(state: AgentRoomHeaderState) -> String {
-        guard state.isDegraded else { return state.label }
-        return "\(state.label). \(agentRoomHelp(state: state))"
+        guard state.isConnected else { return CollaborationStrings.connectAgentRoom }
+        let label = CollaborationStrings.agentContextLinkAccessibilityLabel(
+            otherTerminalCount: max(0, state.memberCount - 1),
+            isDataSource: state.isDataSource
+        )
+        guard state.isDegraded else { return label }
+        return "\(label) \(agentRoomHelp(state: state))"
     }
 
     @ViewBuilder
     private func agentRoomPaneHighlight(state: AgentRoomHeaderState) -> some View {
         if state.isConnected, let paletteIndex = state.paletteIndex {
             let accent = AgentRoomDisplayPalette.color(at: paletteIndex)
+            let emphasized = state.isGroupHovered
             Rectangle()
                 .strokeBorder(
-                    accent.opacity(isFocused ? 0.55 : 0.28),
-                    lineWidth: isFocused ? 2 : 1.5
+                    accent.opacity(emphasized ? 0.82 : (isFocused ? 0.55 : 0.28)),
+                    lineWidth: emphasized ? 2.5 : (isFocused ? 2 : 1.5)
                 )
                 .allowsHitTesting(false)
         }
-    }
-
-    private func agentRoomLabelForeground(state: AgentRoomHeaderState) -> Color {
-        if let paletteIndex = state.paletteIndex {
-            return AgentRoomDisplayPalette.color(at: paletteIndex).opacity(0.82)
-        }
-        return Color(nsColor: appearance.foregroundColor).opacity(0.68)
     }
 
     private func agentRoomDropTargetColor(state: AgentRoomHeaderState) -> Color {
@@ -264,15 +305,28 @@ struct TerminalPanelView: View {
     }
 
     private func agentRoomHelp(state: AgentRoomHeaderState) -> String {
-        state.isDegraded
-            ? String(
+        if state.isDegraded {
+            return String(
                 localized: "collaboration.agentRoom.degradedHelp",
-                defaultValue: "An agent in this room has no active Claude hook session; shared context may not sync. Restart Claude in that pane to relink."
+                defaultValue: "A linked agent has no active Claude hook session, so shared context may not sync. Restart Claude in that terminal to relink."
             )
-            : String(
+        }
+        if state.isDataSource {
+            return String(
+                localized: "collaboration.agentRoom.dataSourceHelp",
+                defaultValue: "This terminal is linked as a read-only data source. Linked agents can read its contents on demand."
+            )
+        }
+        if state.isConnected {
+            return String(
                 localized: "collaboration.agentRoom.connectedHelp",
-                defaultValue: "Wired agents share context through this room."
+                defaultValue: "Linked terminals share agent context."
             )
+        }
+        return String(
+            localized: "collaboration.agentRoom.connectHelp",
+            defaultValue: "Drag to another terminal to link their agent context."
+        )
     }
 
     private func terminalSessionPill(state: CollaborationTerminalHeaderState) -> some View {
@@ -485,6 +539,10 @@ struct TerminalPanelView: View {
                     CollaborationRuntime.shared.copyTerminalSessionInviteCode(for: panel)
                     isTerminalRecipientPopoverPresented = false
                 },
+                onCopyShareLink: {
+                    CollaborationRuntime.shared.copyTerminalSessionShareLink(for: panel)
+                    isTerminalRecipientPopoverPresented = false
+                },
                 onShareWithTeammate: {
                     CollaborationRuntime.shared.presentTeammateDirectorySharePicker()
                     isTerminalRecipientPopoverPresented = false
@@ -520,58 +578,40 @@ struct TerminalPanelView: View {
         return CollaborationStrings.sharingTerminal
     }
 
-    private func terminalAgentRoomButton(agentRoomState: AgentRoomHeaderState) -> some View {
+    private func terminalAgentRoomButton(
+        agentRoomState: AgentRoomHeaderState,
+        allowsWireDrag: Bool
+    ) -> some View {
         agentRoomWireCircle(
-            isHovered: isAgentRoomButtonHovered,
+            isHovered: isAgentRoomButtonHovered || agentRoomState.isGroupHovered,
             isConnected: agentRoomState.isConnected,
+            isDataSource: agentRoomState.isDataSource,
+            isDegraded: agentRoomState.isDegraded,
             accentColor: agentRoomCircleColor(state: agentRoomState)
         )
             .accessibilityIdentifier("TerminalAgentRoomButton")
-            .accessibilityLabel(agentRoomState.label)
+            .accessibilityLabel(agentRoomAccessibilityLabel(state: agentRoomState))
+            .help(agentRoomHelp(state: agentRoomState))
             // Wire origin + drag source ride on the circle so the grab handle and
             // the wire's start point are exactly the port, not the whole cell.
             .background(AgentRoomWireAnchorRepresentable(surfaceID: panel.id))
             .overlay {
                 AgentRoomWireDragSourceRepresentable(
                     panel: panel,
-                    onHoverChanged: { isAgentRoomButtonHovered = $0 }
+                    allowsDrag: allowsWireDrag,
+                    onHoverChanged: { hovering in
+                        isAgentRoomButtonHovered = hovering
+                        CollaborationRuntime.shared.setAgentContextLinkHover(
+                            surfaceID: panel.id,
+                            roomID: agentRoomState.roomID,
+                            isHovering: hovering
+                        )
+                    }
                 ) {
                     CollaborationRuntime.shared.connectAgentRoomFromHeader(panel: panel)
                 }
             }
-            .overlay(alignment: .leading) {
-                agentRoomDragHintPopup(isConnected: agentRoomState.isConnected)
-            }
             .animation(.easeOut(duration: 0.12), value: isPaneHovered)
-    }
-
-    @ViewBuilder
-    private func agentRoomDragHintPopup(isConnected: Bool) -> some View {
-        if isAgentRoomButtonHovered, !isConnected {
-            Text(CollaborationStrings.agentRoomDragHint)
-                .mosaicFont(size: 11, weight: .regular)
-                .foregroundStyle(Color.secondary)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(Color.primary.opacity(0.06))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .strokeBorder(Color.gray.opacity(0.35), lineWidth: 1)
-                        )
-                )
-                .fixedSize()
-                // Float rightward past the port so the hint sits to its right
-                // without shifting header layout or clipping the ring. The overlay
-                // aligns to the button's leading edge, so a positive x-offset the
-                // width of the port (plus a gap) clears the ring entirely.
-                .offset(x: AgentRoomWireMetrics.hitTargetSize + 6)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-                .animation(.easeOut(duration: 0.1), value: isAgentRoomButtonHovered)
-                .zIndex(3)
-        }
     }
 
     private func agentRoomCircleColor(state: AgentRoomHeaderState) -> Color {
@@ -586,23 +626,51 @@ struct TerminalPanelView: View {
         return Color.primary.opacity(0.28)
     }
 
-    /// The wire port: a hollow ring while unlinked (an empty socket), filled
-    /// with the room color once connected (a plugged socket). The ring sits
-    /// centered in a larger invisible frame so the drag source and anchor
-    /// overlays (which match the layout bounds) give a comfortable grab target.
-    private func agentRoomWireCircle(isHovered: Bool, isConnected: Bool, accentColor: Color) -> some View {
+    /// The wire port is a hollow socket before linking and a compact pair of
+    /// connected nodes afterward. The connected state communicates a relationship
+    /// without naming the underlying room model.
+    private func agentRoomWireCircle(
+        isHovered: Bool,
+        isConnected: Bool,
+        isDataSource: Bool,
+        isDegraded: Bool,
+        accentColor: Color
+    ) -> some View {
         ZStack {
-            Circle()
-                .strokeBorder(accentColor, lineWidth: AgentRoomWireMetrics.ringWidth)
             if isConnected {
-                Circle()
+                Capsule()
                     .fill(accentColor)
-                    .padding(AgentRoomWireMetrics.ringWidth + 1.5)
+                    .frame(width: AgentRoomWireMetrics.connectorWidth, height: AgentRoomWireMetrics.ringWidth)
+                HStack(spacing: AgentRoomWireMetrics.nodeSpacing) {
+                    Circle()
+                        .fill(isDataSource ? Color.clear : accentColor)
+                        .overlay {
+                            Circle()
+                                .strokeBorder(accentColor, lineWidth: AgentRoomWireMetrics.ringWidth)
+                        }
+                        .frame(width: AgentRoomWireMetrics.nodeSize, height: AgentRoomWireMetrics.nodeSize)
+                    Circle()
+                        .fill(accentColor)
+                        .frame(width: AgentRoomWireMetrics.nodeSize, height: AgentRoomWireMetrics.nodeSize)
+                }
+            } else {
+                Circle()
+                    .strokeBorder(accentColor, lineWidth: AgentRoomWireMetrics.ringWidth)
+                    .frame(width: AgentRoomWireMetrics.dotSize, height: AgentRoomWireMetrics.dotSize)
+            }
+            if isDegraded {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: AgentRoomWireMetrics.warningSize, weight: .bold))
+                    .foregroundStyle(Color.orange)
+                    .offset(
+                        x: AgentRoomWireMetrics.warningOffset,
+                        y: -AgentRoomWireMetrics.warningOffset
+                    )
             }
         }
         .frame(
-            width: AgentRoomWireMetrics.dotSize,
-            height: AgentRoomWireMetrics.dotSize
+            width: AgentRoomWireMetrics.linkedGlyphWidth,
+            height: AgentRoomWireMetrics.linkedGlyphHeight
         )
         .scaleEffect(isHovered ? 1.12 : 1)
         .frame(
@@ -808,6 +876,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
     let codesEnabled: Bool
     let directorySharingEnabled: Bool
     let onCopyInviteCode: () -> Void
+    let onCopyShareLink: () -> Void
     let onShareWithTeammate: () -> Void
     let onSelectionChanged: (Set<String>) -> Void
     let onStopSharing: () -> Void
@@ -818,6 +887,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
         codesEnabled: Bool,
         directorySharingEnabled: Bool,
         onCopyInviteCode: @escaping () -> Void,
+        onCopyShareLink: @escaping () -> Void,
         onShareWithTeammate: @escaping () -> Void,
         onSelectionChanged: @escaping (Set<String>) -> Void,
         onStopSharing: @escaping () -> Void
@@ -826,6 +896,7 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
         self.codesEnabled = codesEnabled
         self.directorySharingEnabled = directorySharingEnabled
         self.onCopyInviteCode = onCopyInviteCode
+        self.onCopyShareLink = onCopyShareLink
         self.onShareWithTeammate = onShareWithTeammate
         self.onSelectionChanged = onSelectionChanged
         self.onStopSharing = onStopSharing
@@ -878,6 +949,11 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                             .buttonStyle(.mosaicAccentRegular)
                             .keyboardShortcut(.defaultAction)
                             .fixedSize()
+
+                            TrackedButton("share_link_copy", CollaborationStrings.copyInviteLink) {
+                                onCopyShareLink()
+                            }
+                            .fixedSize()
                         } else {
                             TrackedButton("session_share_teammate", CollaborationStrings.shareWithTeammate) {
                                 onShareWithTeammate()
@@ -899,9 +975,21 @@ private struct TerminalCollaborationRecipientPopoverContent: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipients) { recipient in
                         Toggle(isOn: binding(for: recipient.participantID)) {
-                            Text(recipient.displayName)
-                                .mosaicFont(size: 11)
-                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                Text(recipient.displayName)
+                                    .mosaicFont(size: 11)
+                                    .lineLimit(1)
+                                if recipient.isWebGuest {
+                                    Text(CollaborationStrings.webGuestBadge)
+                                        .mosaicFont(size: 9, weight: .semibold)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(
+                                            Capsule().fill(Color.secondary.opacity(0.18))
+                                        )
+                                }
+                            }
                         }
                         .toggleStyle(.mosaicAccentCheckbox)
                     }
@@ -948,12 +1036,14 @@ private struct AgentRoomWireDragPayload {
 
 private struct AgentRoomWireDragSourceRepresentable: NSViewRepresentable {
     let panel: TerminalPanel
+    let allowsDrag: Bool
     let onHoverChanged: (Bool) -> Void
     let onClick: () -> Void
 
     func makeNSView(context: Context) -> AgentRoomWireDragSourceView {
         let view = AgentRoomWireDragSourceView(frame: .zero)
         view.panel = panel
+        view.allowsDrag = allowsDrag
         view.onHoverChanged = onHoverChanged
         view.onClick = onClick
         return view
@@ -961,6 +1051,7 @@ private struct AgentRoomWireDragSourceRepresentable: NSViewRepresentable {
 
     func updateNSView(_ nsView: AgentRoomWireDragSourceView, context: Context) {
         nsView.panel = panel
+        nsView.allowsDrag = allowsDrag
         nsView.onHoverChanged = onHoverChanged
         nsView.onClick = onClick
     }
@@ -968,6 +1059,9 @@ private struct AgentRoomWireDragSourceRepresentable: NSViewRepresentable {
 
 private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     weak var panel: TerminalPanel?
+    /// False on ports that may only toggle membership by click (e.g. a wired
+    /// data-source pane): wires must originate from coding-agent surfaces.
+    var allowsDrag = true
     var onHoverChanged: ((Bool) -> Void)?
     var onClick: (() -> Void)?
     private var trackingArea: NSTrackingArea?
@@ -1029,18 +1123,21 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .openHand)
+        addCursorRect(bounds, cursor: activeCursor)
     }
 
     override func mouseDown(with event: NSEvent) {
         mouseDownEvent = event
         dragSessionActive = false
         dragSessionRanInCurrentPress = false
-        pushClosedHandCursorIfNeeded()
+        if allowsDrag {
+            pushClosedHandCursorIfNeeded()
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard !dragSessionActive,
+        guard allowsDrag,
+              !dragSessionActive,
               !dragSessionRanInCurrentPress,
               let panel,
               let mouseDownEvent else {
@@ -1137,7 +1234,7 @@ private final class AgentRoomWireDragSourceView: NSView, NSDraggingSource {
     }
 
     private var activeCursor: NSCursor {
-        .openHand
+        allowsDrag ? .openHand : .pointingHand
     }
 
     private func popClosedHandCursorIfNeeded() {
@@ -1229,6 +1326,13 @@ private final class AgentRoomWireAnchorView: NSView {
 private enum AgentRoomWireMetrics {
     static let dotSize: CGFloat = 14
     static let ringWidth: CGFloat = 1.5
+    static let linkedGlyphWidth: CGFloat = 18
+    static let linkedGlyphHeight: CGFloat = 14
+    static let nodeSize: CGFloat = 7
+    static let nodeSpacing: CGFloat = 5
+    static let connectorWidth: CGFloat = 10
+    static let warningSize: CGFloat = 7
+    static let warningOffset: CGFloat = 6
     /// Invisible padded footprint around the ring that acts as the grab target.
     static let hitTargetSize: CGFloat = 22
 

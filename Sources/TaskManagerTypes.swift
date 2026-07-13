@@ -735,6 +735,186 @@ struct MosaicTaskManagerCodingAgentDefinition: Equatable {
         }
     }
 
+    /// Matches a coding-agent command without inspecting a live process.
+    ///
+    /// The parser accepts environment prefixes, command chains, and nested
+    /// `sh -c`-style invocations so launch-time UI can use the same registry as
+    /// process-based task-manager detection.
+    static func matchingCommand(_ command: String) -> MosaicTaskManagerCodingAgentDefinition? {
+        let tokens = shellLikeTokens(command)
+        guard !tokens.isEmpty else { return nil }
+        for segment in commandSegments(from: tokens) {
+            if let definition = matchingCommandSegment(segment, depth: 0) {
+                return definition
+            }
+        }
+        return nil
+    }
+
+    private static func matchingCommandSegment(
+        _ tokens: [String],
+        depth: Int
+    ) -> MosaicTaskManagerCodingAgentDefinition? {
+        guard !tokens.isEmpty else { return nil }
+        let resolved = resolvedCommandSegment(tokens)
+        guard let executable = resolved.arguments.first else { return nil }
+        let inspectedArguments = shouldReadArguments(
+            processName: executable,
+            processPath: executable
+        ) ? resolved.arguments : []
+        if let definition = matchingDefinition(
+            processName: executable,
+            processPath: executable,
+            arguments: inspectedArguments,
+            environment: resolved.environment
+        ) {
+            return definition
+        }
+
+        guard depth < 2 else { return nil }
+        for segment in shellSubcommandSegments(from: resolved.arguments) {
+            if let definition = matchingCommandSegment(segment, depth: depth + 1) {
+                return definition
+            }
+        }
+        return nil
+    }
+
+    private static func shellLikeTokens(_ command: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        var quote: Character?
+        var escaping = false
+
+        func flush() {
+            guard !current.isEmpty else { return }
+            tokens.append(current)
+            current.removeAll(keepingCapacity: true)
+        }
+
+        for character in command {
+            if escaping {
+                current.append(character)
+                escaping = false
+                continue
+            }
+            if character == "\\" {
+                escaping = true
+                continue
+            }
+            if let activeQuote = quote {
+                if character == activeQuote {
+                    quote = nil
+                } else {
+                    current.append(character)
+                }
+                continue
+            }
+            if character == "\"" || character == "'" {
+                quote = character
+                continue
+            }
+            if character.isWhitespace {
+                flush()
+                continue
+            }
+            current.append(character)
+        }
+        flush()
+        return tokens
+    }
+
+    private static func commandSegments(from tokens: [String]) -> [[String]] {
+        var result: [[String]] = []
+        var current: [String] = []
+        for token in tokens {
+            if token == "&&" || token == "||" || token == ";" {
+                if !current.isEmpty {
+                    result.append(current)
+                    current = []
+                }
+            } else {
+                current.append(token)
+            }
+        }
+        if !current.isEmpty {
+            result.append(current)
+        }
+        return result
+    }
+
+    private static func resolvedCommandSegment(
+        _ tokens: [String]
+    ) -> (arguments: [String], environment: [String: String]) {
+        var environment: [String: String] = [:]
+        var index = 0
+        let firstBasename = tokens.first.map { ($0 as NSString).lastPathComponent.lowercased() }
+
+        if firstBasename == "env" {
+            index = 1
+            while index < tokens.count {
+                let token = tokens[index]
+                if token.hasPrefix("-") {
+                    index += 1
+                    continue
+                }
+                guard let assignment = environmentAssignment(token) else { break }
+                environment[assignment.key] = assignment.value
+                index += 1
+            }
+        } else {
+            while index < tokens.count {
+                guard let assignment = environmentAssignment(tokens[index]) else { break }
+                environment[assignment.key] = assignment.value
+                index += 1
+            }
+        }
+
+        let arguments = Array(tokens.dropFirst(index))
+        return (arguments.isEmpty ? tokens : arguments, environment)
+    }
+
+    private static func shellSubcommandSegments(from arguments: [String]) -> [[String]] {
+        guard let executable = arguments.first else { return [] }
+        let basename = (executable as NSString).lastPathComponent.lowercased()
+        guard ["sh", "bash", "zsh", "fish"].contains(basename) else { return [] }
+
+        var commandStartIndex: Int?
+        for index in arguments.indices.dropFirst() {
+            let argument = arguments[index]
+            if argument == "-c" || argument == "-lc" || argument == "-cl" {
+                commandStartIndex = arguments.index(after: index)
+                break
+            }
+            if argument.hasPrefix("-"),
+               !argument.hasPrefix("--"),
+               argument.dropFirst().contains("c") {
+                commandStartIndex = arguments.index(after: index)
+                break
+            }
+        }
+
+        guard let commandStartIndex,
+              commandStartIndex < arguments.endIndex else {
+            return []
+        }
+        let commandTokens = shellLikeTokens(arguments[commandStartIndex])
+        guard !commandTokens.isEmpty else { return [] }
+        return commandSegments(from: commandTokens)
+    }
+
+    private static func environmentAssignment(_ token: String) -> (key: String, value: String)? {
+        guard let equalsIndex = token.firstIndex(of: "="),
+              equalsIndex != token.startIndex else {
+            return nil
+        }
+        let key = String(token[..<equalsIndex])
+        guard key.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil else {
+            return nil
+        }
+        return (key, String(token[token.index(after: equalsIndex)...]))
+    }
+
     private static let argumentHostBasenames: Set<String> = [
         "node", "bun", "deno", "npm", "npx", "pnpm", "yarn", "tsx"
     ]

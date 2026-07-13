@@ -1011,9 +1011,23 @@ struct RestorableAgentSessionIndex: Sendable {
 
     private let entriesByPanel: [PanelKey: Entry]
     private let entriesByPanelId: [UUID: Entry]
+    /// Panels whose hook record has a live, mosaic-scoped agent process —
+    /// independent of restorability. A freshly launched Claude session has no
+    /// transcript file until its first turn, so it produces no restorable
+    /// entry, yet "an agent is running here" is exactly what liveness-driven
+    /// UI (the agent-room wire port) needs to know.
+    private let liveAgentPanelKeys: Set<PanelKey>
+    private let liveAgentPanelIds: Set<UUID>
 
     private func entry(workspaceId: UUID, panelId: UUID) -> Entry? {
         entriesByPanel[PanelKey(workspaceId: workspaceId, panelId: panelId)] ?? entriesByPanelId[panelId]
+    }
+
+    /// Whether a live, mosaic-scoped coding-agent process is bound to this
+    /// panel right now (regardless of whether its session is restorable yet).
+    func hasLiveCodingAgent(workspaceId: UUID, panelId: UUID) -> Bool {
+        liveAgentPanelKeys.contains(PanelKey(workspaceId: workspaceId, panelId: panelId))
+            || liveAgentPanelIds.contains(panelId)
     }
 
     func snapshot(workspaceId: UUID, panelId: UUID) -> SessionRestorableAgentSnapshot? {
@@ -1110,6 +1124,7 @@ struct RestorableAgentSessionIndex: Sendable {
             }
         var hookCandidatesBySession: [SessionKey: Entry] = [:]
         var hookCandidatesByPanelAndKind: [PanelKindKey: Entry] = [:]
+        var liveAgentPanelKeys: Set<PanelKey> = []
 
         for (kind, registration) in hookKinds {
             let fileURL = kind.hookStoreFileURL(homeDirectory: homeDirectory)
@@ -1137,13 +1152,29 @@ struct RestorableAgentSessionIndex: Sendable {
                 let normalizedSessionId = effectiveRecord.sessionId.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !normalizedSessionId.isEmpty,
                       let workspaceId = UUID(uuidString: effectiveRecord.workspaceId),
-                      let panelId = UUID(uuidString: effectiveRecord.surfaceId),
-                      hookRecordIsRestorable(
-                          effectiveRecord,
-                          kind: kind,
-                          fileManager: fileManager,
-                          claudeTranscriptLookup: claudeTranscriptLookup
-                      ) else {
+                      let panelId = UUID(uuidString: effectiveRecord.surfaceId) else {
+                    continue
+                }
+                // Liveness is checked before the restorability gate: a freshly
+                // launched agent (no transcript yet, so not restorable) still
+                // has a live scoped process, and liveness-driven consumers
+                // must see it.
+                let liveProcessID = liveScopedProcessID(
+                    for: effectiveRecord,
+                    kind: kind,
+                    workspaceId: workspaceId,
+                    panelId: panelId,
+                    processArgumentsProvider: processArgumentsProvider
+                )
+                if liveProcessID != nil {
+                    liveAgentPanelKeys.insert(PanelKey(workspaceId: workspaceId, panelId: panelId))
+                }
+                guard hookRecordIsRestorable(
+                    effectiveRecord,
+                    kind: kind,
+                    fileManager: fileManager,
+                    claudeTranscriptLookup: claudeTranscriptLookup
+                ) else {
                     continue
                 }
 
@@ -1163,13 +1194,6 @@ struct RestorableAgentSessionIndex: Sendable {
                 let key = PanelKey(workspaceId: workspaceId, panelId: panelId)
                 let sessionKey = SessionKey(kind: kind, sessionId: normalizedSessionId)
                 let panelKindKey = PanelKindKey(panelKey: key, kind: kind)
-                let liveProcessID = liveScopedProcessID(
-                    for: effectiveRecord,
-                    kind: kind,
-                    workspaceId: workspaceId,
-                    panelId: panelId,
-                    processArgumentsProvider: processArgumentsProvider
-                )
                 let entry = Entry(
                     snapshot: snapshot,
                     lifecycle: effectiveRecord.agentLifecycle,
@@ -1195,6 +1219,9 @@ struct RestorableAgentSessionIndex: Sendable {
         }
 
         for (key, detected) in detectedSnapshots {
+            if !detected.processIDs.isEmpty {
+                liveAgentPanelKeys.insert(key)
+            }
             let sameKindPanelCandidate = hookCandidatesByPanelAndKind[
                 PanelKindKey(panelKey: key, kind: detected.snapshot.kind)
             ]
@@ -1232,7 +1259,10 @@ struct RestorableAgentSessionIndex: Sendable {
             }
         }
 
-        return RestorableAgentSessionIndex(entriesByPanel: resolved)
+        return RestorableAgentSessionIndex(
+            entriesByPanel: resolved,
+            liveAgentPanelKeys: liveAgentPanelKeys
+        )
     }
 
     private static func matchingHookEntry(
@@ -1858,7 +1888,7 @@ struct RestorableAgentSessionIndex: Sendable {
         return rawValue
     }
 
-    private init(entriesByPanel: [PanelKey: Entry]) {
+    private init(entriesByPanel: [PanelKey: Entry], liveAgentPanelKeys: Set<PanelKey> = []) {
         self.entriesByPanel = entriesByPanel
         var entriesByPanelId: [UUID: Entry] = [:]
         for (key, entry) in entriesByPanel {
@@ -1868,6 +1898,8 @@ struct RestorableAgentSessionIndex: Sendable {
             }
         }
         self.entriesByPanelId = entriesByPanelId
+        self.liveAgentPanelKeys = liveAgentPanelKeys
+        self.liveAgentPanelIds = Set(liveAgentPanelKeys.map(\.panelId))
     }
 }
 

@@ -356,7 +356,8 @@ extension TerminalController {
     func controlSurfaceReportShellState(
         workspaceID: UUID,
         requestedSurfaceID: UUID?,
-        stateRawValue: String
+        stateRawValue: String,
+        command: String?
     ) -> ControlSurfaceReportShellStateResolution {
         guard let state = PanelShellActivityState(rawValue: stateRawValue) else {
             // Unreachable: the coordinator only forwards a value the app produced.
@@ -368,13 +369,14 @@ extension TerminalController {
                 panelId: requestedSurfaceID,
                 state: state.rawValue
             )
-            if shouldPublish {
+            if shouldPublish || command != nil || state == .promptIdle {
                 DispatchQueue.main.async {
                     guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: workspaceID) else { return }
                     tabManager.updateSurfaceShellActivity(
                         tabId: workspaceID,
                         surfaceId: requestedSurfaceID,
-                        state: state
+                        state: state,
+                        command: command
                     )
                 }
             }
@@ -393,7 +395,12 @@ extension TerminalController {
             )
             guard let surfaceId, validSurfaceIds.contains(surfaceId) else { return }
             guard let tabManager = AppDelegate.shared?.tabManagerFor(tabId: tab.id) else { return }
-            tabManager.updateSurfaceShellActivity(tabId: tab.id, surfaceId: surfaceId, state: state)
+            tabManager.updateSurfaceShellActivity(
+                tabId: tab.id,
+                surfaceId: surfaceId,
+                state: state,
+                command: command
+            )
         }
         return .pending
     }

@@ -181,6 +181,10 @@ struct RightSidebarPanelView: View {
         }
         .shortcutHintVisibilityAnimation(value: focusShortcutHintAnimationValue)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Same opaque chrome fill as the left workspace sidebar
+        // (MosaicSidebarStyle.background) so the right sidebar reads as custom
+        // mosaic chrome instead of the native translucent sidebar material.
+        .background(Color(nsColor: MosaicChromePalette.sidebarBackgroundColor).ignoresSafeArea())
         .background(
             RightSidebarKeyboardFocusBridge()
             .frame(width: 1, height: 1)
