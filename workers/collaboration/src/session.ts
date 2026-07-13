@@ -91,9 +91,25 @@ export class CollaborationSessionObject extends DurableObject<CollaborationSessi
     const server = pair[1];
     const now = Date.now();
     server.accept();
+    // workerd follows the browser spec default of binaryType "blob" under
+    // recent compatibility dates. The relay routes binary hot-path frames
+    // synchronously from the message listener, so request ArrayBuffer
+    // delivery; a Blob would need an async read and previously crashed the
+    // handler (TextDecoder.decode(Blob) threw and workerd killed the socket).
+    server.binaryType = "arraybuffer";
     await this.cancelIdleCleanup();
     state.addPeer(metadata.sessionID, peer, server, now);
-    server.addEventListener("message", (event) => state.handleMessage(peer.peerID, event.data, Date.now()));
+    server.addEventListener("message", (event) => {
+      // Last-resort guard: a throwing handler makes workerd terminate the
+      // WebSocket abruptly (observed as close 1006 on clients). Drop the
+      // frame instead; malformed frames are already closed cleanly inside
+      // handleMessage.
+      try {
+        state.handleMessage(peer.peerID, event.data, Date.now());
+      } catch (error) {
+        console.error("collaboration relay message handling failed", error);
+      }
+    });
     server.addEventListener("close", () => this.dropPeer(metadata.sessionID, peer.peerID, "disconnect"));
     server.addEventListener("error", () => this.dropPeer(metadata.sessionID, peer.peerID, "disconnect"));
     await this.ensureHeartbeatAlarm(now);

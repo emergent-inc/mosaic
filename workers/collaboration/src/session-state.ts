@@ -29,7 +29,7 @@ export class CollaborationRelaySessionState {
     this.broadcast(peer.peerID, { type: "peer.joined", peer });
   }
 
-  handleMessage(peerID: string, data: string | ArrayBuffer, now: number): void {
+  handleMessage(peerID: string, data: string | ArrayBuffer | ArrayBufferView, now: number): void {
     const entry = this.peers.get(peerID);
     if (!entry) return;
     if (isBinaryFrame(data)) {
@@ -78,7 +78,7 @@ export class CollaborationRelaySessionState {
   private handleBinaryMessage(
     peerID: string,
     entry: PeerConnection,
-    buffer: ArrayBuffer,
+    buffer: ArrayBuffer | ArrayBufferView,
     now: number,
   ): void {
     const header = parseBinaryFrameHeader(buffer);
@@ -115,7 +115,7 @@ export class CollaborationRelaySessionState {
 
   private broadcastBinary(
     fromPeerID: string,
-    buffer: ArrayBuffer,
+    buffer: ArrayBuffer | ArrayBufferView,
     recipientParticipantIDs: Set<string> | null,
   ): void {
     for (const [peerID, entry] of this.peers) {

@@ -22,15 +22,29 @@ export interface BinaryFrameHeader {
   recipientParticipantIDs: string[] | null;
 }
 
-export function isBinaryFrame(data: string | ArrayBuffer): data is ArrayBuffer {
-  if (typeof data === "string") return false;
-  return data.byteLength > 0 && new Uint8Array(data, 0, 1)[0] === BINARY_FRAME_MAGIC;
+export function isBinaryFrame(
+  data: string | ArrayBuffer | ArrayBufferView
+): data is ArrayBuffer | ArrayBufferView {
+  const view = asBytes(data);
+  return view !== null && view.length > 0 && view[0] === BINARY_FRAME_MAGIC;
+}
+
+/// Views the message bytes without copying, or `null` for strings and
+/// unsupported shapes (e.g. Blob, which requires an async read and must be
+/// converted before reaching the relay's synchronous message path).
+export function asBytes(data: unknown): Uint8Array | null {
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  if (ArrayBuffer.isView(data)) {
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  }
+  return null;
 }
 
 /// Parses the routing header from a binary frame, returning `null` on any
 /// malformed or non-matching input.
-export function parseBinaryFrameHeader(buffer: ArrayBuffer): BinaryFrameHeader | null {
-  const view = new Uint8Array(buffer);
+export function parseBinaryFrameHeader(buffer: ArrayBuffer | ArrayBufferView): BinaryFrameHeader | null {
+  const view = asBytes(buffer);
+  if (view === null) return null;
   const reader = new HeaderReader(view);
   if (reader.readUInt8() !== BINARY_FRAME_MAGIC) return null;
   if (reader.readUInt8() !== BINARY_FRAME_VERSION) return null;

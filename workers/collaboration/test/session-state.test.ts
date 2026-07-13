@@ -480,6 +480,57 @@ test("binary frame with a spoofed fromPeerID closes the sender", () => {
   expect(state.peerCount).toBe(1);
 });
 
+test("binary frames delivered as ArrayBufferView route like ArrayBuffer", () => {
+  // workerd can hand the message listener a view rather than a plain
+  // ArrayBuffer; routing must not depend on the exact shape.
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  const frame = encodeBinaryFrame({
+    kind: "terminal.output",
+    sequence: 3,
+    terminalID: "term1",
+    fromPeerID: "p1",
+    payload: new Uint8Array([0x6f, 0x6b]),
+  });
+  // Wrap in a view with a nonzero offset to catch byteOffset bugs.
+  const padded = new Uint8Array(frame.byteLength + 4);
+  padded.set(new Uint8Array(frame), 4);
+  const view = new Uint8Array(padded.buffer, 4, frame.byteLength);
+  state.handleMessage("p1", view as unknown as ArrayBuffer, 1100);
+
+  expect(second.sentBinary).toHaveLength(1);
+  expect(first.closed).toEqual([]);
+});
+
+test("garbage binary frames close the sender cleanly instead of throwing", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  const second = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+  state.addPeer("ABCD-1234", peer("p2"), second, 1000);
+
+  // Non-0xCB binary garbage must fall through to the JSON path and close
+  // with the normal invalid-frame code, never an uncaught throw.
+  state.handleMessage("p1", new Uint8Array([0x00, 0x01, 0xff]).buffer, 1100);
+
+  expect(first.closed).toEqual([{ code: 1003, reason: "invalid frame" }]);
+  expect(state.peerCount).toBe(1);
+});
+
+test("zero-length binary frames close the sender cleanly", () => {
+  const state = new CollaborationRelaySessionState();
+  const first = new FakeSocket();
+  state.addPeer("ABCD-1234", peer("p1"), first, 1000);
+
+  state.handleMessage("p1", new ArrayBuffer(0), 1100);
+
+  expect(first.closed).toEqual([{ code: 1003, reason: "invalid frame" }]);
+});
+
 test("binary traffic refreshes liveness", () => {
   const state = new CollaborationRelaySessionState();
   const first = new FakeSocket();

@@ -82,11 +82,15 @@ function normalizePeerOrigin(value: unknown): string | undefined {
   return trimmed;
 }
 
-export function parseEnvelope(message: string | ArrayBuffer): RelayEnvelope | null {
-  const text = typeof message === "string" ? message : new TextDecoder().decode(message);
-  if (text.length > 1024 * 1024) return null;
+export function parseEnvelope(message: string | ArrayBuffer | ArrayBufferView): RelayEnvelope | null {
+  // Decode inside the try: an unexpected message shape (e.g. a Blob delivered
+  // by a runtime whose binaryType was not switched to "arraybuffer") must
+  // yield a clean invalid-frame close, never an uncaught throw that makes
+  // workerd kill the socket abruptly.
   let parsed: unknown;
   try {
+    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+    if (text.length > 1024 * 1024) return null;
     parsed = JSON.parse(text);
   } catch {
     return null;
