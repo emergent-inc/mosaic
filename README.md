@@ -17,4 +17,6 @@ Mosaic is a native macOS terminal workspace built for collaborating with people 
 
 Mosaic is open source under [GPL-3.0-or-later](LICENSE).
 
-If your organization cannot comply with GPL, a commercial license is available. Contact [contact@emergent.inc](mailto:contact@emergent.inc) for details.
+Mosaic is derived from [cmux](https://github.com/manaflow-ai/cmux), Copyright (c)
+2024-present Manaflow, Inc. Mosaic's subsequent modifications are also distributed
+under GPL-3.0-or-later.
