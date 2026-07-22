@@ -61,6 +61,73 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
+    func disconnectingLastSurfaceReapsTheRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+
+        let result = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
+
+        #expect(result.members.isEmpty)
+        #expect(await store.room(id: "room-1") == nil)
+    }
+
+    @Test
+    func disconnectingLastOfTwoSurfacesReapsTheRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-b", surfaceID: "surface-b", peerID: "peer"),
+            to: "room-1"
+        )
+
+        let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a"))
+        #expect(room.members.map(\.surfaceID) == ["surface-b"])
+
+        let result = try #require(await store.disconnect(roomID: "room-1", memberID: "m-b", surfaceID: "surface-b"))
+
+        #expect(result.members.isEmpty)
+        #expect(await store.room(id: "room-1") == nil)
+    }
+
+    @Test
+    func disconnectMatchingNothingDoesNotReapAPreCreatedEmptyRoom() async throws {
+        let store = ClaudeRoomStore()
+        _ = await store.createRoom(id: "room-1", title: "Pre-created")
+
+        let room = try #require(await store.disconnect(roomID: "room-1", memberID: "m-missing", surfaceID: "surface-missing"))
+
+        #expect(room.members.isEmpty)
+        #expect(await store.room(id: "room-1") != nil)
+    }
+
+    @Test
+    func reapedRoomStaysGoneAfterPersistenceReload() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claude-room-store-tests-\(UUID().uuidString)")
+            .appendingPathComponent("agent-rooms.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let store = ClaudeRoomStore(persistenceURL: url)
+        _ = await store.createRoom(id: "room-1")
+        _ = await store.connect(
+            member: ClaudeRoomMember(id: "m-a", surfaceID: "surface-a", peerID: "peer"),
+            to: "room-1"
+        )
+        _ = await store.disconnect(roomID: "room-1", memberID: "m-a", surfaceID: "surface-a")
+
+        let reloaded = ClaudeRoomStore(persistenceURL: url)
+        #expect(await reloaded.room(id: "room-1") == nil)
+    }
+
+    @Test
     func reconnectingSameSurfaceDoesNotDuplicateMember() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
@@ -78,7 +145,7 @@ struct ClaudeRoomStoreTests {
     }
 
     @Test
-    func movingSurfaceBetweenRoomsLeavesOldRoomEmpty() async throws {
+    func movingSurfaceBetweenRoomsReapsTheOldRoom() async throws {
         let store = ClaudeRoomStore()
         _ = await store.createRoom(id: "room-1")
         _ = await store.createRoom(id: "room-2")
@@ -94,9 +161,8 @@ struct ClaudeRoomStoreTests {
             to: "room-2"
         )
 
-        let roomOne = try #require(await store.room(id: "room-1"))
+        #expect(await store.room(id: "room-1") == nil)
         let roomTwo = try #require(await store.room(id: "room-2"))
-        #expect(roomOne.members.isEmpty)
         #expect(roomTwo.members.map(\.surfaceID) == ["surface-a"])
     }
 
